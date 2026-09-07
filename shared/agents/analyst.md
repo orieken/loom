@@ -69,7 +69,29 @@ Read `shared/templates/analysis.template.md` and produce your artifact at
 `.claude/feature-workspace/<feature-name>/analysis.md` by filling in the bracketed
 `[placeholder]` markers. Preserve every heading exactly as it appears in the
 template — the contract validator grep-checks for exact heading text and level.
-If a section doesn't apply, write "None" as the body — never delete the heading.
+If a section doesn't apply, **leave its body empty** — never delete the heading, and never write
+"None", "N/A", or "None required by this spec".
+
+That instruction used to say the opposite, and the cost is measured. The executor routes stages
+from your analysis, and a predicate counting list items cannot tell a prose "none" from real work.
+One DevOps task reading *"None required by this spec — no CI or deployment config changes
+requested."* invoked `devops-engineer` for **$0.64** to establish that the sentence meant zero. An
+empty section is the only unambiguous way to say there is nothing here.
+
+Two fields decide what a run costs, so state them precisely:
+
+- **Thresholds are numbers with units** — `p99 request latency, 200, ms`. A threshold routes in
+  both the `architect` and the `performance-engineer`. Writing prose there (*"O(n) over the array;
+  no I/O"*) cost **$1.45** on a three-line array filter, for two reports saying "not applicable".
+  If a requirement has no measurable limit, say so in the requirement text and give it no
+  threshold.
+- **Declare the feature's surfaces.** A **UI surface** is something a person looks at; a **served
+  runtime surface** is a deployed process whose availability or latency someone operates. An
+  in-process library or test utility has neither. These decide whether `accessibility-engineer`,
+  `visual-qa-engineer` and `sre-engineer` run at all.
+
+You are not being asked to guess who should run — only to describe the feature accurately. The
+router does the rest, and it can only be as honest as your description.
 
 ## Rules
 

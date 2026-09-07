@@ -22,8 +22,8 @@ func routableStages() []state.RoutableStage {
 		{ID: "accessibility-engineer", Skippable: true},
 		{ID: "security-reviewer"},
 		{ID: "qa-engineer"},
-		{ID: "visual-qa-engineer"},
-		{ID: "sre-engineer"},
+		{ID: "visual-qa-engineer", Skippable: true},
+		{ID: "sre-engineer", Skippable: true},
 		{ID: "tech-writer"},
 		{ID: "devops-engineer", Skippable: true},
 	}
@@ -40,13 +40,16 @@ func minimalAnalysis() state.AnalysisState {
 	analysis.NewDependencies = nil
 	analysis.ArchitecturalFlags = nil
 	analysis.Tasks = state.TaskList{Developer: []string{"do the thing"}}
+	analysis.Surfaces = state.Surfaces{}
+	analysis.APIChanges = nil
 	return analysis
 }
 
 func TestRouteSkipsWhatTheAnalysisDoesNotAskFor(t *testing.T) {
 	route := state.RouteFor(minimalAnalysis(), routableStages())
 
-	for _, stage := range []string{"architect", "performance-engineer", "data-engineer", "accessibility-engineer", "devops-engineer"} {
+	for _, stage := range []string{"architect", "performance-engineer", "data-engineer",
+		"accessibility-engineer", "visual-qa-engineer", "sre-engineer", "devops-engineer"} {
 		if route.Includes(stage) {
 			t.Errorf("stage %q was included for a feature that asks for none of it", stage)
 		}
@@ -64,21 +67,35 @@ func TestRouteSkipsWhatTheAnalysisDoesNotAskFor(t *testing.T) {
 func TestReviewStagesAreNeverSkipped(t *testing.T) {
 	route := state.RouteFor(minimalAnalysis(), routableStages())
 
-	for _, stage := range []string{"code-reviewer", "security-reviewer", "qa-engineer", "developer", "tech-writer", "sre-engineer"} {
+	// sre-engineer left this list in L3.24. It is not a review stage in the
+	// asymmetry sense — skipping it risks no unreviewed code — and being
+	// unskippable was where it happened to land, not a property it earned.
+	for _, stage := range []string{"code-reviewer", "security-reviewer", "qa-engineer", "developer", "tech-writer"} {
 		if !route.Includes(stage) {
 			t.Errorf("stage %q was skipped; it is not skippable by routing", stage)
 		}
 	}
 }
 
-// TestVisualQARunsBecauseItsConditionIsEnvironmental records the ADR-007
-// boundary: whether heatmap data exists is not a fact about the feature, so
-// no predicate can decide it and the stage stays in.
-func TestVisualQARunsBecauseItsConditionIsEnvironmental(t *testing.T) {
-	route := state.RouteFor(minimalAnalysis(), routableStages())
+// TestVisualQAStillRunsForAUIFeature keeps the ADR-007 boundary honest while
+// L3.24 narrows the stage.
+//
+// ADR-007 says visual-qa-engineer's real precondition is "a UI evidence
+// bundle for this version is available" — an environmental fact, and one the
+// ADR itself records as not implemented. L3.24 does not implement it. It
+// applies the necessary condition that IS knowable from the analysis: a
+// feature with no UI surface can never produce a bundle, so the stage cannot
+// have anything to do. That is strictly narrower than "always runs" and
+// strictly wider than the bundle check, so it cannot skip a run the bundle
+// check would have included.
+func TestVisualQAStillRunsForAUIFeature(t *testing.T) {
+	analysis := minimalAnalysis()
+	analysis.Surfaces.UI = true
+
+	route := state.RouteFor(analysis, routableStages())
 
 	if !route.Includes("visual-qa-engineer") {
-		t.Error("visual-qa-engineer was routed out; its condition is environmental (ADR-007), not analytical")
+		t.Error("visual-qa-engineer was routed out of a feature that declares a UI surface")
 	}
 }
 
@@ -92,7 +109,7 @@ func TestRouteIncludesWhatTheAnalysisAsksFor(t *testing.T) {
 		}},
 		"threshold summons performance": {"performance-engineer", func(a *state.AnalysisState) {
 			a.NonFunctionalRequirements = []state.NonFunctionalRequirement{
-				{Category: "performance", Requirement: "fast", Threshold: "p99 < 200ms"},
+				{Category: "performance", Requirement: "fast", Threshold: &state.Threshold{Metric: "p99 sign-in latency", Value: 200, Unit: "ms"}},
 			}
 		}},
 		"migration summons data": {"data-engineer", func(a *state.AnalysisState) {
@@ -189,5 +206,143 @@ func TestRouteRoundTripsThroughItsSchema(t *testing.T) {
 	route, ok := decoded.(*state.Route)
 	if !ok || len(route.Decisions) != len(routableStages()) {
 		t.Errorf("decoded route = %+v", decoded)
+	}
+}
+
+// consoleLogFilteringAnalysis is the third real end-to-end run's feature: a
+// three-line synchronous array filter added to an existing class. No UI, no
+// I/O, no network, and one boilerplate NFR sentence the analyst writes every
+// time. Four stages ran on it and reported having nothing to do, for $2.63.
+func consoleLogFilteringAnalysis() state.AnalysisState {
+	analysis := minimalAnalysis()
+	// The run put its prose IN the threshold field — "O(n) over the captured
+	// logs array... no I/O" — and a non-empty test read that as a measurable
+	// target. The typed form cannot hold a sentence, so the faithful
+	// equivalent is a threshold naming a metric with no number and no unit.
+	analysis.NonFunctionalRequirements = []state.NonFunctionalRequirement{
+		{Category: "performance", Requirement: "filtering is linear in the captured logs array",
+			Threshold: &state.Threshold{Metric: "O(n) over the captured logs array; no I/O"}},
+	}
+	analysis.Tasks = state.TaskList{
+		Developer: []string{"add getLogsByType to ConsoleLogger"},
+		DevOps:    []string{"None required by this spec — no CI or deployment config changes requested."},
+	}
+	return analysis
+}
+
+// The L3.24 done-when, stated as the run that produced it.
+func TestTheThirdRunsFeatureRoutesInNoStageWithNothingToDo(t *testing.T) {
+	route := state.RouteFor(consoleLogFilteringAnalysis(), routableStages())
+
+	for _, stage := range []string{"architect", "performance-engineer", "visual-qa-engineer", "sre-engineer"} {
+		if route.Includes(stage) {
+			t.Errorf("stage %q ran on a three-line array filter: %s", stage, route.ReasonFor(stage))
+		}
+	}
+}
+
+// The L3.18 done-when. A prose "none" is indistinguishable from work under an
+// arity test, and models write prose "none" constantly. The second real run
+// spent $0.64 on this exact sentence.
+func TestAProseNoneIsNotADevOpsTask(t *testing.T) {
+	route := state.RouteFor(consoleLogFilteringAnalysis(), routableStages())
+
+	if route.Includes("devops-engineer") {
+		t.Error(`devops-engineer ran on a task list whose only entry says "None required by this spec"`)
+	}
+}
+
+// The other half of the L3.24 done-when: narrowing must not blind the router
+// to work that is really there.
+func TestARealThresholdStillSummonsThePerformanceEngineer(t *testing.T) {
+	analysis := minimalAnalysis()
+	analysis.NonFunctionalRequirements = []state.NonFunctionalRequirement{
+		{Category: "performance", Requirement: "search responds quickly",
+			Threshold: &state.Threshold{Metric: "p99 search latency", Value: 200, Unit: "ms"}},
+	}
+
+	route := state.RouteFor(analysis, routableStages())
+
+	for _, stage := range []string{"performance-engineer", "architect"} {
+		if !route.Includes(stage) {
+			t.Errorf("stage %q was skipped despite a real p99 200ms budget", stage)
+		}
+	}
+}
+
+// A threshold missing its number or its unit is prose wearing a struct, and
+// must not route two stages in on the strength of being non-empty.
+func TestAThresholdWithoutANumberIsNotMeasurable(t *testing.T) {
+	cases := map[string]*state.Threshold{
+		"no value":  {Metric: "latency", Unit: "ms"},
+		"no unit":   {Metric: "latency", Value: 200},
+		"no metric": {Value: 200, Unit: "ms"},
+	}
+	for name, threshold := range cases {
+		t.Run(name, func(t *testing.T) {
+			analysis := minimalAnalysis()
+			analysis.NonFunctionalRequirements = []state.NonFunctionalRequirement{
+				{Category: "performance", Requirement: "fast", Threshold: threshold},
+			}
+			if state.RouteFor(analysis, routableStages()).Includes("performance-engineer") {
+				t.Errorf("an unmeasurable threshold (%s) routed the performance-engineer in", name)
+			}
+		})
+	}
+}
+
+// The two stages that answer "is there a UI?" must not disagree — one being
+// skipped while the other could not be is the inconsistency L3.24 records.
+func TestTheTwoUIStagesAlwaysAgree(t *testing.T) {
+	for _, hasUI := range []bool{false, true} {
+		analysis := minimalAnalysis()
+		analysis.Surfaces.UI = hasUI
+		route := state.RouteFor(analysis, routableStages())
+
+		if route.Includes("accessibility-engineer") != route.Includes("visual-qa-engineer") {
+			t.Errorf("UI surface %v: accessibility-engineer=%v but visual-qa-engineer=%v",
+				hasUI, route.Includes("accessibility-engineer"), route.Includes("visual-qa-engineer"))
+		}
+	}
+}
+
+func TestASurfaceSummonsItsReviewer(t *testing.T) {
+	cases := map[string]struct {
+		stage string
+		shape func(*state.AnalysisState)
+	}{
+		"a UI surface summons visual QA": {"visual-qa-engineer", func(a *state.AnalysisState) {
+			a.Surfaces.UI = true
+		}},
+		"an accessibility requirement still summons visual QA": {"visual-qa-engineer", func(a *state.AnalysisState) {
+			a.NonFunctionalRequirements = []state.NonFunctionalRequirement{
+				{Category: "accessibility", Requirement: "keyboard navigable"},
+			}
+		}},
+		"a served runtime summons the SRE": {"sre-engineer", func(a *state.AnalysisState) {
+			a.Surfaces.Runtime = true
+		}},
+		"an API change summons the SRE": {"sre-engineer", func(a *state.AnalysisState) {
+			a.APIChanges = []state.APIChange{{Endpoint: "POST /sessions", Change: "new"}}
+		}},
+	}
+	for name, testCase := range cases {
+		t.Run(name, func(t *testing.T) {
+			analysis := minimalAnalysis()
+			testCase.shape(&analysis)
+			if !state.RouteFor(analysis, routableStages()).Includes(testCase.stage) {
+				t.Errorf("stage %q was skipped for a feature that needs it", testCase.stage)
+			}
+		})
+	}
+}
+
+// A real DevOps task must still route the stage in.
+func TestARealDevOpsTaskStillSummonsDevOps(t *testing.T) {
+	analysis := minimalAnalysis()
+	analysis.Tasks.DevOps = []string{"Add a nightly workflow that publishes the bundle"}
+
+	if !state.RouteFor(analysis, routableStages()).Includes("devops-engineer") {
+		t.Error("devops-engineer was skipped despite a real task")
 	}
 }

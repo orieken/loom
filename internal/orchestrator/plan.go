@@ -124,13 +124,23 @@ const RouterStageID = "router"
 
 // defaultSkippableStages declares which stages the router may route around.
 // Everything absent from this map always runs. The review stages
-// (code-reviewer, security-reviewer) are absent deliberately.
+// (code-reviewer, security-reviewer) are absent deliberately: an unnecessary
+// review wastes an invocation, a skipped one does not fail so cheaply.
+//
+// visual-qa-engineer and sre-engineer joined the list in L3.24. Being
+// unskippable was never a property either had earned — it was where they
+// happened to land — and it cost $1.18 on a three-line array filter, in a
+// run where accessibility-engineer was correctly skipped for having no UI.
+// A stage that can only review a surface should not run when the surface is
+// absent, whichever stage it is.
 func defaultSkippableStages() map[string]bool {
 	return map[string]bool{
 		"architect":              true,
 		"performance-engineer":   true,
 		"data-engineer":          true,
 		"accessibility-engineer": true,
+		"visual-qa-engineer":     true,
+		"sre-engineer":           true,
 		"devops-engineer":        true,
 	}
 }

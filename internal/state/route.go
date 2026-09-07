@@ -112,7 +112,7 @@ func stagePredicates() map[string]func(AnalysisState, string) RouteDecision {
 		"performance-engineer": func(a AnalysisState, id string) RouteDecision {
 			return decide(id, a.RequiresPerformanceEngineer(),
 				"a performance requirement carries a measurable threshold",
-				"no performance requirement carries a measurable threshold")
+				"no performance requirement carries a threshold with a number and a unit")
 		},
 		"data-engineer": func(a AnalysisState, id string) RouteDecision {
 			return decide(id, a.RequiresDataEngineer(),
@@ -121,8 +121,21 @@ func stagePredicates() map[string]func(AnalysisState, string) RouteDecision {
 		},
 		"accessibility-engineer": func(a AnalysisState, id string) RouteDecision {
 			return decide(id, a.RequiresAccessibilityEngineer(),
-				"the analysis declares an accessibility requirement, which the contract makes mandatory for any UI surface",
-				"no accessibility requirement, so the analysis describes no UI surface")
+				"the analysis declares a UI surface",
+				"the analysis declares no UI surface")
+		},
+		// Same question as accessibility-engineer, so deliberately the same
+		// answer: two stages reviewing the same surface disagreeing about
+		// whether it exists is the defect L3.24 records.
+		"visual-qa-engineer": func(a AnalysisState, id string) RouteDecision {
+			return decide(id, a.RequiresVisualQAEngineer(),
+				"the analysis declares a UI surface",
+				"the analysis declares no UI surface, so there is nothing to look at")
+		},
+		"sre-engineer": func(a AnalysisState, id string) RouteDecision {
+			return decide(id, a.RequiresSREEngineer(),
+				"the analysis declares a served runtime surface or changes an API",
+				"the analysis declares no served runtime surface, so no availability or latency SLI applies")
 		},
 		"devops-engineer": func(a AnalysisState, id string) RouteDecision {
 			return decide(id, a.RequiresDevOpsEngineer(),

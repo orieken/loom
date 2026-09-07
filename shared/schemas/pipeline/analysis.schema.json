@@ -53,8 +53,28 @@
             "type": "string"
           },
           "threshold": {
-            "type": "string",
-            "description": "The measurable limit"
+            "properties": {
+              "metric": {
+                "type": "string",
+                "description": "What is measured"
+              },
+              "value": {
+                "type": "number",
+                "description": "The numeric limit"
+              },
+              "unit": {
+                "type": "string",
+                "description": "The unit of the limit"
+              }
+            },
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "metric",
+              "value",
+              "unit"
+            ],
+            "description": "The measurable limit. Omit entirely when the requirement carries no number — do not describe it in prose here"
           }
         },
         "additionalProperties": false,
@@ -100,6 +120,20 @@
         "type": "string"
       },
       "type": "array"
+    },
+    "surfaces": {
+      "properties": {
+        "ui": {
+          "type": "boolean",
+          "description": "True when this feature adds or changes a user interface a person sees"
+        },
+        "runtime": {
+          "type": "boolean",
+          "description": "True when this feature runs in a deployed service with availability or latency someone operates"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
     },
     "boundedContext": {
       "properties": {
