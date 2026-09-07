@@ -1490,6 +1490,30 @@ predicates, which was right. The predicates now need to read facts a model canno
 **Why this is worth the effort**: the cost model is currently a function of how many agents exist,
 not of how much work the feature is. That is backwards, and it gets worse with every agent added.
 
+**RESOLVED 2026-09-07 — the repo-map question is closed, and this item's ordering holds.** The third
+real run put the deferred measurement on a real repository: `saturday-monorepo`, **1,547 tracked
+files / ~22k lines of first-party TypeScript**, against run 2's 2-file, 26-line repo — roughly
+**770x the source**. The decision rule was fixed in advance: `context-engineer` cache_read within
+~2x of run 2's 964,590 means source discovery is not the cost driver.
+
+It came in at **729,694 — 0.76x. It went *down***. Per-call cost stayed flat too: $0.55–1.53 against
+run 2's $0.50–0.74 floor, mean $0.79/call, $9.49 across 12 calls. The single outlier is `developer`
+at 2.59M cache_read and $1.53, and that is explained by tool-use iterations (it ran `pnpm install`
+and the 169-test suite), not by reading source. Cache reads were 89.0% of all tokens moved, almost
+identical to run 2's 84.5%.
+
+The confound was measured separately and does not rescue the alternative: the framework surface
+*grew* between the runs (v3.1.0 → v3.7.0: agents ~56k→62k, skills ~79k→99k, rules ~14k→17k tokens),
+so the one input that did increase is framework, not source — and cache_read still fell. Source
+scale is not a cost axis in this architecture, because no stage ever reads the repository broadly;
+it reads the handful of files the manifest pins.
+
+**Therefore**: `aider-repo-map` and `repomix-codebase-packing` should **not** be built. They optimize
+source-discovery cost, which this measurement shows is near zero, and they would add a per-run
+indexing pass to a system whose spend is ~90% prompt-prefix re-caching. The two levers named in
+§2 above — sharing the cached prefix across stages, and making a decline cheap — remain the only
+ones the evidence supports, and L3.24 adds a third: not asking the stage at all.
+
 ### L3.20 — Papercuts from the second real run
 **Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-06)*
 
@@ -1515,6 +1539,150 @@ Five small defects, each individually trivial, grouped so none is lost.
    does not implement. → `internal/orchestrator/executor.go`, `shared/skills/deliver-feature/SKILL.md`
 
 **Done when**: each is fixed or explicitly declined in this list.
+
+### L3.21 — `extractJSON` rejects a valid state document preceded by one sentence
+**Workstream**: PLATFORM · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-07, from the third real end-to-end run)*
+
+1. **Problem**: The third real run **died at `qa-engineer`** with
+   `agent did not return a JSON state document — got: Now producing the final QA state JSON.` The
+   agent's JSON was complete, valid and schema-conformant; it was preceded by a single sentence of
+   prose before the fence. `extractJSON` accepts raw JSON, and `unfence` accepts a response that is
+   *entirely* one fenced block (`strings.HasPrefix(text, "```")`), so a leading sentence fails the
+   prefix test and the run halts. The function's own comment concedes the case — "models fence their
+   output as a formatting habit, and failing a run over that would report a reflex as a modelling
+   error" — but the accommodation stops one sentence short of the same reflex. Worse, it is
+   **nondeterministic**: an unmodified `--resume` re-ran the identical stage and it parsed
+   first try. A run therefore dies or survives on whether the model prepended a sentence, and the
+   failed attempt still bills (**$0.69** here, see L3.22). Note that the prompt already forbids this:
+   `typed_stage.go:29` instructs *"Do not write files. Do not add commentary before or after the
+   JSON."* The model disregarded both halves in the same run — it wrote files (L2.23) and it added a
+   preamble — so the instruction is not load-bearing and the parser cannot assume it is.
+   → `internal/provider/claude/typed_stage.go:29,66-92`
+2. **Architectural Fix**: Accept a state document that is preceded by prose, while keeping the
+   property the current strictness exists to protect — not accidentally adopting a schema example
+   the agent quoted back. Taking the **last** fenced block in the response holds that property
+   (a quoted example precedes the real answer, never follows it) and costs one line. Reject only
+   when there is no fence and no leading `{`.
+3. **Target files**: `internal/provider/claude/typed_stage.go`
+4. **Done when**: a response of `<prose>\n\n```json\n{...}\n```` parses, a response containing a
+   quoted schema example followed by a real state document resolves to the latter, and both are
+   held by a test.
+
+**Why it matters**: this is the only defect in the run that stopped the pipeline, and it stopped it
+for a reason that has nothing to do with the work being done. A flaky run-killer is worse than a
+deterministic one — it cannot be reproduced on demand, so it gets rediscovered rather than fixed.
+
+### L3.22 — The run summary under-reports what the run actually cost
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-07)*
+
+1. **Problem**: The third run's completion line and `loom memory runs` both report **$8.7978**.
+   Summing `loom.usage.cost_usd` across every `generate_content` span in `traces.jsonl` gives
+   **$9.49** across 12 calls. The $0.69 difference is exactly the `qa-engineer` attempt that failed
+   to parse (L3.21) — spend that was billed and is recorded in the traces, but is excluded from the
+   figure the operator is shown and from the figure persisted to the memory store. The error is
+   silent and always in the same direction: retries and failures are free in the summary and not
+   free on the invoice. The gap scales with how badly a run goes, which is precisely when the number
+   is being read.
+2. **Architectural Fix**: Total usage over every provider call the run made, not every call that
+   succeeded. A failed attempt is a line item, not an absence.
+3. **Target files**: `internal/orchestrator/executor.go`, `internal/memory/` (run record)
+4. **Done when**: a run containing a failed stage reports a total equal to the sum of its trace
+   spans, and a test asserts the two agree.
+
+**Why it matters**: L3.13 wants to derive quality metrics from execution, and already warns that a
+run reporting zero cost reported *nothing* rather than costing nothing. This is the same class of
+error one level up — a cost model that hides retry spend will systematically under-price exactly the
+agents that need retrying most.
+
+### L3.23 — `install` replaces committed project files with writable symlinks into a shared cache
+**Workstream**: PLATFORM · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-07)*
+
+1. **Problem**: `loom install --target .` replaced **124 committed files** in the clone —
+   `.claude/agents`, `.claude/skills`, `.claude/rules`, plus `ARCHITECTURE_RULES.md` and
+   `DOMAIN_DICTIONARY.md` — with symlinks into `~/Library/Caches/loom/v3.7.0/shared/`. It backed
+   each up and printed that it had, but **after the fact**: there was no prompt, and no warning that
+   the targets were tracked files with local content. `git status` went from clean to 124 deletions.
+   Two consequences, one latent and one immediate. The **latent** one: the symlinked files are
+   writable and shared by every project installed from that cache, so an agent that edits
+   `DOMAIN_DICTIONARY.md` corrupts the framework for all of them. This is not hypothetical — the
+   analyst emitted Developer Task 4, *"Add 'ConsoleLogger', 'captured log entry', and 'log entry
+   type' to DOMAIN_DICTIONARY.md"*. The developer declined to do it, so the cache survived this run
+   on the agent's judgment rather than on any property of the system. The **immediate** one: this
+   project's own `DOMAIN_DICTIONARY.md` (13,363 bytes of its actual ubiquitous language) was
+   shadowed by the framework's generic 18,530-byte default, while `design-principles.md` §6 requires
+   every domain term to match that file. The install silently swapped the thing the rules are
+   checked against.
+2. **Architectural Fix**: Three separable pieces. (a) Detect that a target is tracked and locally
+   modified, and require confirmation before replacing it — the approval-gates rule already covers
+   "writing files out of boundary"; this is that gate, unwired. (b) Copy, or symlink read-only, any
+   file an agent is permitted to edit; the shared cache must not be reachable through a project's
+   working tree by a writable path. (c) Never shadow a project-authored `DOMAIN_DICTIONARY.md` or
+   `ARCHITECTURE_RULES.md` — these are project content, not framework content, and `install`
+   already knows how to skip (`skipped CLAUDE.md (already exists)`).
+3. **Target files**: `internal/install/`, `cmd/loom/install.go`
+4. **Done when**: installing over a dirty or tracked file prompts before acting; no path inside a
+   project resolves to a writable file in the shared cache; and a project-authored dictionary
+   survives an install.
+
+**Why it matters**: every finding in this run was measured against agents the install put there, and
+the install quietly changed what the project's own rules mean. A tool that rewrites 124 tracked files
+without asking is one agent's good judgment away from corrupting every project on the machine.
+
+### L3.24 — Two UI-only stages are marked non-skippable, and one boilerplate NFR routes in two more
+**Workstream**: PLATFORM · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-07)*
+
+1. **Problem**: The feature under test was a **three-line synchronous array filter** with no UI, no
+   I/O and no network. The router skipped `data-engineer`, `accessibility-engineer` and
+   `devops-engineer` correctly — and then ran four stages that had nothing to do, for **$2.86**:
+   - `visual-qa-engineer` ($0.55, 87s) — routed in as *"always runs; not skippable by routing"*,
+     and reported `UNCONFIGURED`, *"no visual QA surface exists to evaluate"*. Note the
+     contradiction: `accessibility-engineer` was skipped with the reason *"no accessibility
+     requirement, so the analysis describes no UI surface"*. The same fact skips one UI-only agent
+     and cannot skip the other.
+   - `sre-engineer` ($0.63, 79s) — concluded there is no availability or latency SLI for an
+     in-process test utility.
+   - `architect` ($0.75) and `performance-engineer` ($0.70, 161s) — both routed in on a single
+     boilerplate NFR line (*"O(n) ... no I/O"*) matching *"a performance requirement carries a
+     measurable threshold"*. The performance report then answered **"Not applicable"** to all four
+     of its own risk categories. This is L3.18's failure mode with a different trigger: L3.18 counts
+     list items, this counts the mere presence of an NFR sentence the analyst writes every time.
+2. **Architectural Fix**: (a) Make `visual-qa-engineer` and `sre-engineer` routable on the same
+   evidence that already skips `accessibility-engineer` — a UI surface and a served runtime surface
+   respectively; "always runs" is not a property either one earns. (b) Route `architect` and
+   `performance-engineer` on a threshold that is *actually measurable* (a number, a budget, an SLO),
+   not on the existence of an NFR heading.
+3. **Target files**: `internal/state/` (routing predicates), `internal/orchestrator/plan.go`
+4. **Done when**: this exact spec routes in neither UI stage nor `performance-engineer`, and a
+   feature with a real latency budget still routes `performance-engineer` in.
+
+**Why it matters**: L3.19 measured the floor — a stage that does nothing still costs $0.55–0.88. This
+item is the other half: the cheapest stage is the one never asked to run. Nearly a third of this
+run's spend went to four correct, well-written reports that said "not applicable".
+
+### L3.25 — `context-engineer` reports a token budget that is ~7x under, with arithmetic
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-07)*
+
+1. **Problem**: `context-engineer.md` states *"Recomputed precisely: 84 + 164 + 34 + 10 + 376 + 238
+   ≈ **906 tokens**"*, then *"≈ **1,350 tokens total**"*, then *"Status: OK (≈1,350 tokens is ~1.1%
+   of the Analyst tier budget — no cuts needed)"*. The real total is **~9,100 tokens**. Every term
+   is derived from a ~2-tokens-per-line rule that holds for nothing in the list:
+   `ARCHITECTURE_RULES.md` is 188 lines / 14,949 bytes — **~3,737 tokens, counted as 376**;
+   `DOMAIN_DICTIONARY.md` 119 lines / 18,530 bytes — **~4,632 tokens, counted as 238**. The
+   presentation is the problem as much as the number: "Recomputed precisely", a per-file breakdown,
+   a percentage, and a Status line, all resting on a per-line rate that is wrong by an order of
+   magnitude for prose. A budget that is 7x under will report OK right up to the point it overflows.
+2. **Architectural Fix**: Estimate from **bytes** (`bytes/4`), not lines, and have the agent read
+   file sizes rather than infer them from line counts. Better, compute the estimate in the executor
+   from the files the manifest pins and hand it to the agent — this is arithmetic over known
+   quantities, and there is no reason a model is doing it.
+3. **Target files**: `shared/agents/context-engineer.md`, `internal/orchestrator/executor.go`
+4. **Done when**: the manifest's estimate for a known file set is within 20% of a real token count,
+   and the estimate is produced by the executor rather than asserted by the agent.
+
+**Why it matters**: this is the run's clearest instance of the category that has been most valuable
+in all three runs — not a wrong answer, but a **confidently** wrong one, dressed in enough supporting
+detail that a reader has no reason to check it. The `context-engineer` exists to protect the context
+budget; the number it reports that budget with is the one number in the run nothing verifies.
 
 ### L3.13 — Derive agent quality metrics from execution
 **Workstream**: OBSERVE · **Effort**: M · **Blocked by**: L3.5 (shipped), L3.8 (shipped) · **Blocks**: none
