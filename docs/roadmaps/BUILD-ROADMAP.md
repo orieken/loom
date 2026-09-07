@@ -1693,6 +1693,21 @@ budget; the number it reports that budget with is the one number in the run noth
 ### L3.26 — `install` clobbers agent and skill files it did not create
 **Workstream**: PLATFORM · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-07, supersedes L3.23)*
 
+**SHIPPED 2026-09-07** (`e9ed447`, `7340cd4`) — ownership is recorded per path in the manifest and
+install resolves the four cases below; a directory source expands into one entry per file. A project
+holding its own agent, skill and `DOMAIN_DICTIONARY.md` now survives an install with every byte
+intact, no backups written, and `git status` clean apart from loom's own paths. Four tests assert it,
+each confirmed to fail against the previous behaviour before being kept.
+
+Cache files are read-only. That is not precautionary: while testing this, appending one line to a
+linked `.claude/agents/analyst.md` wrote through the symlink and modified the copy shared by every
+project on the machine — the corruption L3.23 §9.7 could only argue was possible. Cache directories
+stay writable so the cache remains evictable. `ARCHITECTURE_RULES.md` and `DOMAIN_DICTIONARY.md` are
+copied only when absent.
+
+**Still open, and not part of this fix**: the four unimplemented level bundle actions described
+under "Related" below. Until they exist, levels 2–4 install `.mcp.json` and documentation only.
+
 L3.23 recorded one symptom — `DOMAIN_DICTIONARY.md` replaced by a symlink into a writable shared
 cache. This is the general defect behind it, reproduced in a minimal case rather than inferred from
 the run.
