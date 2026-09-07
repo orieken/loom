@@ -1808,6 +1808,54 @@ the levels barely differentiate yet. Implementing the four bundle actions is, an
 "supports levels 1–4" should be stated as "installs level 1, registers the MCP server at level 2,
 and ships level 3–4 documentation".
 
+### L3.27 — Give a pipeline a definition, so a project can have more than one
+**Workstream**: KERNEL · **Effort**: L · **Blocked by**: none · **Blocks**: a plan-editing TUI · *(raised 2026-09-07)*
+
+**Explore after the current L3.21–L3.26 batch clears** — parked deliberately, not deferred by
+accident.
+
+1. **Problem**: There is exactly one pipeline and it is a Go function.
+   `DefaultDeliverFeaturePlan()` builds the stage list, the gates, the typed-state kinds, the
+   `Consumes` edges, the skippable set and the loop bound in code, and `selectPlan` rejects every
+   other name:
+
+   ```
+   unknown plan %q — only %q exists today (custom plans are a later roadmap item)
+   ```
+
+   That error has been honest since it was written, and it is now the limiting factor. A team that
+   wants a shorter pipeline for a bugfix, a longer one for a migration, or the same one minus a
+   stage they do not staff has no way to say so short of editing Go and rebuilding. The framework
+   ships fifteen agents and one arrangement of them.
+
+2. **Architectural Fix**: A serialized plan — YAML alongside the other `.claude/` content — loaded
+   and validated the way `shared/levels.yaml` already is, with `DefaultDeliverFeaturePlan()` becoming
+   the built-in default rather than the only option. What the format has to carry is already fixed by
+   what `Plan` holds today: stage order, agent, gate, state kind, `Consumes` edges, skippability,
+   timeout, and loop bounds.
+
+   Two properties the format must not lose, both of which cost real money to learn:
+   - **Skippability is not free-form.** L3.24 showed that a stage marked always-runs on a feature it
+     cannot serve costs $0.55–0.88 to say so. A custom plan declaring its own stages must also
+     declare what evidence routes each one in, or every custom plan re-earns L3.24 privately.
+   - **A loop needs a bound.** L2.17 put a bound on the review loop precisely because prose said
+     "repeat until APPROVED". A plan format that lets someone write an unbounded loop hands that
+     failure back to every project that writes one.
+
+3. **Target files**: `internal/orchestrator/plan.go`, `cmd/loom/cmd/run.go`, a new plan loader
+   package, `shared/plans/`
+4. **Done when**: `loom run --plan <name>` executes a plan defined in a file, an invalid plan is
+   rejected with the line that is wrong, and the built-in deliver-feature plan is expressible in the
+   format without special-casing.
+
+**Why it matters**: this is the prerequisite for every "custom workflow" conversation, including a
+TUI for assembling one. A YAML plan is diffable, reviewable in a PR, testable, and shareable across
+projects; a plan assembled only through a UI is none of those. Note also that the CLI is cobra and
+`go-isatty` today — there is no TUI stack in `go.mod` — so a plan editor is an adoption decision
+(bubbletea/huh) on top of this item, not an extension of something already present. Building the
+format first also avoids designing it through a form, which is how a format ends up shaped by a
+widget.
+
 ### L3.13 — Derive agent quality metrics from execution
 **Workstream**: OBSERVE · **Effort**: M · **Blocked by**: L3.5 (shipped), L3.8 (shipped) · **Blocks**: none
 
