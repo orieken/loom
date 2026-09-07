@@ -18,6 +18,7 @@ type installRequest struct {
 	platforms        []string
 	rules            platform.RuleSet
 	level            int
+	isForced         bool
 	profile          levels.Profile
 	isCopy           bool
 	isDryRun         bool
@@ -39,7 +40,7 @@ func prepareInstall(flags installFlags, embeddedVersion string, content platform
 		return installRequest{}, err
 	}
 	cache, err := frameworkCache(embeddedVersion)
-	return installRequest{target, cache, embeddedVersion, platforms, rules, level, profile, flags.isCopy, flags.isDryRun, flags.withConfig, flags.withMCP}, err
+	return installRequest{target, cache, embeddedVersion, platforms, rules, level, flags.isForced, profile, flags.isCopy, flags.isDryRun, flags.withConfig, flags.withMCP}, err
 }
 
 // selectLevelAndRules resolves the rule selection. Without --level the

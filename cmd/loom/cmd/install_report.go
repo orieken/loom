@@ -6,12 +6,13 @@ import (
 	"time"
 
 	"github.com/orieken/loom/cmd/loom/internal/manifest"
+	"github.com/orieken/loom/cmd/loom/internal/ownership"
 	"github.com/orieken/loom/cmd/loom/internal/platform"
 )
 
 const sharedOwnership = "loom"
 
-func writeManifest(request installRequest, results []platform.Result, extras []string) error {
+func writeManifest(request installRequest, results []platform.Result, extras []string, written ownership.Ledger) error {
 	if request.isDryRun {
 		return nil
 	}
@@ -23,8 +24,53 @@ func writeManifest(request installRequest, results []platform.Result, extras []s
 	if exists {
 		records = mergePlatformRecords(previous.Platforms, records)
 	}
+	records = recordOwnership(records, previous, written)
 	installed := manifest.Manifest{Version: request.frameworkVersion, InstalledAt: time.Now().UTC(), Platforms: records}
 	return manifest.Write(request.target, installed)
+}
+
+// recordOwnership attaches the per-path ownership ledger to the shared
+// record. Ownership is per path, not per platform — two platforms installing
+// the same file own it equally — so it is recorded once rather than split by
+// a division that does not exist (roadmap L3.26).
+func recordOwnership(records []manifest.PlatformRecord, previous manifest.Manifest, written ownership.Ledger) []manifest.PlatformRecord {
+	merged := previous.Ledger()
+	for path, digest := range written {
+		merged[path] = digest
+	}
+	for index := range records {
+		records[index].Owned = nil
+		if records[index].Name == sharedOwnership {
+			records[index].Owned = ownedPaths(merged)
+		}
+	}
+	return ensureSharedRecord(records, merged)
+}
+
+// ensureSharedRecord guarantees the ledger has somewhere to live even when
+// no extras were installed, because the ownership record is what makes the
+// next install safe and it must not depend on an unrelated flag.
+func ensureSharedRecord(records []manifest.PlatformRecord, merged ownership.Ledger) []manifest.PlatformRecord {
+	for _, record := range records {
+		if record.Name == sharedOwnership {
+			return records
+		}
+	}
+	if len(merged) == 0 {
+		return records
+	}
+	records = append(records, manifest.PlatformRecord{Name: sharedOwnership, Owned: ownedPaths(merged)})
+	sort.Slice(records, func(left, right int) bool { return records[left].Name < records[right].Name })
+	return records
+}
+
+func ownedPaths(ledger ownership.Ledger) []manifest.OwnedPath {
+	paths := make([]manifest.OwnedPath, 0, len(ledger))
+	for path, digest := range ledger {
+		paths = append(paths, manifest.OwnedPath{Path: path, Digest: digest})
+	}
+	sort.Slice(paths, func(left, right int) bool { return paths[left].Path < paths[right].Path })
+	return paths
 }
 
 func platformRecords(results []platform.Result, extras []string) []manifest.PlatformRecord {
