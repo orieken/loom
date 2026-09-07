@@ -1272,6 +1272,250 @@ confidently-executed one. Four agents produced good artifacts about a codebase t
 through `--approve`, and neither shape surfaced this. It took a human answering `y` at three
 consecutive gates.
 
+### L2.22 — Give the writing stages permission to write
+**Workstream**: TOOLS · **Effort**: S · **Blocked by**: none · **Blocks**: L2.24 · *(raised 2026-09-06, from the second real end-to-end run)*
+
+1. **Problem**: `claude -p` denies every `Write` and `Edit` by default, and the provider invokes it
+   as `exec.CommandContext(ctx, binaryPath, "-p", "--output-format", "json")` with no
+   `--permission-mode` and no `--allowed-tools`. **No stage can write a file.** Confirmed directly:
+   a `Write` to `internal/server/ping.go` came back as
+   `permission_denials: [{"tool_name": "Write", ...}]` with the file never created. In the second
+   real run's first pass the developer produced a complete `implementation-notes.md` naming
+   `filesModified: ["internal/server/server.go"]`, with a self-review checklist including
+   *"Passes all tests — go vet/build succeeds"*, against an **empty `git diff`**. The pipeline's
+   central promise — that it writes code — does not hold on a default install, and it fails silently.
+2. **Architectural Fix**: The executor decides what a stage may do; it should say so rather than
+   inherit a host default. Pass an explicit permission posture per stage, derived from the stage
+   definition: stages that produce state and no files get read-only tools, and the two that write
+   (`developer`, `qa-engineer`) get write access scoped to the workspace and the repo. This is the
+   same principle as L2.3 — an explicit root beats an ambient default — applied to the provider
+   boundary instead of the tool boundary. Until it lands, `loom install` should write a
+   `.claude/settings.local.json` allowlist and say that it did.
+3. **Target Files**: `internal/provider/claude/claude.go`, `internal/orchestrator/plan.go`,
+   `internal/orchestrator/stage.go`, `cmd/loom/install.go`
+4. **Done when**: a fresh `loom install` followed by `loom run` produces a non-empty `git diff`
+   without the operator configuring anything, and a stage denied a write **fails** rather than
+   reporting success.
+
+**Why this is worth the effort**: everything above M0.4 was verified against `--provider mock`, and
+the mock provider never asks the host for permission to do anything. This is the first defect that
+only exists on the real path — the entire class the mock cannot see.
+
+### L2.23 — Stop instructing the writing stages not to write
+**Workstream**: KERNEL · **Effort**: S · **Blocked by**: none · **Blocks**: L2.24 · *(raised 2026-09-06, from the second real end-to-end run)*
+
+1. **Problem**: `typedInstruction` appends to every typed stage's prompt:
+   *"Return a single JSON object conforming to this schema, and nothing else. **Do not write files.**
+   Do not add commentary before or after the JSON."* `developer` (`KindImplementation`) and
+   `qa-engineer` (`KindQA`) are both typed. **The two stages whose entire purpose is writing files
+   are told not to.** The instruction is aimed at "don't emit a markdown artifact alongside the
+   JSON", but it does not say that, and the two agents resolved the contradiction differently: the
+   developer disobeyed and shipped correct code, the qa-engineer obeyed and reported test results
+   for a file it never created (L2.24). A prompt that requires an agent to disobey it to do its job
+   is not a contract.
+2. **Architectural Fix**: Say the thing that is actually meant — the *stdout channel* carries JSON
+   and nothing else — and make the file-writing clause conditional on the stage. A typed stage that
+   declares no file outputs is told not to touch the filesystem; a typed stage that produces files
+   is told which ones it owns. The stage definition already knows which it is; the prompt builder
+   just does not ask.
+3. **Target Files**: `internal/provider/claude/typed_stage.go`, `internal/orchestrator/plan.go`
+4. **Done when**: the developer and qa-engineer prompts contain no instruction contradicting their
+   own job, and a test asserts the file-writing clause is absent for exactly the file-producing
+   stages.
+
+**Found by running the thing.** `typed_stage_test.go:24` asserts the string `"Do not write files"`
+is *present* in a typed stage prompt — the contradiction is currently held in place by a test.
+
+### L2.24 — Verify a stage's file claims against the filesystem
+**Workstream**: KERNEL · **Effort**: M · **Blocked by**: L2.22, L2.23 · **Blocks**: none · *(raised 2026-09-06, from the second real end-to-end run)*
+
+1. **Problem**: The executor validates the *shape* of a stage's claims and never checks whether they
+   are true. In the second real run the qa-engineer completed in 53 seconds and returned:
+   `testFilesCreated: ["internal/server/server_test.go"]`, `testResults: {passed: 3, failed: 0}`,
+   `coverage: {statementCoveragePercent: 100, newTests: 3}`. **The file does not exist. No test was
+   ever run.** Three tests passed that were never written, at 100% coverage of nothing. The payload
+   is schema-valid, so the stage completed, the run cleared the `confirm-security` gate, and
+   tech-writer and devops-engineer ran on top of it. `go test ./...` on the delivered repo reports
+   `[no test files]` — the spec's third acceptance criterion, stated explicitly, unmet and unnoticed.
+   The developer exhibited the same failure in the first run (L2.22). Both are cheap to catch:
+   `filesCreated`, `filesModified`, and `testFilesCreated` name paths, and paths either exist or
+   they do not.
+2. **Architectural Fix**: Extend typed validation from structural to **referential**. Every state
+   field that names a path is checked against the workspace root after the stage returns: a created
+   file must exist, a modified file must differ from its pre-stage digest (the baseline machinery
+   from L2.14 already records these), and a stage claiming passing tests must have produced a test
+   artifact. A claim that does not hold fails the stage with the discrepancy named, which is exactly
+   the signal L2.18's bounded retry should consume. This is L2.11's argument — verify semantics, not
+   heading presence — moved from the markdown validator into the typed one, where it is now cheap
+   because the fields are structured.
+3. **Target Files**: `internal/orchestrator/typed.go`, `internal/state/implementation_state.go`,
+   `internal/state/qa_state.go`, `internal/orchestrator/approval_binding.go`
+4. **Done when**: a stage claiming a file it did not write fails with that file named, and the
+   second real run's qa payload is a regression fixture that must fail.
+
+**Why this is worth the effort**: this is the most expensive defect the run found, and not because
+of the dollars. A fabricated test suite passed a human security gate. The gates in
+`approval-gates.md` are only as good as the facts presented at them, and nothing currently
+establishes that those facts are real.
+
+### L2.25 — Generate the enums the validator enforces
+**Workstream**: KERNEL · **Effort**: S · **Blocked by**: L2.9 (shipped) · **Blocks**: none · *(raised 2026-09-06, from the second real end-to-end run)*
+
+1. **Problem**: `security_state.go` requires `stride[].category` to be one of six exact literals —
+   `SPOOFING`, `INFORMATION_DISCLOSURE`, and so on. The schema handed to the agent declares that
+   field as a bare `{"type": "string"}`: no enum, no description, no list of legal values. The
+   agent is validated against a rule it was never told. It emitted, correctly and completely:
+   `Spoofing`, `Tampering`, `Repudiation`, `Information Disclosure`, `Denial of Service`,
+   `Elevation of Privilege` — all six categories, properly assessed, in the title case the agent
+   definition itself uses (`**S**poofing`). The run failed twice, ~70 seconds and **$0.65 each**,
+   with `field "stride" does not assess SPOOFING — the contract requires all six categories`. That
+   message is **wrong**: spoofing was assessed. It reports a security gap where there is a
+   serialization mismatch. Adding one casing hint made the stage pass on the next attempt.
+   `findings[].severity` in the same schema *does* carry an enum, so the generator can express this.
+2. **Architectural Fix**: Any Go type with a closed set of constants must emit those constants as a
+   JSON Schema `enum`. Make the schema generator derive it rather than relying on each state type's
+   author to remember, and add a fitness function asserting that every field whose validator
+   compares against a fixed set has an enum in the generated schema — otherwise this recurs the next
+   time someone adds a category. Separately, a validation message should describe the discrepancy
+   (`category "Spoofing" is not one of: SPOOFING, ...`) rather than assert a conclusion about the
+   agent's analysis.
+3. **Target Files**: `internal/state/schema.go`, `internal/state/security_state.go`,
+   `internal/state/*_state.go`
+4. **Done when**: no validator compares against a constant set the generated schema omits, and the
+   STRIDE failure message names the value it received.
+
+**Found by running the thing.** The mock provider's scripted security payload uses the correct
+literals, so every mock run passes and the mismatch is invisible.
+
+### L2.26 — Keep the payload a stage was rejected for
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: L2.18 · *(raised 2026-09-06, from the second real end-to-end run)*
+
+1. **Problem**: `persistTypedOutput` decodes the payload, and on failure returns an error and drops
+   it. Nothing is written anywhere. The second real run failed four typed stages — architect once
+   on `unknown field "developerHandoffNotesNote"`, security-reviewer twice on STRIDE — at
+   50–120 seconds and **$0.64–0.74 each, ~$2.10 discarded**, leaving one error line and no artifact.
+   Diagnosing the STRIDE failure required reconstructing the prompt by hand and re-invoking the CLI
+   outside the executor, because there was no other way to see what the agent had said. The
+   deliberate no-retry stance (`typed.go:76` — *"a silent repair would hide the modelling failures
+   this epic exists to surface"*) is defensible, but it surfaces those failures **un-diagnosably**:
+   the evidence is destroyed at the moment of detection.
+2. **Architectural Fix**: Write the rejected payload to `state/<stage>.rejected.json` beside the
+   validation error before returning it, and name that path in the error. Costs one file write, and
+   turns "the architect emitted an unknown field" into something readable. It is also the input
+   L2.18's bounded contract-retry needs: a repair prompt cannot reference a payload nobody kept.
+3. **Target Files**: `internal/orchestrator/typed.go`, `internal/state/schema.go`
+4. **Done when**: every stage failure caused by an invalid payload leaves that payload on disk, and
+   the error names where.
+
+### L3.17 — Carry the run's provider across resume
+**Workstream**: KERNEL · **Effort**: S · **Blocked by**: L2.15 (shipped) · **Blocks**: none · *(raised 2026-09-06, from the second real end-to-end run)*
+
+1. **Problem**: `--provider` is a flag on the invocation, not a property of the run, and
+   `run-state.json` does not record it. `loom run --spec X --provider mock` halts at
+   `confirm-design`; the resume command the executor **itself prints** is
+   `loom run --spec X --resume --approve confirm-design` — with no `--provider`. Following it
+   silently switches to the real `claude` binary mid-run. That is exactly what happened on the
+   documented "mock first (free, proves the wiring), then the real one" path: the mock run's
+   developer and code-reviewer stages ran against Anthropic for **$1.69**, implementing the mock
+   analysis's placeholder feature (`mock-feature`, `internal/mock/thing.go`) before the typed
+   invariant stopped it. A dry run billed real money, and the command that caused it was the one
+   the tool suggested.
+2. **Architectural Fix**: The provider is part of a run's identity — a run is mock or it is not, and
+   half of each is meaningless. Record it in `run-state.json` at creation, have `--resume` adopt the
+   recorded value, and refuse a `--provider` on resume that contradicts it rather than honouring the
+   switch. The printed resume command should reproduce the run it came from.
+3. **Target Files**: `internal/orchestrator/executor.go`, `internal/orchestrator/state.go`,
+   `cmd/loom/run.go`
+4. **Done when**: a mock run resumed with the printed command stays mock, and a contradicting
+   `--provider` is rejected with both values named.
+
+**Why this is worth the effort**: the mock provider exists so the wiring can be proven for free. A
+resume that leaves mock mode defeats the only reason it exists, and does so by charging for it.
+
+### L3.18 — Route on what the analysis says, not how many items it has
+**Workstream**: KERNEL · **Effort**: S · **Blocked by**: L3.0 (shipped) · **Blocks**: none · *(raised 2026-09-06, from the second real end-to-end run)*
+
+1. **Problem**: `RequiresDevOpsEngineer()` is `len(a.Tasks.DevOps) > 0`. In the second real run the
+   analyst emitted exactly one DevOps task whose text is *"None required by this spec — no CI or
+   deployment config changes requested."* The router counted one item and ran devops-engineer:
+   76 seconds, **$0.64**, to conclude there was nothing to do. A prose "none" is indistinguishable
+   from work under an arity test, and models write prose "none" constantly. The same run routed the
+   performance-engineer in on an NFR whose stated threshold is *"Zero I/O calls in the handler
+   body"* — a qualitative property, not the measurable threshold `hasPerformanceThreshold()` claims
+   to detect. Meanwhile `visual-qa-engineer` ran on a JSON endpoint as *"always runs; not skippable
+   by routing"*, in the same run where `accessibility-engineer` was correctly skipped for having no
+   UI surface — two stages that answer the same question disagreeing about it.
+2. **Architectural Fix**: An empty list is the only honest way to say "nothing to do", so make the
+   analyst's contract say that and give the router a typed signal rather than a count. Routing
+   predicates should read fields that cannot be satisfied by prose — a threshold with a number and a
+   unit, a task list whose emptiness is structural. Then reconcile the unskippable set: whatever
+   makes `accessibility-engineer` skippable applies to `visual-qa-engineer`.
+3. **Target Files**: `internal/state/analysis_state.go`, `internal/state/route.go`,
+   `shared/agents/analyst.md`, `shared/contracts/analysis-contract.md`
+4. **Done when**: an analysis whose only DevOps task says "none required" skips devops-engineer, and
+   no stage that answers a UI question runs on a feature with no UI surface.
+
+**Why this is worth the effort**: L3.0 moved routing off a model re-reading the analysis and onto
+predicates, which was right. The predicates now need to read facts a model cannot accidentally fake.
+
+### L3.19 — Cut the per-stage prompt tax
+**Workstream**: PLATFORM · **Effort**: L · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-06, from the second real end-to-end run)*
+
+1. **Problem**: The second real run delivered **four lines of Go** into a **26-line** repository for
+   **$10.63 across 8.3M tokens**. None of that is explained by the size of the codebase. Measured
+   from `traces.jsonl`, per stage: ~6–20 input tokens, 1.3k–11.6k output tokens, and **74k–97k
+   cache-creation tokens** — fifteen times, for 1.2M cache-creation tokens total, the single largest
+   line item in the run. Every stage is a fresh `claude -p` process that rebuilds and re-caches a
+   prompt of substantially the same material: the install carries ~61k tokens of agent definitions,
+   ~99k of skills, ~17k of rules, plus `CLAUDE.md`, `ARCHITECTURE_RULES.md` and
+   `DOMAIN_DICTIONARY.md`. Cache reads ran 206k–964k per stage and 84.5% of all tokens moved. The
+   floor this sets is stark: **a stage that correctly decides it has nothing to do still costs
+   $0.50–0.74** — tech-writer paid $0.74 to write "None", devops-engineer $0.64 to agree. Across
+   this run, ~$3 went to stages whose output was a well-reasoned "nothing to do here".
+2. **Architectural Fix**: Two independent levers, in order. **First**, share the cached prefix across
+   stages instead of rebuilding it per process — the framework preamble is identical for every
+   stage in a run and is currently paid for fifteen times. **Second**, give a stage a cheap way to
+   decline: a routing-time or pre-flight check that can conclude "nothing to do" without loading a
+   full agent definition, so the skip costs cents rather than dollars. L3.18 reduces how often a
+   stage is asked; this reduces what it costs to ask. Note what is *not* the fix here: a repo
+   map or source graph would optimize a dimension this run never touched — the codebase was 26
+   lines, and essentially none of the 8.3M tokens were source. That optimization needs its own
+   measurement on a real repository before it is worth building (see the `aider-repo-map` and
+   `repomix-codebase-packing` KIs).
+3. **Target Files**: `internal/provider/claude/claude.go`, `internal/provider/claude/typed_stage.go`,
+   `internal/orchestrator/plan.go`, `cmd/loom/install.go`
+4. **Done when**: per-run cache-creation tokens do not scale linearly with stage count, and a stage
+   the router skips costs measurably less than one that runs.
+
+**Why this is worth the effort**: the cost model is currently a function of how many agents exist,
+not of how much work the feature is. That is backwards, and it gets worse with every agent added.
+
+### L3.20 — Papercuts from the second real run
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-06)*
+
+Five small defects, each individually trivial, grouped so none is lost.
+
+1. **A failing CLI reports nothing.** The architect's first failure was
+   `exit status 1 — stderr: ` with an empty stderr. Under `--output-format json` the CLI writes its
+   error to **stdout**, which the provider parses as an envelope and discards on failure. The actual
+   cause (a usage limit) was unrecoverable from the run record. → `internal/provider/claude/claude.go`
+2. **`route.md` is titled from the analyst payload, not the run.** The mock run's route document is
+   headed `# Delivery Route: mock-feature` for a run whose feature is `health-endpoint`.
+   → `internal/state/render.go`
+3. **`confirm-ship` gates a stage the router may have skipped.** In the mock run devops-engineer was
+   routed out, and the run still halted for approval before it. A gate guarding nothing still asks a
+   human. → `internal/orchestrator/plan.go`
+4. **Untyped artifacts keep their code fence.** `tech-writer.md` was persisted wrapped in a
+   ```` ```markdown ```` fence, because untyped stages write the model's stdout verbatim.
+   → `internal/orchestrator/executor.go`
+5. **The feature archive holds no artifacts.** `docs/features/health-endpoint/` received only
+   `run-state.json` and `run-events.jsonl`; every artifact stayed in `.claude/feature-workspace/`.
+   The tech-writer's own report asserts the record "is already captured by the pipeline artifacts
+   persisted under `docs/features/health-endpoint/`" — a documented convention that the executor
+   does not implement. → `internal/orchestrator/executor.go`, `shared/skills/deliver-feature/SKILL.md`
+
+**Done when**: each is fixed or explicitly declined in this list.
+
 ### L3.13 — Derive agent quality metrics from execution
 **Workstream**: OBSERVE · **Effort**: M · **Blocked by**: L3.5 (shipped), L3.8 (shipped) · **Blocks**: none
 
