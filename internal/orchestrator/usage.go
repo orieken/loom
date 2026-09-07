@@ -47,3 +47,27 @@ func (s *RunState) TotalUsage() Usage {
 	}
 	return total
 }
+
+// accumulateUsage folds one attempt's usage into whatever a stage record
+// already carries (roadmap L3.22).
+//
+// It replaced a plain assignment, which silently discarded every attempt but
+// the last. In the third real end-to-end run qa-engineer failed to parse,
+// billing $0.69, and the successful retry then overwrote that record with
+// its own $0.74 — so the run reported $8.7978 against a true $9.4923, a
+// difference of exactly the discarded attempt. The error was always in the
+// same direction and grew with how badly a run went, which is when the
+// number is most likely to be read.
+//
+// A fresh value is returned rather than the existing one mutated: records
+// are copied out of the state map by value while the Usage pointer is
+// shared, so mutating in place would edit state nobody asked to edit.
+func accumulateUsage(existing, attempt *Usage) *Usage {
+	if attempt == nil {
+		return existing
+	}
+	total := Usage{Model: attempt.Model}
+	total.Add(existing)
+	total.Add(attempt)
+	return &total
+}

@@ -3,6 +3,7 @@ package orchestrator_test
 import (
 	"context"
 	"errors"
+	"math"
 	"sync"
 	"testing"
 	"time"
@@ -303,4 +304,93 @@ func TestFailedStageKeepsTheUsageItAlreadyConsumed(t *testing.T) {
 	if record.Usage == nil || record.Usage.CostUSD != 0.25 {
 		t.Errorf("failed stage usage = %+v, want the 0.25 USD it consumed before failing", record.Usage)
 	}
+}
+
+// A stage that failed, cost money, and then succeeded on a retry must total
+// BOTH attempts (roadmap L3.22).
+//
+// The third real end-to-end run reported $8.7978 against a true $9.4923.
+// The difference was exactly the qa-engineer attempt that failed to parse:
+// the record's usage was assigned rather than accumulated, so the retry
+// overwrote the failed attempt and the run's own summary lost it. The error
+// was always in the same direction and grew with how badly a run went.
+func TestRetriedStageTotalsEveryAttemptNotJustTheLast(t *testing.T) {
+	failed := &orchestrator.Usage{OutputTokens: 4159, CacheReadTokens: 517665, CostUSD: 0.69}
+	succeeded := &orchestrator.Usage{OutputTokens: 4185, CacheReadTokens: 621621, CostUSD: 0.74}
+	executor, provider, store, input := newHarness(t, map[string]mock.Script{
+		"analyst":   {ArtifactContent: "# analysis"},
+		"developer": {ArtifactContent: "# implementation"},
+	})
+	provider.SetHook(failThenSucceed("qa-engineer", failed, succeeded))
+
+	if err := executor.Run(context.Background(), threeStagePlan(), input); err == nil {
+		t.Fatal("Run succeeded; qa-engineer was scripted to fail its first attempt")
+	}
+	if err := executor.Run(context.Background(), threeStagePlan(), input); err != nil {
+		t.Fatalf("resume run: %v", err)
+	}
+
+	record := mustLoad(t, store).Stages["qa-engineer"]
+	if record.Usage == nil {
+		t.Fatal("qa-engineer reported no usage at all")
+	}
+	assertBothAttempts(t, *record.Usage, *failed, *succeeded)
+}
+
+// failThenSucceed scripts one stage to fail its first attempt and succeed on
+// the retry, which is the shape a parse failure plus --resume produces.
+func failThenSucceed(stageID string, failed, succeeded *orchestrator.Usage) func(string, int) *mock.Script {
+	return func(invoked string, invocation int) *mock.Script {
+		if invoked != stageID {
+			return nil
+		}
+		if invocation == 1 {
+			return &mock.Script{Err: errors.New("agent did not return a JSON state document"), Usage: failed}
+		}
+		return &mock.Script{ArtifactContent: "# qa report", Usage: succeeded}
+	}
+}
+
+func assertBothAttempts(t *testing.T, got, failed, succeeded orchestrator.Usage) {
+	t.Helper()
+	if want := failed.CostUSD + succeeded.CostUSD; !isNear(got.CostUSD, want) {
+		t.Errorf("cost = %v, want both attempts (%v)", got.CostUSD, want)
+	}
+	if want := failed.CacheReadTokens + succeeded.CacheReadTokens; got.CacheReadTokens != want {
+		t.Errorf("cache reads = %d, want both attempts (%d)", got.CacheReadTokens, want)
+	}
+}
+
+// The run total is what an auditor compares against the trace spans, so it
+// must agree with the sum of every provider call the run actually made.
+func TestRunTotalAgreesWithEveryProviderCall(t *testing.T) {
+	perCall := &orchestrator.Usage{OutputTokens: 100, CostUSD: 0.25}
+	executor, provider, store, input := newHarness(t, map[string]mock.Script{
+		"analyst":     {ArtifactContent: "# analysis", Usage: perCall},
+		"developer":   {ArtifactContent: "# implementation", Usage: perCall},
+		"qa-engineer": {ArtifactContent: "# qa report", Usage: perCall},
+	})
+	provider.SetHook(func(stageID string, invocation int) *mock.Script {
+		if stageID == "developer" && invocation == 1 {
+			return &mock.Script{Err: errors.New("agent exploded"), Usage: perCall}
+		}
+		return nil
+	})
+
+	_ = executor.Run(context.Background(), threeStagePlan(), input)
+	if err := executor.Run(context.Background(), threeStagePlan(), input); err != nil {
+		t.Fatalf("resume run: %v", err)
+	}
+
+	calls := len(provider.Invocations())
+	total := mustLoad(t, store).TotalUsage()
+	if want := float64(calls) * perCall.CostUSD; !isNear(total.CostUSD, want) {
+		t.Errorf("run total = %v across %d provider calls, want %v", total.CostUSD, calls, want)
+	}
+}
+
+// Float sums are compared with a tolerance because currency in float64 does
+// not associate; the assertion is about the missing line item, not the ulp.
+func isNear(got, want float64) bool {
+	return math.Abs(got-want) < 1e-9
 }

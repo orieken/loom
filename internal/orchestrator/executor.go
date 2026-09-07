@@ -475,7 +475,7 @@ func (e *Executor) persistFailure(ctx context.Context, state *RunState, failure 
 	now := time.Now().UTC()
 	record.FinishedAt = &now
 	record.Error = failure.err.Error()
-	record.Usage = failure.usage
+	record.Usage = accumulateUsage(record.Usage, failure.usage)
 	if errors.Is(ctx.Err(), context.Canceled) {
 		record.Status = StageStatusInterrupted
 	} else {
@@ -503,7 +503,7 @@ func (e *Executor) persistCompletion(state *RunState, stage Stage, plan Plan, in
 	record.ViewPath = viewPathFor(stage, input)
 	record.Agent = stage.Agent
 	record.StateKind = stage.StateKind
-	record.Usage = output.Usage
+	record.Usage = accumulateUsage(record.Usage, output.Usage)
 	if artifactPath != "" {
 		sum, err := ArtifactSHA256(artifactPath)
 		if err != nil {
