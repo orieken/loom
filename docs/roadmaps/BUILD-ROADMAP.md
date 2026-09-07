@@ -1458,6 +1458,18 @@ resume that leaves mock mode defeats the only reason it exists, and does so by c
 **Why this is worth the effort**: L3.0 moved routing off a model re-reading the analysis and onto
 predicates, which was right. The predicates now need to read facts a model cannot accidentally fake.
 
+**SHIPPED 2026-09-07** (`ef81c76`) — with L3.24, which is the same defect with a different trigger.
+`Threshold` is now typed `{metric, value, unit}` and `IsMeasurable()` requires all three; a prose
+"none" is ignored by `RequiresDevOpsEngineer`; `visual-qa-engineer` and `sre-engineer` are
+skippable and routed on a declared surface. `analyst.md` said *"If a section doesn't apply, write
+'None' as the body"* until this commit, so the instruction that caused the behaviour is corrected
+along with the predicate that trusted it.
+
+Applied to the third real run's own analysis, all four stages that had nothing to do now route out
+and the three that were correctly skipped still are — asserted by a test carrying that run's
+actual shape, confirmed to fail against the previous behaviour.
+
+
 ### L3.19 — Cut the per-stage prompt tax
 **Workstream**: PLATFORM · **Effort**: L · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-06, from the second real end-to-end run)*
 
@@ -1664,6 +1676,20 @@ without asking is one agent's good judgment away from corrupting every project o
 item is the other half: the cheapest stage is the one never asked to run. Over a quarter of this run's
 spend — $2.63 of $9.49, 27.7% — went to four correct, well-written reports that said "not
 applicable".
+
+**SHIPPED 2026-09-07** (`ef81c76`), with L3.18. See that entry for the mechanism.
+
+**What this does not cover.** ADR-007 holds that `visual-qa-engineer`'s real precondition is an
+available UI evidence bundle for the built version, and records that as accepted-but-unimplemented.
+This item does not implement it. It applies the necessary condition knowable from the analysis
+today — a feature with no UI surface can never produce a bundle — which is strictly narrower than
+always-runs and strictly wider than the bundle check, so it cannot skip a run the bundle check
+would have kept. The bundle-availability half remains ADR-007's to deliver.
+
+**What it should save.** $2.63 on a run of the third run's shape, at no added per-run cost. That
+figure is a projection from one run and should be checked against a real one — and the repeat runs
+under §9.1 of the run-3 audit are the right vehicle, since without a variance estimate a
+before/after comparison cannot distinguish the saving from noise.
 
 ### L3.25 — `context-engineer` reports a token budget that is ~7x under, with arithmetic
 **Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-07)*
