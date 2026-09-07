@@ -82,14 +82,53 @@ func TestExtractJSONAcceptsRawAndSingleFencedResponses(t *testing.T) {
 	}
 }
 
-func TestExtractJSONRejectsProseAndMultipleBlocks(t *testing.T) {
+// Commentary around the document is accepted (roadmap L3.21). These cases
+// were rejected until the third real end-to-end run halted on the first of
+// them, having already billed for the attempt. The prompt forbids the
+// preamble; the model wrote one anyway, so the parser does not rely on it.
+func TestExtractJSONAcceptsADocumentSurroundedByCommentary(t *testing.T) {
+	cases := map[string]struct{ response, want string }{
+		// Verbatim shape of the response that halted the third real run.
+		"the run-3 preamble": {
+			"Now producing the final QA state JSON.\n```json\n{\"feature\":\"user-auth\"}\n```", "user-auth"},
+		"trailing commentary": {
+			"```json\n{\"feature\":\"user-auth\"}\n```\nLet me know if you want changes.", "user-auth"},
+		"commentary both sides": {
+			"Here it is:\n```json\n{\"feature\":\"user-auth\"}\n```\nDone.", "user-auth"},
+		// A quoted schema example precedes the answer, so the last block is
+		// the answer. This is why it is the last and not the first.
+		"quoted example then answer": {
+			"The schema looks like:\n```json\n{\"feature\":\"EXAMPLE\"}\n```\nMine:\n```json\n{\"feature\":\"user-auth\"}\n```", "user-auth"},
+		// A non-JSON block after the answer is passed over, not fatal.
+		"answer then a shell block": {
+			"```json\n{\"feature\":\"user-auth\"}\n```\nRun:\n```bash\npnpm test\n```", "user-auth"},
+	}
+	for name, testCase := range cases {
+		t.Run(name, func(t *testing.T) {
+			payload, err := extractJSON([]byte(testCase.response))
+			if err != nil {
+				t.Fatalf("extractJSON: %v", err)
+			}
+			var decoded map[string]string
+			if err := json.Unmarshal(payload, &decoded); err != nil {
+				t.Fatalf("extracted payload does not parse: %v (%s)", err, payload)
+			}
+			if decoded["feature"] != testCase.want {
+				t.Errorf("extracted %q, want %q", decoded["feature"], testCase.want)
+			}
+		})
+	}
+}
+
+// What must still fail. A response with no JSON object in it is a stage that
+// did not do its job, and calling that success would hide the failure.
+func TestExtractJSONRejectsAResponseWithNoStateDocument(t *testing.T) {
 	cases := map[string]string{
-		"empty":               "   ",
-		"prose only":          "I analyzed the feature and it looks good.",
-		"preamble then json":  "Here is my analysis:\n```json\n{\"feature\":\"x\"}\n```",
-		"trailing commentary": "```json\n{\"feature\":\"x\"}\n```\nLet me know if you want changes.",
-		"two fenced blocks":   "```json\n{\"feature\":\"x\"}\n```\n```json\n{\"feature\":\"y\"}\n```",
-		"markdown artifact":   "# Feature Analysis\n\n## Summary\nIt does a thing.",
+		"empty":              "   ",
+		"prose only":         "I analyzed the feature and it looks good.",
+		"markdown artifact":  "# Feature Analysis\n\n## Summary\nIt does a thing.",
+		"fence without json": "```bash\npnpm install\n```",
+		"unterminated fence": "Here you go:\n```json\n{\"feature\":\"x\"}",
 	}
 	for name, response := range cases {
 		t.Run(name, func(t *testing.T) {
