@@ -1770,11 +1770,28 @@ Every other item on this roadmap improves a run; this one decides whether a team
 tooling can run it at all. It is also the second instance of the L3.23 pattern — a destructive
 default that announces itself only after the fact, and whose damage was survivable by luck.
 
-**Related: `--level` defaults to the maximum, not the minimum.** `install.go:46` defaults `--level`
-to `0`, meaning the full install — 39 agents, 69 skills, every rule. For a level-1 project that is
-the opposite of meeting it where it is. The level inference `loom health` already performs should
-pick the default; failing that, level 1 should. Filed here rather than separately because both are
-the same mistake: assuming the target project is empty.
+**Related: `--level` gates far less than its name implies.** Measured 2026-09-07, correcting an
+earlier claim in this entry that `--level` defaults to "the maximum":
+
+- **Every level installs all 39 agents and all 69 skills.** The platform install writes those
+  unconditionally, before any level bundle is considered. `--level` narrows exactly one thing —
+  rules, from 14 to the 5 core ones plus whatever `--stack` adds. So "level 1: foundational prompts,
+  minimal footprint" is not what level 1 does.
+- **Levels 2–4 install documentation and `.mcp.json`, and nothing else.** Four bundles (`executor`,
+  `telemetry-stream`, `policy-engine`, `eval-loop`) declare an `action` that
+  `installBundleAction` does not implement; only `mcp-config` exists. Everything else at those
+  levels is `docsOnly`.
+- **`shared/levels.yaml`'s `landed:` list had gone stale**, so those bundles were reported as
+  *"requires roadmap item M0.4, which has not landed"* for M0.4, L3.9 and L2.16 — all three shipped
+  between 2026-08-29 and 2026-09-02. Corrected in this commit; the install outcome is unchanged
+  because the actions are unimplemented either way, but the message is now true. The file's own
+  comment already required updating `landed` in the shipping commit, so the fix is discipline, not
+  design.
+
+Sequencing follows from that: changing the `--level` default is not the useful next move, because
+the levels barely differentiate yet. Implementing the four bundle actions is, and until they exist
+"supports levels 1–4" should be stated as "installs level 1, registers the MCP server at level 2,
+and ships level 3–4 documentation".
 
 ### L3.13 — Derive agent quality metrics from execution
 **Workstream**: OBSERVE · **Effort**: M · **Blocked by**: L3.5 (shipped), L3.8 (shipped) · **Blocks**: none

@@ -63,8 +63,11 @@ func TestLevelTwoAddsExactlyTheLevelTwoDelta(t *testing.T) {
 	if len(entries) != 5 {
 		t.Errorf("level 2 installed %d rules, want the same 5 core rules as level 1", len(entries))
 	}
-	if !strings.Contains(output, "requires roadmap item M0.4") {
-		t.Errorf("expected executor skip warning naming M0.4, got:\n%s", output)
+	// The executor bundle does not install, and says why. It used to claim
+	// M0.4 had not landed; M0.4 shipped 2026-08-29, so the honest reason is
+	// that the bundle's action has no implementation (roadmap L3.26).
+	if !strings.Contains(output, `bundle "executor" action "executor" is not implemented yet`) {
+		t.Errorf("expected the executor bundle to be skipped with a true reason, got:\n%s", output)
 	}
 	for _, absent := range []string{".claude/telemetry", ".claude/hooks", ".claude/evaluation"} {
 		if _, err := os.Stat(filepath.Join(target, absent)); !os.IsNotExist(err) {
