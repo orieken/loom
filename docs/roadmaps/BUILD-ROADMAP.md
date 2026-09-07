@@ -1597,6 +1597,11 @@ agents that need retrying most.
 ### L3.23 — `install` replaces committed project files with writable symlinks into a shared cache
 **Workstream**: PLATFORM · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-07)*
 
+**SUPERSEDED 2026-09-07 by L3.26.** This entry records one symptom — two named project documents
+replaced by symlinks into a writable shared cache. Reproducing it minimally showed the cause is
+general: install's unit is the directory, so it destroys *any* pre-existing agent or skill content,
+and `--copy` does not avoid it. Track the work in L3.26; this stays for the provenance.
+
 1. **Problem**: `loom install --target .` replaced **124 committed files** in the clone —
    `.claude/agents`, `.claude/skills`, `.claude/rules`, plus `ARCHITECTURE_RULES.md` and
    `DOMAIN_DICTIONARY.md` — with symlinks into `~/Library/Caches/loom/v3.7.0/shared/`. It backed
@@ -1633,7 +1638,7 @@ without asking is one agent's good judgment away from corrupting every project o
 
 1. **Problem**: The feature under test was a **three-line synchronous array filter** with no UI, no
    I/O and no network. The router skipped `data-engineer`, `accessibility-engineer` and
-   `devops-engineer` correctly — and then ran four stages that had nothing to do, for **$2.86**:
+   `devops-engineer` correctly — and then ran four stages that had nothing to do, for **$2.63**:
    - `visual-qa-engineer` ($0.55, 87s) — routed in as *"always runs; not skippable by routing"*,
      and reported `UNCONFIGURED`, *"no visual QA surface exists to evaluate"*. Note the
      contradiction: `accessibility-engineer` was skipped with the reason *"no accessibility
@@ -1656,8 +1661,9 @@ without asking is one agent's good judgment away from corrupting every project o
    feature with a real latency budget still routes `performance-engineer` in.
 
 **Why it matters**: L3.19 measured the floor — a stage that does nothing still costs $0.55–0.88. This
-item is the other half: the cheapest stage is the one never asked to run. Nearly a third of this
-run's spend went to four correct, well-written reports that said "not applicable".
+item is the other half: the cheapest stage is the one never asked to run. Over a quarter of this run's
+spend — $2.63 of $9.49, 27.7% — went to four correct, well-written reports that said "not
+applicable".
 
 ### L3.25 — `context-engineer` reports a token budget that is ~7x under, with arithmetic
 **Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-07)*
@@ -1683,6 +1689,92 @@ run's spend went to four correct, well-written reports that said "not applicable
 in all three runs — not a wrong answer, but a **confidently** wrong one, dressed in enough supporting
 detail that a reader has no reason to check it. The `context-engineer` exists to protect the context
 budget; the number it reports that budget with is the one number in the run nothing verifies.
+
+### L3.26 — `install` clobbers agent and skill files it did not create
+**Workstream**: PLATFORM · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-07, supersedes L3.23)*
+
+L3.23 recorded one symptom — `DOMAIN_DICTIONARY.md` replaced by a symlink into a writable shared
+cache. This is the general defect behind it, reproduced in a minimal case rather than inferred from
+the run.
+
+1. **Problem**: The unit of installation is the **directory**, not the file.
+   `internal/platform/claude.go:7-8` maps `shared/agents` -> `.claude/agents` as one atom, and
+   `Writer.Install` replaces whatever occupies a destination. A project that already has its own
+   agents or skills loses all of them:
+
+   ```
+   $ echo "..." > .claude/agents/our-team-reviewer.md      # committed
+   $ echo "..." > .claude/skills/my-deploy/SKILL.md        # committed
+   $ loom install --target . --platform claude-code --level 1
+     backed up .claude/agents -> agents.bak.1788807242968860000
+     linked    .claude/agents -> ~/Library/Caches/loom/v3.7.0/shared/agents
+     backed up .claude/skills -> skills.bak.1788807242969205000
+     linked    .claude/skills -> ~/Library/Caches/loom/v3.7.0/shared/skills
+   $ git status --short
+    D .claude/agents/our-team-reviewer.md
+    D .claude/skills/my-deploy/SKILL.md
+   ```
+
+   Three aggravating factors:
+   - **`--copy` does not avoid it.** Same `backup` -> `replace` path (`fs/install.go:19-24`). There
+     is currently no safe install mode, so L3.23's implied mitigation is not available.
+   - **The manifest cannot tell ours from theirs.** `.loom-manifest.json` records paths at directory
+     granularity (`.claude/agents`), so `loom uninstall` is blind in the same way in reverse.
+   - **The cache is writable and shared.** Cache files are `0644` under
+     `~/Library/Caches/loom/<version>/shared/`, shared by every project installed from it — the
+     L3.23 near-miss.
+
+   The blast radius is the whole adoption story: the projects most worth installing into are the
+   ones that already have agent content, and those are exactly the ones this destroys.
+
+2. **Architectural Fix**: **Own files explicitly; never touch anything unowned.** The manifest
+   records every installed path with the content hash loom wrote, and install resolves four cases:
+
+   | Destination state | Action |
+   |---|---|
+   | absent | install; record path + hash |
+   | present, not in manifest | **skip and warn** — foreign, never backed up, never replaced |
+   | present, in manifest, hash matches | ours and unmodified -> update |
+   | present, in manifest, hash differs | user edited our file -> skip and warn; `--force` overrides |
+
+   The last row is what makes the 1 -> 2 -> 3 upgrade path safe, which is the property "install into
+   a project at any adoption level" actually requires.
+
+   **Namespacing is not uniformly available — verified 2026-09-07, and it constrains the design.**
+   Agents *are* discovered recursively (`.claude/agents/loom/analyst.md` is found), but a subagent's
+   identity is its frontmatter `name`, not its path — so nesting prevents file collision and **not**
+   name collision. Skills are worse: discovery is **not** recursive, a skill must sit at exactly
+   `.claude/skills/<name>/SKILL.md`, and its invocation name *is* the directory name. So
+   `.claude/skills/loom/deliver-feature/` would simply not load. Conclusion: per-file ownership is
+   the mechanism, not namespacing. Name collisions are **detected and reported**, not prevented by
+   layout. Ownership granularity therefore differs by kind — the file for agents and rules, the
+   skill directory for skills, because that directory is the identity unit.
+
+   Two further changes fall out of the same principle:
+   - `ARCHITECTURE_RULES.md` and `DOMAIN_DICTIONARY.md` are **project** documents —
+     `design-principles.md` §6 requires every domain term to match the latter. Symlinking them into
+     a shared cache silently changes what the rules are checked against. They become
+     `CopyIfMissing`, as `CLAUDE.md` already is (`claude.go:58`).
+   - Cache contents become read-only (`0444` files, `0555` directories), which closes L3.23's
+     latent corruption path outright instead of relying on an agent declining to write.
+
+3. **Target files**: `cmd/loom/internal/manifest/`, `cmd/loom/internal/fs/`,
+   `cmd/loom/internal/platform/`, `cmd/loom/cmd/install_levels.go`, `cmd/loom/cmd/uninstall_run.go`
+4. **Done when**: a project with pre-existing `.claude/agents/our-team-reviewer.md` and
+   `.claude/skills/my-deploy/SKILL.md` survives an install with both files intact, no `.bak`
+   directories created, and `git status` clean apart from paths loom recorded as its own — asserted
+   by a test, not by inspection.
+
+**Why it matters**: this is the one defect that makes the framework unsafe to adopt incrementally.
+Every other item on this roadmap improves a run; this one decides whether a team with existing AI
+tooling can run it at all. It is also the second instance of the L3.23 pattern — a destructive
+default that announces itself only after the fact, and whose damage was survivable by luck.
+
+**Related: `--level` defaults to the maximum, not the minimum.** `install.go:46` defaults `--level`
+to `0`, meaning the full install — 39 agents, 69 skills, every rule. For a level-1 project that is
+the opposite of meeting it where it is. The level inference `loom health` already performs should
+pick the default; failing that, level 1 should. Filed here rather than separately because both are
+the same mistake: assuming the target project is empty.
 
 ### L3.13 — Derive agent quality metrics from execution
 **Workstream**: OBSERVE · **Effort**: M · **Blocked by**: L3.5 (shipped), L3.8 (shipped) · **Blocks**: none

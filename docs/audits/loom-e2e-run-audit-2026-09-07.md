@@ -309,7 +309,7 @@ that logic to these two files.
 
 The feature was a three-line synchronous array filter with no UI, no I/O, no network. The router
 skipped `data-engineer`, `accessibility-engineer` and `devops-engineer` correctly, then ran four
-stages that reported having nothing to do, for **$2.86**:
+stages that reported having nothing to do, for **$2.63**:
 
 | Stage | Cost | Routed in because | Reported |
 |---|---:|---|---|
