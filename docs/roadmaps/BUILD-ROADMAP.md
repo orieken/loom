@@ -1716,6 +1716,28 @@ in all three runs — not a wrong answer, but a **confidently** wrong one, dress
 detail that a reader has no reason to check it. The `context-engineer` exists to protect the context
 budget; the number it reports that budget with is the one number in the run nothing verifies.
 
+**SHIPPED 2026-09-07** (`bf302c8`) — `context-engineer` is now a typed stage producing
+`ContextState`. It pins files and names a tier; the executor measures the pinned files from disk
+(`bytes/4`), sums them, compares against the tier ceiling and writes the budget in. Anything an
+agent puts there is discarded. Measured through a real run, `ARCHITECTURE_RULES.md` returns **3,737
+tokens** against the manifest's claimed **376** — the audit's figure, reproduced.
+
+The prompt, template and guardrail that asked for the estimate are corrected alongside the code that
+trusted it, since the instruction was the cause and not a bystander.
+
+**Honest scope on the accuracy claim.** This item's done-when said "within 20% of a real token
+count". That is **not** what is asserted, because this repository has no tokenizer and nothing here
+was compared against one. What is asserted is that the estimate is `bytes/4` over the real byte
+counts, exactly, and that it is no longer wrong by an order of magnitude for prose — which is the
+defect that was actually observed. `bytes/4` remains an estimate and will be wrong for content that
+tokenizes unusually (minified files, dense CJK, long base64). Closing the remaining gap needs a real
+tokenizer, and claiming 20% without one would repeat the mistake this item is about.
+
+Two things fell out of building it. A pinned path that escapes the project root, names a directory,
+or cannot be read is reported as unmeasurable rather than counted as zero. And a budget that fits
+but could not see every file reports **INCOMPLETE**, not OK — a confident status resting on a
+knowably short total is the same defect one level down.
+
 ### L3.26 — `install` clobbers agent and skill files it did not create
 **Workstream**: PLATFORM · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-07, supersedes L3.23)*
 
