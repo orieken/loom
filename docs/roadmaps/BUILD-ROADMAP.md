@@ -1933,6 +1933,41 @@ projects; a plan assembled only through a UI is none of those. Note also that th
 format first also avoids designing it through a form, which is how a format ends up shaped by a
 widget.
 
+### L3.35 — Test the model boundary, not the mock behind it
+**Workstream**: OBSERVE · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-08, from run 4)*
+
+**SHIPPED 2026-09-08** (`internal/provider/claude/contract_integration_test.go`).
+
+1. **Problem**: run 4's audit §12.6 — four of its seven findings were invisible to the test suite,
+   which was green before the run and green after it. Neither state predicted anything. Three had
+   one shape: a property asserted in the framework and verified against mocks, which does not hold
+   when a real model is asked. **L3.28** ($2.09, two runs dead at stage 1), **L3.33** (halted
+   Experiment A at stage 4), **L3.29** (developer reported success against an empty `git diff`).
+   A mock cannot find any of them: it builds state in Go, where every constant is correct by
+   construction and no instruction is obeyed or disobeyed. The gap was never coverage — the tests
+   were on the wrong side of the boundary.
+2. **Fix**: a contract test that asks a **real model** for each typed stage's document and asserts
+   the validator accepts it, plus one that asserts the developer actually writes a file. The
+   assertion is the validator itself rather than a restated field list, because the defect class is
+   "the schema says something weaker than the validator enforces" and any restatement would drift
+   from it exactly as the schemas did.
+3. **Cost control**: excluded from `go test ./...` by a build tag **and** gated on `LOOM_INTEGRATION`,
+   because a suite that silently spends money is worse than no suite. ~$0.50–1.50 per stage; run one
+   kind while iterating.
+4. **Verified as an instrument, not just as a test**: reintroducing L3.28 makes it fail in 23
+   seconds with the production error verbatim — `field "schemaVersion" is 1, this build supports 2`
+   — for about $0.50, against the $2.09 and two dead runs it cost to learn the same thing from a
+   real pipeline.
+
+**What it does not prove**: that a stage's output is *correct*, only that it conforms. A model can
+return a schema-valid analysis that is nonsense and this passes. It is also n=1 per run against a
+nondeterministic system, so a pass is evidence and not proof. Both limits are stated in the file.
+
+**Why this is worth the effort**: run 4's cheapest correct response was never seven fixes. Every
+mock-verified claim in this repository is now one command away from being checked at the boundary
+that matters, and the remaining ones have not been audited — §12.3 of that run's audit says so
+explicitly.
+
 ### L3.13 — Derive agent quality metrics from execution
 **Workstream**: OBSERVE · **Effort**: M · **Blocked by**: L3.5 (shipped), L3.8 (shipped) · **Blocks**: none
 
