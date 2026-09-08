@@ -1560,11 +1560,32 @@ whether source scale drives cost — the question this item answered. What it in
 *evidence*: the stated measurement describes a build that no longer exists, and it was a single
 sample from an instrument now known to carry ~27% spread.
 
-**Disposition: neither upheld nor reversed — evidence stale, conclusion untested on the current
-build.** Re-testing means repeating run 3's actual experiment (small repository vs large, today's
-build, n>=3 per condition). Until then `aider-repo-map` and `repomix-codebase-packing` stay
-unbuilt on a conclusion nothing currently supports, which is a weaker position than this block
-claimed. See `docs/audits/loom-e2e-run-5-audit-2026-09-08.md`.
+**RE-ESTABLISHED 2026-09-08 (run 6) — the conclusion holds, on evidence that tests it.** The
+re-test named above was run. Two conditions on one build, spec and target file held byte-identical,
+n=3 each:
+
+| Condition | Repository | cache_read mean |
+|---|---|---:|
+| S | 6 files, 124 lines | 1,858,579 |
+| L | 1,547 files, 21,826 lines | 2,024,888 |
+
+**176x the source moves cache_read by 8.2%** — inside the noise band, and far from the 40% drop the
+pre-committed rule required to call a source term real. **No detectable source term.**
+
+So `aider-repo-map` and `repomix-codebase-packing` stay unbuilt, now on a controlled measurement
+rather than run 3's confounded one. Run 3's 0.76% figure is **superseded**, not merely stale: it
+compared two builds and two specs at n=1 and reached the right answer for poor reasons.
+
+**Run 6 also revises what run 5A's 27.4% meant.** Condition S's spread is **4.6%** against condition
+L's 27.4% — a 6x difference on the same stage, prompt, build and model. The variance is the
+repository, not the instrument: there is only variance to have when there is something to explore.
+That is consistent with this item's stated mechanism (a stage reads what its manifest pins) without
+proving it.
+
+**Still open**: the 8.2% gap has the predicted sign and sits exactly in this design's blind spot, so
+"no detectable term" must not harden into "no term". Resolving it needs n>=12 per condition, ~$35,
+and it does not block the repo-map decision, which turned on whether a *large* term exists. See
+`docs/audits/loom-e2e-run-6-audit-2026-09-08.md`.
 
 **Therefore**: `aider-repo-map` and `repomix-codebase-packing` should **not** be built. They optimize
 source-discovery cost, which this measurement shows is near zero, and they would add a per-run
