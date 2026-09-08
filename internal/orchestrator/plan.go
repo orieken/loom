@@ -175,6 +175,37 @@ func defaultTypedStages() (kinds map[string]string, consumes map[string][]string
 	}
 }
 
+// BuiltInStages returns every stage the framework ships, keyed by ID, fully
+// configured — gate, typed state kind, upstream reads, skippability and
+// timeout.
+//
+// It is the catalogue a plan file selects from (roadmap L3.27). Plans pick
+// and order these; they do not redefine them. That is the whole safety
+// property: a plan cannot drop a stage's gate, un-type its contract, or make
+// a routed stage unconditional, because it never states any of those things.
+// L3.24 measured what an always-runs stage costs on a feature it cannot
+// serve, and a format that let each project re-declare skippability would
+// hand that bill back to every project that wrote a plan.
+func BuiltInStages() map[string]Stage {
+	catalogue := make(map[string]Stage)
+	for _, stage := range DefaultDeliverFeaturePlan().Stages {
+		catalogue[stage.ID] = stage
+	}
+	return catalogue
+}
+
+// BuiltInLoops returns the loops of the built-in plan, keyed by ID, so a
+// plan file can name one rather than restating its bound. L2.17 put a number
+// on the review loop because prose said "repeat until APPROVED"; a format
+// that let a project write its own bound would hand that back too.
+func BuiltInLoops() map[string]Loop {
+	loops := make(map[string]Loop)
+	for _, loop := range DefaultDeliverFeaturePlan().Loops {
+		loops[loop.ID] = loop
+	}
+	return loops
+}
+
 // DefaultDeliverFeaturePlanName names the built-in plan.
 const DefaultDeliverFeaturePlanName = "deliver-feature"
 

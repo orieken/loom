@@ -1,0 +1,33 @@
+# The deliver-bugfix pipeline (roadmap L3.27), matching the phases in
+# shared/skills/deliver-bugfix/SKILL.md.
+#
+# A plan SELECTS from the stages the framework ships; it does not define
+# them. Each stage keeps the gate, typed contract, upstream reads,
+# skippability and timeout the framework gave it — a plan cannot weaken any
+# of those, because it never states them. See internal/planfile for why.
+version: 1
+name: deliver-bugfix
+
+description: >
+  Fix a known, reproducible bug. Shorter than deliver-feature: no architect,
+  no data-engineer, no performance or accessibility review, and no devops
+  stage — so no confirm-ship gate. The design and security gates remain,
+  because a bugfix still writes code and still crosses trust boundaries.
+
+# Order matters. The router follows the analyst because it computes the route
+# from the analysis, and it precedes every routable stage.
+stages:
+  - context-engineer
+  - analyst
+  - router
+  - developer
+  - code-reviewer
+  - security-reviewer
+  - qa-engineer
+  - tech-writer
+
+# Named, not defined. L2.17 bounded the review loop at three rounds because
+# the prose said "repeat until APPROVED"; a plan that could set its own bound
+# would hand that defect back.
+loops:
+  - review

@@ -7,9 +7,11 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/orieken/loom/internal/orchestrator"
+	"github.com/orieken/loom/internal/planfile"
 	"github.com/orieken/loom/internal/policy"
 	"github.com/orieken/loom/internal/telemetry"
 	"github.com/spf13/cobra"
@@ -168,12 +170,47 @@ func interruptibleContext(cmd *cobra.Command) (context.Context, func()) {
 	return ctx, func() { signal.Stop(signals); cancel() }
 }
 
+// selectPlan resolves --plan to the built-in plan or to a plan file
+// (roadmap L3.27). The built-in stays in Go and remains the default: it is
+// the one pipeline every run has exercised, and putting it behind the loader
+// on day one would make a malformed embed break every run rather than only
+// the custom ones. A test asserts it round-trips through the format
+// unchanged, which is what makes the format sufficient rather than merely
+// present.
 func selectPlan(name string) (orchestrator.Plan, error) {
-	if name != orchestrator.DefaultDeliverFeaturePlanName {
-		return orchestrator.Plan{}, fmt.Errorf("unknown plan %q — only %q exists today (custom plans are a later roadmap item)",
-			name, orchestrator.DefaultDeliverFeaturePlanName)
+	if name == orchestrator.DefaultDeliverFeaturePlanName {
+		return orchestrator.DefaultDeliverFeaturePlan(), nil
 	}
-	return orchestrator.DefaultDeliverFeaturePlan(), nil
+	path, err := findPlanFile(name)
+	if err != nil {
+		return orchestrator.Plan{}, err
+	}
+	source, err := os.ReadFile(path)
+	if err != nil {
+		return orchestrator.Plan{}, fmt.Errorf("read plan %q: %w", name, err)
+	}
+	return planfile.Parse(source, path)
+}
+
+// planSearchPath is where a plan file may live, project-local first: a
+// project's own plan overrides one the framework installed under the same
+// name, which is the same precedence every other .claude/ resource has.
+func planSearchPath(name string) []string {
+	return []string{
+		filepath.Join(".claude", "plans", name+".yaml"),
+		filepath.Join("shared", "plans", name+".yaml"),
+	}
+}
+
+func findPlanFile(name string) (string, error) {
+	candidates := planSearchPath(name)
+	for _, candidate := range candidates {
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("unknown plan %q — %q is built in, and no plan file was found at %s",
+		name, orchestrator.DefaultDeliverFeaturePlanName, strings.Join(candidates, " or "))
 }
 
 // prepareRunWorkspace validates the spec and creates the feature workspace

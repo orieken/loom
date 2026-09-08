@@ -88,6 +88,12 @@ levels:
         paths: [shared/workflows]
       - id: orchestration
         paths: [shared/orchestration]
+      # Pipeline definitions a project can select with `loom run --plan`
+      # (roadmap L3.27). Level 2 because a second pipeline is only meaningful
+      # once the executor runs one.
+      - id: plans
+        requires: M0.4
+        paths: [shared/plans]
       - id: executor
         requires: M0.4
         action: executor

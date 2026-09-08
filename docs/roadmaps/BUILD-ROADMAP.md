@@ -1926,8 +1926,39 @@ and ships level 3–4 documentation".
 ### L3.27 — Give a pipeline a definition, so a project can have more than one
 **Workstream**: KERNEL · **Effort**: L · **Blocked by**: none · **Blocks**: a plan-editing TUI · *(raised 2026-09-07)*
 
-**Explore after the current L3.21–L3.26 batch clears** — parked deliberately, not deferred by
-accident.
+**SHIPPED 2026-09-08.** `loom run --plan <name>` executes a plan defined in
+`.claude/plans/<name>.yaml` (project-local) or `shared/plans/<name>.yaml` (installed), and
+`shared/plans/deliver-bugfix.yaml` ships as the worked example — 8 stages against
+deliver-feature's 15.
+
+**The design decision, and it is the whole item**: a plan **selects and orders** stages from
+`orchestrator.BuiltInStages()`. It does not define them. Gate, typed state kind, upstream reads,
+skippability and timeout are all inherited and cannot be restated, so a plan cannot drop a gate,
+un-type a contract, or make a routed stage unconditional. Two roadmap items paid for that
+restriction: L3.24 measured an always-runs stage on a feature it could not serve at $0.55–0.88 a
+time, and L2.17 bounded the review loop because prose said "repeat until APPROVED". A format
+letting each project restate either would hand both bills back per-project. Loops are **named**,
+not defined, for the same reason.
+
+Validation rejects, each naming the offending line: an unknown stage, an unknown loop, a stage
+whose `Consumes` upstream the plan omits, a loop spanning stages the plan lacks or ordered
+backwards, the built-in plan's name, an unsupported version, and — the L3.24 preserver — **a
+routable stage in a plan with no `router`**, which would otherwise always run with nothing
+reporting the route that was never computed.
+
+Upstreams are checked for **presence, not order**. `developer` consumes `code-reviewer`, which runs
+after it, because on a second loop round the developer reads the findings that sent it back;
+requiring upstreams to appear earlier would reject the built-in plan.
+
+The built-in plan **stays in Go** and remains the default: it is the pipeline every run has
+exercised, and putting it behind the loader on day one would make a malformed embed break every run
+rather than only the custom ones. `TestTheBuiltInPlanIsExpressibleInTheFormat` generates the YAML
+from the built-in plan's own stage order and asserts a byte-equal round trip, so the done-when holds
+and adding a stage never requires editing the test.
+
+**Not built**: new stages, project-defined routing predicates, and custom loop bounds. Those were
+considered and declined — see the design decision above. A plan-editing TUI remains an adoption
+decision (`bubbletea`/`huh`) on top of this, not an extension of it; `go.mod` still has no TUI stack.
 
 1. **Problem**: There is exactly one pipeline and it is a Go function.
    `DefaultDeliverFeaturePlan()` builds the stage list, the gates, the typed-state kinds, the
