@@ -109,8 +109,9 @@ func sampleQA() state.QAState {
 		SchemaVersion:    state.SchemaVersion,
 		Feature:          "mock-feature",
 		TestFilesCreated: []string{"internal/mock/thing_test.go"},
-		Coverage:         state.CoverageSummary{AcceptanceCriteriaCovered: 1, AcceptanceCriteriaTotal: 1, NewTests: 1},
-		TestResults:      state.TestResults{Passed: 1},
+		Coverage: state.CoverageSummary{AcceptanceCriteriaCovered: 1, AcceptanceCriteriaTotal: 1, NewTests: 1,
+			Statements: []state.PackageCoverage{{Unit: "internal/mock", Percent: 90}}},
+		TestResults: state.TestResults{Passed: 1},
 	}
 }
 

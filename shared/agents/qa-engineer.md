@@ -83,6 +83,19 @@ After writing tests, you MUST use the `run-tests` skill to execute them and veri
 1. Determine the files or directories you want to test.
 2. Invoke the `run-tests` skill. It will output test results and coverage.
 3. You must ensure coverage meets the 85% threshold.
+4. **Report coverage for EVERY package the feature touches, each one named — not one number for
+   the feature.** A change spanning two packages has two coverage figures, and you report both
+   even when one of them is bad. Especially when one of them is bad.
+
+   This is not hypothetical. A prior run reported `statementCoveragePercent: 89.7` with no
+   qualifier. The number was real and correctly measured — for one package. The feature also
+   spanned the package holding the handlers, the pagination link and the page rendering, which
+   sat at **43.1%**. Neither that figure nor the word "package" appeared anywhere in the report,
+   so a reader concluded the feature cleared the 85% bar while most of its new surface did not.
+
+   Nothing was fabricated. It was a real measurement of the wrong scope, presented unqualified,
+   and that is the failure mode this step exists to prevent — the one nearest to what a QA report
+   is for.
 
 Fix any failures before marking complete. If a test reveals a bug in the implementation, fix the implementation (with `Edit` tool) AND note it in your report.
 
