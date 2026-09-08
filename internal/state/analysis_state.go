@@ -195,11 +195,30 @@ func (a AnalysisState) Validate() error {
 // Deciding what to DO with this answer (skipping the stage, routing around
 // it) is L3.1; this is a fact about the analysis, not a routing rule.
 func (a AnalysisState) RequiresArchitect() bool {
-	if len(a.ArchitecturalFlags) > 0 {
-		return true
+	return a.architectReason() != ""
+}
+
+// architectReason names the fact that summons an architect, or "" for none.
+//
+// It returns the specific disjunct rather than a bool so route.md can say
+// WHICH fact fired (roadmap L3.34). Run 4's route file reported the whole
+// disjunction as the reason, which for sre-engineer produced a line that was
+// provably false against its own analysis — a reader auditing the route could
+// not tell a correct decision from an incorrect one.
+func (a AnalysisState) architectReason() string {
+	switch {
+	case hasMeaningfulEntry(a.ArchitecturalFlags):
+		return "the analyst raised an architectural flag"
+	case a.crossesContexts():
+		return "the feature crosses a bounded context"
+	case a.changesDataModel():
+		return "the feature changes the data model"
+	case hasMeaningfulEntry(a.NewDependencies):
+		return "the feature adds a dependency"
+	case a.hasPerformanceThreshold():
+		return "a performance requirement carries a measurable threshold"
 	}
-	return a.crossesContexts() || a.changesDataModel() ||
-		len(a.NewDependencies) > 0 || a.hasPerformanceThreshold()
+	return ""
 }
 
 // RequiresPerformanceEngineer reports whether the analysis carries a
@@ -234,8 +253,18 @@ func (a AnalysisState) RequiresVisualQAEngineer() bool {
 // availability or latency an operator is accountable for. An in-process
 // utility has no SLI, and the third real run spent $0.63 establishing that
 // about an array filter.
+//
+// The declared runtime surface is the whole test. This used to be OR'd with
+// "the analysis changes an API", which read as a reasonable proxy and is not
+// one: run 4's analyst recorded `ConsoleLogger.getLogsByType(type: string)`
+// — a class method on a TypeScript library — as an API change, and the SRE
+// was summoned to a package with no served surface at all, on an analysis
+// that said `"runtime": false` in the same document. A proxy that contradicts
+// the declared fact is worse than no proxy, so it is gone. Run 4's
+// Experiment B routed the SRE in on `Surfaces.Runtime` alone, so nothing is
+// lost that was working.
 func (a AnalysisState) RequiresSREEngineer() bool {
-	return a.Surfaces.Runtime || len(a.APIChanges) > 0
+	return a.Surfaces.Runtime
 }
 
 func (a AnalysisState) hasUISurface() bool {
@@ -252,24 +281,43 @@ func (a AnalysisState) hasUISurface() bool {
 // no CI or deployment config changes requested", the router counted one item
 // and spent $0.64 discovering the sentence meant zero.
 func (a AnalysisState) RequiresDevOpsEngineer() bool {
-	for _, task := range a.Tasks.DevOps {
-		if !isNoOpTask(task) {
+	return hasMeaningfulEntry(a.Tasks.DevOps)
+}
+
+// hasMeaningfulEntry reports whether a model-authored list holds anything
+// but a way of saying "nothing here".
+//
+// Every list the router counts goes through this. L3.18 applied the filter
+// to Tasks.DevOps and to nothing else, and run 4 found the same defect one
+// field over: the analyst wrote
+//
+//	"architecturalFlags": ["None — purely additive method ... Architect step
+//	 can be skipped."]
+//
+// and RequiresArchitect's len() > 0 read that as a flag demanding an
+// architect. The architect then ran on a three-line method, failed on L3.33,
+// and halted Experiment A at stage 4 — so a prose "none" cost that run its
+// remaining eight stages. Counting a list is only safe when something has
+// established the list cannot contain prose.
+func hasMeaningfulEntry(entries []string) bool {
+	for _, entry := range entries {
+		if !isNoOpEntry(entry) {
 			return true
 		}
 	}
 	return false
 }
 
-// noOpTaskOpeners are the ways a model writes "nothing here". A real task is
+// noOpOpeners are the ways a model writes "nothing here". A real entry is
 // written as an imperative — "Add a workflow", "Update the pipeline" — so
 // matching on the opening word is specific enough to be safe and blunt
 // enough to be obvious. The contract, not this list, is the primary
 // mechanism; this is the net under it.
-var noOpTaskOpeners = []string{"none", "n/a", "na", "nothing", "not applicable", "not required"}
+var noOpOpeners = []string{"none", "n/a", "na", "nothing", "not applicable", "not required"}
 
-func isNoOpTask(task string) bool {
-	normalized := strings.ToLower(strings.TrimSpace(task))
-	for _, opener := range noOpTaskOpeners {
+func isNoOpEntry(entry string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(entry))
+	for _, opener := range noOpOpeners {
 		if normalized == opener || strings.HasPrefix(normalized, opener+" ") {
 			return true
 		}

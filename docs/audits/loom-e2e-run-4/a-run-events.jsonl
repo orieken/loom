@@ -1,0 +1,14 @@
+{"at":"2026-09-08T12:50:50.285756Z","kind":"run.started"}
+{"at":"2026-09-08T12:50:50.286267Z","kind":"stage.started","stage":"context-engineer","sequence":1}
+{"at":"2026-09-08T12:54:15.493305Z","kind":"stage.completed","stage":"context-engineer","sequence":1}
+{"at":"2026-09-08T12:54:15.493653Z","kind":"stage.started","stage":"analyst","sequence":2}
+{"at":"2026-09-08T12:55:34.944609Z","kind":"stage.completed","stage":"analyst","sequence":2}
+{"at":"2026-09-08T12:55:34.945129Z","kind":"stage.started","stage":"router","sequence":3}
+{"at":"2026-09-08T12:55:34.94593Z","kind":"stage.completed","stage":"router","sequence":3}
+{"at":"2026-09-08T12:55:34.946226Z","kind":"stage.skipped","stage":"performance-engineer","sequence":4,"reason":"no performance requirement carries a threshold with a number and a unit"}
+{"at":"2026-09-08T12:55:34.946494Z","kind":"stage.skipped","stage":"data-engineer","sequence":5,"reason":"no data-model change to sequence"}
+{"at":"2026-09-08T12:55:34.946758Z","kind":"stage.skipped","stage":"accessibility-engineer","sequence":6,"reason":"the analysis declares no UI surface"}
+{"at":"2026-09-08T12:55:34.947013Z","kind":"stage.skipped","stage":"visual-qa-engineer","sequence":7,"reason":"the analysis declares no UI surface, so there is nothing to look at"}
+{"at":"2026-09-08T12:55:34.947261Z","kind":"stage.skipped","stage":"devops-engineer","sequence":8,"reason":"the analysis lists no DevOps tasks"}
+{"at":"2026-09-08T12:55:34.947573Z","kind":"stage.started","stage":"architect","sequence":9}
+{"at":"2026-09-08T12:56:14.186583Z","kind":"stage.failed","stage":"architect","sequence":9,"error":"stage \"architect\" returned invalid state: field \"structuralDecisions[0].fitness\" is required unless the decision is flagged judgmentOnly (architecture-guardrails.md #7)"}

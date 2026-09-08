@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 2,
+  "feature": "run-history-browsing",
+  "threatModelSummary": "This is the first security pass over the full run-history-browsing feature (GET /api/runs, GET /runs HTML page, and the RunStore.ListRuns/ordering-index redesign), not just the current round's nextPageHref fix — no prior security-report.md exists in the workspace. The new code paths are read-only over data the service already holds; no new persistence, no new outbound calls, and no new dependencies. The query-string values reflected into the rendered HTML page (status, cursor) are safely double-encoded (url.Values.Encode() then html.EscapeString), and the ReportURL rendered as a link can only be populated after its SuiteId component has already passed registry validation in the runner, so the code-reviewer's carried-forward open item is closed with no exploit path found. The one substantive issue is architectural rather than a code defect in this diff: GET /api/runs and GET /runs carry no authentication, matching the rest of this service, but a listing endpoint is qualitatively different from the individual-run lookups that existed before it — it converts an unguessable-UUID access model into a fully enumerable index of every run, suite, scenario, and report URL the console has ever executed. That is flagged as Critical per the severity table's own definition (unauthenticated, exposes all data) and escalated for a human/architect deployment-context decision rather than patched unilaterally, since the fix is an authn layer for the whole service, not a change this pass can make safely on its own. A second, unrelated, pre-existing path-traversal pattern in GetRunLogs/GetRunReport was discovered incidentally while tracing SuiteId's data flow; it is out of this feature's file scope and flagged at Low for a separate follow-up rather than blocking this delivery.",
+  "dependencyAudit": [
+    "No new dependencies introduced by this feature (implementation-notes.md and developer.1.json both confirm 'Dependencies Added: None'); go.mod/go.sum unchanged, so no dependency vulnerability scan applies to this diff."
+  ],
+  "stride": [
+    {
+      "category": "SPOOFING",
+      "assessed": "GET /api/runs and GET /runs introduce no new identity or session concept; they are as unauthenticated as every other route in router.go. No spoofing-specific issue is newly introduced by this feature — see the Information Disclosure finding for the consequence of that pre-existing baseline."
+    },
+    {
+      "category": "TAMPERING",
+      "assessed": "Traced status and cursor query params from r.URL.Query() through nextPageHref (url.Values.Encode()) and renderRunRow/renderRunsPage (html.EscapeString) into the rendered <a href>. Percent-encoding plus HTML entity-escaping is applied in combination, closing the reflected-XSS path the code-reviewer flagged as needing confirmation. The cursor is only ever compared against known run IDs (cursorPosition) — a malformed or adversarial token cannot be used to index arbitrary store state, only to fail decode (400) or land past-the-end (empty page)."
+    },
+    {
+      "category": "REPUDIATION",
+      "assessed": "Neither ListRuns nor RunsPage emit any audit trail (matches architecture-notes.md's plan to log only booleans/counts, never raw run IDs or cursor tokens, from the httpserver adapter layer). This is consistent with the complete absence of request auditing elsewhere in this service today — not a regression introduced by this feature."
+    },
+    {
+      "category": "INFORMATION_DISCLOSURE",
+      "assessed": "Assessed what an unauthenticated caller can newly learn or reach via GET /api/runs and GET /runs versus the pre-existing GET /api/runs/{runId}. Found the enumeration issue below. Separately verified that ReportURL's SuiteId component cannot be attacker-steered into the rendered link without first passing registry validation in cucumber_runner.go, and that the href itself is HTML-escaped — closing the code-reviewer's carried-forward open item. Incidentally discovered a pre-existing, out-of-scope path-traversal pattern in GetRunLogs/GetRunReport while tracing that same SuiteId flow."
+    },
+    {
+      "category": "DENIAL_OF_SERVICE",
+      "assessed": "clampLimit bounds every response to [1,100] runs regardless of the requested limit, preventing an unbounded result set. collectPage resolves a full page under one RLock/RUnlock pair rather than one lock cycle per candidate (performance-engineer's finding, already addressed). prependToOrder copies the entire ordering slice on every StartRun — an O(n) cost at scale — but this trade-off was already reviewed and accepted by performance-engineer.md against the explicit p95/10k-run NFR; noted here for completeness, not as a new finding."
+    },
+    {
+      "category": "ELEVATION_OF_PRIVILEGE",
+      "assessed": "No role or ownership model exists anywhere in this service (runs are not scoped to a user or tenant), so there is no privilege boundary for this feature to cross. The practical effect of the missing authorization model is captured under Information Disclosure rather than as a separate elevation path."
+    }
+  ],
+  "findings": [
+    {
+      "severity": "CRITICAL",
+      "title": "Unauthenticated run-history listing turns unguessable run IDs into a fully enumerable index",
+      "location": "apps/console/internal/httpserver/router.go:76-84 (route registration), handlers.go:122 (ListRuns), handlers.go:376 (RunsPage)",
+      "category": "INFORMATION_DISCLOSURE",
+      "description": "GET /api/runs and GET /runs have no authentication or authorization check, matching the rest of this service (no auth middleware exists anywhere in apps/console). Before this feature, reaching a specific run's data via GET /api/runs/{runId} required already knowing its server-generated UUID — effectively an unguessable capability token. GET /api/runs removes that requirement entirely: any network-reachable, uncredentialed caller can page through the complete run history (100 runs per page, unlimited pages) and harvest every run's framework, suiteId, scenarioId, status, timestamps, and reportUrl. This meets the severity table's own Critical definition ('exploitable without authentication, or exposes all users' data') because it is both. The condition is systemic to the whole service, not introduced by this diff's code — POST /api/runs and GET /api/runs/{runId} were already unauthenticated — but this feature is what makes exhaustive enumeration practical instead of requiring UUID guessing, which is a meaningful, deliberate design change in exposure, not an incidental side effect.",
+      "fixApplied": "None. Per this review's own rules, a finding that requires an architectural change is escalated rather than silently patched — adding authentication is a whole-service decision (all routes in router.go are unauthenticated today), not something this pass can safely bolt onto two handlers without a design decision on how the rest of the API should behave. Escalating to the orchestrator/architect for an explicit decision: either (a) this console is intentionally deployed only on a fully trusted internal network and that assumption should be documented and enforced at the deployment/network layer, or (b) an authn layer (API key or session) is required in front of the run-related routes before this feature ships to any environment that isn't fully trusted.",
+      "verification": "Human/architect confirms and documents the intended deployment/trust boundary for this console. If network-layer trust is not guaranteed, verification is: GET /api/runs and GET /runs both return 401/403 without valid credentials once an authn layer is added."
+    },
+    {
+      "severity": "LOW",
+      "title": "Pre-existing path-traversal pattern via unvalidated SuiteId (out of this feature's scope)",
+      "location": "apps/console/internal/httpserver/handlers.go:192 (GetRunLogs), handlers.go:310 (GetRunReport)",
+      "category": "INFORMATION_DISCLOSURE",
+      "description": "Discovered incidentally while tracing SuiteId's data flow for the finding above: RunStore.StartRun stores the client-supplied RunRequest.SuiteId into the Run struct synchronously and unvalidated; validation against the suite registry only happens later, asynchronously, inside cucumber_runner.Run. GetRunLogs and GetRunReport build filesystem paths with filepath.Join('./reports', run.SuiteId, run.ID, ...) directly from that unvalidated field, so a caller can POST /api/runs with a SuiteId containing '../' segments and immediately (before or regardless of async validation) hit these two read handlers with a traversed path. Practical exploitability is low: the path is always suffixed with '/<server-generated-UUID>/run.log' (or '/cucumber.json'), and the attacker controls neither that UUID nor the filename, so arbitrary file read requires an existing directory elsewhere on disk that happens to be named exactly the attacker's own random run ID — not something an attacker can target. Both handlers are pre-existing and are not in this feature's files_touched list (only handlers.go's ListRuns/RunsPage/nextPageHref additions belong to run-history-browsing); the spec explicitly excludes 'any change to how reports themselves are generated or served.'",
+      "fixApplied": "None — out of this feature's scope by the spec's own exclusion. Recommend a separate follow-up ticket to validate SuiteId against the registry (or a path-safe character allowlist) at StartRun time, before it is ever used in a filesystem path anywhere in the service.",
+      "verification": "N/A for this delivery; verification belongs to whatever ticket picks up the follow-up."
+    },
+    {
+      "severity": "INFO",
+      "title": "ReportURL/SuiteId rendering on the new /runs page confirmed safe — closes code-reviewer's carried-forward item",
+      "location": "apps/console/internal/httpserver/handlers.go:405-435 (nextPageHref, renderRunRow)",
+      "category": "TAMPERING",
+      "description": "code-review-report.md round 2 carried forward an open item asking security-reviewer to confirm SuiteId's existing validation is sufficient now that ReportURL reaches the /runs render path. Verified: ReportURL is only ever set by cucumber_runner.Run (cucumber_runner.go:310/387) as fmt.Sprintf('/reports/%s/%s/index.html', run.SuiteId, run.ID), and that line is only reached after r.reg.GetSuiteIndex(run.Framework, run.SuiteId) has already succeeded — so the SuiteId embedded in any rendered ReportURL is always a real, registered suite ID, never an arbitrary client-supplied string. The href itself is additionally passed through html.EscapeString before being written into the <a href> attribute. No path-traversal or injection path exists via this route.",
+      "verification": "No action needed; documented for the record so this open item is not re-raised in a future round."
+    },
+    {
+      "severity": "INFO",
+      "title": "Ordering-index copy-on-write cost at scale — already reviewed, no new action",
+      "location": "apps/console/internal/runs/store.go:69-75 (prependToOrder)",
+      "category": "DENIAL_OF_SERVICE",
+      "description": "prependToOrder allocates a new slice and copies the full current ordering index on every StartRun call, an O(n) cost that grows with store size. At the spec's 10,000-run scale this is a real but bounded and already-accepted cost: architecture-notes.md and performance-engineer.md both reviewed this trade-off explicitly against the p95<200ms/10k-run NFR and the never-blocks-writers requirement, and chose it deliberately (atomic swap keeps ListRuns lock-free). Noted here only for STRIDE completeness, not as a new finding.",
+      "verification": "Covered by qa-engineer's planned performance and concurrency tests per analysis.md's Proposed Fitness Functions."
+    }
+  ],
+  "filesModified": [],
+  "securityChecklist": [
+    {"item": "No hardcoded secrets, API keys, or credentials introduced", "checked": true},
+    {"item": "User-supplied query params (status, cursor) are safely encoded before appearing in rendered HTML", "checked": true, "note": "nextPageHref uses url.Values.Encode() (percent-encoding) then html.EscapeString on the composed href; double-encoding closes the reflected-XSS path."},
+    {"item": "Cursor token cannot be used to access store state beyond documented pagination semantics", "checked": true, "note": "decodeCursor only distinguishes 'fails to decode' (400) from 'well-formed'; cursorPosition treats any well-formed-but-unrecognized ID as past-the-end (empty page), matching spec."},
+    {"item": "New endpoints (GET /api/runs, GET /runs) require authentication/authorization", "checked": false, "note": "No auth exists anywhere in this service. See CRITICAL finding — escalated for a deployment-context decision, not fixed in this pass."},
+    {"item": "Response size is bounded (no unbounded result sets)", "checked": true, "note": "clampLimit caps every page at maxPageLimit=100 regardless of the requested limit."},
+    {"item": "New network/external calls have explicit timeouts", "checked": true, "note": "N/A — ListRuns/RunsPage introduce no new network calls; they read only from the in-memory RunStore."},
+    {"item": "ReportURL is only rendered after its SuiteId component has passed registry validation", "checked": true, "note": "Verified via cucumber_runner.go — reportURL is only constructed after a successful reg.GetSuiteIndex lookup."},
+    {"item": "No new dependencies requiring a vulnerability scan", "checked": true, "note": "implementation-notes.md and developer.1.json both confirm no dependencies were added."}
+  ],
+  "notesForQa": [
+    "No security finding in this report blocks QA from proceeding — the CRITICAL item is an architectural escalation for human/architect deployment-context decision, not a code defect QA can test away.",
+    "Consider adding one explicit, documented test asserting that GET /api/runs and GET /runs currently require no credentials — not to validate this as correct, but so a future change (adding auth) is a visible, intentional test update rather than a silent behavior change either direction.",
+    "The entity-escaped '&' assertion already requested in implementation-notes.md's Notes for QA (status+cursor both present in the Next-page href) incidentally verifies the XSS-safety property confirmed in this review — no separate security-specific test is needed for that path."
+  ],
+  "notesForTechWriter": [
+    "When documenting GET /api/runs and the /runs console page, state plainly that neither endpoint requires authentication today (consistent with the rest of this service's API). Recommend operators deploying this console outside a fully trusted internal network place it behind their own access control (reverse proxy auth, VPN, network ACLs) until an authn layer is added — enumerating the full run history is now possible with zero credentials, not just guessing an individual run ID."
+  ],
+  "retrieval": {
+    "domainTerms": ["Run", "RunStore", "Status", "StartedAt", "FinishedAt", "ReportURL"],
+    "issueRefs": [],
+    "linkedAdrs": [],
+    "linkedKis": []
+  }
+}

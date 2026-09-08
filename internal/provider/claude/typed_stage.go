@@ -18,18 +18,35 @@ import (
 // typedInstruction appends the schema and the output contract for a typed
 // stage. The schema is inlined rather than referenced by path so the run
 // does not depend on the framework being installed in the target project.
-func typedInstruction(stage orchestrator.Stage, input orchestrator.StageInput) (string, error) {
+func typedInstruction(stage orchestrator.Stage, input orchestrator.StageInput, allowed []string) (string, error) {
 	schema, ok := state.SchemaForKind(state.Kind(stage.StateKind))
 	if !ok {
 		return "", fmt.Errorf("stage %q declares state kind %q, which has no schema", stage.ID, stage.StateKind)
 	}
 	var instruction strings.Builder
 	instruction.WriteString("\n---\n\nOUTPUT CONTRACT (this overrides any output-format instruction above).\n")
-	instruction.WriteString("Return a single JSON object conforming to this schema, and nothing else.\n")
-	instruction.WriteString("Do not write files. Do not add commentary before or after the JSON.\n\n")
+	instruction.WriteString(fileClause(allowed))
 	instruction.Write(schema)
 	instruction.WriteString(upstreamSection(input))
 	return instruction.String(), nil
+}
+
+// fileClause states what the stage does to the working tree before it
+// answers. A stage holding no edit tool is told not to write, which is what
+// the contract has always said; a stage holding one is told that the JSON
+// describes work it has actually done, because the JSON is a report and a
+// report of unwritten code is the failure mode this clause exists to
+// prevent (see writesFiles).
+func fileClause(allowed []string) string {
+	if !writesFiles(allowed) {
+		return "Return a single JSON object conforming to this schema, and nothing else.\n" +
+			"Do not write files. Do not add commentary before or after the JSON.\n\n"
+	}
+	return "Make the file changes this stage is responsible for, using the tools you have been given.\n" +
+		"Then return a single JSON object conforming to this schema as your final output.\n" +
+		"The JSON REPORTS that work; it does not replace it. Every path you list as created or modified\n" +
+		"must be a file you actually wrote this session — verify with git status before answering.\n" +
+		"Do not add commentary before or after the JSON.\n\n"
 }
 
 // upstreamSection hands the agent the projected fields of each stage it

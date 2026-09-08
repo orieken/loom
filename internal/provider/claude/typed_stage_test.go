@@ -16,7 +16,7 @@ func typedStage() orchestrator.Stage {
 }
 
 func TestTypedInstructionInlinesTheSchemaAndForbidsCommentary(t *testing.T) {
-	instruction, err := typedInstruction(typedStage(), orchestrator.StageInput{})
+	instruction, err := typedInstruction(typedStage(), orchestrator.StageInput{}, defaultAllowedTools())
 	if err != nil {
 		t.Fatalf("typedInstruction: %v", err)
 	}
@@ -34,7 +34,7 @@ func TestTypedInstructionHandsOverTheProjectedUpstreamState(t *testing.T) {
 	}}
 	stage := orchestrator.Stage{ID: "architect", Agent: "architect", StateKind: string(state.KindArchitecture)}
 
-	instruction, err := typedInstruction(stage, input)
+	instruction, err := typedInstruction(stage, input, defaultAllowedTools())
 	if err != nil {
 		t.Fatalf("typedInstruction: %v", err)
 	}
@@ -52,7 +52,7 @@ func TestTypedInstructionHandsOverTheProjectedUpstreamState(t *testing.T) {
 
 func TestTypedInstructionRejectsAnUnknownKind(t *testing.T) {
 	stage := orchestrator.Stage{ID: "devops-engineer", Agent: "devops-engineer", StateKind: "devops"}
-	if _, err := typedInstruction(stage, orchestrator.StageInput{}); err == nil {
+	if _, err := typedInstruction(stage, orchestrator.StageInput{}, defaultAllowedTools()); err == nil {
 		t.Error("accepted a state kind with no schema")
 	}
 }
@@ -189,5 +189,63 @@ func writeAgentDefinition(t *testing.T, dir, agent string) {
 	body := agentDefinitionMarker + "\n\nDo the thing this agent does.\n"
 	if err := os.WriteFile(filepath.Join(dir, agent+".md"), []byte(body), 0o644); err != nil {
 		t.Fatalf("write agent definition: %v", err)
+	}
+}
+
+// TestAWriteCapableTypedStageIsNotForbiddenToWrite is the regression guard
+// for run 4's second blocker.
+//
+// The typed contract said "Do not write files" to every typed stage. The
+// developer holds Write/Edit/MultiEdit by declaration and is the one stage
+// whose entire purpose is changing the working tree, so the contract
+// cancelled the job. Experiment B's developer returned a complete,
+// schema-valid ImplementationState naming four modified files against an
+// empty git diff, and reported success.
+func TestAWriteCapableTypedStageIsNotForbiddenToWrite(t *testing.T) {
+	stage := orchestrator.Stage{ID: "developer", Agent: "developer",
+		StateKind: string(state.KindImplementation)}
+	allowed := []string{"Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep"}
+
+	instruction, err := typedInstruction(stage, orchestrator.StageInput{}, allowed)
+	if err != nil {
+		t.Fatalf("typedInstruction: %v", err)
+	}
+	if strings.Contains(instruction, "Do not write files") {
+		t.Error("a stage holding Write/Edit was told not to write files — " +
+			"the tools are granted and then forbidden by prompt")
+	}
+	if !strings.Contains(instruction, "Make the file changes") {
+		t.Error("a write-capable stage should be told to make its file changes")
+	}
+}
+
+// TestAReadOnlyTypedStageIsStillForbiddenToWrite keeps the other half: the
+// clause is conditioned, not deleted.
+func TestAReadOnlyTypedStageIsStillForbiddenToWrite(t *testing.T) {
+	instruction, err := typedInstruction(typedStage(), orchestrator.StageInput{}, defaultAllowedTools())
+	if err != nil {
+		t.Fatalf("typedInstruction: %v", err)
+	}
+	if !strings.Contains(instruction, "Do not write files") {
+		t.Error("a read-only stage should still be told not to write files")
+	}
+}
+
+// TestEveryWriteCapableAgentInThePlanGetsAWritableContract closes the gap at
+// the level the defect actually lived: not one stage, but the pairing of the
+// plan's typed stages with the tools their shipped definitions declare.
+func TestEveryWriteCapableAgentInThePlanGetsAWritableContract(t *testing.T) {
+	for _, tool := range []string{"Write", "Edit", "MultiEdit", "NotebookEdit"} {
+		if !writesFiles([]string{"Read", tool}) {
+			t.Errorf("%s should count as a write tool", tool)
+		}
+	}
+	for _, posture := range [][]string{
+		{"Read", "Glob", "Grep"},
+		{"Read", "Glob", "Grep", "Bash"},
+	} {
+		if writesFiles(posture) {
+			t.Errorf("%v should not count as write-capable — Bash runs checks, it does not author code", posture)
+		}
 	}
 }

@@ -92,7 +92,7 @@ func (p *Provider) buildPrompt(stage orchestrator.Stage, input orchestrator.Stag
 	if stage.StateKind == "" {
 		return prompt, allowed, nil
 	}
-	instruction, err := typedInstruction(stage, input)
+	instruction, err := typedInstruction(stage, input, allowed)
 	if err != nil {
 		return "", nil, err
 	}

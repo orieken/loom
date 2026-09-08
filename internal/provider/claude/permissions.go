@@ -85,3 +85,34 @@ func permissionArgs(allowed []string) []string {
 	}
 	return []string{"--permission-mode", "acceptEdits", "--allowed-tools", strings.Join(allowed, ",")}
 }
+
+// writeTools are the tools whose presence means a stage's job includes
+// changing the working tree. Read/Glob/Grep/Bash are deliberately excluded:
+// Bash can technically write, but a stage that declares Bash without an edit
+// tool (code-reviewer, analyst) declares it to run checks, not to author code.
+func writeTools() []string {
+	return []string{"Write", "Edit", "MultiEdit", "NotebookEdit"}
+}
+
+// writesFiles reports whether a stage's posture includes authoring files.
+//
+// The typed output contract (roadmap L2.9) tells every typed stage "do not
+// write files", which is correct for an analysis stage and catastrophic for
+// the developer: run 4's Experiment B granted the developer
+// Read,Write,Edit,MultiEdit,Bash,Glob,Grep exactly as L2.22 specifies, then
+// forbade it in the prompt. It returned a complete, honest, schema-valid
+// ImplementationState naming four files it had not touched, against an empty
+// git diff. The tools were granted and then taken away by instruction.
+//
+// No mock could catch it: a mock developer returns a Go-built state document
+// and never needs to write anything to satisfy its contract.
+func writesFiles(allowed []string) bool {
+	for _, tool := range allowed {
+		for _, writer := range writeTools() {
+			if strings.EqualFold(strings.TrimSpace(tool), writer) {
+				return true
+			}
+		}
+	}
+	return false
+}

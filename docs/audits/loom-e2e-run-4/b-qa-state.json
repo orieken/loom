@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 2,
+  "feature": "run-history-browsing",
+  "testFilesCreated": [
+    "apps/console/internal/runs/store_test.go",
+    "apps/console/internal/httpserver/runs_history_test.go"
+  ],
+  "testFilesModified": [],
+  "coverage": {
+    "acceptanceCriteriaCovered": 9,
+    "acceptanceCriteriaTotal": 9,
+    "newTests": 22,
+    "statementCoveragePercent": 89.7
+  },
+  "testResults": {
+    "passed": 23,
+    "failed": 0,
+    "skipped": 1,
+    "skipReasons": [
+      "Pre-existing TestRunEndpoint in http_integration_test.go is gated behind E2E_RUNS=1 (requires Node/Playwright/cucumber-js in the environment); unrelated to this feature, left as-is"
+    ]
+  },
+  "accessibilityCheck": [
+    "Report links are native <a href> anchors, not onclick-only divs — keyboard reachable and activatable (TestRunsPage_ReportLinksAreKeyboardNavigable)",
+    "Each report link carries a distinguishing aria-label=\"View report for run <id>\" so identical link text is still distinguishable via screen reader/tab order",
+    "Table headers use scope=\"col\" and a visually-hidden <caption> names the table's purpose",
+    "Status is conveyed as plain text (running/passed/failed), not color alone",
+    "No axe/browser-based a11y tooling exists in this Go backend's test stack (Saturday's Playwright a11y checks apply to the TS/E2E layer, not this server-rendered page) — checks above were done by direct HTML assertion instead"
+  ],
+  "bugsFound": [],
+  "knownGaps": [
+    {
+      "criterion": "Deployment-context authentication for GET /api/runs and GET /runs",
+      "reason": "security-report.md's CRITICAL finding is an architectural escalation for a human/architect decision, not a QA-fixable code defect. Added TestRunEndpoints_CurrentlyRequireNoAuthentication to pin today's no-auth behavior explicitly, so a future change is a visible, intentional test update rather than a silent behavior change."
+    },
+    {
+      "criterion": "End-to-end HTTP-transport performance for the 200ms p95 NFR",
+      "reason": "TestListRuns_PerformanceAt10kRuns times RunStore.ListRuns directly, not a full HTTP round trip. Store cost dominates per architecture-notes.md's own analysis (O(page size) collectPage), so this is a reasonable scope boundary, not a coverage hole."
+    },
+    {
+      "criterion": "Path-traversal via unvalidated SuiteId in GetRunLogs/GetRunReport",
+      "reason": "security-report.md LOW finding, explicitly out of this feature's scope per the spec's exclusion ('any change to how reports themselves are generated or served'); not tested here."
+    }
+  ],
+  "notesForTechWriter": [
+    "Document GET /api/runs: query params status, cursor, limit (default 20, max 100); response envelope { runs: [...], nextCursor? }; a cursor past the end returns 200 with an empty runs array; a cursor that fails to decode returns 400.",
+    "Document GET /runs console page: same query params (status, cursor); table columns ID/Status/Started/Duration/Report; in-progress runs render 'running' with no report link; the 'Next page' link preserves the active status filter and HTML-entity-escapes the joining '&'.",
+    "Flag that both endpoints are currently unauthenticated, consistent with the rest of the console API today — a known, tracked gap (see security-report.md), not new scope creep from this feature.",
+    "qa-report.md could not be written to .claude/feature-workspace/run-history-browsing/ — the harness blocked the Write call on that path as a sensitive file (same restriction the developer stage hit). Full QA report content is captured in this JSON payload instead."
+  ],
+  "retrieval": {
+    "domainTerms": ["Run", "RunStore", "ListRuns", "cursor", "status filter", "run history"],
+    "issueRefs": ["run-history-browsing"],
+    "linkedAdrs": [],
+    "linkedKis": []
+  }
+}

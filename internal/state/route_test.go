@@ -322,7 +322,8 @@ func TestASurfaceSummonsItsReviewer(t *testing.T) {
 		"a served runtime summons the SRE": {"sre-engineer", func(a *state.AnalysisState) {
 			a.Surfaces.Runtime = true
 		}},
-		"an API change summons the SRE": {"sre-engineer", func(a *state.AnalysisState) {
+		"a runtime surface summons the SRE even for a library API": {"sre-engineer", func(a *state.AnalysisState) {
+			a.Surfaces.Runtime = true
 			a.APIChanges = []state.APIChange{{Endpoint: "POST /sessions", Change: "new"}}
 		}},
 	}
@@ -344,5 +345,88 @@ func TestARealDevOpsTaskStillSummonsDevOps(t *testing.T) {
 
 	if !state.RouteFor(analysis, routableStages()).Includes("devops-engineer") {
 		t.Error("devops-engineer was skipped despite a real task")
+	}
+}
+
+// Run 4's counter-example. The SRE predicate used to OR the declared runtime
+// surface with "the analysis changes an API", which read as a reasonable
+// proxy and is not one: the analyst recorded a TypeScript class method as an
+// API change on a package with no served surface, and the route file then
+// reported a runtime surface the same document denied.
+func TestALibraryMethodDoesNotSummonTheSRE(t *testing.T) {
+	analysis := minimalAnalysis()
+	analysis.Surfaces.Runtime = false
+	analysis.APIChanges = []state.APIChange{{
+		Endpoint: "ConsoleLogger.getLogsByType(type: string)",
+		Change:   "New public method added to the ConsoleLogger class's public surface.",
+	}}
+
+	route := state.RouteFor(analysis, routableStages())
+
+	if route.Includes("sre-engineer") {
+		t.Errorf("the SRE was summoned to a package declaring no runtime surface: %s",
+			route.ReasonFor("sre-engineer"))
+	}
+}
+
+// Run 4's other counter-example, and the reason L3.18's fix was incomplete.
+// The analyst wrote its "no architect needed" conclusion INTO the flag list,
+// and len() > 0 read it as a flag demanding one. The architect then ran on a
+// three-line method, failed, and halted Experiment A at stage 4.
+func TestAProseNoneIsNotAnArchitecturalFlag(t *testing.T) {
+	analysis := minimalAnalysis()
+	analysis.ArchitecturalFlags = []string{
+		"None — purely additive method on an existing class following the established " +
+			"getLogs()/clear() pattern; no new package, base class, layer boundary change, or " +
+			"cross-cutting concern introduced. Architect step can be skipped.",
+	}
+
+	route := state.RouteFor(analysis, routableStages())
+
+	if route.Includes("architect") {
+		t.Errorf("the architect was summoned by a flag that says it can be skipped: %s",
+			route.ReasonFor("architect"))
+	}
+}
+
+// A prose "none" in the dependency list must not summon an architect either.
+// Every list the router counts goes through the same filter now.
+func TestAProseNoneIsNotADependency(t *testing.T) {
+	analysis := minimalAnalysis()
+	analysis.NewDependencies = []string{"None required"}
+
+	if state.RouteFor(analysis, routableStages()).Includes("architect") {
+		t.Error("the architect was summoned by a dependency list that says there are none")
+	}
+}
+
+// A real architectural flag still summons the architect, and the route file
+// names the fact that fired rather than the whole disjunction (L3.34).
+func TestTheRouteNamesTheFactThatSummonedTheArchitect(t *testing.T) {
+	cases := map[string]struct {
+		shape func(*state.AnalysisState)
+		want  string
+	}{
+		"flag":       {func(a *state.AnalysisState) { a.ArchitecturalFlags = []string{"reverses ADR-004"} }, "architectural flag"},
+		"crossing":   {func(a *state.AnalysisState) { a.BoundedContext.Crossings = []string{"billing"} }, "bounded context"},
+		"dependency": {func(a *state.AnalysisState) { a.NewDependencies = []string{"github.com/some/queue"} }, "dependency"},
+	}
+	for name, testCase := range cases {
+		t.Run(name, func(t *testing.T) {
+			analysis := minimalAnalysis()
+			testCase.shape(&analysis)
+			route := state.RouteFor(analysis, routableStages())
+
+			if !route.Includes("architect") {
+				t.Fatal("the architect was skipped for real structural work")
+			}
+			reason := route.ReasonFor("architect")
+			if !strings.Contains(reason, testCase.want) {
+				t.Errorf("reason %q does not name the fact that fired (%q)", reason, testCase.want)
+			}
+			if strings.Contains(reason, " or ") {
+				t.Errorf("reason %q is a disjunction; it must name the disjunct that fired", reason)
+			}
+		})
 	}
 }
