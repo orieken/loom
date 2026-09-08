@@ -44,6 +44,11 @@ type StageSchema struct {
 	subject  interface{}
 }
 
+// Subject returns the Go value the schema is generated from, so a fitness
+// function can compare the generated document against the types behind it
+// (roadmap L2.25).
+func (s StageSchema) Subject() interface{} { return s.subject }
+
 // StageSchemas returns every typed state document.
 func StageSchemas() []StageSchema {
 	return []StageSchema{

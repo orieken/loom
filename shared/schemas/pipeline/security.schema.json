@@ -21,7 +21,15 @@
       "items": {
         "properties": {
           "category": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "SPOOFING",
+              "TAMPERING",
+              "REPUDIATION",
+              "INFORMATION_DISCLOSURE",
+              "DENIAL_OF_SERVICE",
+              "ELEVATION_OF_PRIVILEGE"
+            ]
           },
           "assessed": {
             "type": "string",
@@ -58,7 +66,15 @@
             "description": "Repo-relative path and line"
           },
           "category": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "SPOOFING",
+              "TAMPERING",
+              "REPUDIATION",
+              "INFORMATION_DISCLOSURE",
+              "DENIAL_OF_SERVICE",
+              "ELEVATION_OF_PRIVILEGE"
+            ]
           },
           "description": {
             "type": "string"

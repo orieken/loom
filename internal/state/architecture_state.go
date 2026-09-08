@@ -55,7 +55,7 @@ const (
 // honours it.
 type BoundaryCheck struct {
 	Rule    string       `json:"rule" jsonschema:"required"`
-	Verdict CheckVerdict `json:"verdict" jsonschema:"required,enum=PASS,enum=FAIL,enum=NOT_APPLICABLE"`
+	Verdict CheckVerdict `json:"verdict" jsonschema:"required"`
 	Notes   string       `json:"notes,omitempty"`
 }
 

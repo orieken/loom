@@ -98,7 +98,7 @@ const (
 // DataModelChange is one schema change and when it may run.
 type DataModelChange struct {
 	Description string         `json:"description" jsonschema:"required"`
-	Phase       MigrationPhase `json:"phase" jsonschema:"required,enum=none,enum=expand,enum=contract"`
+	Phase       MigrationPhase `json:"phase" jsonschema:"required"`
 }
 
 // APIChange is one endpoint or signature change.
