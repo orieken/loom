@@ -1668,6 +1668,18 @@ deterministic one — it cannot be reproduced on demand, so it gets rediscovered
 4. **Done when**: a run containing a failed stage reports a total equal to the sum of its trace
    spans, and a test asserts the two agree.
 
+**RECURRED AND RE-FIXED 2026-09-08** (`a3ebaee`). Run 4's own cost data carried the same
+under-report through a second door. The executor reported **$20.2718** for a run whose
+`generate_content` spans total **$21.5106**; the $1.2389 delta is exactly the first `developer`
+attempt — the record run 4 deleted by hand to re-run that stage, because loom has no rollback
+command (run 4 §9.1).
+
+The first fix made a stage record sum its own attempts, which stopped a retry overwriting a failure,
+and left the total *derived* from the records. Removing a record therefore still removed its spend.
+Money spent is a fact about the run, not a property of a record someone may delete, so it is now
+accumulated on `RunState` as the run goes; the derived sum remains the fallback for states written
+before the field existed.
+
 **Why it matters**: L3.13 wants to derive quality metrics from execution, and already warns that a
 run reporting zero cost reported *nothing* rather than costing nothing. This is the same class of
 error one level up — a cost model that hides retry spend will systematically under-price exactly the
@@ -2002,6 +2014,61 @@ projects; a plan assembled only through a UI is none of those. Note also that th
 format first also avoids designing it through a form, which is how a format ends up shaped by a
 widget.
 
+### L3.30 — A read-only stage modified source, through Bash
+**Workstream**: TOOLS · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-08, from run 4)*
+
+**SHIPPED 2026-09-08** (`28ac6d3`) — the posture half. L3.36 is the other half.
+
+1. **Problem**: `accessibility-engineer` declares `tools: Read, Glob, Grep, Bash` — no edit tool —
+   and modified `handlers.go`, saying so in its own report. `--allowed-tools` (L2.22) is an allowlist
+   over named tools, not a write barrier: any stage holding Bash can write through a heredoc or
+   `sed -i`, and six of the plan's stages hold Bash. "Read-only stage" was a property nothing
+   enforced and nothing checked. `security-reviewer`, same posture, did not edit — so this is stage
+   behaviour, not an inevitable consequence of granting Bash.
+2. **Fix**: the executor fingerprints the working tree around each stage and records any that
+   changed it without declaring write access, printing them at the end of the run. It **records
+   rather than fails**: the edits were correct and improved the code, so the defect is that nothing
+   noticed, not that it happened. Enforcing would mean removing Bash from six reviewing stages that
+   use it to run checks, which costs more than the defect.
+3. **Detail that matters**: the digest hashes content, not status. `git status --porcelain` alone
+   would have missed this entirely — the edit was to a file the developer had already modified, so
+   its status never changed, only its bytes did. A test pins that case.
+4. Also corrects the comment on `writeTools`, which run 4 falsified: it claimed a stage declaring
+   Bash without an edit tool "declares it to run checks, not to author code", which is true about
+   what the declaration MEANS and false as the guarantee about behaviour it was written as.
+
+### L3.31 — QA reports one package's coverage as the feature's
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-08, from run 4)*
+
+**SHIPPED 2026-09-08** (`74283e9`).
+
+1. **Problem**: `qa-engineer` reported `statementCoveragePercent: 89.7` with no qualifier. Real and
+   correctly measured — for `internal/runs`. The feature also spanned `internal/httpserver`, holding
+   the handlers, the pagination link and the page rendering, at **43.1%**. Neither the lower figure
+   nor the word "package" appeared anywhere, and `testing-conventions.md` makes coverage >= 85%
+   CRITICAL, so a reader concluded the feature cleared a bar most of its new surface did not.
+   Nothing was fabricated: a real measurement of the wrong scope, presented unqualified.
+2. **Fix**: a bare float cannot carry a scope, so coverage is a list of named units and the rendered
+   report leads with the lowest — the number a coverage bar is judged against. `qa-engineer.md` is
+   corrected alongside the schema, with these figures in it: the instruction said to ensure coverage
+   meets 85% and never said whose.
+
+### L3.32 — A gate halts on a stage the router already skipped
+**Workstream**: KERNEL · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-08, from run 4)*
+
+**SHIPPED 2026-09-08** (`c0ca216`).
+
+1. **Problem**: `confirm-ship` halted on `devops-engineer`, which the router had routed out.
+   Approving it proved the stage still does not run, so routing is not bypassed and L3.24's saving
+   is real — the audit downgraded this to INFO-to-LOW on that evidence. Two narrower defects
+   survived: the halt stamped its own clock over the settled record, producing one whose `StartedAt`
+   was **eight hours after** its `FinishedAt`; and nothing told the human the gated stage would not
+   run.
+2. **Fix**: a settled stage keeps the times it actually ran, and the halt carries the skip reason so
+   the CLI can say the gate guards no work. **The gate still halts, deliberately** — `advance()`
+   checks the gate before the settled check so a human checkpoint cannot vanish because routing
+   removed the stage behind it.
+
 ### L3.33 — The architecture schema under-specifies what the validator enforces
 **Workstream**: KERNEL · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-08, from run 4)*
 
@@ -2069,6 +2136,46 @@ nondeterministic system, so a pass is evidence and not proof. Both limits are st
 mock-verified claim in this repository is now one command away from being checked at the boundary
 that matters, and the remaining ones have not been audited — §12.3 of that run's audit says so
 explicitly.
+
+### L3.36 — Nothing re-reviews what the post-review stages write
+**Workstream**: KERNEL · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-08, split from L3.30)*
+
+1. **Problem**: `code-reviewer` returned `APPROVED` against a **312-insertion** tree in run 4. The
+   tree that ended the run was **343**. Three stages modified it afterwards:
+
+   | Stage | Declares write tools? | Changed | Re-reviewed? |
+   |---|---|---|---|
+   | `accessibility-engineer` | no | production source (+12) | no |
+   | `qa-engineer` | yes | test files only | no — its own remit |
+   | `sre-engineer` | **yes** | production source (+19/-8) | no |
+
+   The posture half of L3.30 is fixed (`28ac6d3`) and covers only the first row. This is the
+   structural half, and it implicates a stage that **did nothing wrong**: `sre-engineer` is entitled
+   to write, its `slog` instrumentation was correct and low-cardinality, and the suite still passed.
+
+   The plan orders `code-reviewer` before four stages that can modify source. Nothing re-reviews,
+   and **no artifact records that the approved tree and the shipped tree differ** — neither the fact
+   nor its size appears anywhere in run state.
+
+2. **Architectural Fix**: not obvious, which is why this is separate rather than bolted onto a
+   check. Candidates, none costed:
+   - Record the divergence without acting on it — cheapest, and at least makes it visible.
+   - Re-run `code-reviewer` over the delta when post-review stages changed production source, which
+     costs a review invocation on most runs.
+   - Move the review later in the plan, which trades this problem for a longer feedback loop and
+     makes the design gate approve less.
+
+   The executor now fingerprints the tree around every stage (L3.30), so the mechanism to detect the
+   divergence exists; what to *do* about it is the open question.
+
+3. **Target files**: `internal/orchestrator/`, `internal/orchestrator/plan.go`
+4. **Done when**: a run whose tree changed after `code-reviewer` approved says so in an artifact a
+   human reads.
+
+**Why it matters**: "review sees what ships" is a property the pipeline sells. Run 4's audit rates
+this arguable at §12.4 — the unreviewed edits were correct, so the finding rests on process rather
+than outcome — and it is recorded as a defect for exactly that reason: the run got a good result
+from a mechanism that does not guarantee one.
 
 ### L3.13 — Derive agent quality metrics from execution
 **Workstream**: OBSERVE · **Effort**: M · **Blocked by**: L3.5 (shipped), L3.8 (shipped) · **Blocks**: none
