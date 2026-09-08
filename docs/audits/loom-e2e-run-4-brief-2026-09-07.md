@@ -47,9 +47,8 @@ So run 4 is two experiments with different targets and different rules.
 ## 3. Experiment A — variance and the routing saving
 
 **Target**: `saturday-monorepo`, cloned fresh per run.
-**Spec**: byte-identical to run 3's `console-log-filtering.md` — add `getLogsByType()` to
-`ConsoleLogger`. Not in the live repo; recreate it from the audit's §5 and commit it to the clone
-before the run so all three runs read the same bytes.
+**Spec**: `loom-e2e-run-4-specs/console-log-filtering.md`, the original run-3 file recovered intact.
+Copy it to `docs/features/` in each clone before the run so all three read the same bytes.
 **Runs**: three, sequential, no changes between them.
 
 ### Decision rules, fixed now
@@ -110,6 +109,22 @@ visual QA engineer each have real work on.
 
 **B3** — the four L3.24 predicates are judged on B1 and B2 together, not on cost. A cheaper run that
 skipped a stage it needed is a worse result than run 3.
+
+**B4 — the controls.** B2 alone is passable by a router that includes everything, which is the bug
+L3.24 removed. The spec therefore carries work that must stay **out**: `data-engineer` (the store
+stays in memory — no schema, no migration) and `devops-engineer` (no CI, deployment or environment
+change is asked for).
+- Both skipped, and B2's four included → routing discriminates.
+- All six included → routing has stopped discriminating; B2 passing means nothing.
+- Report both halves. A run that only records the inclusions has not tested the predicate.
+
+### The specs are committed
+
+Both live in [`loom-e2e-run-4-specs/`](./loom-e2e-run-4-specs/), so neither run depends on a `/tmp`
+clone surviving. Experiment A's spec is **byte-identical to run 3's**, recovered from
+`/tmp/loom-e2e3` before it was reaped (md5 `b16ccb20d09e524602f9495f372e1819`) — it is the original,
+not a reconstruction, so §3's comparison to $9.49 carries no spec confound. That was luck; committing
+them is the fix.
 
 ---
 
