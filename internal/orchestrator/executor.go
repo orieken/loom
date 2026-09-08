@@ -311,7 +311,8 @@ func (e *Executor) checkGate(stage Stage, state *RunState) error {
 	if err := e.emit(Event{Kind: EventGateWaiting, Stage: stage.ID, Gate: stage.Gate}); err != nil {
 		return err
 	}
-	return &WaitingApprovalError{Gate: stage.Gate, Stage: stage.ID}
+	return &WaitingApprovalError{Gate: stage.Gate, Stage: stage.ID,
+		SkipReason: state.Stages[stage.ID].SkipReason}
 }
 
 // waitingRecord marks a stage as halted at its gate without discarding what
@@ -321,12 +322,20 @@ func (e *Executor) checkGate(stage Stage, state *RunState) error {
 // approves, rather than being resurrected by the halt.
 func waitingRecord(state *RunState, stage Stage) StageRecord {
 	record := state.Stages[stage.ID]
-	if record.Status == StageStatusSkipped || record.Status == StageStatusCompleted {
+	isSettled := record.Status == StageStatusSkipped || record.Status == StageStatusCompleted
+	if isSettled {
 		record.PreviousStatus = record.Status
 	}
 	record.Status = StageStatusWaitingApproval
 	record.Gate = stage.Gate
-	record.StartedAt = time.Now().UTC()
+	// A settled stage keeps the times it actually ran. Stamping the halt
+	// over them produced a record in run 4 whose StartedAt was eight hours
+	// AFTER its FinishedAt — the gate fired at 12:34 on a stage that had
+	// been skipped at 04:09 — which is not a time anything happened
+	// (roadmap L3.32).
+	if !isSettled {
+		record.StartedAt = time.Now().UTC()
+	}
 	return record
 }
 
