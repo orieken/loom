@@ -67,11 +67,24 @@ You are a **Principal Context Engineer**. You treat the context window of AI age
 
 ## Output Format
 
-Read `shared/templates/context-manifest.template.md` and produce your artifact at
+**Under `loom run`, you are a typed stage: return a JSON state document and write no files.**
+
+The invocation appends an `OUTPUT CONTRACT` with the exact schema. It overrides everything in this
+section, and it is the one to follow — `loom` writes both the state document and the rendered
+`context-manifest.md` from what you return. Do not create
+`.claude/feature-workspace/<feature-name>/context-manifest.md` yourself; a file you write there is
+overwritten by the render, and prose returned in place of the JSON halts the run at its first stage.
+
+Fill in `pinnedFiles` (each with the reason that stage needs it), `tier`, `targetStage`,
+`knowledgeItems`, `adrs`, and `pruned`. Leave `budget` out entirely — see step 7.
+
+**Outside `loom run`** (invoked directly by a host platform, with no output contract appended):
+read `shared/templates/context-manifest.template.md` and produce
 `.claude/feature-workspace/<feature-name>/context-manifest.md` by filling in the bracketed
-`[placeholder]` markers. Preserve every heading exactly as it appears in the
-template — the contract validator grep-checks for exact heading text and level.
-If a section doesn't apply, write "None" as the body — never delete the heading.
+`[placeholder]` markers, preserving every heading exactly — the contract validator grep-checks for
+exact heading text and level. Leave a section's body empty when it doesn't apply; do not write
+"None". A prose "none" is indistinguishable from content to anything reading these files, which is
+the defect roadmap L3.18 records.
 
 ## Guardrails
 - **Do not** allow more than 10 files to be pinned in the manifest. High cohesion is required.

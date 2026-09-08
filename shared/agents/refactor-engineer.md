@@ -125,7 +125,9 @@ multi-target campaign.
 Read `shared/templates/refactoring-notes.template.md` and produce your artifact at
 `.claude/feature-workspace/<feature-name>/refactoring-notes.md` by filling in the bracketed
 `[placeholder]` markers. Preserve every heading exactly — the contract validator grep-checks
-for exact heading text and level. If a section doesn't apply, write "None" — never delete the heading.
+for exact heading text and level. If a section doesn't apply, leave its body empty — never delete
+the heading, and never write "None" (roadmap L3.18: a prose "none" reads as content, and cost $0.64
+to disprove).
 
 ## Guardrails
 - **Never** skip context-engineer (Phase 0, step 0). Refactoring campaigns that skip context
