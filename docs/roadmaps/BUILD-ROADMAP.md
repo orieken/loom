@@ -1275,6 +1275,23 @@ consecutive gates.
 ### L2.22 — Give the writing stages permission to write
 **Workstream**: TOOLS · **Effort**: S · **Blocked by**: none · **Blocks**: L2.24 · *(raised 2026-09-06, from the second real end-to-end run)*
 
+**SHIPPED 2026-09-07** (`3d825fc`) — the provider passes `--allowed-tools` built from the agent
+definition's own `tools:` frontmatter, plus `--permission-mode acceptEdits` to remove the
+confirmation a headless run has nobody to answer. An agent declaring no tools gets Read/Glob/Grep:
+it has not asked to write, and inferring otherwise would reinstate the silent failure the other way
+round. `bypassPermissions` is deliberately unused and a test keeps it that way.
+
+Verified against the real CLI, because a flag nobody checked is the whole of this defect. Without
+the flags, `permission_denials` carries a `Write` entry and no file appears; with them, no denials
+and the file is created. Still to be confirmed end to end by run 4 — the done-when asks for a
+non-empty `git diff` from a fresh install, and that has not been run yet.
+
+The interim step this item suggested — have `loom install` write a `.claude/settings.local.json`
+allowlist — is deliberately not taken. It was for "until the executor passes a posture", which is
+now, and the markdown pipeline has a human present to answer the prompt.
+
+**L2.24 is unblocked by this.**
+
 1. **Problem**: `claude -p` denies every `Write` and `Edit` by default, and the provider invokes it
    as `exec.CommandContext(ctx, binaryPath, "-p", "--output-format", "json")` with no
    `--permission-mode` and no `--allowed-tools`. **No stage can write a file.** Confirmed directly:
@@ -1360,6 +1377,18 @@ establishes that those facts are real.
 
 ### L2.25 — Generate the enums the validator enforces
 **Workstream**: KERNEL · **Effort**: S · **Blocked by**: L2.9 (shipped) · **Blocks**: none · *(raised 2026-09-06, from the second real end-to-end run)*
+
+**SHIPPED 2026-09-07** (`c2e0aa2`) — closed-set types publish their values once through the
+`Enumerated` interface and derive their own `JSONSchema` from them, so a schema enum cannot drift
+from the constants `valid()` checks. The hand-written enum tags are removed as redundant.
+`TestEveryClosedSetFieldCarriesItsEnum` is the fitness function: it reflects over each stage's Go
+type and asserts every closed-set field's generated schema carries its values. Removing
+`StrideCategory`'s derived schema reproduces the original defect.
+
+**Known gap**: `NonFunctionalRequirement.Category` and `ContextState.Tier` are plain strings with
+hand-written enum tags rather than named types, so the fitness function cannot see them. Their
+enums are present and correct, just not derived. Converting them touches routing predicates changed
+in `ef81c76`.
 
 1. **Problem**: `security_state.go` requires `stride[].category` to be one of six exact literals —
    `SPOOFING`, `INFORMATION_DISCLOSURE`, and so on. The schema handed to the agent declares that
