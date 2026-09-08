@@ -112,7 +112,22 @@ type RunState struct {
 	// a gate (roadmap L4.5), so the signal survives without reading the
 	// timeline. Append-only within a run.
 	Corrections []Correction `json:"corrections,omitempty"`
-	UpdatedAt   time.Time    `json:"updatedAt"`
+	// Spend is every provider call this run has made, accumulated as it
+	// goes and never derived from the stage records.
+	//
+	// L3.22 made a stage record sum its own attempts, which fixed a retry
+	// overwriting a failure. Run 4 found the same under-report through a
+	// second door: re-running one stage requires deleting its record by
+	// hand — `loom` has no rollback command (run 4 §9.1) — and deleting the
+	// record deleted the $1.2389 it had already cost. The executor reported
+	// $20.2718 for a run whose spans total $21.5106, short by exactly the
+	// discarded attempt.
+	//
+	// Money spent is a fact about the run, not a property of a record
+	// someone may remove, so it is accumulated here where nothing about a
+	// stage's later fate can subtract from it.
+	Spend     *Usage    `json:"spend,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // Creator identifies which pipeline owns a state file. The two pipelines

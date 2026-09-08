@@ -394,3 +394,50 @@ func TestRunTotalAgreesWithEveryProviderCall(t *testing.T) {
 func isNear(got, want float64) bool {
 	return math.Abs(got-want) < 1e-9
 }
+
+// Deleting a stage record must not delete what it cost (roadmap L3.22,
+// second occurrence).
+//
+// Re-running one stage requires deleting its record by hand, because loom
+// has no rollback command (run 4 §9.1). Run 4 did exactly that and the
+// executor then reported $20.2718 for a run whose spans total $21.5106 —
+// short by the $1.2389 of the discarded attempt. Money spent is a fact
+// about the run, not a property of a record someone may remove.
+func TestDeletingAStageRecordDoesNotDeleteWhatItCost(t *testing.T) {
+	perCall := &orchestrator.Usage{OutputTokens: 100, CostUSD: 1.2389}
+	executor, _, store, input := newHarness(t, map[string]mock.Script{
+		"analyst":     {ArtifactContent: "# analysis", Usage: perCall},
+		"developer":   {ArtifactContent: "# implementation", Usage: perCall},
+		"qa-engineer": {ArtifactContent: "# qa report", Usage: perCall},
+	})
+	if err := executor.Run(context.Background(), threeStagePlan(), input); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	state := mustLoad(t, store)
+	before := state.TotalUsage().CostUSD
+	// The hand-rollback run 4 performed, reproduced.
+	delete(state.Stages, "developer")
+	if err := store.Save(state); err != nil {
+		t.Fatalf("save rolled-back state: %v", err)
+	}
+
+	after := mustLoad(t, store).TotalUsage().CostUSD
+	if !isNear(after, before) {
+		t.Errorf("total after deleting a record = %v, want the unchanged %v — "+
+			"the deleted attempt was still billed", after, before)
+	}
+}
+
+// A state written before the accumulator existed still totals correctly
+// from its records, so the fix does not silently zero old runs.
+func TestAStateWithNoAccumulatorStillTotalsItsRecords(t *testing.T) {
+	state := &orchestrator.RunState{Stages: map[string]orchestrator.StageRecord{
+		"analyst":   {Usage: &orchestrator.Usage{CostUSD: 0.25}},
+		"developer": {Usage: &orchestrator.Usage{CostUSD: 0.75}},
+	}}
+
+	if got := state.TotalUsage().CostUSD; !isNear(got, 1.0) {
+		t.Errorf("total = %v, want 1.0 derived from the records", got)
+	}
+}
