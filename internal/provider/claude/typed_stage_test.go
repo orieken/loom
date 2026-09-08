@@ -151,7 +151,7 @@ func TestUntypedStagePromptIsUnchanged(t *testing.T) {
 	writeAgentDefinition(t, dir, "developer")
 	provider := New(Config{AgentsDir: dir})
 
-	prompt, err := provider.buildPrompt(orchestrator.Stage{ID: "developer", Agent: "developer"}, orchestrator.StageInput{})
+	prompt, _, err := provider.buildPrompt(orchestrator.Stage{ID: "developer", Agent: "developer"}, orchestrator.StageInput{})
 	if err != nil {
 		t.Fatalf("buildPrompt: %v", err)
 	}
@@ -168,7 +168,7 @@ func TestTypedStagePromptCarriesTheContract(t *testing.T) {
 	writeAgentDefinition(t, dir, "analyst")
 	provider := New(Config{AgentsDir: dir})
 
-	prompt, err := provider.buildPrompt(typedStage(), orchestrator.StageInput{})
+	prompt, _, err := provider.buildPrompt(typedStage(), orchestrator.StageInput{})
 	if err != nil {
 		t.Fatalf("buildPrompt: %v", err)
 	}
