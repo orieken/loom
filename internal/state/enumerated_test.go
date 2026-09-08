@@ -158,3 +158,95 @@ func nestedSchemas(node map[string]any) []map[string]any {
 	}
 	return children
 }
+
+// TestEverySchemaPinsItsVersion is the regression guard for run 4's blocker.
+//
+// schemaVersion reflected as a bare {"type": "integer"} while
+// requireSchemaVersion refuses anything but the current constant. The agent
+// was told "an integer" and validated against an equality check. That was
+// survivable only while the constant was 1 — the value a model writes
+// unprompted — so bumping it to 2 turned a latent hole into a stage-1 halt
+// on every typed stage at once.
+func TestEverySchemaPinsItsVersion(t *testing.T) {
+	for _, schema := range state.StageSchemas() {
+		raw, err := schema.Generate()
+		if err != nil {
+			t.Fatalf("generate %s: %v", schema.Kind, err)
+		}
+		var document struct {
+			Properties struct {
+				SchemaVersion struct {
+					Const *int `json:"const"`
+				} `json:"schemaVersion"`
+			} `json:"properties"`
+		}
+		if err := json.Unmarshal(raw, &document); err != nil {
+			t.Fatalf("decode %s: %v", schema.Kind, err)
+		}
+		pinned := document.Properties.SchemaVersion.Const
+		if pinned == nil {
+			t.Errorf("%s schema does not pin schemaVersion — the agent is told 'an integer' "+
+				"and validated against an equality check", schema.Kind)
+			continue
+		}
+		if *pinned != state.SchemaVersion {
+			t.Errorf("%s schema pins schemaVersion to %d, this build accepts %d",
+				schema.Kind, *pinned, state.SchemaVersion)
+		}
+	}
+}
+
+// TestASchemaConformingDocumentValidates closes the boundary the mock
+// provider cannot reach.
+//
+// The typed context-engineer was recorded as "verified by mock run", and the
+// mock builds its documents in Go where the constant is correct by
+// construction — so no mock can ever exercise the path where a model chooses
+// the value. This builds each document from the SCHEMA the agent is handed,
+// filling every fixed value the schema declares, and asserts the validator
+// accepts it. If the schema and the validator ever disagree again, this fails
+// on a laptop instead of on stage 1 of a paid run.
+func TestASchemaConformingDocumentValidates(t *testing.T) {
+	for _, schema := range state.StageSchemas() {
+		t.Run(string(schema.Kind), func(t *testing.T) {
+			raw, err := schema.Generate()
+			if err != nil {
+				t.Fatalf("generate: %v", err)
+			}
+			document := minimalDocumentFrom(t, raw)
+			payload, err := json.Marshal(document)
+			if err != nil {
+				t.Fatalf("encode: %v", err)
+			}
+			if _, err := state.Decode(schema.Kind, payload); err != nil {
+				// A missing required field is this helper's limitation, not a
+				// contract defect. A rejected schemaVersion is the defect.
+				if strings.Contains(err.Error(), "schemaVersion") {
+					t.Errorf("a document carrying the schema's own declared schemaVersion was refused: %v", err)
+				}
+			}
+		})
+	}
+}
+
+// minimalDocumentFrom builds a document that honours every const the schema
+// declares. It does not attempt to satisfy required lists — the assertion
+// above is scoped to schemaVersion for that reason.
+func minimalDocumentFrom(t *testing.T, raw []byte) map[string]any {
+	t.Helper()
+	var schema struct {
+		Properties map[string]struct {
+			Const any `json:"const"`
+		} `json:"properties"`
+	}
+	if err := json.Unmarshal(raw, &schema); err != nil {
+		t.Fatalf("decode schema: %v", err)
+	}
+	document := map[string]any{}
+	for name, property := range schema.Properties {
+		if property.Const != nil {
+			document[name] = property.Const
+		}
+	}
+	return document
+}

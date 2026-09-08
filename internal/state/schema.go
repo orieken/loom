@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/invopop/jsonschema"
 )
@@ -85,6 +86,7 @@ func SchemaForKind(kind Kind) ([]byte, bool) {
 func (s StageSchema) Generate() ([]byte, error) {
 	reflector := &jsonschema.Reflector{ExpandedStruct: true, DoNotReference: true}
 	schema := reflector.Reflect(s.subject)
+	pinSchemaVersion(schema)
 	var rendered bytes.Buffer
 	encoder := json.NewEncoder(&rendered)
 	encoder.SetIndent("", "  ")
@@ -135,4 +137,28 @@ func decodeInto(payload []byte, target Validatable) (Validatable, error) {
 		return nil, err
 	}
 	return target, nil
+}
+
+// pinSchemaVersion tells the agent the one value schemaVersion may take.
+//
+// It reflected as a bare {"type": "integer"} while requireSchemaVersion
+// refuses anything but the current constant — the agent was asked for "an
+// integer" and validated against an equality check. That was harmless only
+// while the constant was 1, which is what a model writes unprompted; the bump
+// to 2 in bf302c8 made it fatal, and run 4 died on its first stage twice for
+// $2.09 with every stage after it a coin-flip behind.
+//
+// This is the L2.25 discipline applied to the field L2.25 did not cover: a
+// value the validator fixes is derived into the schema from the same
+// constant, never left for the author or the model to guess.
+func pinSchemaVersion(schema *jsonschema.Schema) {
+	if schema == nil || schema.Properties == nil {
+		return
+	}
+	property, found := schema.Properties.Get("schemaVersion")
+	if !found || property == nil {
+		return
+	}
+	property.Const = SchemaVersion
+	property.Description = "Always " + strconv.Itoa(SchemaVersion) + " — the schema version this build accepts."
 }
