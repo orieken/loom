@@ -1549,6 +1549,23 @@ so the one input that did increase is framework, not source — and cache_read s
 scale is not a cost axis in this architecture, because no stage ever reads the repository broadly;
 it reads the handful of files the manifest pins.
 
+**EVIDENCE STALE 2026-09-08 (run 5A).** The 729,694 figure this block rests on does not
+reproduce. Three invocations of `context-engineer` on the identical spec and repository, on the
+current build, mean **2,024,888** — **2.77x** run 3's number and within 3% of run 4's 1,974,775. Run
+4's figure was not an outlier; it is the reproduced level. The measured run-to-run spread is
+**27.4%**, so a 177% shift is six times the noise band and is a real change in level.
+
+This does **not** refute the conclusion. Run 5 held source scale constant, so it says nothing about
+whether source scale drives cost — the question this item answered. What it invalidates is the
+*evidence*: the stated measurement describes a build that no longer exists, and it was a single
+sample from an instrument now known to carry ~27% spread.
+
+**Disposition: neither upheld nor reversed — evidence stale, conclusion untested on the current
+build.** Re-testing means repeating run 3's actual experiment (small repository vs large, today's
+build, n>=3 per condition). Until then `aider-repo-map` and `repomix-codebase-packing` stay
+unbuilt on a conclusion nothing currently supports, which is a weaker position than this block
+claimed. See `docs/audits/loom-e2e-run-5-audit-2026-09-08.md`.
+
 **Therefore**: `aider-repo-map` and `repomix-codebase-packing` should **not** be built. They optimize
 source-discovery cost, which this measurement shows is near zero, and they would add a per-run
 indexing pass to a system whose spend is ~90% prompt-prefix re-caching. The two levers named in
