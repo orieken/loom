@@ -87,6 +87,7 @@ func (s StageSchema) Generate() ([]byte, error) {
 	reflector := &jsonschema.Reflector{ExpandedStruct: true, DoNotReference: true}
 	schema := reflector.Reflect(s.subject)
 	pinSchemaVersion(schema)
+	applyConditionalRequirements(s.Kind, schema)
 	var rendered bytes.Buffer
 	encoder := json.NewEncoder(&rendered)
 	encoder.SetIndent("", "  ")

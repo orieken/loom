@@ -1933,6 +1933,39 @@ projects; a plan assembled only through a UI is none of those. Note also that th
 format first also avoids designing it through a form, which is how a format ends up shaped by a
 widget.
 
+### L3.33 — The architecture schema under-specifies what the validator enforces
+**Workstream**: KERNEL · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-08, from run 4)*
+
+**SHIPPED 2026-09-08.**
+
+1. **Problem**: `validateDecision` requires `fitness` unless the decision is flagged
+   `judgmentOnly`. The generated schema said none of it — `required` listed only `decision` and
+   `rationale`, there was no `if`/`then` or `dependentRequired`, the real rule appeared solely in
+   one field's prose description, and `judgmentOnly` (the escape hatch) carried **no description at
+   all**. Run 4's Experiment A adds one method to one class, so the architect reasonably had a
+   decision with no meaningful fitness function, omitted it, and had no way to learn that
+   `judgmentOnly: true` was how to say so. **$2.52 spent, run abandoned at stage 4 of 12** — and
+   with L3.18's incomplete filter (fixed separately in `a96b6aa`) this is why Experiment A produced
+   no cost or variance data at all.
+2. **Fix**: the conditional is declared once as data in `internal/state/conditional.go`. The
+   validator reads its error message from that declaration and the generator emits it into the
+   schema as an `anyOf` — either `fitness` is present, or `judgmentOnly` is present and `true`.
+   One statement, two consumers, no room to drift. The escape hatch is now documented, since a flag
+   nothing describes cannot be used.
+3. **Done when**: a document using the escape hatch the schema offers is accepted by the validator,
+   and one with neither is still refused naming the hatch. Both asserted.
+
+**The third instance of one defect.** L2.25 (STRIDE enum), L3.28 (`schemaVersion`), L3.33 (this) are
+all "a constraint the validator enforces and the schema does not communicate", and all three were
+invisible to mocks because mocks build valid state in Go.
+`TestEveryConditionalRequirementReachesTheSchema` is the fitness function for the third shape.
+
+**Measured limitation, worth recording.** L3.35's model-boundary test does **not** catch this. It
+was run with L3.33 reintroduced and **passed**: `fitness` only binds when the architect has a
+decision without one, and against L3.35's trivial spec it wrote one for every decision — the same
+reason run 4's Experiment B passed where A failed. L3.35 catches *always-binding* contract defects;
+*conditionally-binding* ones need the unit test. Both files now say so.
+
 ### L3.35 — Test the model boundary, not the mock behind it
 **Workstream**: OBSERVE · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-08, from run 4)*
 

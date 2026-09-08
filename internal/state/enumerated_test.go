@@ -250,3 +250,104 @@ func minimalDocumentFrom(t *testing.T, raw []byte) map[string]any {
 	}
 	return document
 }
+
+// TestEveryConditionalRequirementReachesTheSchema is L3.33's fitness
+// function, and the third instance of one rule.
+//
+// The architecture validator required `fitness` unless `judgmentOnly` was
+// set. The schema said `fitness` was optional, stated the real rule only in
+// one field's prose, and left the escape hatch undocumented — so run 4's
+// architect omitted a fitness function it genuinely did not have, could not
+// discover how to say so, and halted Experiment A at stage 4 for $2.52.
+//
+// A conditional the validator enforces and the schema does not express is
+// the same defect as L3.28's unpinned schemaVersion and L2.25's missing
+// STRIDE enum. This asserts every declared conditional survives generation.
+func TestEveryConditionalRequirementReachesTheSchema(t *testing.T) {
+	architecture := generatedSchemaFor(t, state.KindArchitecture)
+	items := architecture["properties"].(map[string]any)["structuralDecisions"].(map[string]any)["items"].(map[string]any)
+
+	branches, present := items["anyOf"].([]any)
+	if !present {
+		t.Fatal("the architecture schema does not express the fitness/judgmentOnly conditional; " +
+			"an architect with no fitness function has no way to learn how to say so")
+	}
+	if len(branches) != 2 {
+		t.Fatalf("conditional has %d branches, want 2 (field present, or escape hatch true)", len(branches))
+	}
+	assertBranchRequires(t, branches[0], "fitness")
+	assertBranchRequires(t, branches[1], "judgmentOnly")
+
+	// The escape hatch must be documented, or it cannot be used.
+	hatch := items["properties"].(map[string]any)["judgmentOnly"].(map[string]any)
+	if description, _ := hatch["description"].(string); description == "" {
+		t.Error("judgmentOnly carries no description — it is the only way to omit fitness, " +
+			"and run 4's architect could not have known that")
+	}
+}
+
+func assertBranchRequires(t *testing.T, branch any, field string) {
+	t.Helper()
+	required, _ := branch.(map[string]any)["required"].([]any)
+	for _, name := range required {
+		if name == field {
+			return
+		}
+	}
+	t.Errorf("conditional branch %v does not require %q", branch, field)
+}
+
+func generatedSchemaFor(t *testing.T, kind state.Kind) map[string]any {
+	t.Helper()
+	for _, schema := range state.StageSchemas() {
+		if schema.Kind != kind {
+			continue
+		}
+		raw, err := schema.Generate()
+		if err != nil {
+			t.Fatalf("generate %s: %v", kind, err)
+		}
+		var document map[string]any
+		if err := json.Unmarshal(raw, &document); err != nil {
+			t.Fatalf("decode %s: %v", kind, err)
+		}
+		return document
+	}
+	t.Fatalf("no schema for kind %q", kind)
+	return nil
+}
+
+// A document that satisfies the schema's escape-hatch branch must satisfy
+// the validator. This is the property that failed: the two disagreed.
+func TestTheEscapeHatchTheSchemaOffersIsOneTheValidatorAccepts(t *testing.T) {
+	payload := []byte(`{
+		"schemaVersion": 2, "feature": "f",
+		"structuralDecisions": [
+			{"decision": "keep it in the adapter", "rationale": "no meaningful automated check", "judgmentOnly": true}
+		],
+		"boundedContext": {"owning": "console"},
+		"fitnessFunctions": [{"property": "p", "verification": "go test ./..."}]
+	}`)
+
+	if _, err := state.Decode(state.KindArchitecture, payload); err != nil {
+		t.Fatalf("the validator refused a decision using the escape hatch the schema offers: %v", err)
+	}
+}
+
+// And the rule still bites: a decision with neither is still refused.
+func TestADecisionWithNeitherFitnessNorTheHatchIsRefused(t *testing.T) {
+	payload := []byte(`{
+		"schemaVersion": 2, "feature": "f",
+		"structuralDecisions": [{"decision": "d", "rationale": "r"}],
+		"boundedContext": {"owning": "console"},
+		"fitnessFunctions": [{"property": "p", "verification": "go test ./..."}]
+	}`)
+
+	_, err := state.Decode(state.KindArchitecture, payload)
+	if err == nil {
+		t.Fatal("a decision with no fitness function and no judgmentOnly flag was accepted")
+	}
+	if !strings.Contains(err.Error(), "judgmentOnly") {
+		t.Errorf("the error does not name the escape hatch, so it cannot be acted on: %v", err)
+	}
+}

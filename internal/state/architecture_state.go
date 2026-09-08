@@ -130,9 +130,12 @@ func validateDecision(index int, decision StructuralDecision) error {
 	if decision.Decision == "" {
 		return &ValidationError{Field: fieldPath(index, "decision"), Reason: "is required and empty"}
 	}
+	// The message comes from the declaration the schema is generated from,
+	// so what an agent is told and what it is judged by cannot drift
+	// (roadmap L3.33).
 	if decision.Fitness == nil && !decision.JudgmentOnly {
-		return &ValidationError{Field: fieldPath(index, "fitness"),
-			Reason: "is required unless the decision is flagged judgmentOnly (architecture-guardrails.md #7)"}
+		return &ValidationError{Field: fieldPath(index, structuralDecisionFitness.Field),
+			Reason: structuralDecisionFitness.Reason}
 	}
 	return nil
 }

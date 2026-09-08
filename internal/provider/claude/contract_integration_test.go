@@ -45,6 +45,20 @@
 // return a schema-valid analysis that is nonsense, and this passes. It tests
 // the contract boundary, not the reasoning, and it is n=1 per run against a
 // nondeterministic system: a pass is evidence, not proof.
+//
+// More important, and measured rather than assumed: it only catches contract
+// defects that BIND on the spec below. L3.28 bound on every document, because
+// schemaVersion is present in all of them, so this finds it in 23 seconds.
+// L3.33 does not: fitness is only required when the architect HAS a decision
+// with no fitness function, and against this spec it wrote one for every
+// decision. Reintroducing L3.33 and re-running TestTypedStageContract/
+// architecture PASSES — verified, not supposed.
+//
+// So the load-bearing guard for a conditional requirement is the unit test
+// asserting it reaches the generated schema
+// (TestEveryConditionalRequirementReachesTheSchema), not this. Read this file
+// as "the always-binding half of the contract, checked against a real model",
+// which is narrower than its name suggests and is the honest scope.
 package claude
 
 import (
