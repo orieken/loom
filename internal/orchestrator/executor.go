@@ -21,6 +21,11 @@ type Executor struct {
 	onRoute  func(RouteSummary)
 	onLoop   func(LoopRound)
 	tracer   Tracer
+	// workTree fingerprints the repository so a stage that edits source it
+	// never declared it would edit is noticed (roadmap L3.30). Nil disables
+	// the check.
+	workTree       WorkTree
+	onPostureError func(error)
 	// onBaselineError reports a failure to retain what a human was shown at
 	// a gate (roadmap L4.5). Retention is best-effort: it observes a human's
 	// action rather than controlling the run, so a failure is reported and
@@ -371,10 +376,17 @@ func (e *Executor) executeStage(ctx context.Context, stage Stage, plan Plan, inp
 	if projectErr != nil {
 		return e.persistFailure(ctx, state, stageFailure{stage: stage, err: projectErr})
 	}
+	// Fingerprint before the stage runs so a change it makes can be
+	// attributed to it (roadmap L3.30). Internal stages touch no source.
+	before := ""
+	if !stage.Internal {
+		before = e.treeDigest()
+	}
 	output, invokeErr := e.runOrInvoke(ctx, stage, plan, input)
 	if invokeErr != nil {
 		return e.persistFailure(ctx, state, stageFailure{stage: stage, err: invokeErr, usage: output.Usage})
 	}
+	e.notePostureViolation(state, stage, before, output)
 	return e.persistCompletion(state, stage, plan, input, output)
 }
 

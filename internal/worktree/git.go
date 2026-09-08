@@ -1,0 +1,59 @@
+// Package worktree reports what a run has changed in the repository it is
+// running against (roadmap L3.30).
+//
+// The executor needs this to notice a stage editing source it never declared
+// it would edit. Run 4's accessibility-engineer declares
+// `tools: Read, Glob, Grep, Bash` — no edit tool anywhere — and modified
+// handlers.go, correctly and helpfully, through Bash. `--allowed-tools` is an
+// allowlist over named tools, not a write barrier: any stage holding Bash can
+// write through a heredoc or `sed -i`, so "read-only stage" was a property
+// nothing enforced and nothing checked.
+//
+// Checking is the honest response. Enforcing would mean removing Bash from
+// six reviewing stages that legitimately use it to run checks, which costs
+// more than the defect.
+package worktree
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"os/exec"
+)
+
+// Git digests a git working tree.
+type Git struct {
+	root string
+}
+
+// New returns a digester rooted at a repository.
+func New(root string) *Git { return &Git{root: root} }
+
+// Digest fingerprints every uncommitted change in the tree.
+//
+// It hashes content, not just status. `git status --porcelain` alone would
+// have missed run 4's violation entirely: accessibility-engineer edited a
+// file the developer had already modified, so the file's status never
+// changed — only its bytes did.
+func (g *Git) Digest() (string, error) {
+	tracked, err := g.run("diff", "HEAD")
+	if err != nil {
+		return "", err
+	}
+	untracked, err := g.run("status", "--porcelain", "--untracked-files=all")
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(append(tracked, untracked...))
+	return hex.EncodeToString(sum[:]), nil
+}
+
+func (g *Git) run(args ...string) ([]byte, error) {
+	command := exec.Command("git", args...)
+	command.Dir = g.root
+	output, err := command.Output()
+	if err != nil {
+		return nil, fmt.Errorf("git %s in %s: %w", args[0], g.root, err)
+	}
+	return output, nil
+}

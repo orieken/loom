@@ -59,6 +59,11 @@ type StageRecord struct {
 	StaleReason    StaleReason `json:"staleReason,omitempty"`
 	FoundSHA256    string      `json:"foundSha256,omitempty"`
 	SkipReason     string      `json:"skipReason,omitempty"`
+	// PostureViolation is set when a stage changed the working tree without
+	// declaring a tool that writes files (roadmap L3.30). Recorded, not
+	// fatal: run 4's accessibility-engineer did this and its edits were
+	// correct — the defect is that nothing noticed, not that it happened.
+	PostureViolation string `json:"postureViolation,omitempty"`
 	// Iteration counts the rounds a looping stage has run (roadmap L2.17).
 	// Zero and one both mean a first pass; Sequence is unaffected, because
 	// a re-run is the same step of the run, not a new one.

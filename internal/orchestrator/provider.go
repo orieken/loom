@@ -29,6 +29,11 @@ type StageOutput struct {
 	// executor validates it against the stage's schema and writes it as the
 	// stage's artifact; stages that still write markdown leave it empty.
 	Payload []byte
+	// DeclaredWriteAccess reports whether this stage's own definition asked
+	// for a tool that authors files. False means the stage said it only
+	// reads — and a false here alongside a changed working tree is the
+	// posture violation L3.30 records.
+	DeclaredWriteAccess bool
 	// Usage is what the invocation consumed, as the provider reported it
 	// (roadmap L3.8). Nil from a provider that reports nothing.
 	Usage *Usage

@@ -87,9 +87,18 @@ func permissionArgs(allowed []string) []string {
 }
 
 // writeTools are the tools whose presence means a stage's job includes
-// changing the working tree. Read/Glob/Grep/Bash are deliberately excluded:
-// Bash can technically write, but a stage that declares Bash without an edit
-// tool (code-reviewer, analyst) declares it to run checks, not to author code.
+// changing the working tree.
+//
+// Read/Glob/Grep/Bash are excluded because a stage declaring Bash without an
+// edit tool is asking to run checks, not to author code — that is what the
+// declaration MEANS, and it is what decides whether the output contract
+// invites the stage to write.
+//
+// It is not a guarantee about what the stage DOES, and this comment used to
+// claim it was. Run 4's accessibility-engineer holds exactly
+// Read/Glob/Grep/Bash and edited handlers.go through Bash. The list is still
+// right for its purpose; the claim about behaviour was wrong, and the gap it
+// left is now checked rather than assumed (roadmap L3.30).
 func writeTools() []string {
 	return []string{"Write", "Edit", "MultiEdit", "NotebookEdit"}
 }

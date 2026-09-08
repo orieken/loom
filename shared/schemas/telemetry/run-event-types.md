@@ -19,6 +19,7 @@ emitter.
 | `loop.exhausted` | A bounded loop reached its iteration limit. | `loop`, `stage`, `iteration` | L2.17 |
 | `loop.iterated` | A bounded loop sent its span round again. | `loop`, `stage`, `iteration` | L2.17 |
 | `policy.evaluated` | The policies watching a gate were evaluated; the run halts regardless. | `gate`, `reason`, `correction` | L2.16 |
+| `posture.violation` | A stage changed the working tree without declaring a tool that writes files. | `stage`, `reason` | L3.30 |
 | `run.completed` | Every stage of the plan settled. | — | M0.4 |
 | `run.started` | A run began or resumed. | — | M0.4 |
 | `stage.completed` | A stage finished and its artifact was digested. | `stage`, `sequence` | M0.4 |

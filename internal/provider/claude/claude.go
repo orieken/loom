@@ -74,7 +74,9 @@ func (p *Provider) Invoke(ctx context.Context, stage orchestrator.Stage, input o
 	if err != nil {
 		return orchestrator.StageOutput{}, err
 	}
-	return p.runSubprocess(ctx, binaryPath, prompt, allowed, stage, input)
+	output, err := p.runSubprocess(ctx, binaryPath, prompt, allowed, stage, input)
+	output.DeclaredWriteAccess = writesFiles(allowed)
+	return output, err
 }
 
 // buildPrompt composes the stage prompt: the full agent definition, then the

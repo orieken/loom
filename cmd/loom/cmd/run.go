@@ -14,6 +14,7 @@ import (
 	"github.com/orieken/loom/internal/planfile"
 	"github.com/orieken/loom/internal/policy"
 	"github.com/orieken/loom/internal/telemetry"
+	"github.com/orieken/loom/internal/worktree"
 	"github.com/spf13/cobra"
 )
 
@@ -119,6 +120,10 @@ type runSetup struct {
 func executeRun(cmd *cobra.Command, setup runSetup) error {
 	plan, provider, store, input := setup.plan, setup.provider, setup.store, setup.input
 	executor := orchestrator.NewExecutor(provider, store)
+	// Fingerprint the repository around each stage so one that edits source
+	// it never declared it would edit is noticed (roadmap L3.30).
+	executor.WithWorkTree(worktree.New(input.ProjectRoot))
+	executor.OnPostureError(func(err error) { cmd.PrintErrf("warning: posture check unavailable: %v\n", err) })
 	executor.WithPolicies(setup.policies)
 	executor.OnPolicyDecision(func(decision policy.Decision) { reportPolicyDecision(cmd, decision) })
 	stopTelemetry, err := startTelemetry(cmd, executor, input.WorkspaceDir)
