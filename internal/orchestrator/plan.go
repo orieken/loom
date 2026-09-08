@@ -150,6 +150,7 @@ func defaultSkippableStages() map[string]bool {
 // the analyst -> architect hop; every other stage still writes markdown.
 func defaultTypedStages() (kinds map[string]string, consumes map[string][]string) {
 	return map[string]string{
+		"context-engineer":  string(state.KindContext),
 		"analyst":           string(state.KindAnalysis),
 		RouterStageID:       string(state.KindRoute),
 		"architect":         string(state.KindArchitecture),

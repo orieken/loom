@@ -7,6 +7,11 @@ import "context"
 type StageInput struct {
 	SpecPath     string
 	WorkspaceDir string
+	// ProjectRoot is the repository the run targets. It is what a manifest's
+	// repo-relative paths resolve against when the executor measures them
+	// (roadmap L3.25). Empty falls back to deriving it from WorkspaceDir,
+	// which sits at <root>/.claude/feature-workspace/<feature>/.
+	ProjectRoot string
 	// UpstreamState holds the projected slice of each upstream stage's
 	// typed state this stage is allowed to read (roadmap L2.9), keyed by
 	// the stage it came from — a stage can read several, and which one a

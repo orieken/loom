@@ -16,7 +16,14 @@ import (
 // SchemaVersion identifies the shape of every state document in this
 // package. A document carrying a different version is refused at load
 // rather than migrated — nothing is deployed anywhere yet.
-const SchemaVersion = 1
+//
+// 2 (roadmap L3.24, L3.25): NonFunctionalRequirement.Threshold became a
+// typed {metric, value, unit} rather than free text, AnalysisState gained
+// Surfaces, and ContextState was added. The first two exist so a routing
+// predicate reads a fact a model cannot satisfy by writing a sentence, which
+// means an analysis written against v1 cannot be routed correctly and must
+// not be loaded as though it could.
+const SchemaVersion = 2
 
 // ValidationError names the field that failed and why, so a failing stage
 // reports something a human can act on.

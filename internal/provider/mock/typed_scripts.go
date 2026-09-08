@@ -20,23 +20,27 @@ func TypedScript(kind string) (Script, bool) {
 	return Script{Payload: payload}, true
 }
 
+// typedPayloads maps a state kind to the scripted document the mock
+// returns for it. A table rather than a switch: it is data, and it gains an
+// entry with every stage that becomes typed.
+func typedPayloads() map[state.Kind]func() interface{} {
+	return map[state.Kind]func() interface{}{
+		state.KindContext:        func() interface{} { return sampleContext() },
+		state.KindAnalysis:       func() interface{} { return sampleAnalysis() },
+		state.KindArchitecture:   func() interface{} { return sampleArchitecture() },
+		state.KindReview:         func() interface{} { return SampleReview(state.VerdictApproved) },
+		state.KindImplementation: func() interface{} { return sampleImplementation() },
+		state.KindSecurity:       func() interface{} { return sampleSecurity() },
+		state.KindQA:             func() interface{} { return sampleQA() },
+	}
+}
+
 func typedPayload(kind state.Kind) ([]byte, bool) {
-	switch kind {
-	case state.KindAnalysis:
-		return mustEncode(sampleAnalysis()), true
-	case state.KindArchitecture:
-		return mustEncode(sampleArchitecture()), true
-	case state.KindReview:
-		return mustEncode(SampleReview(state.VerdictApproved)), true
-	case state.KindImplementation:
-		return mustEncode(sampleImplementation()), true
-	case state.KindSecurity:
-		return mustEncode(sampleSecurity()), true
-	case state.KindQA:
-		return mustEncode(sampleQA()), true
-	default:
+	build, scripted := typedPayloads()[kind]
+	if !scripted {
 		return nil, false
 	}
+	return mustEncode(build()), true
 }
 
 // mustEncode panics only on a programming error: these values are compiled
@@ -107,6 +111,20 @@ func sampleQA() state.QAState {
 		TestFilesCreated: []string{"internal/mock/thing_test.go"},
 		Coverage:         state.CoverageSummary{AcceptanceCriteriaCovered: 1, AcceptanceCriteriaTotal: 1, NewTests: 1},
 		TestResults:      state.TestResults{Passed: 1},
+	}
+}
+
+// sampleContext pins a file the mock cannot promise exists. That is
+// deliberate: the executor measures pinned files from disk, and a scripted
+// manifest whose file is absent exercises the unmeasurable path rather than
+// pretending measurement always succeeds.
+func sampleContext() state.ContextState {
+	return state.ContextState{
+		SchemaVersion: state.SchemaVersion,
+		Feature:       "mock-feature",
+		Tier:          "analyst",
+		TargetStage:   "analyst",
+		PinnedFiles:   []state.PinnedFile{{Path: "internal/mock/thing.go", Reason: "scripted"}},
 	}
 }
 

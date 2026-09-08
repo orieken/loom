@@ -195,7 +195,13 @@ func prepareRunWorkspace(specPath string) (string, orchestrator.StageInput, erro
 	if err := os.MkdirAll(workspace, 0o755); err != nil {
 		return "", orchestrator.StageInput{}, fmt.Errorf("create workspace: %w", err)
 	}
-	return workspace, orchestrator.StageInput{SpecPath: absSpec, WorkspaceDir: workspace}, nil
+	// The workspace is created under the current directory, so that is the
+	// project a manifest's repo-relative paths resolve against (L3.25).
+	root, err := filepath.Abs(".")
+	if err != nil {
+		return "", orchestrator.StageInput{}, fmt.Errorf("resolve project root: %w", err)
+	}
+	return workspace, orchestrator.StageInput{SpecPath: absSpec, WorkspaceDir: workspace, ProjectRoot: root}, nil
 }
 
 // checkResumeState enforces the resume contract: --resume requires existing
