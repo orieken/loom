@@ -188,3 +188,51 @@ produces an empty diff, L2.22 is not fixed regardless of the probe result.
 Run 3 cost $9.49. Three A runs at the projected saving ≈ $21, plus Experiment B's larger feature
 ≈ $12–15. **Expect $33–40.** If A's first run comes in above $11, stop and find out why before
 spending the rest.
+
+---
+
+## 8. Attempt 1 — aborted at stage 1 (2026-09-08)
+
+Setup verified clean against every §5 check: 1,547 tracked files / 21,826 lines, spec md5
+`b16ccb20d09e524602f9495f372e1819` in all three A clones, **0 deleted tracked files** across four
+clones where run 3 left 124 (L3.26 confirmed), cache read-only, no hand-patching, A3 left bare.
+
+Both A runs then died identically on the first stage:
+
+```
+stage "context-engineer" returned invalid state: field "schemaVersion" is 1, this build supports 2
+```
+
+**A1 $0.8226, A2 $1.2632. $2.09 spent, zero stages completed.** No workaround applied, per §5.1.
+
+**Cause**: `schemaVersion` reflected as a bare `{"type": "integer"}` while the validator refused
+anything but the constant. Latent for as long as the field has existed and harmless while the
+constant was 1; the bump to 2 in `bf302c8` activated it across all eight schemas at once. Fixed in
+`9580614` by deriving the `const` from the constant, with a test that builds each document from the
+schema the agent receives — the boundary a mock provider cannot reach, and the one §1 recorded the
+typed context-engineer as "verified by" .
+
+### What attempt 1 says about A1, despite measuring nothing
+
+The two `context-engineer` cache_read figures — **1,000,545 (A1) and 2,005,958 (A2)** — are from
+failed stages and are **not** an A1 measurement. They are still worth reading as a caution: same
+spec, same repository, same stage, and a **2.0× spread**.
+
+Part of that is explained by different amounts of work before failing (4,541 vs 10,638 output
+tokens), so it is not a clean variance sample. But A1's rule asks whether the spread of a *completed*
+stage is ≤15%, and the only same-condition pair observed so far is 100% apart. **Lower confidence
+that A1 clears 15%** — and note that a >30% spread is the outcome that reopens L3.19's `RESOLVED`
+block. Do not treat that as the unlikely branch.
+
+### Ordering for attempt 2
+
+**Experiment B first**, then A×3 only if B completes.
+
+B is already the brief's more important experiment, it is n=1 so a further confound costs it least,
+and it is the better canary: it routes in more stages than A, so it exercises more typed schemas per
+dollar. If another model-boundary defect exists, B surfaces it for ~$12 rather than ~$35.
+
+**On the confound**: the `schemaVersion` fix does not sharpen §6.1. It changes no routing predicate,
+nothing about what a stage reads, and nothing about what a stage costs — only whether a document
+validates. Every axis A1, A2, B1 and B2 measure is untouched by it. It is a ninth commit, not a
+ninth variable.
