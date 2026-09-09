@@ -1321,6 +1321,17 @@ only exists on the real path — the entire class the mock cannot see.
 ### L2.23 — Stop instructing the writing stages not to write
 **Workstream**: KERNEL · **Effort**: S · **Blocked by**: none · **Blocks**: L2.24 · *(raised 2026-09-06, from the second real end-to-end run)*
 
+**SHIPPED 2026-09-08** (as part of L3.29's fix) — `fileClause` conditions the clause on the stage's
+own declared posture. A stage holding no edit tool is still told not to write; a stage holding one is
+told to make its changes and that the JSON *reports* work it must verify with `git status` before
+answering. Verified end to end: the developer went from an empty `git diff` to 304 insertions across
+exactly the four files its design named.
+
+**Not fully closed.** Five other typed agents still carry a "produce your artifact at `<name>.md`"
+instruction that the appended output contract overrides. Run 4 completed all twelve stages, so the
+contract empirically wins — but that is evidence, not a guarantee, and the contradiction is still in
+the prompts.
+
 1. **Problem**: `typedInstruction` appends to every typed stage's prompt:
    *"Return a single JSON object conforming to this schema, and nothing else. **Do not write files.**
    Do not add commentary before or after the JSON."* `developer` (`KindImplementation`) and
@@ -1622,6 +1633,11 @@ Five small defects, each individually trivial, grouped so none is lost.
 ### L3.21 — `extractJSON` rejects a valid state document preceded by one sentence
 **Workstream**: PLATFORM · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-07, from the third real end-to-end run)*
 
+**SHIPPED 2026-09-07** (`c19bd64`) — the last fenced block holding an object wins. The *last*
+specifically, because a schema example an agent quotes back precedes its real answer and never
+follows it, which a test pins. A block holding something else (a shell command after the answer) is
+passed over rather than fatal; a response with no JSON object still fails.
+
 1. **Problem**: The third real run **died at `qa-engineer`** with
    `agent did not return a JSON state document — got: Now producing the final QA state JSON.` The
    agent's JSON was complete, valid and schema-conformant; it was preceded by a single sentence of
@@ -1653,6 +1669,9 @@ deterministic one — it cannot be reproduced on demand, so it gets rediscovered
 
 ### L3.22 — The run summary under-reports what the run actually cost
 **Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-07)*
+
+**SHIPPED 2026-09-07** (`0927b82`) — a stage record accumulates every attempt rather than being
+overwritten by the last. **Recurred and was re-fixed 2026-09-08** (`a3ebaee`); see the note below.
 
 1. **Problem**: The third run's completion line and `loom memory runs` both report **$8.7978**.
    Summing `loom.usage.cost_usd` across every `generate_content` span in `traces.jsonl` gives
