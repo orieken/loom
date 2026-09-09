@@ -40,6 +40,22 @@ func reportRunUsage(cmd *cobra.Command, store *orchestrator.StateStore) {
 	reportPostureViolations(cmd, state)
 }
 
+// reportPostureErrorOnce warns that the tree cannot be fingerprinted, one
+// time. The check runs per stage, so an unfingerprintable tree — a project
+// with no git repository, most often — would otherwise print the same line
+// fifteen times and bury everything else.
+func reportPostureErrorOnce(cmd *cobra.Command) func(error) {
+	var reported bool
+	return func(err error) {
+		if reported {
+			return
+		}
+		reported = true
+		cmd.PrintErrf("warning: cannot check what stages change (%v) — "+
+			"posture checking is off for this run\n", err)
+	}
+}
+
 // reportPostureViolations names any stage that changed source it never
 // declared it would change (roadmap L3.30). Buried in the timeline it would
 // go unread, which is how run 4's edits reached the shipped tree without

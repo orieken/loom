@@ -89,3 +89,22 @@ func writeFile(t *testing.T, path, content string) {
 		t.Fatalf("write %s: %v", path, err)
 	}
 }
+
+// A freshly initialised repository has no HEAD, so `git diff HEAD` fails.
+// That is an ordinary state — every file in it is untracked and the status
+// output already describes the whole tree — and it must not make the digest
+// unavailable. Before this, every stage of a run in such a repo printed a
+// warning.
+func TestGitDigestWorksInARepositoryWithNoCommits(t *testing.T) {
+	dir := t.TempDir()
+	initRepo(t, dir)
+	writeFile(t, filepath.Join(dir, "main.go"), "package main\n")
+	tree := worktree.New(dir)
+
+	before := digest(t, tree)
+	writeFile(t, filepath.Join(dir, "other.go"), "package other\n")
+
+	if after := digest(t, tree); before == after {
+		t.Error("the digest did not notice a new file in a repository with no commits")
+	}
+}

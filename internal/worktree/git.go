@@ -36,21 +36,33 @@ func New(root string) *Git { return &Git{root: root} }
 // file the developer had already modified, so the file's status never
 // changed — only its bytes did.
 func (g *Git) Digest() (string, error) {
-	tracked, err := g.run("diff", "HEAD")
+	status, err := g.run("status", "--porcelain", "--untracked-files=all")
 	if err != nil {
 		return "", err
 	}
-	untracked, err := g.run("status", "--porcelain", "--untracked-files=all")
+	tracked, err := g.trackedDiff()
 	if err != nil {
 		return "", err
 	}
-	sum := sha256.Sum256(append(tracked, untracked...))
+	sum := sha256.Sum256(append(tracked, status...))
 	return hex.EncodeToString(sum[:]), nil
+}
+
+// trackedDiff is empty in a repository with no commits, where `git diff
+// HEAD` fails because there is no HEAD to diff against. That is an ordinary
+// state — a freshly initialised project — and every file in it is untracked,
+// so the status output above already describes the whole tree.
+func (g *Git) trackedDiff() ([]byte, error) {
+	if _, err := g.run("rev-parse", "--verify", "HEAD"); err != nil {
+		return nil, nil
+	}
+	return g.run("diff", "HEAD")
 }
 
 func (g *Git) run(args ...string) ([]byte, error) {
 	command := exec.Command("git", args...)
 	command.Dir = g.root
+	command.Stderr = nil
 	output, err := command.Output()
 	if err != nil {
 		return nil, fmt.Errorf("git %s in %s: %w", args[0], g.root, err)

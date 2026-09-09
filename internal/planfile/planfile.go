@@ -61,6 +61,12 @@ func Parse(source []byte, displayPath string) (orchestrator.Plan, error) {
 	return definition.resolve(lines, displayPath)
 }
 
+// unmarshalDefinition decodes a plan file's fields without resolving them,
+// for callers that want what the file says rather than a runnable plan.
+func unmarshalDefinition(source []byte, into *Definition) error {
+	return yaml.Unmarshal(source, into)
+}
+
 func (d Definition) validate(lines lineIndex, path string) error {
 	if d.Version != Version {
 		return lines.errorAt("version", path,

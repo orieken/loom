@@ -123,7 +123,7 @@ func executeRun(cmd *cobra.Command, setup runSetup) error {
 	// Fingerprint the repository around each stage so one that edits source
 	// it never declared it would edit is noticed (roadmap L3.30).
 	executor.WithWorkTree(worktree.New(input.ProjectRoot))
-	executor.OnPostureError(func(err error) { cmd.PrintErrf("warning: posture check unavailable: %v\n", err) })
+	executor.OnPostureError(reportPostureErrorOnce(cmd))
 	executor.WithPolicies(setup.policies)
 	executor.OnPolicyDecision(func(decision policy.Decision) { reportPolicyDecision(cmd, decision) })
 	stopTelemetry, err := startTelemetry(cmd, executor, input.WorkspaceDir)
