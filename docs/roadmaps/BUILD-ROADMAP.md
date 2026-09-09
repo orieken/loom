@@ -2177,6 +2177,42 @@ this arguable at §12.4 — the unreviewed edits were correct, so the finding re
 than outcome — and it is recorded as a defect for exactly that reason: the run got a good result
 from a mechanism that does not guarantee one.
 
+### L3.37 — A form for composing pipelines
+**Workstream**: PLATFORM · **Effort**: M · **Blocked by**: L3.27 (shipped) · **Blocks**: none · *(raised 2026-09-09)*
+
+**SHIPPED 2026-09-09** (`6785221`).
+
+1. **Problem**: L3.27 gave a pipeline a definition; nothing made the definition discoverable. A team
+   had to know the YAML by heart, and had no way to see which plans a project could run.
+2. **What shipped**: `loom plan list` and `loom plan show <name>`, which work anywhere including CI,
+   and `loom plan new`, a `huh` form. A plan file that does not parse is listed as **BROKEN with its
+   error** rather than omitted.
+3. **The design decision**: the form gathers a name and a stage set and **does not validate**. What
+   it renders goes through `planfile.Parse` before it reaches disk, so a composed plan obeys exactly
+   the rules a hand-written one does and a rule added to the loader covers this command for free. A
+   form with its own idea of what is legal is how the two drift. A test composes a plan with a
+   missing upstream and asserts the refusal carries the loader's words.
+4. **Deselect, do not reorder.** Stages are offered in the built-in plan's order, all selected.
+   Reordering is a text edit — the built-in order is the only one this command could offer without
+   inventing a second source of truth for which order is right, and "the same pipeline minus the
+   stages we do not staff" is the case L3.27 came from. Each option carries its gate and whether it
+   is routable, since that is the reason to keep a stage and is invisible in a list of bare names.
+5. **`--accessible`** swaps the full-screen TUI for plain prompts: for screen readers, and because
+   it is the only mode that works in a terminal which does not answer the capability queries
+   (OSC 11, cursor position) the full-screen renderer blocks on.
+
+**Two defects found by driving the real form, not by reading it.** `validatePlanName` trimmed before
+checking while the raw value became the filename, so a name with a trailing space produced
+`my-plan .yaml` — observed in a PTY, not theorised. And the write path now validates too, because
+`--name` skips the prompt the form's validator runs in.
+
+**Dependency added**: `charmbracelet/huh`. The CLI was cobra and `go-isatty` before this; a TUI stack
+was the adoption decision L3.27 named, and it is taken here rather than assumed.
+
+**Not built**: reordering stages, and editing an existing plan. Both are text edits on a format
+designed to be edited by hand, and neither is worth a form until someone finds the text edit
+insufficient.
+
 ### L3.13 — Derive agent quality metrics from execution
 **Workstream**: OBSERVE · **Effort**: M · **Blocked by**: L3.5 (shipped), L3.8 (shipped) · **Blocks**: none
 
