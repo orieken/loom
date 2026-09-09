@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 2,
+  "feature": "console-log-filtering",
+  "testFilesCreated": [],
+  "testFilesModified": [
+    "packages/saturday-core/tests/utils/console-logger.spec.ts"
+  ],
+  "coverage": {
+    "acceptanceCriteriaCovered": 4,
+    "acceptanceCriteriaTotal": 4,
+    "newTests": 5,
+    "statements": [
+      {
+        "unit": "packages/saturday-core/src/utils/console-logger.ts",
+        "percent": 100
+      },
+      {
+        "unit": "packages/saturday-core (package-wide)",
+        "percent": 86.08
+      }
+    ]
+  },
+  "testResults": {
+    "passed": 171,
+    "failed": 0,
+    "skipped": 0,
+    "skipReasons": []
+  },
+  "accessibilityCheck": [],
+  "bugsFound": [],
+  "knownGaps": [],
+  "notesForTechWriter": [
+    "getLogsByType(type: string) is a public method on ConsoleLogger (packages/saturday-core/src/utils/console-logger.ts) — returns entries filtered by exact, case-sensitive type match, empty array (never undefined) when nothing matches, does no I/O, and does not mutate the internal log buffer.",
+    "No public API surface changes beyond the new method; no new exports or config needed."
+  ],
+  "retrieval": {
+    "domainTerms": [],
+    "issueRefs": [
+      "console-log-filtering"
+    ],
+    "linkedAdrs": [],
+    "linkedKis": []
+  }
+}

@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 2,
+  "feature": "console-log-filtering",
+  "summary": "Add a `getLogsByType(type: string)` query method to the existing `ConsoleLogger` class in `packages/saturday-core/src/utils/console-logger.ts` so that callers can retrieve only the captured console log entries matching a given type (e.g. `'error'`) instead of filtering the full `getLogs()` array by hand at every call site. This is a small, purely additive read-only method following the existing `getLogs()`/`getFormattedLogs()`/`clear()` style on an already-exported class — no new package, base class, layer boundary, or API surface is introduced.",
+  "acceptanceCriteria": [
+    {
+      "statement": "getLogsByType('error') returns only entries whose type is 'error'",
+      "examples": [
+        "logs = [{type:'log',...}, {type:'error',...}, {type:'error',...}] → getLogsByType('error') returns the 2 entries with type 'error', in original capture order"
+      ]
+    },
+    {
+      "statement": "An unmatched type returns an empty array, never undefined",
+      "examples": [
+        "getLogsByType('warning') on a logs array containing no 'warning' entries returns [] (Array.isArray === true, length 0), not undefined or null"
+      ]
+    },
+    {
+      "statement": "The method performs no I/O and does not mutate the captured logs",
+      "examples": [
+        "Calling getLogsByType(...) does not change the length or contents of the array subsequently returned by getLogs(); no page/network/filesystem access occurs inside the method"
+      ]
+    },
+    {
+      "statement": "A unit test in packages/saturday-core/tests/utils/console-logger.spec.ts covers the match case and the empty-result case"
+    }
+  ],
+  "nonFunctionalRequirements": [],
+  "proposedFitnessFunctions": [
+    {
+      "property": "getLogsByType is a pure, synchronous, non-mutating query (no I/O, no side effects on this.logs)",
+      "verification": "code-reviewer inspection of the method body (must be a single synchronous Array.filter over this.logs, no async/await, no this.page.* calls, no reassignment of this.logs) plus the QA test asserting getLogs() is unchanged after a getLogsByType() call",
+      "owner": "code-reviewer",
+      "judgmentOnly": true
+    }
+  ],
+  "outOfScope": [
+    "Changes to getLogs(), getFormattedLogs(), or clear()",
+    "Changes to ConsoleLogger consumers (packages/saturday-cucumber/src/world/saturday-world.ts, hooks/setup.ts) — they construct/store the instance but have no getLogs().filter(...) call site to migrate",
+    "Barrel export changes in packages/saturday-core/src/index.ts — ConsoleLogger is already exported via `export * from './utils/console-logger'`",
+    "The separate apps/ye-olde-magic-shop/saturday-core/src/utils/console-logger.ts copy — spec names the packages/ path explicitly and this is not a symlink to it",
+    "Case-insensitive or fuzzy type matching",
+    "Extracting the log entry shape into a named exported type (e.g. ConsoleLogEntry) — see Open Questions"
+  ],
+  "surfaces": {
+    "ui": false,
+    "runtime": false
+  },
+  "boundedContext": {
+    "owning": "Saturday Framework — Console Log Capture (saturday-core test tooling)",
+    "crossings": []
+  },
+  "domainEvents": {
+    "commands": [],
+    "eventsProduced": [],
+    "owningAggregates": [
+      "ConsoleLogger"
+    ],
+    "readModels": [
+      "captured console log entries (filtered by type)"
+    ]
+  },
+  "affectedComponents": [
+    {
+      "path": "packages/saturday-core/src/utils/console-logger.ts",
+      "reason": "Add the new public getLogsByType(type: string) method that filters the private this.logs array by exact type match and returns the result"
+    },
+    {
+      "path": "packages/saturday-core/tests/utils/console-logger.spec.ts",
+      "reason": "Add unit tests for the match case and the empty-result (never-undefined) case per AC #4, reusing the existing mockPage/consoleListener harness"
+    }
+  ],
+  "dataModelChanges": [
+    {
+      "description": "None — no persisted or transmitted data model changes; this reads the existing in-memory `logs` array shape ({type, text, location, timestamp}) unchanged",
+      "phase": "none"
+    }
+  ],
+  "apiChanges": [],
+  "newDependencies": [],
+  "architecturalFlags": [
+    "Architect not required — purely additive query method on an already-exported class, following the existing getLogs()/getFormattedLogs()/clear() pattern; no new package, base class, interface, or layer-boundary change.",
+    "No DOMAIN_DICTIONARY.md update proposed — ConsoleLogger is Saturday framework test tooling (test-run infrastructure), not a business/product domain concept the dictionary governs; grepped DOMAIN_DICTIONARY.md for 'Console'/'Logger'/'log entry' and found no existing entries to reconcile against.",
+    "Security-reviewer not required — no auth, input from untrusted external actors, network I/O, or trust-boundary crossing; the `type` argument is caller-supplied test code, not user input."
+  ],
+  "retrieval": {
+    "domainTerms": [],
+    "issueRefs": [],
+    "linkedAdrs": [],
+    "linkedKis": []
+  },
+  "tasks": {
+    "developer": [
+      "In packages/saturday-core/src/utils/console-logger.ts, add `public getLogsByType(type: string) { return this.logs.filter((log) => log.type === type); }` immediately after the existing getLogs() method, matching its return-style (no explicit return type annotation, consistent with getLogs())",
+      "Do not modify setupConsoleListener, getFormattedLogs, or clear — this is an additive, read-only method"
+    ],
+    "qa": [
+      "Add test 'getLogsByType returns only entries matching the given type' to packages/saturday-core/tests/utils/console-logger.spec.ts: push 2+ log entries of differing types via the existing consoleListener mock harness, call getLogsByType('error'), assert the returned array contains only the matching entries in capture order",
+      "Add test 'getLogsByType returns an empty array, never undefined, for an unmatched type': call getLogsByType('warning') against logs with no matching entries (including the zero-logs case) and assert Array.isArray(result) === true and result.length === 0",
+      "Add an assertion (in either test or a dedicated one) that calling getLogsByType(...) does not mutate the array returned by a subsequent getLogs() call — covers AC #3's no-mutation requirement"
+    ],
+    "techWriter": [
+      "No package-level README exists for saturday-core and no docs/ files reference ConsoleLogger's public API today (confirmed via grep) — no doc update is required beyond this feature's own docs/features/console-log-filtering/ record",
+      "If the monorepo maintains a root or package-level CHANGELOG, add an entry noting the new ConsoleLogger.getLogsByType(type) method"
+    ],
+    "devops": []
+  },
+  "edgeCases": [
+    {
+      "case": "logs array is empty (no console messages captured yet) when getLogsByType is called",
+      "handling": "Array.prototype.filter on an empty array returns [], satisfying AC #2 with no special-casing needed"
+    },
+    {
+      "case": "type argument is an empty string or a value that never appears in playwright's ConsoleMessage.type() output (e.g. 'trace', 'startGroup')",
+      "handling": "Treated like any other unmatched type — exact string equality against log.type, returns [] rather than throwing or returning undefined"
+    },
+    {
+      "case": "Multiple captured entries share the same type",
+      "handling": "All matching entries are returned, preserving original capture (chronological) order, since filter preserves array order"
+    },
+    {
+      "case": "Case sensitivity of the type argument vs. captured log.type",
+      "handling": "Exact, case-sensitive equality only — no normalization. Playwright's ConsoleMessage.type() already returns consistently lowercase values ('log', 'error', 'warning', 'info', 'debug'), so this matches existing caller expectations without added complexity"
+    }
+  ],
+  "definitionOfDone": [
+    "getLogsByType(type: string) is implemented in packages/saturday-core/src/utils/console-logger.ts per AC #1–#3",
+    "Unit tests for the match case and the empty-result (never-undefined) case are added to packages/saturday-core/tests/utils/console-logger.spec.ts and pass",
+    "All pre-existing ConsoleLogger tests (listener registration, log collection, formatting with/without location, clear) still pass unmodified",
+    "No production dependency was added; no files outside packages/saturday-core were changed",
+    "Coverage on console-logger.ts remains at or above the framework's 85% threshold (testing-conventions.md)",
+    "code-reviewer has confirmed getLogsByType is synchronous, side-effect-free, and does not mutate this.logs"
+  ],
+  "openQuestions": [
+    "The captured log entry shape ({type, text, location, timestamp}) is currently an inline anonymous type on the private `logs` field, and getLogsByType's return type will be inferred from the same inline shape. Now that two public methods (getLogs, getLogsByType) both surface this shape, should it be extracted into a named exported type (e.g. `ConsoleLogEntry`) for callers to reference in their own type annotations? Spec doesn't request this, and current scope treats it as out-of-scope, but flagging since it's the kind of thing that tends to get asked for immediately after this ships."
+  ]
+}
