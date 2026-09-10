@@ -17,6 +17,7 @@ package orchestrator
 // deliberately does not claim.
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -107,3 +108,57 @@ func missingPaths(root string, paths []string) []string {
 
 // OnClaimWarning reports a claim that is suspicious rather than false.
 func (e *Executor) OnClaimWarning(report func(error)) { e.onClaimWarning = report }
+
+// MeasurementVerifier reproduces a claim a stage made about the project.
+// Injected so the executor keeps no process-spawning dependency of its own
+// (architecture-guardrails.md #1); nil disables verification, and a claim is
+// then recorded unverified rather than treated as confirmed.
+type MeasurementVerifier interface {
+	// VerifyTests runs whatever the project says proves its suite passes.
+	VerifyTests(ctx context.Context, root string) (verified bool, unverifiable bool, reason string)
+}
+
+// WithMeasurementVerifier enables reproducing a stage's measurements.
+func (e *Executor) WithMeasurementVerifier(verifier MeasurementVerifier) *Executor {
+	e.verifier = verifier
+	return e
+}
+
+// verifyMeasurements reproduces what a stage says it measured.
+//
+// Only one claim is checked today and the boundary is deliberate: a stage
+// asserting a green suite is asserting something the project can re-run. A
+// coverage percentage is not reproducible without also parsing a coverage
+// report per language, so it is NOT verified here and must not be reported
+// as though it were — see the unverified marking below.
+func (e *Executor) verifyMeasurements(ctx context.Context, stage Stage, decoded state.Validatable, input StageInput) error {
+	claimant, claims := decoded.(interface{ ClaimsPassingTests() bool })
+	if !claims || !claimant.ClaimsPassingTests() {
+		return nil
+	}
+	if e.verifier == nil {
+		e.noteUnverified(stage, "no measurement verifier is configured")
+		return nil
+	}
+	verified, unverifiable, reason := e.verifier.VerifyTests(ctx, projectRootFor(input))
+	switch {
+	case verified:
+		return nil
+	case unverifiable:
+		e.noteUnverified(stage, reason)
+		return nil
+	}
+	return &ClaimError{Stage: stage.ID, Field: "testResults",
+		Problem: fmt.Sprintf("the stage reported a passing suite and the project's own test command disagrees: %s", reason)}
+}
+
+// noteUnverified records that a claim was believed rather than checked.
+// Absence of evidence has to look different from evidence, or a run with
+// verification switched off reads exactly like one that passed it — which is
+// how run 7's report stated a fabricated figure was "above the threshold".
+func (e *Executor) noteUnverified(stage Stage, reason string) {
+	if e.onClaimWarning != nil {
+		e.onClaimWarning(&ClaimError{Stage: stage.ID, Field: "testResults",
+			Problem: "reported a passing suite that was NOT verified — " + reason})
+	}
+}

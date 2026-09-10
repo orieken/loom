@@ -27,6 +27,7 @@ type Executor struct {
 	workTree       WorkTree
 	onPostureError func(error)
 	onClaimWarning func(error)
+	verifier       MeasurementVerifier
 	// onBaselineError reports a failure to retain what a human was shown at
 	// a gate (roadmap L4.5). Retention is best-effort: it observes a human's
 	// action rather than controlling the run, so a failure is reported and
@@ -388,7 +389,7 @@ func (e *Executor) executeStage(ctx context.Context, stage Stage, plan Plan, inp
 		return e.persistFailure(ctx, state, stageFailure{stage: stage, err: invokeErr, usage: output.Usage})
 	}
 	e.notePostureViolation(state, stage, before, output)
-	return e.persistCompletion(state, stage, plan, input, output)
+	return e.persistCompletion(ctx, state, stage, plan, input, output)
 }
 
 func stageSpanFor(stage Stage, state *RunState) StageSpan {
@@ -471,11 +472,11 @@ func invokeOutcome(output StageOutput, err error) SpanOutcome {
 // artifactFor resolves what this stage's artifact is: a typed stage's
 // validated state document, written here, or the markdown file a provider
 // wrote itself.
-func (e *Executor) artifactFor(stage Stage, input StageInput, output StageOutput) (string, error) {
+func (e *Executor) artifactFor(ctx context.Context, stage Stage, input StageInput, output StageOutput) (string, error) {
 	if stage.StateKind == "" {
 		return output.ArtifactPath, nil
 	}
-	return e.persistTypedOutput(stage, input, output)
+	return e.persistTypedOutput(ctx, stage, input, output)
 }
 
 // persistFailure distinguishes parent cancellation (SIGINT — checkpoint as
@@ -513,8 +514,8 @@ func (e *Executor) persistFailure(ctx context.Context, state *RunState, failure 
 	return fmt.Errorf("stage %q: %w", failure.stage.ID, failure.err)
 }
 
-func (e *Executor) persistCompletion(state *RunState, stage Stage, plan Plan, input StageInput, output StageOutput) error {
-	artifactPath, err := e.artifactFor(stage, input, output)
+func (e *Executor) persistCompletion(ctx context.Context, state *RunState, stage Stage, plan Plan, input StageInput, output StageOutput) error {
+	artifactPath, err := e.artifactFor(ctx, stage, input, output)
 	if err != nil {
 		return e.persistFailure(context.Background(), state, stageFailure{stage: stage, err: err, usage: output.Usage})
 	}
