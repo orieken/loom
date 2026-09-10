@@ -1357,6 +1357,33 @@ is *present* in a typed stage prompt — the contradiction is currently held in 
 ### L2.24 — Verify a stage's file claims against the filesystem
 **Workstream**: KERNEL · **Effort**: M · **Blocked by**: L2.22, L2.23 · **Blocks**: none · *(raised 2026-09-06, from the second real end-to-end run)*
 
+**SHIPPED 2026-09-09** (`960fdcc`, `6f4f13a`) — in two halves, with an honest boundary between them.
+
+**Path claims are checked.** Every path-naming field is verified against the project after the stage
+returns; a claimed file that does not exist fails the stage naming the field and the path, and a
+path escaping the project root is refused rather than treated as satisfied. A claimed file that
+exists but did not change while the stage ran is a warning, since a stage may legitimately list a
+file it inspected. **The second real run's actual qa payload is the regression fixture** and must
+fail — which required teaching the mock to model a stage that lies, because the executor caught the
+mock itself claiming `internal/mock/thing.go` and never writing it.
+
+**Measurement claims are reproduced.** A stage asserting a green suite is asserting something the
+project can re-run, so the executor re-runs it. The command comes from `testCommand` in
+`.claude/delivery-policy.yaml` — **project configuration, never the state document**: an executor
+running a string a model chose would execute model output with the executor's privileges, which is a
+worse trust boundary than the agent running its own tools. Contradicted fails the stage; unverifiable
+proceeds but is recorded loudly as NOT verified, because absence of evidence reading like evidence is
+how a report states an unchecked figure is above a threshold.
+
+**Not verified: coverage.** Reproducing a percentage means parsing a coverage report per language,
+and claiming to have checked it while only checking the suite would be this same defect one level up.
+
+**Validation status, stated exactly.** Both halves are covered by unit tests, including run 7's
+payload shape. **Neither has been demonstrated against a live fabrication**, because L2.24 has never
+been reproduced under the condition it describes — run 7's attempt failed when the stage installed
+the dependencies itself and measured for real (see that audit's §0). The next attempt must *prevent*
+installation, not merely start without it.
+
 1. **Problem**: The executor validates the *shape* of a stage's claims and never checks whether they
    are true. In the second real run the qa-engineer completed in 53 seconds and returned:
    `testFilesCreated: ["internal/server/server_test.go"]`, `testResults: {passed: 3, failed: 0}`,
