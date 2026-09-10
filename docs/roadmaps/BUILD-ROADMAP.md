@@ -1671,6 +1671,37 @@ that reaches the majority term, and its crux is *why stages 2–15 pay cache-cre
 cache-read*. Revised order: **(c) share the prefix**, then (d) cheap decline, then trimming
 `.claude/rules/` (7,707 tokens, loaded in full — the only per-byte win), with (b) install-less last.
 
+**L3.19c ANSWERED 2026-09-10 — the mechanism exists, and it costs stage isolation.**
+`docs/audits/loom-prefix-sharing-2026-09-10.md`.
+
+Repetition alone never amortizes: two **byte-identical consecutive** `claude -p` invocations both
+pay 30,092 in cache-creation. A separate process cannot reuse the previous one's prefix. That kills
+the hypothesis I opened with — that the per-stage `--allowed-tools` allowlist was perturbing the
+prefix — since R2 changed nothing and still missed.
+
+| Invocation | created | read |
+|---|---:|---:|
+| fresh | 30,090 | 17,927 |
+| byte-identical repeat | 30,092 | 17,927 |
+| **same session, `--resume`** | **51** | 48,017 |
+| `--fork-session` from a primer | 30,241 | 17,927 |
+
+`--resume` amortizes completely — **99.8% off cache-creation, 8.1x cheaper per stage weighted for
+billing, ~5.5x over fifteen stages**. `--fork-session` does not: a fork is a cold start with
+history, so prefix-sharing-without-conversation-sharing is not available from the CLI.
+
+Amortizing therefore requires every stage to be a turn in **one continuous conversation**, which is
+precisely what L2.9's typed state prevents: a stage would receive the raw transcript of everything
+before it rather than its projected upstream fields. Context also grows linearly (the 5.5x is an
+upper bound measured with trivial outputs), the 200k window becomes a run-length limit, and a
+poisoned context becomes a run-level failure.
+
+Four options are costed in the audit. **Recommended: selective merging** — share a session only
+among stages where isolation is not load-bearing — **plus trimming `.claude/rules/`** (7,707 tokens,
+loaded in full on every stage). A direct-API provider with explicit `cache_control` keeps isolation
+*and* the sharing and is the right end state, but it means implementing the agent loop the CLI
+provides, and overlaps L4.8. **This needs a design decision before any code.**
+
 A confound was caught mid-measurement and is recorded rather than buried: the first pass showed
 agents and skills costing zero because the user's global `~/.claude` already held all of them, so
 the baseline was never bare. The corrected run installs the same surface under non-colliding names
