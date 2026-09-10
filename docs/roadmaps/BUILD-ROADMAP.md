@@ -1367,16 +1367,25 @@ file it inspected. **The second real run's actual qa payload is the regression f
 fail — which required teaching the mock to model a stage that lies, because the executor caught the
 mock itself claiming `internal/mock/thing.go` and never writing it.
 
-**Measurement claims are reproduced.** A stage asserting a green suite is asserting something the
-project can re-run, so the executor re-runs it. The command comes from `testCommand` in
-`.claude/delivery-policy.yaml` — **project configuration, never the state document**: an executor
-running a string a model chose would execute model output with the executor's privileges, which is a
-worse trust boundary than the agent running its own tools. Contradicted fails the stage; unverifiable
-proceeds but is recorded loudly as NOT verified, because absence of evidence reading like evidence is
-how a report states an unchecked figure is above a threshold.
+**Measurement claims were reproduced — RETIRED 2026-09-10.** A second half re-ran the project's own
+test command (`testCommand` in `.claude/delivery-policy.yaml` — project configuration, never the
+state document) to reproduce a stage's claim that the suite passed. It is removed: `internal/verify`
+is deleted, along with `MeasurementVerifier`, `verifyMeasurements`, `noteUnverified` and
+`QAState.ClaimsPassingTests`.
 
-**Not verified: coverage.** Reproducing a percentage means parsing a coverage report per language,
-and claiming to have checked it while only checking the suite would be this same defect one level up.
+The reason is the evidence below. Runs 8 and 9 tested both available explanations for run 2's
+fabrication and neither reproduced it, so this half was paying a **full suite run per QA stage**
+— bounded at 15 minutes — to guard a defect with no established cause. Run 9 is the sharper of the
+two: with the pre-L3.29 contradiction restored, the stage wrote tests, ran them, and reported
+`passed: 170` and `86.08%`, **both exact against independent verification**. It reported what it
+measured.
+
+Retiring only this half is deliberate. The path check costs a `stat`, has no such counter-evidence,
+and stays — along with the second run's payload as its regression fixture. Reversing this is one
+revert if a live fabrication ever appears.
+
+**Never verified: coverage.** Reproducing a percentage means parsing a coverage report per language.
+It was out of scope while the measurement half existed and is moot now.
 
 **Validation status, stated exactly.** Both halves are covered by unit tests, including run 7's
 payload shape. **Neither has been demonstrated against a live fabrication**, and run 8 explains why:
@@ -1390,10 +1399,10 @@ the stage reported `passed: 0, skipped: 3` with an accurate account of why. 8A r
 remove them despite having the means**, and sourced its one coverage figure as the developer's
 pre-QA measurement rather than presenting it as current.
 
-So the code stays and the fixture stays — a defect that does not reproduce today is not one that
-cannot recur, and the check costs nothing per run — but the behaviour is **tested and negative**,
-not open. See `docs/audits/loom-e2e-run-8-audit-2026-09-09.md`, including its §5.2: both conditions
-are conspicuously adversarial, and ordinary breakage might not elicit the same care.
+See `docs/audits/loom-e2e-run-8-audit-2026-09-09.md`, including its §5.2: both conditions are
+conspicuously adversarial, and ordinary breakage might not elicit the same care. Run 9 then removed
+the other explanation (`docs/audits/loom-e2e-run-9-audit-2026-09-09.md`), which is what turned "the
+code stays because it costs nothing per run" into a decision to retire the half that does.
 
 1. **Problem**: The executor validates the *shape* of a stage's claims and never checks whether they
    are true. In the second real run the qa-engineer completed in 53 seconds and returned:
