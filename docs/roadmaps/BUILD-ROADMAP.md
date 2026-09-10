@@ -1696,11 +1696,38 @@ before it rather than its projected upstream fields. Context also grows linearly
 upper bound measured with trivial outputs), the 200k window becomes a run-length limit, and a
 poisoned context becomes a run-level failure.
 
-Four options are costed in the audit. **Recommended: selective merging** — share a session only
+**GROWTH MEASURED 2026-09-10 — the 5.5x was an artifact, and it inverts the recommendation.**
+`docs/audits/loom-prefix-growth-2026-09-10.md`. Twelve turns replaying the real run's stage sequence
+and output sizes, two arms, $1.91.
+
+| | created | read | prefix units | measured cost |
+|---|---:|---:|---:|---:|
+| SHARED (one session) | 131,966 | 1,141,406 | 279,098 | $0.7947 |
+| COLD (today) | 388,542 | 520,496 | 537,727 | $1.1121 |
+| | 2.94x less | 2.19x more | **1.93x less** | **1.40x cheaper** |
+
+The upper bound was three times too high because read grows (turn 2: 50,979 → turn 12: **142,321**)
+and each turn's own content is cached at the 1.25x rate (6,407–12,343 per turn, against ~50 with
+trivial replies). **Read reaches 71% of a 200k window by turn 12**, so a fifteen-stage shared
+session does not fit.
+
+Confound recorded: SHARED produced 47% more output from identical prompts, so the 1.40x end-to-end
+figure is indicative and only the 1.93x prefix-unit ratio is defensible.
+
+**So one-session-per-run is a bad trade** — stage isolation, bounded context and per-stage failure
+containment, for under 2x on one term of a bill that output tokens dominate. **And a direct-API
+provider gets better**: its stages are separate conversations sharing only a cached prefix, so they
+pay no accumulation penalty and stay near the 8.1x per-stage figure. Revised ranking: **(1)
+direct-API provider with explicit `cache_control`** (overlaps L4.8, now the only structural option
+worth the work), (2) trim `.claude/rules/`, (3) reduce stage count — L3.24's lever, since output
+dominates — (4) install less.
+
+~~Four options are costed in the audit. **Recommended: selective merging** — share a session only
 among stages where isolation is not load-bearing — **plus trimming `.claude/rules/`** (7,707 tokens,
 loaded in full on every stage). A direct-API provider with explicit `cache_control` keeps isolation
 *and* the sharing and is the right end state, but it means implementing the agent loop the CLI
-provides, and overlaps L4.8. **This needs a design decision before any code.**
+provides, and overlaps L4.8.~~ *(superseded by the growth measurement above.)* **This needs a design
+decision before any code.**
 
 A confound was caught mid-measurement and is recorded rather than buried: the first pass showed
 agents and skills costing zero because the user's global `~/.claude` already held all of them, so
