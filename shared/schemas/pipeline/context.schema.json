@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/orieken/loom/internal/state/context-state",
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 2,
+      "description": "Always 2 — the schema version this build accepts."
+    },
+    "feature": {
+      "type": "string",
+      "description": "kebab-case feature slug"
+    },
+    "tier": {
+      "type": "string",
+      "enum": [
+        "analyst",
+        "developer",
+        "reviewer"
+      ]
+    },
+    "targetStage": {
+      "type": "string",
+      "description": "The stage this manifest was built for"
+    },
+    "pinnedFiles": {
+      "items": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Repo-relative path"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why this stage needs this file"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "reason"
+        ]
+      },
+      "type": "array",
+      "description": "The files the downstream stage should read"
+    },
+    "knowledgeItems": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "adrs": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "pruned": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "description": "Files considered and deliberately left out"
+    },
+    "budget": {
+      "properties": {
+        "files": {
+          "items": {
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "bytes": {
+                "type": "integer"
+              },
+              "estimatedTokens": {
+                "type": "integer"
+              },
+              "unmeasured": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "path",
+              "bytes",
+              "estimatedTokens"
+            ]
+          },
+          "type": "array"
+        },
+        "estimatedTokens": {
+          "type": "integer"
+        },
+        "tierLimitTokens": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "unmeasured": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "files",
+        "estimatedTokens",
+        "tierLimitTokens",
+        "status"
+      ],
+      "description": "Computed by loom from the pinned files. Do not supply this — anything you write here is replaced by measurement"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "feature",
+    "tier",
+    "pinnedFiles"
+  ]
+}

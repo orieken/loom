@@ -6,9 +6,12 @@ package orchestrator
 // declares — no document, no summarization, no model on the data path.
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/orieken/loom/internal/state"
 )
@@ -75,18 +78,88 @@ func withUpstream(existing map[string][]byte, upstream string, projected []byte)
 // stage's artifact. An invalid payload fails the stage loudly: no repair
 // prompt, no retry — those are L3.x, and a silent repair would hide the
 // modelling failures this epic exists to surface.
-func persistTypedOutput(stage Stage, input StageInput, output StageOutput) (string, error) {
+func (e *Executor) persistTypedOutput(ctx context.Context, stage Stage, input StageInput, output StageOutput) (string, error) {
 	if len(output.Payload) == 0 {
 		return "", fmt.Errorf("stage %q is typed but returned no state payload", stage.ID)
 	}
-	if _, err := state.Decode(state.Kind(stage.StateKind), output.Payload); err != nil {
+	decoded, err := state.Decode(state.Kind(stage.StateKind), output.Payload)
+	if err != nil {
 		return "", fmt.Errorf("stage %q returned invalid state: %w", stage.ID, err)
 	}
-	path, err := writeTypedState(stage, input, output.Payload)
+	payload, err := measureTypedOutput(decoded, input, output.Payload)
+	if err != nil {
+		return "", fmt.Errorf("stage %q: %w", stage.ID, err)
+	}
+	if err := e.verifyPathClaims(stage, decoded, input, e.changedPaths()); err != nil {
+		return "", err
+	}
+	if err := e.verifyMeasurements(ctx, stage, decoded, input); err != nil {
+		return "", err
+	}
+	path, err := writeTypedState(stage, input, payload)
 	if err != nil {
 		return "", err
 	}
-	return path, renderView(stage, input, output.Payload)
+	return path, renderView(stage, input, payload)
+}
+
+// measureTypedOutput replaces the numbers a state document must not be
+// trusted to compute for itself (roadmap L3.25).
+//
+// The context manifest's token budget is the case this exists for: it is
+// arithmetic over file sizes, an agent asserted it and was 7x under, and
+// nothing downstream checks it. A document that measures nothing passes
+// through untouched.
+func measureTypedOutput(decoded state.Validatable, input StageInput, payload []byte) ([]byte, error) {
+	measurable, needsMeasuring := decoded.(state.Measurable)
+	if !needsMeasuring {
+		return payload, nil
+	}
+	measurable.Measure(workspaceFileSizer(input))
+	measured, err := json.Marshal(decoded)
+	if err != nil {
+		return nil, fmt.Errorf("re-encode measured state: %w", err)
+	}
+	return measured, nil
+}
+
+// workspaceFileSizer resolves a manifest's repo-relative paths against the
+// project root and reports their sizes. A path that escapes the root, names
+// a directory, or cannot be read is reported as unmeasurable rather than
+// counted as zero — an unreadable file is not a free one.
+func workspaceFileSizer(input StageInput) state.FileSizer {
+	root := projectRootFor(input)
+	return func(path string) (int64, error) {
+		resolved, err := resolveWithinRoot(root, path)
+		if err != nil {
+			return 0, err
+		}
+		info, err := os.Stat(resolved)
+		if err != nil {
+			return 0, fmt.Errorf("cannot read %s", path)
+		}
+		if info.IsDir() {
+			return 0, fmt.Errorf("%s is a directory", path)
+		}
+		return info.Size(), nil
+	}
+}
+
+func resolveWithinRoot(root, path string) (string, error) {
+	resolved := filepath.Clean(filepath.Join(root, filepath.FromSlash(path)))
+	if resolved != root && !strings.HasPrefix(resolved, root+string(filepath.Separator)) {
+		return "", fmt.Errorf("%s is outside the project", path)
+	}
+	return resolved, nil
+}
+
+// projectRootFor derives the project root from the workspace directory,
+// which lives at <root>/.claude/feature-workspace/<feature>/.
+func projectRootFor(input StageInput) string {
+	if input.ProjectRoot != "" {
+		return filepath.Clean(input.ProjectRoot)
+	}
+	return filepath.Clean(filepath.Join(input.WorkspaceDir, "..", "..", ".."))
 }
 
 // renderView writes the human-readable markdown for a typed stage under the
@@ -137,4 +210,9 @@ func (p Plan) stateKindOf(stageID string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
 }

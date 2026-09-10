@@ -39,6 +39,43 @@ exactly as written.
 - `## Edge Cases and Risks`
 - `## Definition of Done`
 
+## What "nothing to do" looks like
+
+**A section with nothing in it is left empty. Never write "None", "N/A", or "None required by this
+spec".**
+
+This is not a style preference; it decides which agents run and what the run costs. The executor
+routes from the typed analysis (roadmap L3.0), and a routing predicate that counts list items
+cannot tell a prose "none" from work. The second real end-to-end run emitted exactly one DevOps
+task — *"None required by this spec — no CI or deployment config changes requested."* — and the
+router counted one item and spent **$0.64** invoking `devops-engineer` to discover the sentence
+meant zero. An empty list is the only unambiguous way to say there is nothing here.
+
+The router ignores entries opening with "none", "n/a", "nothing", "not applicable" or "not
+required" as a defensive net, but do not rely on it: the net exists because models write these
+phrases reflexively, not to make writing them acceptable.
+
+## Thresholds are numbers, not sentences
+
+A **Non-Functional Requirement** carries a threshold **only when there is a number and a unit** —
+`p99 request latency, 200, ms`. If the requirement has no measurable limit, describe it in the
+requirement text and leave the threshold out entirely.
+
+A threshold routes in both the `architect` and the `performance-engineer`. The third real run put
+*"O(n) over the captured logs array... no I/O"* in the threshold field of a three-line synchronous
+array filter, and both stages ran — **$1.45** — to report that nothing applied. A sentence in the
+threshold field is a bill, not a description.
+
+## Surfaces decide who reviews
+
+Declare whether the feature has a **UI surface** (something a person looks at) and a **served
+runtime surface** (a deployed process whose availability or latency someone operates). An
+in-process library or test utility has neither.
+
+These decide whether `accessibility-engineer`, `visual-qa-engineer` and `sre-engineer` run. Absent
+means no surface, which is the honest default: a feature that renders nothing and serves nothing
+should not summon reviewers for either.
+
 ## Validation Rule
 `validate-artifact` checks presence of every heading above, exact string and level match. Missing a heading is a FAIL — even if the content would logically live under a sibling section, downstream agents (developer, qa-engineer, tech-writer, devops-engineer) grep for these exact headings to find "their" task list.
 

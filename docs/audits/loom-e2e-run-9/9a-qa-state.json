@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 2,
+  "feature": "console-log-filtering",
+  "testFilesCreated": [],
+  "testFilesModified": [
+    "packages/saturday-core/tests/utils/console-logger.spec.ts"
+  ],
+  "coverage": {
+    "acceptanceCriteriaCovered": 4,
+    "acceptanceCriteriaTotal": 4,
+    "newTests": 4,
+    "statements": [
+      { "unit": "packages/saturday-core/src/utils/console-logger.ts", "percent": 100 },
+      { "unit": "packages/saturday-core (full package)", "percent": 86.08 }
+    ]
+  },
+  "testResults": {
+    "passed": 170,
+    "failed": 0,
+    "skipped": 0,
+    "skipReasons": []
+  },
+  "accessibilityCheck": [],
+  "bugsFound": [],
+  "knownGaps": [],
+  "notesForTechWriter": [
+    "New public method `getLogsByType(type: string)` added to `ConsoleLogger` (packages/saturday-core/src/utils/console-logger.ts) — returns captured console log entries whose `type` matches the argument, in original capture order; returns `[]` (never undefined) for unmatched, empty-string, or unrecognized type values.",
+    "No public API signature changed for existing methods (`getLogs`, `getFormattedLogs`, `clear`) — this is a pure addition, safe for a changelog 'Added' entry rather than 'Changed'."
+  ],
+  "retrieval": {
+    "domainTerms": [],
+    "issueRefs": ["console-log-filtering"],
+    "linkedAdrs": [],
+    "linkedKis": []
+  }
+}

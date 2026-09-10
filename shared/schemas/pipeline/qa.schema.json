@@ -3,7 +3,9 @@
   "$id": "https://github.com/orieken/loom/internal/state/qa-state",
   "properties": {
     "schemaVersion": {
-      "type": "integer"
+      "type": "integer",
+      "const": 2,
+      "description": "Always 2 — the schema version this build accepts."
     },
     "feature": {
       "type": "string"
@@ -34,8 +36,28 @@
           "type": "integer",
           "minimum": 0
         },
-        "statementCoveragePercent": {
-          "type": "number"
+        "statements": {
+          "items": {
+            "properties": {
+              "unit": {
+                "type": "string",
+                "description": "The package or path this percentage was measured over — e.g. internal/httpserver"
+              },
+              "percent": {
+                "type": "number",
+                "maximum": 100,
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "unit",
+              "percent"
+            ]
+          },
+          "type": "array",
+          "description": "Statement coverage per package or module the feature touches. Report EVERY unit the change spans"
         }
       },
       "additionalProperties": false,

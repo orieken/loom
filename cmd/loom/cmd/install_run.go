@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	frameworkfs "github.com/orieken/loom/cmd/loom/internal/fs"
+	"github.com/orieken/loom/cmd/loom/internal/manifest"
 	"github.com/orieken/loom/cmd/loom/internal/platform"
 	"github.com/spf13/cobra"
 )
@@ -21,8 +22,24 @@ func runInstall(command *cobra.Command, _ []string) error {
 		return err
 	}
 	output := installOutput{command.OutOrStdout(), request.isDryRun}
-	files := frameworkfs.NewWriter(frameworkFS, request.target, request.cache, request.isCopy, request.isDryRun, output.action)
+	files, err := ownedWriter(request, output)
+	if err != nil {
+		return err
+	}
 	return executeInstall(request, frameworkFS, mcpFS, files, output)
+}
+
+// ownedWriter builds the writer already loaded with what a previous install
+// recorded as loom's own, so this install writes only where it may
+// (roadmap L3.26).
+func ownedWriter(request installRequest, output installOutput) (*frameworkfs.Writer, error) {
+	previous, _, err := manifest.ReadIfExists(request.target)
+	if err != nil {
+		return nil, err
+	}
+	files := frameworkfs.NewWriter(frameworkFS, request.target, request.cache,
+		request.isCopy, request.isDryRun, output.action)
+	return files.WithOwnership(previous.Ledger(), request.isForced), nil
 }
 
 func executeInstall(request installRequest, content, mcpContent platform.Content, files *frameworkfs.Writer, output installOutput) error {
@@ -42,7 +59,7 @@ func executeInstall(request installRequest, content, mcpContent platform.Content
 		}
 		extras = append(extras, levelPaths...)
 	}
-	if err := writeManifest(request, results, extras); err != nil {
+	if err := writeManifest(request, results, extras, files.Written()); err != nil {
 		return err
 	}
 	return reportInstall(request, results, content, output)

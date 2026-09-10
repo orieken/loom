@@ -19,7 +19,40 @@ func (writer *Writer) materialize(source, cachePath string) error {
 	if err := copyEmbedded(writer.content, source, cachePath); err != nil {
 		return fmt.Errorf("extract %s to cache: %w", source, err)
 	}
-	return nil
+	return sealCache(cachePath)
+}
+
+// sealCache makes extracted cache content read-only (roadmap L3.23, L3.26).
+//
+// A linked install points every project on the machine at the same files, so
+// a write through one project's symlink lands in every other project's
+// framework. This was observed: appending one line to a linked
+// .claude/agents/analyst.md modified the shared copy. Read-only content
+// makes that a failed write in the project that attempts it rather than
+// silent corruption everywhere else.
+func sealCache(path string) error {
+	return filepath.Walk(path, func(current string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		return os.Chmod(current, sealedMode(info))
+	})
+}
+
+// sealedMode makes files unwritable while leaving directories writable.
+//
+// Only the file mode matters for the corruption this prevents: appending
+// through a symlink opens the file for writing, which 0444 refuses.
+// Directories stay 0755 so the cache can still be evicted, updated, or
+// removed — sealing those too turns a safety measure into an uninstall bug.
+func sealedMode(info os.FileInfo) os.FileMode {
+	if info.IsDir() {
+		return 0o755
+	}
+	if info.Mode()&0o100 != 0 {
+		return 0o555
+	}
+	return 0o444
 }
 
 func (writer *Writer) backup(path, displayPath string) error {

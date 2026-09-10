@@ -3,7 +3,9 @@
   "$id": "https://github.com/orieken/loom/internal/state/route",
   "properties": {
     "schemaVersion": {
-      "type": "integer"
+      "type": "integer",
+      "const": 2,
+      "description": "Always 2 — the schema version this build accepts."
     },
     "feature": {
       "type": "string"

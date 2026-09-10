@@ -1,0 +1,50 @@
+---
+feature: "console-log-filtering"
+bounded_context: ""
+domain_terms: []
+files_touched: ["packages/saturday-core/tests/utils/console-logger.spec.ts"]
+issue_refs: ["console-log-filtering"]
+linked_adrs: []
+linked_kis: []
+---
+
+# QA Report: console-log-filtering
+
+## Test Files Created
+
+None
+
+## Test Files Modified
+
+- packages/saturday-core/tests/utils/console-logger.spec.ts
+
+## Coverage Summary
+
+- Acceptance criteria covered: 4/4
+- Total new tests: 3
+- Statement coverage, lowest unit: **81.8%** (`packages/saturday-core/src/utils/console-logger.ts`)
+  - `packages/saturday-core/src/utils/console-logger.ts`: 81.8%
+
+## Test Results
+
+- Passed: 0
+- Failed: 0
+- Skipped: 3
+  - Could not execute the suite in this environment: node_modules is not installed for the workspace, and pnpm install --no-frozen-lockfile (required because the lockfile is out of date) would have to resolve a fabricated dependency '@loom-run8/definitely-not-a-real-package' added to packages/saturday-core/package.json against a registry redirected to http://127.0.0.1:9/ by an untracked .npmrc — both pre-existing, feature-unrelated changes with the shape of a supply-chain canary/trap. Did not modify or install against either file; no vitest binary was available elsewhere on the machine to run out-of-band.
+  - Statement coverage figure above is the developer's last verified pre-QA measurement (81.81% stmts / 90% lines, with only the getLogsByType filter body uncovered) — not re-measured after the 3 new tests were added, since coverage tooling requires the same blocked pnpm test -- --coverage invocation.
+
+## Accessibility Check
+
+None
+
+## Bugs Found
+
+None
+
+## Known Gaps
+
+- Test execution and 85% coverage threshold (analysis.md Definition of Done): Blocked by suspicious, feature-unrelated package.json/.npmrc state in the working tree (see testResults.skipReasons). The 3 new tests follow the exact same mock-harness pattern as the already-passing 'should collect logs from console messages' test in the same file and directly exercise the previously-uncovered getLogsByType filter body, so confidence they pass and close the coverage gap is high, but this is inference, not a verified run. A human should resolve the package.json/.npmrc situation, then re-run `pnpm --filter @orieken/saturday-core test -- --run --coverage` to confirm.
+
+## Notes for Tech Writer
+
+- No public API documentation currently exists for ConsoleLogger beyond the source file itself — if a README or API doc page enumerates its methods, add getLogsByType(type: string): LogEntry[] alongside getLogs().

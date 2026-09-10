@@ -59,6 +59,11 @@ type StageRecord struct {
 	StaleReason    StaleReason `json:"staleReason,omitempty"`
 	FoundSHA256    string      `json:"foundSha256,omitempty"`
 	SkipReason     string      `json:"skipReason,omitempty"`
+	// PostureViolation is set when a stage changed the working tree without
+	// declaring a tool that writes files (roadmap L3.30). Recorded, not
+	// fatal: run 4's accessibility-engineer did this and its edits were
+	// correct — the defect is that nothing noticed, not that it happened.
+	PostureViolation string `json:"postureViolation,omitempty"`
 	// Iteration counts the rounds a looping stage has run (roadmap L2.17).
 	// Zero and one both mean a first pass; Sequence is unaffected, because
 	// a re-run is the same step of the run, not a new one.
@@ -112,7 +117,22 @@ type RunState struct {
 	// a gate (roadmap L4.5), so the signal survives without reading the
 	// timeline. Append-only within a run.
 	Corrections []Correction `json:"corrections,omitempty"`
-	UpdatedAt   time.Time    `json:"updatedAt"`
+	// Spend is every provider call this run has made, accumulated as it
+	// goes and never derived from the stage records.
+	//
+	// L3.22 made a stage record sum its own attempts, which fixed a retry
+	// overwriting a failure. Run 4 found the same under-report through a
+	// second door: re-running one stage requires deleting its record by
+	// hand — `loom` has no rollback command (run 4 §9.1) — and deleting the
+	// record deleted the $1.2389 it had already cost. The executor reported
+	// $20.2718 for a run whose spans total $21.5106, short by exactly the
+	// discarded attempt.
+	//
+	// Money spent is a fact about the run, not a property of a record
+	// someone may remove, so it is accumulated here where nothing about a
+	// stage's later fate can subtract from it.
+	Spend     *Usage    `json:"spend,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // Creator identifies which pipeline owns a state file. The two pipelines

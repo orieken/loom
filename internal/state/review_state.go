@@ -68,7 +68,7 @@ type Finding struct {
 type ReviewState struct {
 	SchemaVersion int     `json:"schemaVersion" jsonschema:"required"`
 	Feature       string  `json:"feature" jsonschema:"required"`
-	Verdict       Verdict `json:"verdict" jsonschema:"required,enum=APPROVED,enum=CHANGES_REQUESTED"`
+	Verdict       Verdict `json:"verdict" jsonschema:"required"`
 
 	DesignNarrative string      `json:"designNarrative" jsonschema:"required,description=2-3 sentences on what the code does architecturally"`
 	DesignScore     DesignScore `json:"designScore" jsonschema:"required"`

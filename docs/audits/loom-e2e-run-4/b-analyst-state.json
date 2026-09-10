@@ -1,0 +1,242 @@
+{
+  "schemaVersion": 2,
+  "feature": "run-history-browsing",
+  "summary": "The console starts and fetches individual runs today (`POST /api/runs`, `GET /api/runs/{runId}`) but has no way to list what has already run, so a user who closes the tab loses their only route back to a report. This feature adds a paginated, status-filterable, most-recent-first listing endpoint (`GET /api/runs`) backed by a redesigned `RunStore` index, plus a server-rendered console page that shows id/status/start time/duration per run and links to each completed run's existing `/reports/` output — in-progress runs show as such with no report link. The store stays in-memory (no persistence across restart) and no change is made to how reports themselves are generated or served; the only new surface is the read/index path over runs the console already tracks.",
+  "acceptanceCriteria": [
+    {
+      "statement": "GET /api/runs returns previously recorded runs, most recent first",
+      "examples": [
+        "10 runs exist, started at times T1..T10; response order is T10, T9, ... T1"
+      ]
+    },
+    {
+      "statement": "The response is paged; a caller can request the next page without re-reading runs it has already seen, because the store grows for the lifetime of the process",
+      "examples": [
+        "First request returns a page of N runs plus a cursor/token; a follow-up request with that cursor returns the next N runs with no overlap with the first page"
+      ]
+    },
+    {
+      "statement": "A caller can narrow the listing to a single status, so 'show me the failures' is one request",
+      "examples": [
+        "GET /api/runs?status=failed returns only runs whose Status field is \"failed\""
+      ]
+    },
+    {
+      "statement": "Asking for a page beyond the end returns an empty page, not an error",
+      "examples": [
+        "A cursor pointing past the last run returns 200 OK with an empty runs array, not a 4xx"
+      ]
+    },
+    {
+      "statement": "The console has a page listing the runs — id, status, when it started, how long it took — where each row links to that run's report"
+    },
+    {
+      "statement": "A run still in progress is shown as such and has no report link",
+      "examples": [
+        "A run with empty FinishedAt/ReportURL renders status \"running\" and the row has no anchor to /reports/..."
+      ]
+    },
+    {
+      "statement": "Someone using the keyboard alone can move through the list and open a report"
+    },
+    {
+      "statement": "The listing endpoint responds in under 200ms at p95 with 10,000 runs held in the store"
+    },
+    {
+      "statement": "Listing runs never blocks a run that is starting or finishing, and vice versa"
+    }
+  ],
+  "nonFunctionalRequirements": [
+    {
+      "category": "performance",
+      "requirement": "GET /api/runs must respond within the stated latency budget even as the in-memory store grows to 10,000 runs",
+      "threshold": {
+        "metric": "p95 latency",
+        "value": 200,
+        "unit": "ms"
+      }
+    },
+    {
+      "category": "scaling",
+      "requirement": "Reading the run list must not contend for the same lock/critical section as StartRun/CompleteRun in a way that serializes them — listing and run start/finish must proceed concurrently without blocking each other, independent of store size"
+    },
+    {
+      "category": "accessibility",
+      "requirement": "The run history page must be fully operable via keyboard alone: tab order reaches every row's report link, focus state is visible, and no interactive element depends on a mouse/pointer event"
+    }
+  ],
+  "proposedFitnessFunctions": [
+    {
+      "property": "GET /api/runs p95 latency stays under 200ms with 10,000 runs in the store",
+      "verification": "Go integration test (extending http_integration_test.go's httptest.Server pattern) that seeds 10,000 runs and asserts p95 over a sample of requests",
+      "owner": "qa-engineer"
+    },
+    {
+      "property": "Listing never blocks, and is never blocked by, concurrent StartRun/CompleteRun calls",
+      "verification": "Concurrency integration test running ListRuns in one set of goroutines and StartRun/CompleteRun in another, asserting neither stalls beyond a bounded threshold",
+      "owner": "qa-engineer"
+    },
+    {
+      "property": "Consecutive pages never repeat or skip a run under concurrent writes to the store",
+      "verification": "Integration test that pages through results while runs are being inserted concurrently and asserts no duplicate/missing IDs across pages",
+      "owner": "qa-engineer"
+    },
+    {
+      "property": "Run history page is fully keyboard-operable",
+      "verification": "No automated accessibility tooling is wired into this hand-written-HTML Go server today; verify via manual keyboard-only walkthrough (tab order, focus visibility, report-link reachability) during accessibility-engineer review",
+      "owner": "accessibility-engineer",
+      "judgmentOnly": true
+    }
+  ],
+  "outOfScope": [
+    "Persisting runs across a console restart — the store stays in memory",
+    "Deleting or archiving old runs",
+    "Any change to how reports themselves are generated or served"
+  ],
+  "surfaces": {
+    "ui": true,
+    "runtime": true
+  },
+  "boundedContext": {
+    "owning": "Console Run Management (apps/console/internal/runs + internal/httpserver run endpoints)",
+    "crossings": [
+      "Static report serving (internal/httpserver's /reports/* file handler) — the new listing links out to existing report URLs but this feature does not modify report generation or serving, per the spec's explicit exclusion"
+    ]
+  },
+  "domainEvents": {
+    "commands": [
+      "ListRuns"
+    ],
+    "eventsProduced": [],
+    "owningAggregates": [
+      "Run",
+      "RunStore"
+    ],
+    "readModels": [
+      "RunHistoryPage — ordered (most-recent-first), cursor-paginated, optionally filtered by status"
+    ]
+  },
+  "affectedComponents": [
+    {
+      "path": "apps/console/internal/runs/store.go",
+      "reason": "Current RunStore is a map[string]*Run behind one sync.RWMutex with no ordering or index — the direct blocker for most-recent-first ordering, cursor pagination, the p95<200ms/10k-runs NFR, and the non-blocking-reads-vs-writes NFR. Needs a maintained ordering index (e.g. an append-tracked slice/ring of run IDs updated on StartRun) plus a ListRuns(status, cursor, limit) method that reads that index rather than scanning/sorting the map per request."
+    },
+    {
+      "path": "apps/console/internal/runs/model.go",
+      "reason": "Run struct already carries ID, Status, StartedAt, FinishedAt, ReportURL — sufficient for the listing page's id/status/started/duration/report-link columns and the in-progress (empty FinishedAt/ReportURL) case. No new fields expected; duration is derived, not stored."
+    },
+    {
+      "path": "apps/console/internal/httpserver/router.go",
+      "reason": "Register the new GET /api/runs listing route and the new console page route (e.g. GET /runs) alongside the existing /api/runs family and the sole existing page route ('/')."
+    },
+    {
+      "path": "apps/console/internal/httpserver/handlers.go",
+      "reason": "Add a ListRuns API handler (status/cursor/limit query params, paged response) following the GetRun pattern, and a new page handler following the Root() pattern — this service renders HTML as a hand-written Go string with no templating engine, so the runs page follows that same convention rather than introducing a frontend framework."
+    },
+    {
+      "path": "apps/console/internal/httpserver/responses.go",
+      "reason": "Add a paged-response envelope (e.g. a RunsPage type with runs + next cursor) alongside the existing writeJSON/writeError helpers so the new endpoint follows this service's one existing response-shaping convention."
+    },
+    {
+      "path": "apps/console/internal/httpserver/http_integration_test.go",
+      "reason": "Extend with tests for GET /api/runs following the established httptest.Server pattern: ordering, pagination, status filter, empty-page-past-end, 10k-run performance, and concurrency-with-writes."
+    },
+    {
+      "path": "apps/console/cmd/server/main.go",
+      "reason": "Only needs a change if RunStore's constructor signature changes to wire up the new ordering index; otherwise no change expected since runs.NewRunStore() and httpserver.New(reg, runStore) wiring stays the same shape."
+    }
+  ],
+  "dataModelChanges": [
+    {
+      "description": "In-memory RunStore needs an ordering index (e.g. an append-only slice of run IDs, or a doubly-linked structure) maintained alongside the existing map so runs can be listed most-recent-first and paged by a stable cursor without a full scan/sort per request. This is an internal Go data-structure change, not a database migration — no persistent schema exists, and the spec explicitly excludes persistence across restart.",
+      "phase": "none"
+    }
+  ],
+  "apiChanges": [
+    {
+      "endpoint": "GET /api/runs",
+      "change": "New endpoint. Returns a paged, most-recent-first list of runs; accepts an optional status filter and a pagination cursor/limit; returns an empty page (200, empty array, no next cursor) when the cursor is past the end rather than an error."
+    },
+    {
+      "endpoint": "GET /runs (new console page route)",
+      "change": "New server-rendered HTML page listing runs (id, status, started-at, duration), each completed row linking to its /reports/... report URL; in-progress rows show status with no report link; fully keyboard-navigable."
+    }
+  ],
+  "newDependencies": [],
+  "architecturalFlags": [
+    "RunStore's current concurrency model (single sync.RWMutex guarding one map) does not support ordered iteration or genuinely non-blocking reads-vs-writes at 10,000-run scale within a 200ms p95 budget — recommend architect review of the indexing/locking approach (e.g. an incrementally-maintained ordered index updated on write, a copy-on-write snapshot for reads, or sharding the lock) before implementation, since this choice will constrain every future run-store feature, not just this one.",
+      "Cursor design for pagination (opaque token vs. plain offset/limit) is a one-time structural decision the spec doesn't dictate — recommend pinning it down once via architect rather than letting the developer improvise it under this endpoint alone."
+  ],
+  "retrieval": {
+    "domainTerms": [],
+    "issueRefs": [],
+    "linkedAdrs": [],
+    "linkedKis": []
+  },
+  "tasks": {
+    "developer": [
+      "Design and implement an ordering index in RunStore (store.go) that supports most-recent-first iteration without scanning the full map on every read",
+      "Add RunStore.ListRuns(status string, cursor string, limit int) (runs []*Run, nextCursor string, err error) with status filtering and a stable pagination cursor",
+      "Ensure ListRuns does not block, and is not blocked by, concurrent StartRun/CompleteRun calls",
+      "Add a GET /api/runs handler in handlers.go: parse status/cursor/limit query params, call RunStore.ListRuns, return the paged envelope; return an empty page (not an error) when the cursor is past the end",
+      "Add a paged-response type/helper in responses.go consistent with the existing writeJSON/writeError convention",
+      "Register GET /api/runs and the new console runs-page route in router.go",
+      "Add a hand-written-HTML page handler (Root()-style, no templating engine) rendering columns id/status/startedAt/duration, linking completed rows to ReportURL and showing in-progress rows with no report link",
+      "Ensure the runs page markup is keyboard-navigable: native <a>/<table> semantics, no div-as-button patterns, visible focus states",
+      "Compute duration server-side from StartedAt/FinishedAt (Run has no stored duration field); decide and implement the in-progress display per the Open Questions below"
+    ],
+    "qa": [
+      "Test GET /api/runs returns runs most-recent-first",
+      "Test pagination: consecutive pages have no overlapping runs; a cursor past the end returns an empty page with 200 OK",
+      "Test the status filter narrows results to a single status",
+      "Concurrency test: sustained StartRun/CompleteRun calls do not block, or get blocked by, concurrent ListRuns calls",
+      "Performance test: seed 10,000 runs and assert GET /api/runs responds within 200ms at p95",
+      "Test in-progress runs render with no report link on both the API response and the console page, and completed runs link to the correct report URL",
+      "Keyboard-navigation test for the runs page: tab order reaches every row's report link"
+    ],
+    "techWriter": [
+      "Document the new GET /api/runs endpoint: query params, paged response shape, status filter, empty-page-past-end behavior",
+      "Document the new console runs-history page for end users"
+    ],
+    "devops": []
+  },
+  "edgeCases": [
+    {
+      "case": "Cursor points past the end of the store",
+      "handling": "Return an empty page (empty runs array, no next cursor) with 200 OK, not a 4xx error, per the spec"
+    },
+    {
+      "case": "A run is still in progress (FinishedAt/ReportURL empty)",
+      "handling": "Both the API response and the console page show status as running/in-progress with no report link and no completed duration"
+    },
+    {
+      "case": "status filter value does not match any known run status",
+      "handling": "Return an empty page rather than erroring, since the spec does not require status enum validation (see Open Questions)"
+    },
+    {
+      "case": "ListRuns is called while StartRun or CompleteRun is in flight on another goroutine",
+      "handling": "Listing must read a consistent snapshot of the ordering index without holding the store's write path open for the duration of the HTTP response"
+    },
+    {
+      "case": "Store holds 10,000+ runs",
+      "handling": "The ordering index must be maintained incrementally on write so a list request is O(page size), not O(store size), to hit the 200ms p95 budget"
+    }
+  ],
+  "definitionOfDone": [
+    "GET /api/runs implemented: paged, status-filterable, most-recent-first, empty-page-past-end returns 200 not an error",
+    "Console runs-history page implemented, server-rendered, and keyboard-navigable",
+    "In-progress runs shown without a report link on both the API and the page",
+    "p95 < 200ms at 10,000 runs verified by a QA performance test",
+    "Listing never blocks (or is blocked by) run start/finish, verified by a QA concurrency test",
+    "architect has reviewed the RunStore indexing/concurrency redesign given its cross-cutting nature",
+    "code-reviewer and qa-engineer sign-off obtained",
+    "Docs updated for the new endpoint and the new console page"
+  ],
+  "openQuestions": [
+    "What is the default and maximum page size for GET /api/runs? The spec requires paging but doesn't set a number.",
+    "Should the pagination cursor be an opaque token or a plain offset/limit? The spec only requires that a caller can get the next page without re-reading what it already has — it doesn't mandate a scheme.",
+    "Should an unrecognized ?status= value return 400, or just an empty page (matching the empty-page-past-end precedent)?",
+    "For an in-progress run, does the page show elapsed time so far, or just a static 'running' label with no timer?",
+    "Does the runs page need to auto-refresh/poll for status changes, or is it a static snapshot per page load? The spec doesn't mention live updates, and 'listing runs never blocks a run that is starting or finishing' suggests polling load should be considered even if out of explicit scope."
+  ]
+}

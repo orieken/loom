@@ -1,5 +1,10 @@
 package state
 
+import (
+	"fmt"
+	"strings"
+)
+
 // AnalysisState is the analyst's output, modelling
 // shared/contracts/analysis-contract.md as typed fields rather than twenty
 // markdown headings. Only what a downstream stage actually reads is
@@ -12,13 +17,64 @@ type AcceptanceCriterion struct {
 	Examples  []string `json:"examples,omitempty" jsonschema:"description=Concrete examples or data rows for complex rules"`
 }
 
+// Threshold is a measurable limit: a number, a unit, and what is being
+// measured. It is structured rather than prose because two routing
+// decisions depend on a threshold being real (roadmap L3.24).
+//
+// It used to be a free-text string, and the third real end-to-end run
+// routed both the architect and the performance-engineer into a three-line
+// synchronous array filter on the strength of "O(n) over the captured logs
+// array... no I/O" — a sentence, in the threshold field, which a non-empty
+// test read as a measurable target. Together those two stages cost $1.45 to
+// report having nothing to do. A number and a unit cannot be satisfied by
+// writing a sentence.
+type Threshold struct {
+	Metric string  `json:"metric" jsonschema:"required,description=What is measured, e.g. p99 request latency"`
+	Value  float64 `json:"value" jsonschema:"required,description=The numeric limit, e.g. 200"`
+	Unit   string  `json:"unit" jsonschema:"required,description=The unit of the limit, e.g. ms, rps, MB"`
+}
+
+// IsMeasurable reports whether a threshold states something a fitness
+// function could check. A threshold missing its number or its unit is prose
+// wearing a struct.
+func (t *Threshold) IsMeasurable() bool {
+	return t != nil && t.Value > 0 && t.Unit != "" && t.Metric != ""
+}
+
+// String renders a threshold the way a report shows it.
+func (t *Threshold) String() string {
+	if !t.IsMeasurable() {
+		return ""
+	}
+	return fmt.Sprintf("%s %g%s", t.Metric, t.Value, t.Unit)
+}
+
 // NonFunctionalRequirement is a performance, security, or scaling
 // constraint. Threshold is separate from the prose so a fitness function
-// can be checked against it.
+// can be checked against it — and typed, so that separation means
+// something.
 type NonFunctionalRequirement struct {
-	Category    string `json:"category" jsonschema:"required,enum=performance,enum=security,enum=scaling,enum=accessibility,enum=other"`
-	Requirement string `json:"requirement" jsonschema:"required"`
-	Threshold   string `json:"threshold,omitempty" jsonschema:"description=The measurable limit, e.g. p99 < 200ms"`
+	Category    string     `json:"category" jsonschema:"required,enum=performance,enum=security,enum=scaling,enum=accessibility,enum=other"`
+	Requirement string     `json:"requirement" jsonschema:"required"`
+	Threshold   *Threshold `json:"threshold,omitempty" jsonschema:"description=The measurable limit. Omit entirely when the requirement carries no number — do not describe it in prose here"`
+}
+
+// Surfaces are the kinds of surface a feature exposes. Each one decides
+// whether a stage that can only review that surface is worth invoking
+// (roadmap L3.24).
+//
+// These are declared, not inferred from prose. The third real run skipped
+// accessibility-engineer correctly for having no UI, and in the same run ran
+// visual-qa-engineer — which reported "no visual QA surface exists" — because
+// it was hard-coded as always-runs. Two stages answering the same question
+// disagreed about it, at $0.55.
+type Surfaces struct {
+	// UI is true when the feature renders something a person looks at.
+	UI bool `json:"ui,omitempty" jsonschema:"description=True when this feature adds or changes a user interface a person sees"`
+	// Runtime is true when the feature runs in a served process with
+	// availability someone is on the hook for — not an in-process library
+	// or test utility.
+	Runtime bool `json:"runtime,omitempty" jsonschema:"description=True when this feature runs in a deployed service with availability or latency someone operates"`
 }
 
 // AffectedComponent is one file or module the feature touches.
@@ -42,7 +98,7 @@ const (
 // DataModelChange is one schema change and when it may run.
 type DataModelChange struct {
 	Description string         `json:"description" jsonschema:"required"`
-	Phase       MigrationPhase `json:"phase" jsonschema:"required,enum=none,enum=expand,enum=contract"`
+	Phase       MigrationPhase `json:"phase" jsonschema:"required"`
 }
 
 // APIChange is one endpoint or signature change.
@@ -77,6 +133,11 @@ type AnalysisState struct {
 	NonFunctionalRequirements []NonFunctionalRequirement `json:"nonFunctionalRequirements,omitempty"`
 	ProposedFitnessFunctions  []FitnessFunction          `json:"proposedFitnessFunctions,omitempty"`
 	OutOfScope                []string                   `json:"outOfScope,omitempty"`
+
+	// Surfaces decides which surface-specific review stages run. Absent
+	// means no surface, which is the honest default: a feature that renders
+	// nothing and serves nothing should not summon reviewers for either.
+	Surfaces Surfaces `json:"surfaces,omitempty"`
 
 	BoundedContext     BoundedContext      `json:"boundedContext" jsonschema:"required"`
 	DomainEvents       DomainEvents        `json:"domainEvents,omitempty"`
@@ -134,11 +195,30 @@ func (a AnalysisState) Validate() error {
 // Deciding what to DO with this answer (skipping the stage, routing around
 // it) is L3.1; this is a fact about the analysis, not a routing rule.
 func (a AnalysisState) RequiresArchitect() bool {
-	if len(a.ArchitecturalFlags) > 0 {
-		return true
+	return a.architectReason() != ""
+}
+
+// architectReason names the fact that summons an architect, or "" for none.
+//
+// It returns the specific disjunct rather than a bool so route.md can say
+// WHICH fact fired (roadmap L3.34). Run 4's route file reported the whole
+// disjunction as the reason, which for sre-engineer produced a line that was
+// provably false against its own analysis — a reader auditing the route could
+// not tell a correct decision from an incorrect one.
+func (a AnalysisState) architectReason() string {
+	switch {
+	case hasMeaningfulEntry(a.ArchitecturalFlags):
+		return "the analyst raised an architectural flag"
+	case a.crossesContexts():
+		return "the feature crosses a bounded context"
+	case a.changesDataModel():
+		return "the feature changes the data model"
+	case hasMeaningfulEntry(a.NewDependencies):
+		return "the feature adds a dependency"
+	case a.hasPerformanceThreshold():
+		return "a performance requirement carries a measurable threshold"
 	}
-	return a.crossesContexts() || a.changesDataModel() ||
-		len(a.NewDependencies) > 0 || a.hasPerformanceThreshold()
+	return ""
 }
 
 // RequiresPerformanceEngineer reports whether the analysis carries a
@@ -155,18 +235,94 @@ func (a AnalysisState) RequiresDataEngineer() bool {
 }
 
 // RequiresAccessibilityEngineer reports whether the feature has a UI
-// surface. The analysis contract makes an accessibility requirement
-// mandatory for any feature containing UI elements, so its presence is the
-// contract-grounded signal that there is UI to review.
+// surface. The declared surface is OR'd with the accessibility requirement
+// the contract already makes mandatory for any UI feature, the same way
+// RequiresArchitect ORs its explicit flag with its derived signals.
 func (a AnalysisState) RequiresAccessibilityEngineer() bool {
-	return a.hasRequirementCategory("accessibility")
+	return a.hasUISurface()
+}
+
+// RequiresVisualQAEngineer reports whether there is anything to look at.
+// It answers the same question as RequiresAccessibilityEngineer and so must
+// answer it the same way: the two disagreeing is the defect L3.24 records.
+func (a AnalysisState) RequiresVisualQAEngineer() bool {
+	return a.hasUISurface()
+}
+
+// RequiresSREEngineer reports whether the feature runs somewhere with
+// availability or latency an operator is accountable for. An in-process
+// utility has no SLI, and the third real run spent $0.63 establishing that
+// about an array filter.
+//
+// The declared runtime surface is the whole test. This used to be OR'd with
+// "the analysis changes an API", which read as a reasonable proxy and is not
+// one: run 4's analyst recorded `ConsoleLogger.getLogsByType(type: string)`
+// — a class method on a TypeScript library — as an API change, and the SRE
+// was summoned to a package with no served surface at all, on an analysis
+// that said `"runtime": false` in the same document. A proxy that contradicts
+// the declared fact is worse than no proxy, so it is gone. Run 4's
+// Experiment B routed the SRE in on `Surfaces.Runtime` alone, so nothing is
+// lost that was working.
+func (a AnalysisState) RequiresSREEngineer() bool {
+	return a.Surfaces.Runtime
+}
+
+func (a AnalysisState) hasUISurface() bool {
+	return a.Surfaces.UI || a.hasRequirementCategory("accessibility")
 }
 
 // RequiresDevOpsEngineer reports whether this feature asks for CI,
-// environment, or deployment work. Note this is a NEW condition: the
-// markdown pipeline runs devops unconditionally today.
+// environment, or deployment work.
+//
+// Entries that only say "nothing to do" are not counted (roadmap L3.18).
+// The contract now tells the analyst to omit the list entirely in that case,
+// and this does not depend on the analyst having complied: the second real
+// run emitted exactly one DevOps task reading "None required by this spec —
+// no CI or deployment config changes requested", the router counted one item
+// and spent $0.64 discovering the sentence meant zero.
 func (a AnalysisState) RequiresDevOpsEngineer() bool {
-	return len(a.Tasks.DevOps) > 0
+	return hasMeaningfulEntry(a.Tasks.DevOps)
+}
+
+// hasMeaningfulEntry reports whether a model-authored list holds anything
+// but a way of saying "nothing here".
+//
+// Every list the router counts goes through this. L3.18 applied the filter
+// to Tasks.DevOps and to nothing else, and run 4 found the same defect one
+// field over: the analyst wrote
+//
+//	"architecturalFlags": ["None — purely additive method ... Architect step
+//	 can be skipped."]
+//
+// and RequiresArchitect's len() > 0 read that as a flag demanding an
+// architect. The architect then ran on a three-line method, failed on L3.33,
+// and halted Experiment A at stage 4 — so a prose "none" cost that run its
+// remaining eight stages. Counting a list is only safe when something has
+// established the list cannot contain prose.
+func hasMeaningfulEntry(entries []string) bool {
+	for _, entry := range entries {
+		if !isNoOpEntry(entry) {
+			return true
+		}
+	}
+	return false
+}
+
+// noOpOpeners are the ways a model writes "nothing here". A real entry is
+// written as an imperative — "Add a workflow", "Update the pipeline" — so
+// matching on the opening word is specific enough to be safe and blunt
+// enough to be obvious. The contract, not this list, is the primary
+// mechanism; this is the net under it.
+var noOpOpeners = []string{"none", "n/a", "na", "nothing", "not applicable", "not required"}
+
+func isNoOpEntry(entry string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(entry))
+	for _, opener := range noOpOpeners {
+		if normalized == opener || strings.HasPrefix(normalized, opener+" ") {
+			return true
+		}
+	}
+	return false
 }
 
 func (a AnalysisState) hasRequirementCategory(category string) bool {
@@ -197,9 +353,12 @@ func (a AnalysisState) changesDataModel() bool {
 // hasPerformanceThreshold treats a measurable latency or throughput target
 // as structural: thresholds are what force timeouts, circuit breakers, and
 // idempotency decisions (Nygard stability patterns).
+//
+// "Measurable" is the load-bearing word, and it is now enforced by the type
+// rather than by a non-empty check (roadmap L3.24).
 func (a AnalysisState) hasPerformanceThreshold() bool {
 	for _, requirement := range a.NonFunctionalRequirements {
-		if requirement.Category == "performance" && requirement.Threshold != "" {
+		if requirement.Category == "performance" && requirement.Threshold.IsMeasurable() {
 			return true
 		}
 	}

@@ -1,0 +1,185 @@
+{
+  "schemaVersion": 2,
+  "feature": "run-history-browsing",
+  "filesCreated": [],
+  "filesModified": [
+    "apps/console/internal/runs/store.go",
+    "apps/console/internal/httpserver/responses.go",
+    "apps/console/internal/httpserver/handlers.go",
+    "apps/console/internal/httpserver/router.go"
+  ],
+  "interfaceDesign": [
+    "func (s *RunStore) ListRuns(status, cursor string, limit int) (page []*Run, nextCursor string, err error) — internal/runs/store.go",
+    "RunStore gains: orderedIDs atomic.Pointer[[]string] field, initialized to an empty []string in NewRunStore",
+    "func encodeCursor(runID string) string / func decodeCursor(token string) (runID string, ok bool) — unexported helpers in internal/runs/store.go, kept private so the opaque token format can change without touching httpserver",
+    "const defaultPageLimit = 20; const maxPageLimit = 100 — internal/runs/store.go",
+    "type RunsPage struct { Runs []*runs.Run `json:\"runs\"`; NextCursor string `json:\"nextCursor,omitempty\"` } — internal/httpserver/responses.go",
+    "func (h *Handlers) ListRuns(w http.ResponseWriter, r *http.Request) — GET /api/runs, internal/httpserver/handlers.go",
+    "func (h *Handlers) RunsPage(w http.ResponseWriter, r *http.Request) — GET /runs (hand-written HTML, Root()-style), internal/httpserver/handlers.go",
+    "router.go additions: r.Get(\"/api/runs\", h.ListRuns); r.Get(\"/runs\", h.RunsPage)",
+    "RunStore.CompleteRun(id, status, reportURL string) — signature unchanged; behavior changes from in-place field mutation to constructing and storing a new *Run copy"
+  ],
+  "refactoringLog": [
+    {
+      "operation": "Change Reference to Value",
+      "target": "internal/runs/store.go — RunStore.CompleteRun",
+      "reason": "GetRun/ListRuns release their lock before returning a *Run pointer to the caller; CompleteRun mutating that same pointer's fields afterward is a pre-existing data race. ListRuns hands out far more of these pointers per request than GetRun ever did, so it must close before this feature multiplies the exposure. CompleteRun now builds and stores a new *Run copy instead of mutating in place, making every returned *Run effectively immutable for its lifetime."
+    },
+    {
+      "operation": "Extract Function",
+      "target": "internal/runs/store.go — cursor handling pulled out of ListRuns into encodeCursor/decodeCursor",
+      "reason": "Keeps ListRuns under the ~30-LOC / complexity-<7 budget and gives the opaque-token format a single place to change later without touching callers."
+    },
+    {
+      "operation": "Introduce Named Constant",
+      "target": "internal/runs/store.go — defaultPageLimit (20), maxPageLimit (100)",
+      "reason": "Removes magic numbers from the clamping logic per the Naming Standards rule; also referenced by handlers.go query-param parsing."
+    },
+    {
+      "operation": "Guard Clause",
+      "target": "internal/httpserver/handlers.go — Handlers.ListRuns cursor decode branch",
+      "reason": "Returns 400 immediately only for a token that fails to decode at all, keeping the past-the-end and unrecognized-status empty-page cases as flat, non-nested logic rather than a branching if/else tree."
+    }
+  ],
+  "selfReview": [
+    {
+      "item": "Every public method has an intention-revealing name (no process/handle/manage)",
+      "checked": true,
+      "note": "ListRuns, RunsPage, encodeCursor/decodeCursor — assessed against the design as specified; not yet measured against compiled source (see deviations)."
+    },
+    {
+      "item": "No function exceeds 30 LOC",
+      "checked": true,
+      "note": "ListRuns kept short by extracting cursor encode/decode into separate helpers, following the existing StartRun/CompleteRun/GetRun sizing in store.go. Design-time estimate only — not measured with a tool against an actual diff."
+    },
+    {
+      "item": "Cyclomatic complexity < 7 on all new functions",
+      "checked": true,
+      "note": "Same caveat as above — status/cursor branching in ListRuns and the handler is linear (early-return guards), no nested conditionals; not run through a complexity analyzer since no file was written this session."
+    },
+    {
+      "item": "No primitive obsession: domain concepts wrapped in value objects, not raw strings/ints",
+      "checked": true,
+      "note": "Cursor is deliberately kept an opaque string (architecture decision, not a leaked implementation detail); RunsPage wraps the paged response instead of handlers returning a bare []*Run."
+    },
+    {
+      "item": "No feature envy: methods use their own class's data more than another's",
+      "checked": true,
+      "note": "ListRuns and its cursor helpers stay inside the runs package operating on RunStore's own fields; handlers.go only calls the one public method and does no reaching-in."
+    },
+    {
+      "item": "No magic numbers or strings: all literals are named constants",
+      "checked": true,
+      "note": "defaultPageLimit/maxPageLimit are named constants. Status strings (running/passed/failed) stay bare per the existing Run.Status convention already in model.go — no enum type exists anywhere in this codebase to introduce consistently."
+    },
+    {
+      "item": "Dependency direction verified: nothing in inner layers imports from outer layers",
+      "checked": true,
+      "note": "internal/runs continues to import only stdlib (+ sync/atomic) and github.com/google/uuid; no httpserver import introduced. Confirmed by reading the current store.go/model.go imports directly."
+    },
+    {
+      "item": "Tests pass (go test ./... and go test -race)",
+      "checked": false,
+      "note": "Not run. This invocation's output contract restricted the developer agent to a read-only pass (no Write/Edit, no build/test execution) and required this JSON design record instead of applied code. The design was validated by reading the current store.go, model.go, handlers.go, router.go, responses.go, and http_integration_test.go on disk, not by compiling and testing an actual change."
+    }
+  ],
+  "simpleDesign": [
+    {
+      "item": "Passes the tests",
+      "checked": false,
+      "note": "No code was written or executed this session (see deviations) — cannot claim green tests for a change that was never applied."
+    },
+    {
+      "item": "Reveals intention",
+      "checked": true,
+      "note": "ListRuns/RunsPage/encodeCursor/decodeCursor names describe exactly what each does, and reuse Run/RunStore/Status naming already established in model.go rather than inventing synonyms."
+    },
+    {
+      "item": "No duplication",
+      "checked": true,
+      "note": "Paged-response shaping reuses the existing writeJSON/writeError convention in responses.go instead of a second one; the /runs HTML page reuses Root()'s hand-written-string pattern instead of introducing a templating engine."
+    },
+    {
+      "item": "Fewest elements",
+      "checked": true,
+      "note": "No new files, no new package-level type beyond RunsPage, no new dependency — the ordering index is one new field plus one new method on the existing RunStore."
+    }
+  ],
+  "keyDecisions": [
+    {
+      "decision": "Ordering index is an atomically-swapped immutable []string (most-recent-first), prepended-to inside StartRun's existing mu.Lock() section",
+      "reasoning": "Lets ListRuns read the current order lock-free, so listing can never block or be blocked by StartRun/CompleteRun beyond their existing O(1) map-mutation critical section — required by the never-blocks NFR and the 200ms p95 / 10,000-run budget."
+    },
+    {
+      "decision": "Pagination cursor is an opaque token wrapping the last-returned run ID, not a numeric offset",
+      "reasoning": "Runs are only ever prepended, so a numeric offset shifts under concurrent inserts and would skip or repeat entries across pages. An ID-anchored cursor is stable because prepends ahead of a given ID never move anything after it."
+    },
+    {
+      "decision": "CompleteRun replaces the stored *Run with a new fully-populated copy instead of mutating the existing pointer's fields in place",
+      "reasoning": "Closes a pre-existing data race (GetRun/ListRuns hand out *Run pointers after releasing their lock) that ListRuns would otherwise multiply across every row of every page. See refactoringLog: Change Reference to Value."
+    },
+    {
+      "decision": "Malformed cursor → 400; a cursor past the end or an unrecognized status → 200 with an empty page and no next cursor",
+      "reasoning": "The spec already mandates empty-page-not-error for past-the-end pagination; extending the same precedent to unrecognized status keeps both optional filters behaviorally consistent. A token that fails to decode at all is genuinely malformed input, not 'nothing found'."
+    },
+    {
+      "decision": "Default page size 20; requested limit clamped (not rejected) to [1, 100]",
+      "reasoning": "The spec requires paging without specifying a number. A hard cap prevents a caller from requesting an effectively unbounded page, which would reintroduce the O(store size) response cost this feature exists to avoid."
+    },
+    {
+      "decision": "Status filtering is a linear forward scan over the ordering-index snapshot with early stop once a page is filled; no secondary per-status index",
+      "reasoning": "At the NFR's 10,000-run scale, a bounded in-memory scan is sub-millisecond even in the worst case. A secondary per-status index today would be premature generalization — every write would update N buckets with no demonstrated need."
+    },
+    {
+      "decision": "Duration is computed server-side from StartedAt/FinishedAt at response time, not stored on Run; in-progress runs render a static 'running' label with no live timer",
+      "reasoning": "Run already carries both timestamps, so a stored duration field would be pure duplication. A static label avoids introducing a client-side polling/auto-refresh mechanism the spec never asked for (YAGNI) — flagged in deviations since architecture-notes leaves this open pending product/UX sign-off."
+    }
+  ],
+  "deviations": [
+    {
+      "task": "Full implementation of Developer Tasks 1–9 from analysis.md (write/edit apps/console/internal/runs/store.go and internal/httpserver/{responses,handlers,router}.go)",
+      "reason": "This invocation's output contract explicitly overrode the developer agent's normal Write/Edit/Bash access and required a JSON design record with no file writes. No source files were modified in this session; every signature, control-flow decision, and named constant above was checked directly against the current on-disk store.go, model.go, handlers.go, router.go, responses.go, and http_integration_test.go so the design is ready to apply verbatim in a session with write access."
+    },
+    {
+      "task": "http_integration_test.go changes listed under analysis.md's files_touched",
+      "reason": "Per this agent's standing rule, the developer does not write test files — that is qa-engineer's responsibility. Excluded from filesModified/filesCreated here even though the analyst listed it, and covered instead in notesForQa."
+    },
+    {
+      "task": "Open architectural question: live-updating elapsed time for in-progress runs",
+      "reason": "architecture-notes.md leaves this open pending product/UX sign-off. Proceeded with its recommended default (static 'running' label, no client polling) since building an auto-refresh mechanism the spec never asked for would violate YAGNI; flagging so product-owner can override before ship."
+    },
+    {
+      "task": "CompleteRun copy-on-write change",
+      "reason": "Not one of the analyst's explicit Developer Tasks, but architecture-notes.md identifies it as a prerequisite: ListRuns will hand out many more *Run pointers per request than GetRun ever did, multiplying an existing lock-release-before-pointer-lifetime-ends data race. Folded in as in-scope Boy Scout cleanup per the architect's explicit call-out, not deferred."
+    }
+  ],
+  "dependenciesAdded": [],
+  "notesForQa": [
+    "GET /api/runs: verify most-recent-first ordering, consecutive pages have no overlap/gaps, status filter narrows to a single status, a cursor past the end returns 200 with an empty array and no next cursor, and a cursor that fails to decode returns 400.",
+    "Limit clamping: assert responses never exceed 100 runs regardless of requested limit (test limit=0, limit=100, limit=100000).",
+    "Performance: seed 10,000 runs and assert p95 < 200ms for both an unfiltered request and a status-filtered request against a skewed status distribution (rare-status worst case).",
+    "Concurrency: run ListRuns in one set of goroutines against sustained StartRun/CompleteRun in another; assert neither stalls beyond a bounded threshold, and that the ordering index and run map stay consistent (no run ID in one without the other).",
+    "Run `go test -race` across the extended suite — this design's CompleteRun change is specifically meant to close a pointer-mutation-after-lock-release race that ListRuns would otherwise multiply.",
+    "In-progress runs must show no report link on both the GET /api/runs JSON response and the /runs HTML page; completed runs must link to the correct ReportURL.",
+    "Keyboard navigation: tab order must reach every row's report link with a visible focus state — accessibility-engineer owns the manual walkthrough per analysis.md since no automated a11y tooling is wired into this hand-written-HTML Go server.",
+    "No test files exist for this feature yet — this developer session produced a design record only, not applied code (see deviations); qa-engineer is starting from this specification against the current store.go/handlers.go/router.go/responses.go, not from a diff."
+  ],
+  "notesForDevops": [
+    "No CI/CD or deployment artifact changes required — analysis.md lists no DevOps Tasks for this feature.",
+    "cmd/server/main.go wiring is unaffected: NewRunStore() takes no arguments and its signature does not change, so httpserver.New(reg, runStore) wiring stays as-is.",
+    "No new dependency to vendor — the ordering index uses only the stdlib sync/atomic package; go.mod is unchanged."
+  ],
+  "retrieval": {
+    "domainTerms": [
+      "Run",
+      "RunStore",
+      "Status",
+      "StartedAt",
+      "FinishedAt",
+      "ReportURL"
+    ],
+    "issueRefs": [],
+    "linkedAdrs": [],
+    "linkedKis": []
+  }
+}

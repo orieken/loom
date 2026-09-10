@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 2,
+  "feature": "console-log-filtering",
+  "summary": "Add a getLogsByType(type: string) accessor to the existing ConsoleLogger class in packages/saturday-core/src/utils/console-logger.ts so callers can retrieve only the captured console log entries matching a given type (e.g. 'error') without hand-filtering the raw array returned by getLogs() at every call site. This is a small, purely additive read accessor that follows the exact style of the sibling getLogs()/getFormattedLogs()/clear() methods already on the class, requires no new exports (ConsoleLogger is already re-exported from src/index.ts), no data model or API contract changes, and no architectural decisions — it exists to make the common 'assert no console errors occurred' test pattern a one-line call instead of a manual filter.",
+  "acceptanceCriteria": [
+    {
+      "statement": "getLogsByType('error') returns only the captured entries whose type field is exactly 'error'",
+      "examples": [
+        "logs = [{type:'log',...}, {type:'error',...}, {type:'error',...}] → getLogsByType('error') returns the 2 entries with type 'error', in original capture order"
+      ]
+    },
+    {
+      "statement": "Calling getLogsByType with a type that matches no captured entry returns an empty array, never undefined",
+      "examples": [
+        "logs = [{type:'log',...}] → getLogsByType('warning') returns []",
+        "logs = [] (no console activity yet) → getLogsByType('error') returns []"
+      ]
+    },
+    {
+      "statement": "getLogsByType performs no I/O and does not mutate the internal captured logs array",
+      "examples": [
+        "Calling getLogsByType(...) any number of times leaves the array returned by a subsequent getLogs() call unchanged in length and content"
+      ]
+    },
+    {
+      "statement": "A unit test in packages/saturday-core/tests/utils/console-logger.spec.ts covers both the match case and the empty-result case, reusing the existing mock-Page/ConsoleMessage fixture pattern already in that file"
+    }
+  ],
+  "nonFunctionalRequirements": [
+    {
+      "category": "performance",
+      "requirement": "getLogsByType must perform no I/O and execute as a synchronous, in-memory filter over already-captured log entries — no network, disk, or async work."
+    },
+    {
+      "category": "other",
+      "requirement": "getLogsByType must be a pure read accessor: it must not mutate this.logs, matching the non-mutating contract getLogs() already implies."
+    }
+  ],
+  "proposedFitnessFunctions": [
+    {
+      "property": "getLogsByType never mutates the internal captured logs array",
+      "verification": "Vitest unit test: capture entries, call getLogsByType(...), then assert getLogs() still returns the original length/content and the returned array is not the same reference as the internal array",
+      "owner": "QA Engineer",
+      "judgmentOnly": false
+    },
+    {
+      "property": "Unit test coverage for console-logger.ts stays >= 85% per shared/rules/testing-conventions.md",
+      "verification": "vitest --coverage threshold check in CI",
+      "owner": "DevOps Engineer",
+      "judgmentOnly": false
+    }
+  ],
+  "outOfScope": [
+    "Filtering by multiple types in a single call (e.g. getLogsByType(['error','warning']))",
+    "Changing getFormattedLogs() or getLogs() behavior",
+    "Adding new export wiring — ConsoleLogger is already exported from packages/saturday-core/src/index.ts",
+    "Persisting or serializing filtered logs to disk or an external reporter",
+    "Case-insensitive or fuzzy type matching"
+  ],
+  "surfaces": {
+    "ui": false,
+    "runtime": false
+  },
+  "boundedContext": {
+    "owning": "Saturday Framework — Core Test Instrumentation (packages/saturday-core ConsoleLogger utility)",
+    "crossings": []
+  },
+  "domainEvents": {
+    "commands": [],
+    "eventsProduced": [],
+    "owningAggregates": ["ConsoleLogger"],
+    "readModels": ["captured console log entries"]
+  },
+  "affectedComponents": [
+    {
+      "path": "packages/saturday-core/src/utils/console-logger.ts",
+      "reason": "Add the new public getLogsByType(type: string) method alongside getLogs()/getFormattedLogs()/clear()."
+    },
+    {
+      "path": "packages/saturday-core/tests/utils/console-logger.spec.ts",
+      "reason": "Add unit tests for the match case and the empty-result case, reusing the existing mock-Page/ConsoleMessage fixture pattern."
+    }
+  ],
+  "dataModelChanges": [
+    {
+      "description": "None — no persistent data model change. The internal logs array shape ({type, text, location, timestamp}) is unchanged; getLogsByType only adds a read-side filter over the existing in-memory array.",
+      "phase": "none"
+    }
+  ],
+  "apiChanges": [
+    {
+      "endpoint": "ConsoleLogger.getLogsByType(type: string)",
+      "change": "New public method added to the ConsoleLogger class's public surface, returning Array<{type, text, location, timestamp}> filtered by exact type match."
+    }
+  ],
+  "newDependencies": [],
+  "architecturalFlags": [
+    "None — purely additive method on an existing class following the established getLogs()/clear() pattern; no new package, base class, layer boundary change, or cross-cutting concern introduced. Architect step can be skipped."
+  ],
+  "retrieval": {
+    "domainTerms": ["ConsoleLogger", "captured log entry", "log type"],
+    "issueRefs": [],
+    "linkedAdrs": [],
+    "linkedKis": []
+  },
+  "tasks": {
+    "developer": [
+      "Add public method getLogsByType(type: string) to ConsoleLogger in packages/saturday-core/src/utils/console-logger.ts, implemented as this.logs.filter(log => log.type === type) so it returns a new array and never the internal reference.",
+      "Return [] (not undefined) when no entries match — this falls out naturally from Array.prototype.filter, but confirm no early-return path can produce undefined.",
+      "No changes needed to packages/saturday-core/src/index.ts — ConsoleLogger is already exported via `export * from './utils/console-logger'`."
+    ],
+    "qa": [
+      "Add a unit test to packages/saturday-core/tests/utils/console-logger.spec.ts for the match case: dispatch one 'log' and two 'error' ConsoleMessage mocks via the existing consoleListener fixture, call getLogsByType('error'), and assert the result has length 2 and contains only the error entries.",
+      "Add a unit test for the empty-result case: with only non-matching entries captured (or none captured at all), call getLogsByType('warning') and assert the result strictly equals [] (toEqual([])), not undefined.",
+      "Add a unit test asserting non-mutation: call getLogsByType(...) and then confirm getLogs() still returns the original entries unchanged in length and content.",
+      "Follow the existing mock-Page/ConsoleMessage fixture pattern already established in the spec file (mockPage.on capturing the listener, synthetic ConsoleMessage objects) rather than introducing a new mocking approach."
+    ],
+    "techWriter": [
+      "If packages/saturday-core has README or JSDoc coverage documenting ConsoleLogger's public methods (getLogs, getFormattedLogs, clear), add getLogsByType alongside them with a one-line description and example."
+    ],
+    "devops": [
+      "None — no CI pipeline, build, or deployment changes required; the existing Vitest job already covers packages/saturday-core/tests."
+    ]
+  },
+  "edgeCases": [
+    {
+      "case": "type argument matches no captured log entries",
+      "handling": "Return an empty array, never undefined — explicit acceptance criterion, satisfied naturally by Array.prototype.filter."
+    },
+    {
+      "case": "logs array is empty at call time (no console activity captured yet)",
+      "handling": "getLogsByType returns [] regardless of the type argument, same as filtering an empty array."
+    },
+    {
+      "case": "case sensitivity of the type argument (e.g. 'Error' vs 'error')",
+      "handling": "Implement as exact, case-sensitive string equality — no normalization. Playwright's ConsoleMessage.type() always emits lowercase values ('log', 'error', 'warning', 'info', etc.), and getFormattedLogs() only uses .toUpperCase() for display, never for comparison, so this matches existing conventions."
+    },
+    {
+      "case": "concurrent mutation — a new console event arrives via setupConsoleListener while getLogsByType is filtering",
+      "handling": "Not a real race: JavaScript is single-threaded, so Array.prototype.filter runs synchronously to completion before any queued console listener callback executes."
+    }
+  ],
+  "definitionOfDone": [
+    "getLogsByType(type: string) implemented on ConsoleLogger, returning a new array of entries whose type matches, without mutating this.logs.",
+    "Unmatched type returns [] verified by a dedicated unit test.",
+    "Match case verified by a dedicated unit test using the existing mock-Page fixture pattern.",
+    "No I/O performed by the method — confirmed by code review as a pure synchronous filter over the in-memory array.",
+    "ConsoleLogger remains exported from packages/saturday-core/src/index.ts (already satisfied, no change needed).",
+    "All pre-existing tests in console-logger.spec.ts still pass.",
+    "Test coverage for console-logger.ts remains >= 85% per shared/rules/testing-conventions.md."
+  ],
+  "openQuestions": [
+    "Should type matching be case-sensitive? This analysis assumes exact case-sensitive match since the spec's only example ('error') aligns with Playwright's lowercase ConsoleMessage.type() output — confirm before implementation if callers might ever pass mixed-case strings.",
+    "Should the returned array contain the same log-entry object references (shallow copy) or deep-cloned entries? This analysis assumes a shallow copy (new array via .filter(), same entry objects) since 'does not mutate the captured logs' is satisfied by not mutating the array itself, and getLogs() today already returns the live entry objects."
+  ]
+}

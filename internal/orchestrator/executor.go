@@ -21,6 +21,13 @@ type Executor struct {
 	onRoute  func(RouteSummary)
 	onLoop   func(LoopRound)
 	tracer   Tracer
+	// workTree fingerprints the repository so a stage that edits source it
+	// never declared it would edit is noticed (roadmap L3.30). Nil disables
+	// the check.
+	workTree       WorkTree
+	onPostureError func(error)
+	onClaimWarning func(error)
+	verifier       MeasurementVerifier
 	// onBaselineError reports a failure to retain what a human was shown at
 	// a gate (roadmap L4.5). Retention is best-effort: it observes a human's
 	// action rather than controlling the run, so a failure is reported and
@@ -311,7 +318,8 @@ func (e *Executor) checkGate(stage Stage, state *RunState) error {
 	if err := e.emit(Event{Kind: EventGateWaiting, Stage: stage.ID, Gate: stage.Gate}); err != nil {
 		return err
 	}
-	return &WaitingApprovalError{Gate: stage.Gate, Stage: stage.ID}
+	return &WaitingApprovalError{Gate: stage.Gate, Stage: stage.ID,
+		SkipReason: state.Stages[stage.ID].SkipReason}
 }
 
 // waitingRecord marks a stage as halted at its gate without discarding what
@@ -321,12 +329,20 @@ func (e *Executor) checkGate(stage Stage, state *RunState) error {
 // approves, rather than being resurrected by the halt.
 func waitingRecord(state *RunState, stage Stage) StageRecord {
 	record := state.Stages[stage.ID]
-	if record.Status == StageStatusSkipped || record.Status == StageStatusCompleted {
+	isSettled := record.Status == StageStatusSkipped || record.Status == StageStatusCompleted
+	if isSettled {
 		record.PreviousStatus = record.Status
 	}
 	record.Status = StageStatusWaitingApproval
 	record.Gate = stage.Gate
-	record.StartedAt = time.Now().UTC()
+	// A settled stage keeps the times it actually ran. Stamping the halt
+	// over them produced a record in run 4 whose StartedAt was eight hours
+	// AFTER its FinishedAt — the gate fired at 12:34 on a stage that had
+	// been skipped at 04:09 — which is not a time anything happened
+	// (roadmap L3.32).
+	if !isSettled {
+		record.StartedAt = time.Now().UTC()
+	}
 	return record
 }
 
@@ -362,11 +378,18 @@ func (e *Executor) executeStage(ctx context.Context, stage Stage, plan Plan, inp
 	if projectErr != nil {
 		return e.persistFailure(ctx, state, stageFailure{stage: stage, err: projectErr})
 	}
+	// Fingerprint before the stage runs so a change it makes can be
+	// attributed to it (roadmap L3.30). Internal stages touch no source.
+	before := ""
+	if !stage.Internal {
+		before = e.treeDigest()
+	}
 	output, invokeErr := e.runOrInvoke(ctx, stage, plan, input)
 	if invokeErr != nil {
 		return e.persistFailure(ctx, state, stageFailure{stage: stage, err: invokeErr, usage: output.Usage})
 	}
-	return e.persistCompletion(state, stage, plan, input, output)
+	e.notePostureViolation(state, stage, before, output)
+	return e.persistCompletion(ctx, state, stage, plan, input, output)
 }
 
 func stageSpanFor(stage Stage, state *RunState) StageSpan {
@@ -449,11 +472,11 @@ func invokeOutcome(output StageOutput, err error) SpanOutcome {
 // artifactFor resolves what this stage's artifact is: a typed stage's
 // validated state document, written here, or the markdown file a provider
 // wrote itself.
-func artifactFor(stage Stage, input StageInput, output StageOutput) (string, error) {
+func (e *Executor) artifactFor(ctx context.Context, stage Stage, input StageInput, output StageOutput) (string, error) {
 	if stage.StateKind == "" {
 		return output.ArtifactPath, nil
 	}
-	return persistTypedOutput(stage, input, output)
+	return e.persistTypedOutput(ctx, stage, input, output)
 }
 
 // persistFailure distinguishes parent cancellation (SIGINT — checkpoint as
@@ -475,7 +498,8 @@ func (e *Executor) persistFailure(ctx context.Context, state *RunState, failure 
 	now := time.Now().UTC()
 	record.FinishedAt = &now
 	record.Error = failure.err.Error()
-	record.Usage = failure.usage
+	record.Usage = accumulateUsage(record.Usage, failure.usage)
+	state.recordSpend(failure.usage)
 	if errors.Is(ctx.Err(), context.Canceled) {
 		record.Status = StageStatusInterrupted
 	} else {
@@ -490,8 +514,8 @@ func (e *Executor) persistFailure(ctx context.Context, state *RunState, failure 
 	return fmt.Errorf("stage %q: %w", failure.stage.ID, failure.err)
 }
 
-func (e *Executor) persistCompletion(state *RunState, stage Stage, plan Plan, input StageInput, output StageOutput) error {
-	artifactPath, err := artifactFor(stage, input, output)
+func (e *Executor) persistCompletion(ctx context.Context, state *RunState, stage Stage, plan Plan, input StageInput, output StageOutput) error {
+	artifactPath, err := e.artifactFor(ctx, stage, input, output)
 	if err != nil {
 		return e.persistFailure(context.Background(), state, stageFailure{stage: stage, err: err, usage: output.Usage})
 	}
@@ -503,7 +527,8 @@ func (e *Executor) persistCompletion(state *RunState, stage Stage, plan Plan, in
 	record.ViewPath = viewPathFor(stage, input)
 	record.Agent = stage.Agent
 	record.StateKind = stage.StateKind
-	record.Usage = output.Usage
+	record.Usage = accumulateUsage(record.Usage, output.Usage)
+	state.recordSpend(output.Usage)
 	if artifactPath != "" {
 		sum, err := ArtifactSHA256(artifactPath)
 		if err != nil {

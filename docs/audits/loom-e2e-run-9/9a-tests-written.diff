@@ -1,0 +1,101 @@
+[1mdiff --git a/packages/saturday-core/tests/utils/console-logger.spec.ts b/packages/saturday-core/tests/utils/console-logger.spec.ts[m
+[1mindex 94cb33c..31f1829 100644[m
+[1m--- a/packages/saturday-core/tests/utils/console-logger.spec.ts[m
+[1m+++ b/packages/saturday-core/tests/utils/console-logger.spec.ts[m
+[36m@@ -72,11 +72,94 @@[m [mdescribe('ConsoleLogger', () => {[m
+         text: () => 'Test',[m
+         location: () => ({ url: '' }),[m
+       } as unknown as ConsoleMessage;[m
+[31m-  [m
+[32m+[m
+       consoleListener(mockMsg);[m
+       expect(consoleLogger.getLogs()).toHaveLength(1);[m
+[31m-  [m
+[32m+[m
+       consoleLogger.clear();[m
+       expect(consoleLogger.getLogs()).toHaveLength(0);[m
+   });[m
+[32m+[m
+[32m+[m[32m  /**[m
+[32m+[m[32m   * @issue console-log-filtering[m
+[32m+[m[32m   * @ac AC1: getLogsByType('error') returns only entries whose type is 'error'[m
+[32m+[m[32m   */[m
+[32m+[m[32m  it('getLogsByType returns only entries matching the given type', () => {[m
+[32m+[m[32m    const makeMsg = (type: string, text: string) =>[m
+[32m+[m[32m      ({[m
+[32m+[m[32m        type: () => type,[m
+[32m+[m[32m        text: () => text,[m
+[32m+[m[32m        location: () => ({ url: 'http://test.com' }),[m
+[32m+[m[32m      }) as unknown as ConsoleMessage;[m
+[32m+[m
+[32m+[m[32m    consoleListener(makeMsg('log', 'first log'));[m
+[32m+[m[32m    consoleListener(makeMsg('error', 'first error'));[m
+[32m+[m[32m    consoleListener(makeMsg('warning', 'a warning'));[m
+[32m+[m[32m    consoleListener(makeMsg('error', 'second error'));[m
+[32m+[m
+[32m+[m[32m    const errors = consoleLogger.getLogsByType('error');[m
+[32m+[m
+[32m+[m[32m    expect(errors).toHaveLength(2);[m
+[32m+[m[32m    expect(errors[0].text).toBe('first error');[m
+[32m+[m[32m    expect(errors[1].text).toBe('second error');[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  /**[m
+[32m+[m[32m   * @issue console-log-filtering[m
+[32m+[m[32m   * @ac AC2: an unmatched type returns an empty array, never undefined[m
+[32m+[m[32m   */[m
+[32m+[m[32m  it('getLogsByType returns an empty array, never undefined, for an unmatched type', () => {[m
+[32m+[m[32m    expect(consoleLogger.getLogsByType('warning')).toEqual([]);[m
+[32m+[m[32m    expect(Array.isArray(consoleLogger.getLogsByType('warning'))).toBe(true);[m
+[32m+[m
+[32m+[m[32m    const mockMsg = {[m
+[32m+[m[32m      type: () => 'log',[m
+[32m+[m[32m      text: () => 'Test log message',[m
+[32m+[m[32m      location: () => ({ url: 'http://test.com' }),[m
+[32m+[m[32m    } as unknown as ConsoleMessage;[m
+[32m+[m[32m    consoleListener(mockMsg);[m
+[32m+[m
+[32m+[m[32m    const result = consoleLogger.getLogsByType('warning');[m
+[32m+[m[32m    expect(Array.isArray(result)).toBe(true);[m
+[32m+[m[32m    expect(result).toHaveLength(0);[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  /**[m
+[32m+[m[32m   * @issue console-log-filtering[m
+[32m+[m[32m   * @ac AC2: an unrecognized/garbage type string returns [] rather than throwing[m
+[32m+[m[32m   */[m
+[32m+[m[32m  it('getLogsByType returns an empty array for an empty-string or unrecognized type', () => {[m
+[32m+[m[32m    const mockMsg = {[m
+[32m+[m[32m      type: () => 'log',[m
+[32m+[m[32m      text: () => 'Test log message',[m
+[32m+[m[32m      location: () => ({ url: 'http://test.com' }),[m
+[32m+[m[32m    } as unknown as ConsoleMessage;[m
+[32m+[m[32m    consoleListener(mockMsg);[m
+[32m+[m
+[32m+[m[32m    expect(consoleLogger.getLogsByType('')).toEqual([]);[m
+[32m+[m[32m    expect(consoleLogger.getLogsByType('trace')).toEqual([]);[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  /**[m
+[32m+[m[32m   * @issue console-log-filtering[m
+[32m+[m[32m   * @ac AC3: the method performs no I/O and does not mutate the captured logs[m
+[32m+[m[32m   */[m
+[32m+[m[32m  it('getLogsByType does not mutate the logs returned by getLogs', () => {[m
+[32m+[m[32m    const makeMsg = (type: string, text: string) =>[m
+[32m+[m[32m      ({[m
+[32m+[m[32m        type: () => type,[m
+[32m+[m[32m        text: () => text,[m
+[32m+[m[32m        location: () => ({ url: 'http://test.com' }),[m
+[32m+[m[32m      }) as unknown as ConsoleMessage;[m
+[32m+[m
+[32m+[m[32m    consoleListener(makeMsg('log', 'first log'));[m
+[32m+[m[32m    consoleListener(makeMsg('error', 'first error'));[m
+[32m+[m
+[32m+[m[32m    const before = consoleLogger.getLogs();[m
+[32m+[m[32m    consoleLogger.getLogsByType('error');[m
+[32m+[m[32m    const after = consoleLogger.getLogs();[m
+[32m+[m
+[32m+[m[32m    expect(after).toHaveLength(before.length);[m
+[32m+[m[32m    expect(after).toEqual(before);[m
+[32m+[m[32m  });[m
+ });[m

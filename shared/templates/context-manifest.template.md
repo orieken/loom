@@ -49,7 +49,12 @@ List files currently open or under consideration that must be closed to avoid co
 - [ ] [File Name](file://<absolute_path>) -- [Different architecture layer]
 
 ## 7. Token Budget
-- **Estimated total tokens for pinned files**: ~<N>
-- **Target agent tier**: [Analyst/Architect: ≤60% | Developer: ≤80% | Reviewer: ≤40%] of a 200k-token context window
-- **Status**: OK | WARNING (exceeds tier budget — see cut recommendations below)
+- **Target agent tier**: [analyst (analyst/architect, ≤60%) | developer (≤80%) | reviewer (≤40%)] of a 200k-token context window
+- **Estimated total tokens**: _measured by loom from the pinned files (bytes ÷ 4) — leave this blank_
+- **Status**: _measured by loom — leave this blank_
+
+Do not fill in the total or the status. They are computed from the files pinned above and written
+here for you. The heuristic this template used to ask for was ~7× under on real prose, and it
+reported `OK` with a per-file breakdown and a percentage behind it (see the analyst's counterpart
+note and roadmap L3.25).
 - **Cut recommendations (if WARNING)**: [file] -- [reason it's the lowest-signal pin]

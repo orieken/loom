@@ -18,18 +18,35 @@ import (
 // typedInstruction appends the schema and the output contract for a typed
 // stage. The schema is inlined rather than referenced by path so the run
 // does not depend on the framework being installed in the target project.
-func typedInstruction(stage orchestrator.Stage, input orchestrator.StageInput) (string, error) {
+func typedInstruction(stage orchestrator.Stage, input orchestrator.StageInput, allowed []string) (string, error) {
 	schema, ok := state.SchemaForKind(state.Kind(stage.StateKind))
 	if !ok {
 		return "", fmt.Errorf("stage %q declares state kind %q, which has no schema", stage.ID, stage.StateKind)
 	}
 	var instruction strings.Builder
 	instruction.WriteString("\n---\n\nOUTPUT CONTRACT (this overrides any output-format instruction above).\n")
-	instruction.WriteString("Return a single JSON object conforming to this schema, and nothing else.\n")
-	instruction.WriteString("Do not write files. Do not add commentary before or after the JSON.\n\n")
+	instruction.WriteString(fileClause(allowed))
 	instruction.Write(schema)
 	instruction.WriteString(upstreamSection(input))
 	return instruction.String(), nil
+}
+
+// fileClause states what the stage does to the working tree before it
+// answers. A stage holding no edit tool is told not to write, which is what
+// the contract has always said; a stage holding one is told that the JSON
+// describes work it has actually done, because the JSON is a report and a
+// report of unwritten code is the failure mode this clause exists to
+// prevent (see writesFiles).
+func fileClause(allowed []string) string {
+	if !writesFiles(allowed) {
+		return "Return a single JSON object conforming to this schema, and nothing else.\n" +
+			"Do not write files. Do not add commentary before or after the JSON.\n\n"
+	}
+	return "Make the file changes this stage is responsible for, using the tools you have been given.\n" +
+		"Then return a single JSON object conforming to this schema as your final output.\n" +
+		"The JSON REPORTS that work; it does not replace it. Every path you list as created or modified\n" +
+		"must be a file you actually wrote this session — verify with git status before answering.\n" +
+		"Do not add commentary before or after the JSON.\n\n"
 }
 
 // upstreamSection hands the agent the projected fields of each stage it
@@ -60,11 +77,20 @@ func sortedUpstreams(upstreams map[string][]byte) []string {
 }
 
 // extractJSON pulls the state document out of an agent's response. Raw JSON
-// is accepted, and so is exactly one fenced block with only whitespace
-// around it — models fence their output as a formatting habit, and failing
-// a run over that would report a reflex as a modelling error. Anything
-// else fails: scanning for the first balanced object anywhere would happily
-// accept a schema example the agent quoted back.
+// is accepted, and so is the last fenced block that holds an object.
+//
+// This used to require the response be *entirely* one fenced block, and the
+// third real end-to-end run died on it (roadmap L3.21): qa-engineer returned
+// a complete, valid, schema-conformant state document preceded by the single
+// sentence "Now producing the final QA state JSON." The run halted and the
+// attempt still billed $0.69. The prompt above does say not to add
+// commentary, and the model disregarded it, so the parser cannot treat that
+// instruction as a guarantee — models narrate as a reflex, and failing a run
+// over one is reporting a habit as a modelling error.
+//
+// The last block, specifically, keeps the property the old strictness
+// existed for: not adopting a schema example the agent quoted back. A quote
+// precedes the real answer; it does not follow it.
 func extractJSON(response []byte) ([]byte, error) {
 	trimmed := bytes.TrimSpace(response)
 	if len(trimmed) == 0 {
@@ -73,21 +99,55 @@ func extractJSON(response []byte) ([]byte, error) {
 	if trimmed[0] == '{' {
 		return trimmed, nil
 	}
-	return unfence(trimmed)
+	return lastFencedObject(string(trimmed))
 }
 
-func unfence(trimmed []byte) ([]byte, error) {
-	text := string(trimmed)
-	if !strings.HasPrefix(text, "```") || !strings.HasSuffix(text, "```") {
-		return nil, unexpectedResponse(text)
+// lastFencedObject returns the final fenced block whose body looks like a
+// JSON object. Blocks that hold something else — a shell command, a diff —
+// are passed over rather than failing the response.
+func lastFencedObject(text string) ([]byte, error) {
+	blocks := fencedBlocks(text)
+	for index := len(blocks) - 1; index >= 0; index-- {
+		body := strings.TrimSpace(blocks[index])
+		if strings.HasPrefix(body, "{") {
+			return []byte(body), nil
+		}
 	}
-	body := strings.TrimSuffix(text, "```")
-	body = body[strings.Index(body, "\n")+1:]
-	body = strings.TrimSpace(body)
-	if !strings.HasPrefix(body, "{") || strings.Contains(body, "```") {
-		return nil, unexpectedResponse(text)
+	return nil, unexpectedResponse(text)
+}
+
+func fencedBlocks(text string) []string {
+	scan := &fenceScan{}
+	for _, line := range strings.Split(text, "\n") {
+		scan.consume(line)
 	}
-	return []byte(body), nil
+	return scan.blocks
+}
+
+// fenceScan collects fenced block bodies as lines arrive. An unterminated
+// final block is discarded: a truncated response is not a state document.
+type fenceScan struct {
+	blocks   []string
+	current  []string
+	isInside bool
+}
+
+func (scan *fenceScan) consume(line string) {
+	if strings.HasPrefix(strings.TrimSpace(line), "```") {
+		scan.toggle()
+		return
+	}
+	if scan.isInside {
+		scan.current = append(scan.current, line)
+	}
+}
+
+func (scan *fenceScan) toggle() {
+	if scan.isInside {
+		scan.blocks = append(scan.blocks, strings.Join(scan.current, "\n"))
+		scan.current = nil
+	}
+	scan.isInside = !scan.isInside
 }
 
 func unexpectedResponse(text string) error {

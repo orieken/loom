@@ -16,6 +16,7 @@
         "loop.exhausted",
         "loop.iterated",
         "policy.evaluated",
+        "posture.violation",
         "run.completed",
         "run.started",
         "stage.completed",

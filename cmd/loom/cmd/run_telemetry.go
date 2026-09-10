@@ -11,6 +11,7 @@ package cmd
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/orieken/loom/internal/orchestrator"
@@ -36,6 +37,36 @@ func reportRunUsage(cmd *cobra.Command, store *orchestrator.StateStore) {
 	}
 	cmd.Printf("Usage: %d in / %d out tokens (%d cache read, %d cache write) — $%.4f\n",
 		total.InputTokens, total.OutputTokens, total.CacheReadTokens, total.CacheCreationTokens, total.CostUSD)
+	reportPostureViolations(cmd, state)
+}
+
+// reportPostureErrorOnce warns that the tree cannot be fingerprinted, one
+// time. The check runs per stage, so an unfingerprintable tree — a project
+// with no git repository, most often — would otherwise print the same line
+// fifteen times and bury everything else.
+func reportPostureErrorOnce(cmd *cobra.Command) func(error) {
+	var reported bool
+	return func(err error) {
+		if reported {
+			return
+		}
+		reported = true
+		cmd.PrintErrf("warning: cannot check what stages change (%v) — "+
+			"posture checking is off for this run\n", err)
+	}
+}
+
+// reportPostureViolations names any stage that changed source it never
+// declared it would change (roadmap L3.30). Buried in the timeline it would
+// go unread, which is how run 4's edits reached the shipped tree without
+// anyone noticing they had bypassed review.
+func reportPostureViolations(cmd *cobra.Command, state *orchestrator.RunState) {
+	violations := state.PostureViolations()
+	if len(violations) == 0 {
+		return
+	}
+	cmd.PrintErrf("warning: %s changed the working tree without declaring a tool that writes files — "+
+		"review those edits, nothing else did\n", strings.Join(violations, ", "))
 }
 
 // startTelemetry opens a tracing session for this run and returns the

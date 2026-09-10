@@ -8,6 +8,7 @@ package mock
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -31,6 +32,11 @@ type Script struct {
 	// L2.9). The executor validates it and writes it as the artifact, so a
 	// script setting Payload leaves ArtifactContent empty.
 	Payload []byte
+	// Fabricates suppresses the writes a scripted payload's path claims
+	// would otherwise produce, modelling a stage that reports work it did
+	// not do. It exists so L2.24's regression fixture — the second real
+	// run's qa payload — can be replayed as it actually arrived.
+	Fabricates bool
 	// Usage is what this invocation reports consuming (roadmap L3.8). Nil
 	// is the default and the honest one for a mock: it consumed nothing
 	// from a model, and reporting zeros would assert a measurement that
@@ -71,6 +77,9 @@ func (p *Provider) Invoke(ctx context.Context, stage orchestrator.Stage, input o
 		return orchestrator.StageOutput{Usage: script.Usage}, script.Err
 	}
 	if len(script.Payload) > 0 {
+		if err := writeClaimedPaths(script, input); err != nil {
+			return orchestrator.StageOutput{}, err
+		}
 		return orchestrator.StageOutput{Payload: script.Payload, Usage: script.Usage}, nil
 	}
 	return p.writeArtifact(stage, input, script)
@@ -159,4 +168,51 @@ func (p *Provider) Invocations() []string {
 	out := make([]string, len(p.invocations))
 	copy(out, p.invocations)
 	return out
+}
+
+// writeClaimedPaths creates the files a scripted payload says the stage
+// wrote (roadmap L2.24).
+//
+// The executor now checks a stage's path claims against the filesystem, and
+// the mock's own implementation sample named a file it never created — which
+// is precisely the defect L2.24 exists to catch, so the executor rejected
+// it. A mock that models a stage must model one that does what it says;
+// otherwise `--provider mock` exercises a liar and every honest run has to
+// tolerate it.
+func writeClaimedPaths(script Script, input orchestrator.StageInput) error {
+	if script.Fabricates {
+		return nil
+	}
+	root := input.ProjectRoot
+	if root == "" {
+		root = input.WorkspaceDir
+	}
+	for _, claimed := range claimedPaths(script.Payload) {
+		path := filepath.Join(root, filepath.FromSlash(claimed))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			return fmt.Errorf("mock: create directory for %s: %w", claimed, err)
+		}
+		if err := os.WriteFile(path, []byte("// written by the mock provider\n"), 0o644); err != nil {
+			return fmt.Errorf("mock: write %s: %w", claimed, err)
+		}
+	}
+	return nil
+}
+
+// claimedPaths reads every path-naming field out of a payload without
+// knowing which document kind it is: the mock scripts several, and a decode
+// per kind would be a second table to keep in step.
+func claimedPaths(payload []byte) []string {
+	var document struct {
+		FilesCreated      []string `json:"filesCreated"`
+		FilesModified     []string `json:"filesModified"`
+		TestFilesCreated  []string `json:"testFilesCreated"`
+		TestFilesModified []string `json:"testFilesModified"`
+	}
+	if err := json.Unmarshal(payload, &document); err != nil {
+		return nil
+	}
+	return append(append(append(append([]string{},
+		document.FilesCreated...), document.FilesModified...),
+		document.TestFilesCreated...), document.TestFilesModified...)
 }

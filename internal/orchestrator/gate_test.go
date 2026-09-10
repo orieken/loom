@@ -11,6 +11,7 @@ import (
 
 	"github.com/orieken/loom/internal/orchestrator"
 	"github.com/orieken/loom/internal/provider/mock"
+	"github.com/orieken/loom/internal/state"
 )
 
 // gatedPlan gates the developer stage, mirroring the built-in plan's
@@ -225,4 +226,71 @@ func TestWaitingGateReportsTheEarliestBarrier(t *testing.T) {
 			t.Fatalf("WaitingGate() = %q, want the earliest barrier confirm-design", got)
 		}
 	}
+}
+
+// A gate guarding a stage the router already skipped still halts — a human
+// checkpoint must not vanish because routing removed the stage behind it —
+// but the halt must not rewrite when that stage ran (roadmap L3.32).
+//
+// Run 4 produced a devops-engineer record whose StartedAt was 2026-09-08
+// 12:34:09 and whose FinishedAt was 04:09:27, eight hours earlier: the gate
+// stamped its own clock over a skip that had already happened.
+func TestAGateOnASkippedStageDoesNotRewriteWhenItRan(t *testing.T) {
+	executor, _, store, input := newHarness(t, typedAnalysisScripts())
+	plan := gatedSkipPlan()
+
+	// First pass: the stage is routed out, then the gate halts on it.
+	err := executor.Run(context.Background(), plan, input)
+	if !errors.Is(err, orchestrator.ErrWaitingApproval) {
+		t.Fatalf("Run error = %v, want a gate halt", err)
+	}
+
+	record := mustLoad(t, store).Stages["devops-engineer"]
+	if record.FinishedAt != nil && record.StartedAt.After(*record.FinishedAt) {
+		t.Errorf("record starts at %s and finishes at %s — the gate stamped its own clock "+
+			"over a skip that had already happened", record.StartedAt, *record.FinishedAt)
+	}
+	if record.PreviousStatus != orchestrator.StageStatusSkipped {
+		t.Errorf("previousStatus = %q, want SKIPPED so the skip survives the halt", record.PreviousStatus)
+	}
+}
+
+// The halt must be able to say the stage will not run, or a human is asked
+// to approve work that is not going to happen with nothing explaining why.
+func TestAGateOnASkippedStageCarriesTheSkipReason(t *testing.T) {
+	executor, _, _, input := newHarness(t, typedAnalysisScripts())
+
+	err := executor.Run(context.Background(), gatedSkipPlan(), input)
+
+	var waiting *orchestrator.WaitingApprovalError
+	if !errors.As(err, &waiting) {
+		t.Fatalf("error = %v, want a WaitingApprovalError", err)
+	}
+	if waiting.SkipReason == "" {
+		t.Error("the halt carries no skip reason, so nothing can tell the human " +
+			"the gated stage was routed out")
+	}
+}
+
+// gatedSkipPlan reproduces run 4's shape: an analysis with no DevOps tasks,
+// the router that skips devops-engineer on it, and the ship gate that guards
+// the stage the router just removed.
+func gatedSkipPlan() orchestrator.Plan {
+	catalogue := orchestrator.BuiltInStages()
+	return orchestrator.Plan{
+		Name: "gated-skip",
+		Stages: []orchestrator.Stage{
+			catalogue["analyst"],
+			catalogue[orchestrator.RouterStageID],
+			catalogue["devops-engineer"],
+		},
+	}
+}
+
+// typedAnalysisScripts gives the analyst the scripted typed analysis the
+// router needs; its task list carries no DevOps work, which is what routes
+// devops-engineer out.
+func typedAnalysisScripts() map[string]mock.Script {
+	script, _ := mock.TypedScript(string(state.KindAnalysis))
+	return map[string]mock.Script{"analyst": script}
 }

@@ -37,13 +37,66 @@ func (u *Usage) Add(other *Usage) {
 	u.CostUSD += other.CostUSD
 }
 
-// TotalUsage sums every stage's reported usage. Stages that reported
+// TotalUsage reports what the run cost.
+//
+// It prefers the run-level accumulator, which no longer depends on the
+// stage records surviving (roadmap L3.22, second occurrence). A state
+// written before that field existed has no accumulator, so the derived sum
+// stays as the fallback — it is right whenever no record has been removed,
+// which is every state this build did not write.
+func (s *RunState) TotalUsage() Usage {
+	if s.Spend != nil {
+		return *s.Spend
+	}
+	return s.derivedUsage()
+}
+
+// derivedUsage sums every stage's reported usage. Stages that reported
 // nothing contribute nothing; the total is of what was measured, and the
 // absence of a number is not treated as a zero.
-func (s *RunState) TotalUsage() Usage {
+func (s *RunState) derivedUsage() Usage {
 	var total Usage
 	for _, record := range s.Stages {
 		total.Add(record.Usage)
 	}
 	return total
+}
+
+// recordSpend adds one provider call to the run's running total. Called
+// wherever a stage record's usage is updated, and deliberately additive:
+// a stage that fails, is retried, or is later deleted still cost what it
+// cost.
+func (s *RunState) recordSpend(attempt *Usage) {
+	if attempt == nil {
+		return
+	}
+	if s.Spend == nil {
+		s.Spend = &Usage{Model: attempt.Model}
+	}
+	s.Spend.Add(attempt)
+	s.Spend.Model = attempt.Model
+}
+
+// accumulateUsage folds one attempt's usage into whatever a stage record
+// already carries (roadmap L3.22).
+//
+// It replaced a plain assignment, which silently discarded every attempt but
+// the last. In the third real end-to-end run qa-engineer failed to parse,
+// billing $0.69, and the successful retry then overwrote that record with
+// its own $0.74 — so the run reported $8.7978 against a true $9.4923, a
+// difference of exactly the discarded attempt. The error was always in the
+// same direction and grew with how badly a run went, which is when the
+// number is most likely to be read.
+//
+// A fresh value is returned rather than the existing one mutated: records
+// are copied out of the state map by value while the Usage pointer is
+// shared, so mutating in place would edit state nobody asked to edit.
+func accumulateUsage(existing, attempt *Usage) *Usage {
+	if attempt == nil {
+		return existing
+	}
+	total := Usage{Model: attempt.Model}
+	total.Add(existing)
+	total.Add(attempt)
+	return &total
 }

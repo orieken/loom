@@ -92,7 +92,7 @@ directly at the root (not inside any `<feature-name>/` subdirectory). If found:
 13. **Invoke validate-artifact** against `shared/contracts/architecture-contract.md` (only if architect was invoked). If FAIL: apply Tier B retry loop up to `maxContractRetries`. **PAUSE** if an RFC was written — human must acknowledge before developer starts. **Checkpoint** on PASS or SKIP.
 14. **Invoke performance-engineer** (if `analysis.md` has a performance Non-Functional Requirement carrying a measurable threshold — prose about feeling fast is not a target a review can work against) -> produces `performance-report.md`. **Checkpoint**.
 15. **Invoke validate-artifact** against `shared/contracts/performance-contract.md` (only if performance-engineer was invoked). If FAIL: apply Tier B retry loop up to `maxContractRetries`. **Checkpoint** on PASS or SKIP.
-16. **Invoke data-engineer** (if analysis.md has Data Model Changes != "None") -> produces `data-engineering-notes.md`. **Checkpoint**.
+16. **Invoke data-engineer** (if analysis.md declares a Data Model Change — an empty section means none; a body reading "None" is a defect in the analysis, not a change to sequence) -> produces `data-engineering-notes.md`. **Checkpoint**.
 17. **Invoke validate-artifact** against `shared/contracts/data-engineering-contract.md` (only if data-engineer was invoked). If FAIL: apply Tier B retry loop up to `maxContractRetries`. **Checkpoint** on PASS or SKIP.
 
 ### Phase 2: Implementation and Review
@@ -114,7 +114,7 @@ directly at the root (not inside any `<feature-name>/` subdirectory). If found:
 31. **Invoke validate-artifact** against `shared/contracts/observability-contract.md`. If FAIL: apply Tier B retry loop up to `maxContractRetries`. **Checkpoint** on PASS.
 32. **Invoke tech-writer** -> produces `docs-report.md`. **Checkpoint**.
 33. **Invoke validate-artifact** against `shared/contracts/docs-contract.md`. If FAIL: apply Tier B retry loop up to `maxContractRetries`. **Checkpoint** on PASS.
-34. **Invoke devops-engineer** (if `analysis.md` lists DevOps Tasks other than "None") -> produces `devops-report.md`. **Checkpoint** on PASS or SKIP. Note the ship confirmation in Phase 4 happens either way: skipping the infrastructure work does not skip confirming the feature is ready.
+34. **Invoke devops-engineer** (if `analysis.md` lists real DevOps Tasks — an empty section means none, and an entry reading "None required by this spec" is not a task; invoking on one cost $0.64 in the second real run) -> produces `devops-report.md`. **Checkpoint** on PASS or SKIP. Note the ship confirmation in Phase 4 happens either way: skipping the infrastructure work does not skip confirming the feature is ready.
 35. **Invoke validate-artifact** against `shared/contracts/devops-contract.md` (only if devops-engineer was invoked). If FAIL: apply Tier B retry loop up to `maxContractRetries`. **Checkpoint** on PASS or SKIP.
 
 ### Phase 4: Persistence and Delivery

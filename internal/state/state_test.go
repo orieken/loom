@@ -20,7 +20,7 @@ func validAnalysis() state.AnalysisState {
 			{Statement: "a registered user signs in with valid credentials", Examples: []string{"ada@example.com / correct-horse"}},
 		},
 		NonFunctionalRequirements: []state.NonFunctionalRequirement{
-			{Category: "performance", Requirement: "sign-in responds quickly", Threshold: "p99 < 200ms"},
+			{Category: "performance", Requirement: "sign-in responds quickly", Threshold: &state.Threshold{Metric: "p99 sign-in latency", Value: 200, Unit: "ms"}},
 		},
 		BoundedContext:     state.BoundedContext{Owning: "identity", Crossings: []string{"notifications"}},
 		AffectedComponents: []state.AffectedComponent{{Path: "internal/identity/session.go", Reason: "issues the session"}},
@@ -259,7 +259,7 @@ func TestRequiresArchitectDerivesFromStructuralFacts(t *testing.T) {
 			a.BoundedContext.Crossings = nil
 			a.DataModelChanges = nil
 			a.NonFunctionalRequirements = []state.NonFunctionalRequirement{
-				{Category: "performance", Requirement: "fast", Threshold: "p99 < 200ms"},
+				{Category: "performance", Requirement: "fast", Threshold: &state.Threshold{Metric: "p99 sign-in latency", Value: 200, Unit: "ms"}},
 			}
 		}, true},
 		{"performance prose without a threshold is not structural", func(a *state.AnalysisState) {

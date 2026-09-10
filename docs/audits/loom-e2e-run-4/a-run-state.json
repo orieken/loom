@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 10,
+  "planName": "deliver-feature",
+  "createdBy": "executor",
+  "featureName": "console-log-filtering",
+  "specPath": "/tmp/loom-e2e4b-a1/docs/features/console-log-filtering.md",
+  "startedAt": "2026-09-08T12:50:50.285755Z",
+  "stages": {
+    "accessibility-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-09-08T12:55:34.946535Z",
+      "sequence": 6,
+      "skipReason": "the analysis declares no UI surface",
+      "iteration": 1
+    },
+    "analyst": {
+      "status": "COMPLETED",
+      "startedAt": "2026-09-08T12:54:15.493389Z",
+      "finishedAt": "2026-09-08T12:55:34.943955Z",
+      "artifactPath": "/tmp/loom-e2e4b-a1/.claude/feature-workspace/console-log-filtering/state/analyst.json",
+      "artifactSha256": "7daa6b31dc97e38a32aaa4cdfeea52a7b49f0f2d9ba52c84c919573b72a1b7d8",
+      "sequence": 2,
+      "iteration": 1,
+      "stateKind": "analysis",
+      "agent": "analyst",
+      "viewPath": "/tmp/loom-e2e4b-a1/.claude/feature-workspace/console-log-filtering/analysis.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 10,
+        "outputTokens": 7834,
+        "cacheReadTokens": 400478,
+        "cacheCreationTokens": 73903,
+        "costUsd": 0.6811014000000001
+      }
+    },
+    "architect": {
+      "status": "FAILED",
+      "startedAt": "2026-09-08T12:55:34.94733Z",
+      "finishedAt": "2026-09-08T12:56:14.185767Z",
+      "sequence": 9,
+      "iteration": 1,
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 2,
+        "outputTokens": 3326,
+        "cacheReadTokens": 25749,
+        "cacheCreationTokens": 69711,
+        "costUsd": 0.4758867
+      },
+      "error": "stage \"architect\" returned invalid state: field \"structuralDecisions[0].fitness\" is required unless the decision is flagged judgmentOnly (architecture-guardrails.md #7)"
+    },
+    "context-engineer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-09-08T12:50:50.286032Z",
+      "finishedAt": "2026-09-08T12:54:15.492792Z",
+      "artifactPath": "/tmp/loom-e2e4b-a1/.claude/feature-workspace/console-log-filtering/state/context-engineer.json",
+      "artifactSha256": "8431915b186fcece9ad807acd827178ea86e370f03bc34ef84869754f359ac6a",
+      "sequence": 1,
+      "iteration": 1,
+      "stateKind": "context",
+      "agent": "context-engineer",
+      "viewPath": "/tmp/loom-e2e4b-a1/.claude/feature-workspace/console-log-filtering/context-manifest.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 40,
+        "outputTokens": 15247,
+        "cacheReadTokens": 1974775,
+        "cacheCreationTokens": 89597,
+        "costUsd": 1.3588395
+      }
+    },
+    "data-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-09-08T12:55:34.946266Z",
+      "sequence": 5,
+      "skipReason": "no data-model change to sequence",
+      "iteration": 1
+    },
+    "devops-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-09-08T12:55:34.947051Z",
+      "sequence": 8,
+      "skipReason": "the analysis lists no DevOps tasks",
+      "iteration": 1
+    },
+    "performance-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-09-08T12:55:34.946006Z",
+      "sequence": 4,
+      "skipReason": "no performance requirement carries a threshold with a number and a unit",
+      "iteration": 1
+    },
+    "router": {
+      "status": "COMPLETED",
+      "startedAt": "2026-09-08T12:55:34.944777Z",
+      "finishedAt": "2026-09-08T12:55:34.945659Z",
+      "artifactPath": "/tmp/loom-e2e4b-a1/.claude/feature-workspace/console-log-filtering/state/router.json",
+      "artifactSha256": "b8578164623170de9ae834fb38adf6df6ad0e0e20d636d1d9cccad72df850f0e",
+      "sequence": 3,
+      "iteration": 1,
+      "stateKind": "route",
+      "agent": "router",
+      "viewPath": "/tmp/loom-e2e4b-a1/.claude/feature-workspace/console-log-filtering/route.md"
+    },
+    "visual-qa-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-09-08T12:55:34.946802Z",
+      "sequence": 7,
+      "skipReason": "the analysis declares no UI surface, so there is nothing to look at",
+      "iteration": 1
+    }
+  },
+  "approvals": {},
+  "updatedAt": "2026-09-08T12:56:14.18577Z"
+}

@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/invopop/jsonschema"
 )
@@ -33,6 +34,7 @@ const (
 	KindImplementation Kind = "implementation"
 	KindSecurity       Kind = "security"
 	KindQA             Kind = "qa"
+	KindContext        Kind = "context"
 )
 
 // StageSchema names one state document kind and the type behind it.
@@ -42,6 +44,11 @@ type StageSchema struct {
 	FileName string
 	subject  interface{}
 }
+
+// Subject returns the Go value the schema is generated from, so a fitness
+// function can compare the generated document against the types behind it
+// (roadmap L2.25).
+func (s StageSchema) Subject() interface{} { return s.subject }
 
 // StageSchemas returns every typed state document.
 func StageSchemas() []StageSchema {
@@ -53,6 +60,7 @@ func StageSchemas() []StageSchema {
 		{Kind: KindImplementation, FileName: "implementation.schema.json", subject: &ImplementationState{}},
 		{Kind: KindSecurity, FileName: "security.schema.json", subject: &SecurityState{}},
 		{Kind: KindQA, FileName: "qa.schema.json", subject: &QAState{}},
+		{Kind: KindContext, FileName: "context.schema.json", subject: &ContextState{}},
 	}
 }
 
@@ -78,6 +86,8 @@ func SchemaForKind(kind Kind) ([]byte, bool) {
 func (s StageSchema) Generate() ([]byte, error) {
 	reflector := &jsonschema.Reflector{ExpandedStruct: true, DoNotReference: true}
 	schema := reflector.Reflect(s.subject)
+	pinSchemaVersion(schema)
+	applyConditionalRequirements(s.Kind, schema)
 	var rendered bytes.Buffer
 	encoder := json.NewEncoder(&rendered)
 	encoder.SetIndent("", "  ")
@@ -103,6 +113,7 @@ func documentFactories() map[Kind]func() Validatable {
 		KindImplementation: func() Validatable { return &ImplementationState{} },
 		KindSecurity:       func() Validatable { return &SecurityState{} },
 		KindQA:             func() Validatable { return &QAState{} },
+		KindContext:        func() Validatable { return &ContextState{} },
 	}
 }
 
@@ -127,4 +138,28 @@ func decodeInto(payload []byte, target Validatable) (Validatable, error) {
 		return nil, err
 	}
 	return target, nil
+}
+
+// pinSchemaVersion tells the agent the one value schemaVersion may take.
+//
+// It reflected as a bare {"type": "integer"} while requireSchemaVersion
+// refuses anything but the current constant — the agent was asked for "an
+// integer" and validated against an equality check. That was harmless only
+// while the constant was 1, which is what a model writes unprompted; the bump
+// to 2 in bf302c8 made it fatal, and run 4 died on its first stage twice for
+// $2.09 with every stage after it a coin-flip behind.
+//
+// This is the L2.25 discipline applied to the field L2.25 did not cover: a
+// value the validator fixes is derived into the schema from the same
+// constant, never left for the author or the model to guess.
+func pinSchemaVersion(schema *jsonschema.Schema) {
+	if schema == nil || schema.Properties == nil {
+		return
+	}
+	property, found := schema.Properties.Get("schemaVersion")
+	if !found || property == nil {
+		return
+	}
+	property.Const = SchemaVersion
+	property.Description = "Always " + strconv.Itoa(SchemaVersion) + " — the schema version this build accepts."
 }

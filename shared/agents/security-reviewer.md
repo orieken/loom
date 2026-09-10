@@ -110,7 +110,10 @@ Read `shared/templates/security-report.template.md` and produce your artifact at
 `.claude/feature-workspace/<feature-name>/security-report.md` by filling in the bracketed
 `[placeholder]` markers. Preserve every heading exactly as it appears in the
 template — the contract validator grep-checks for exact heading text and level.
-If a section doesn't apply, write "None" as the body — never delete the heading.
+If a section doesn't apply, leave its body empty — never delete the heading, and never write
+"None". A prose "none" is indistinguishable from real content to anything that reads these files,
+which is the defect roadmap L3.18 records: one DevOps task reading "None required by this spec"
+invoked an agent for $0.64 to establish that the sentence meant zero.
 
 ## Rules
 

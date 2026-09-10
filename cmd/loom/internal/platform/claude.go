@@ -42,15 +42,28 @@ func installRuleDirectory(environment Environment, destination string) ([]string
 	return []string{destination}, nil
 }
 
+// installClaudeProjectFiles seeds the two documents a project is expected to
+// own and edit.
+//
+// They are copied only when absent, never linked (roadmap L3.26). Both hold
+// project-specific content — design-principles.md §6 requires every domain
+// term to match DOMAIN_DICTIONARY.md — so linking them to a shared cache
+// silently replaces what the rules are checked against, and replacing an
+// existing one discards work nobody asked to lose. CLAUDE.md has always been
+// treated this way; these two are the same kind of file.
 func installClaudeProjectFiles(environment Environment, paths []string) ([]string, error) {
-	basePaths, err := installSources(environment, []sourceDestination{
+	for _, pair := range []sourceDestination{
 		{"shared/ARCHITECTURE_RULES.md", "ARCHITECTURE_RULES.md"},
 		{"shared/DOMAIN_DICTIONARY.md", "DOMAIN_DICTIONARY.md"},
-	})
-	if err != nil {
-		return nil, err
+	} {
+		installed, err := environment.Files.CopyIfMissing(pair.source, pair.destination)
+		if err != nil {
+			return nil, err
+		}
+		if installed {
+			paths = append(paths, pair.destination)
+		}
 	}
-	paths = append(paths, basePaths...)
 	return installClaudeTemplates(environment, paths)
 }
 

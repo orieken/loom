@@ -61,11 +61,11 @@ func requirementLines(requirements []NonFunctionalRequirement) []string {
 	return lines
 }
 
-func thresholdSuffix(threshold string) string {
-	if threshold == "" {
+func thresholdSuffix(threshold *Threshold) string {
+	if !threshold.IsMeasurable() {
 		return ""
 	}
-	return " (" + threshold + ")"
+	return " (" + threshold.String() + ")"
 }
 
 func fitnessLines(functions []FitnessFunction) []string {

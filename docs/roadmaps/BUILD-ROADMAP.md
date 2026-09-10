@@ -1275,6 +1275,23 @@ consecutive gates.
 ### L2.22 — Give the writing stages permission to write
 **Workstream**: TOOLS · **Effort**: S · **Blocked by**: none · **Blocks**: L2.24 · *(raised 2026-09-06, from the second real end-to-end run)*
 
+**SHIPPED 2026-09-07** (`3d825fc`) — the provider passes `--allowed-tools` built from the agent
+definition's own `tools:` frontmatter, plus `--permission-mode acceptEdits` to remove the
+confirmation a headless run has nobody to answer. An agent declaring no tools gets Read/Glob/Grep:
+it has not asked to write, and inferring otherwise would reinstate the silent failure the other way
+round. `bypassPermissions` is deliberately unused and a test keeps it that way.
+
+Verified against the real CLI, because a flag nobody checked is the whole of this defect. Without
+the flags, `permission_denials` carries a `Write` entry and no file appears; with them, no denials
+and the file is created. Still to be confirmed end to end by run 4 — the done-when asks for a
+non-empty `git diff` from a fresh install, and that has not been run yet.
+
+The interim step this item suggested — have `loom install` write a `.claude/settings.local.json`
+allowlist — is deliberately not taken. It was for "until the executor passes a posture", which is
+now, and the markdown pipeline has a human present to answer the prompt.
+
+**L2.24 is unblocked by this.**
+
 1. **Problem**: `claude -p` denies every `Write` and `Edit` by default, and the provider invokes it
    as `exec.CommandContext(ctx, binaryPath, "-p", "--output-format", "json")` with no
    `--permission-mode` and no `--allowed-tools`. **No stage can write a file.** Confirmed directly:
@@ -1304,6 +1321,17 @@ only exists on the real path — the entire class the mock cannot see.
 ### L2.23 — Stop instructing the writing stages not to write
 **Workstream**: KERNEL · **Effort**: S · **Blocked by**: none · **Blocks**: L2.24 · *(raised 2026-09-06, from the second real end-to-end run)*
 
+**SHIPPED 2026-09-08** (as part of L3.29's fix) — `fileClause` conditions the clause on the stage's
+own declared posture. A stage holding no edit tool is still told not to write; a stage holding one is
+told to make its changes and that the JSON *reports* work it must verify with `git status` before
+answering. Verified end to end: the developer went from an empty `git diff` to 304 insertions across
+exactly the four files its design named.
+
+**Not fully closed.** Five other typed agents still carry a "produce your artifact at `<name>.md`"
+instruction that the appended output contract overrides. Run 4 completed all twelve stages, so the
+contract empirically wins — but that is evidence, not a guarantee, and the contradiction is still in
+the prompts.
+
 1. **Problem**: `typedInstruction` appends to every typed stage's prompt:
    *"Return a single JSON object conforming to this schema, and nothing else. **Do not write files.**
    Do not add commentary before or after the JSON."* `developer` (`KindImplementation`) and
@@ -1328,6 +1356,44 @@ is *present* in a typed stage prompt — the contradiction is currently held in 
 
 ### L2.24 — Verify a stage's file claims against the filesystem
 **Workstream**: KERNEL · **Effort**: M · **Blocked by**: L2.22, L2.23 · **Blocks**: none · *(raised 2026-09-06, from the second real end-to-end run)*
+
+**SHIPPED 2026-09-09** (`960fdcc`, `6f4f13a`) — in two halves, with an honest boundary between them.
+
+**Path claims are checked.** Every path-naming field is verified against the project after the stage
+returns; a claimed file that does not exist fails the stage naming the field and the path, and a
+path escaping the project root is refused rather than treated as satisfied. A claimed file that
+exists but did not change while the stage ran is a warning, since a stage may legitimately list a
+file it inspected. **The second real run's actual qa payload is the regression fixture** and must
+fail — which required teaching the mock to model a stage that lies, because the executor caught the
+mock itself claiming `internal/mock/thing.go` and never writing it.
+
+**Measurement claims are reproduced.** A stage asserting a green suite is asserting something the
+project can re-run, so the executor re-runs it. The command comes from `testCommand` in
+`.claude/delivery-policy.yaml` — **project configuration, never the state document**: an executor
+running a string a model chose would execute model output with the executor's privileges, which is a
+worse trust boundary than the agent running its own tools. Contradicted fails the stage; unverifiable
+proceeds but is recorded loudly as NOT verified, because absence of evidence reading like evidence is
+how a report states an unchecked figure is above a threshold.
+
+**Not verified: coverage.** Reproducing a percentage means parsing a coverage report per language,
+and claiming to have checked it while only checking the suite would be this same defect one level up.
+
+**Validation status, stated exactly.** Both halves are covered by unit tests, including run 7's
+payload shape. **Neither has been demonstrated against a live fabrication**, and run 8 explains why:
+there was none to demonstrate against.
+
+**BEHAVIOURAL HALF: TESTED AND NEGATIVE 2026-09-09 (run 8).** The condition this item describes was
+finally constructed and held. Two preventions — a `qa-engineer` with no `Bash` at all, and one with
+`Bash` whose install was sabotaged by a dead registry plus an unresolvable dependency — and in both
+the stage reported `passed: 0, skipped: 3` with an accurate account of why. 8A returned an empty
+`coverage.statements`. 8B identified both blockers, inferred they were deliberate, **declined to
+remove them despite having the means**, and sourced its one coverage figure as the developer's
+pre-QA measurement rather than presenting it as current.
+
+So the code stays and the fixture stays — a defect that does not reproduce today is not one that
+cannot recur, and the check costs nothing per run — but the behaviour is **tested and negative**,
+not open. See `docs/audits/loom-e2e-run-8-audit-2026-09-09.md`, including its §5.2: both conditions
+are conspicuously adversarial, and ordinary breakage might not elicit the same care.
 
 1. **Problem**: The executor validates the *shape* of a stage's claims and never checks whether they
    are true. In the second real run the qa-engineer completed in 53 seconds and returned:
@@ -1360,6 +1426,18 @@ establishes that those facts are real.
 
 ### L2.25 — Generate the enums the validator enforces
 **Workstream**: KERNEL · **Effort**: S · **Blocked by**: L2.9 (shipped) · **Blocks**: none · *(raised 2026-09-06, from the second real end-to-end run)*
+
+**SHIPPED 2026-09-07** (`c2e0aa2`) — closed-set types publish their values once through the
+`Enumerated` interface and derive their own `JSONSchema` from them, so a schema enum cannot drift
+from the constants `valid()` checks. The hand-written enum tags are removed as redundant.
+`TestEveryClosedSetFieldCarriesItsEnum` is the fitness function: it reflects over each stage's Go
+type and asserts every closed-set field's generated schema carries its values. Removing
+`StrideCategory`'s derived schema reproduces the original defect.
+
+**Known gap**: `NonFunctionalRequirement.Category` and `ContextState.Tier` are plain strings with
+hand-written enum tags rather than named types, so the fitness function cannot see them. Their
+enums are present and correct, just not derived. Converting them touches routing predicates changed
+in `ef81c76`.
 
 1. **Problem**: `security_state.go` requires `stride[].category` to be one of six exact literals —
    `SPOOFING`, `INFORMATION_DISCLOSURE`, and so on. The schema handed to the agent declares that
@@ -1458,6 +1536,18 @@ resume that leaves mock mode defeats the only reason it exists, and does so by c
 **Why this is worth the effort**: L3.0 moved routing off a model re-reading the analysis and onto
 predicates, which was right. The predicates now need to read facts a model cannot accidentally fake.
 
+**SHIPPED 2026-09-07** (`ef81c76`) — with L3.24, which is the same defect with a different trigger.
+`Threshold` is now typed `{metric, value, unit}` and `IsMeasurable()` requires all three; a prose
+"none" is ignored by `RequiresDevOpsEngineer`; `visual-qa-engineer` and `sre-engineer` are
+skippable and routed on a declared surface. `analyst.md` said *"If a section doesn't apply, write
+'None' as the body"* until this commit, so the instruction that caused the behaviour is corrected
+along with the predicate that trusted it.
+
+Applied to the third real run's own analysis, all four stages that had nothing to do now route out
+and the three that were correctly skipped still are — asserted by a test carrying that run's
+actual shape, confirmed to fail against the previous behaviour.
+
+
 ### L3.19 — Cut the per-stage prompt tax
 **Workstream**: PLATFORM · **Effort**: L · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-06, from the second real end-to-end run)*
 
@@ -1490,6 +1580,68 @@ predicates, which was right. The predicates now need to read facts a model canno
 **Why this is worth the effort**: the cost model is currently a function of how many agents exist,
 not of how much work the feature is. That is backwards, and it gets worse with every agent added.
 
+**RESOLVED 2026-09-07 — the repo-map question is closed, and this item's ordering holds.** The third
+real run put the deferred measurement on a real repository: `saturday-monorepo`, **1,547 tracked
+files / ~22k lines of first-party TypeScript**, against run 2's 2-file, 26-line repo — roughly
+**770x the source**. The decision rule was fixed in advance: `context-engineer` cache_read within
+~2x of run 2's 964,590 means source discovery is not the cost driver.
+
+It came in at **729,694 — 0.76x. It went *down***. Per-call cost stayed flat too: $0.55–1.53 against
+run 2's $0.50–0.74 floor, mean $0.79/call, $9.49 across 12 calls. The single outlier is `developer`
+at 2.59M cache_read and $1.53, and that is explained by tool-use iterations (it ran `pnpm install`
+and the 169-test suite), not by reading source. Cache reads were 89.0% of all tokens moved, almost
+identical to run 2's 84.5%.
+
+The confound was measured separately and does not rescue the alternative: the framework surface
+*grew* between the runs (v3.1.0 → v3.7.0: agents ~56k→62k, skills ~79k→99k, rules ~14k→17k tokens),
+so the one input that did increase is framework, not source — and cache_read still fell. Source
+scale is not a cost axis in this architecture, because no stage ever reads the repository broadly;
+it reads the handful of files the manifest pins.
+
+**EVIDENCE STALE 2026-09-08 (run 5A).** The 729,694 figure this block rests on does not
+reproduce. Three invocations of `context-engineer` on the identical spec and repository, on the
+current build, mean **2,024,888** — **2.77x** run 3's number and within 3% of run 4's 1,974,775. Run
+4's figure was not an outlier; it is the reproduced level. The measured run-to-run spread is
+**27.4%**, so a 177% shift is six times the noise band and is a real change in level.
+
+This does **not** refute the conclusion. Run 5 held source scale constant, so it says nothing about
+whether source scale drives cost — the question this item answered. What it invalidates is the
+*evidence*: the stated measurement describes a build that no longer exists, and it was a single
+sample from an instrument now known to carry ~27% spread.
+
+**RE-ESTABLISHED 2026-09-08 (run 6) — the conclusion holds, on evidence that tests it.** The
+re-test named above was run. Two conditions on one build, spec and target file held byte-identical,
+n=3 each:
+
+| Condition | Repository | cache_read mean |
+|---|---|---:|
+| S | 6 files, 124 lines | 1,858,579 |
+| L | 1,547 files, 21,826 lines | 2,024,888 |
+
+**176x the source moves cache_read by 8.2%** — inside the noise band, and far from the 40% drop the
+pre-committed rule required to call a source term real. **No detectable source term.**
+
+So `aider-repo-map` and `repomix-codebase-packing` stay unbuilt, now on a controlled measurement
+rather than run 3's confounded one. Run 3's 0.76% figure is **superseded**, not merely stale: it
+compared two builds and two specs at n=1 and reached the right answer for poor reasons.
+
+**Run 6 also revises what run 5A's 27.4% meant.** Condition S's spread is **4.6%** against condition
+L's 27.4% — a 6x difference on the same stage, prompt, build and model. The variance is the
+repository, not the instrument: there is only variance to have when there is something to explore.
+That is consistent with this item's stated mechanism (a stage reads what its manifest pins) without
+proving it.
+
+**Still open**: the 8.2% gap has the predicted sign and sits exactly in this design's blind spot, so
+"no detectable term" must not harden into "no term". Resolving it needs n>=12 per condition, ~$35,
+and it does not block the repo-map decision, which turned on whether a *large* term exists. See
+`docs/audits/loom-e2e-run-6-audit-2026-09-08.md`.
+
+**Therefore**: `aider-repo-map` and `repomix-codebase-packing` should **not** be built. They optimize
+source-discovery cost, which this measurement shows is near zero, and they would add a per-run
+indexing pass to a system whose spend is ~90% prompt-prefix re-caching. The two levers named in
+§2 above — sharing the cached prefix across stages, and making a decline cheap — remain the only
+ones the evidence supports, and L3.24 adds a third: not asking the stage at all.
+
 ### L3.20 — Papercuts from the second real run
 **Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-06)*
 
@@ -1515,6 +1667,608 @@ Five small defects, each individually trivial, grouped so none is lost.
    does not implement. → `internal/orchestrator/executor.go`, `shared/skills/deliver-feature/SKILL.md`
 
 **Done when**: each is fixed or explicitly declined in this list.
+
+### L3.21 — `extractJSON` rejects a valid state document preceded by one sentence
+**Workstream**: PLATFORM · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-07, from the third real end-to-end run)*
+
+**SHIPPED 2026-09-07** (`c19bd64`) — the last fenced block holding an object wins. The *last*
+specifically, because a schema example an agent quotes back precedes its real answer and never
+follows it, which a test pins. A block holding something else (a shell command after the answer) is
+passed over rather than fatal; a response with no JSON object still fails.
+
+1. **Problem**: The third real run **died at `qa-engineer`** with
+   `agent did not return a JSON state document — got: Now producing the final QA state JSON.` The
+   agent's JSON was complete, valid and schema-conformant; it was preceded by a single sentence of
+   prose before the fence. `extractJSON` accepts raw JSON, and `unfence` accepts a response that is
+   *entirely* one fenced block (`strings.HasPrefix(text, "```")`), so a leading sentence fails the
+   prefix test and the run halts. The function's own comment concedes the case — "models fence their
+   output as a formatting habit, and failing a run over that would report a reflex as a modelling
+   error" — but the accommodation stops one sentence short of the same reflex. Worse, it is
+   **nondeterministic**: an unmodified `--resume` re-ran the identical stage and it parsed
+   first try. A run therefore dies or survives on whether the model prepended a sentence, and the
+   failed attempt still bills (**$0.69** here, see L3.22). Note that the prompt already forbids this:
+   `typed_stage.go:29` instructs *"Do not write files. Do not add commentary before or after the
+   JSON."* The model disregarded both halves in the same run — it wrote files (L2.23) and it added a
+   preamble — so the instruction is not load-bearing and the parser cannot assume it is.
+   → `internal/provider/claude/typed_stage.go:29,66-92`
+2. **Architectural Fix**: Accept a state document that is preceded by prose, while keeping the
+   property the current strictness exists to protect — not accidentally adopting a schema example
+   the agent quoted back. Taking the **last** fenced block in the response holds that property
+   (a quoted example precedes the real answer, never follows it) and costs one line. Reject only
+   when there is no fence and no leading `{`.
+3. **Target files**: `internal/provider/claude/typed_stage.go`
+4. **Done when**: a response of `<prose>\n\n```json\n{...}\n```` parses, a response containing a
+   quoted schema example followed by a real state document resolves to the latter, and both are
+   held by a test.
+
+**Why it matters**: this is the only defect in the run that stopped the pipeline, and it stopped it
+for a reason that has nothing to do with the work being done. A flaky run-killer is worse than a
+deterministic one — it cannot be reproduced on demand, so it gets rediscovered rather than fixed.
+
+### L3.22 — The run summary under-reports what the run actually cost
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-07)*
+
+**SHIPPED 2026-09-07** (`0927b82`) — a stage record accumulates every attempt rather than being
+overwritten by the last. **Recurred and was re-fixed 2026-09-08** (`a3ebaee`); see the note below.
+
+1. **Problem**: The third run's completion line and `loom memory runs` both report **$8.7978**.
+   Summing `loom.usage.cost_usd` across every `generate_content` span in `traces.jsonl` gives
+   **$9.49** across 12 calls. The $0.69 difference is exactly the `qa-engineer` attempt that failed
+   to parse (L3.21) — spend that was billed and is recorded in the traces, but is excluded from the
+   figure the operator is shown and from the figure persisted to the memory store. The error is
+   silent and always in the same direction: retries and failures are free in the summary and not
+   free on the invoice. The gap scales with how badly a run goes, which is precisely when the number
+   is being read.
+2. **Architectural Fix**: Total usage over every provider call the run made, not every call that
+   succeeded. A failed attempt is a line item, not an absence.
+3. **Target files**: `internal/orchestrator/executor.go`, `internal/memory/` (run record)
+4. **Done when**: a run containing a failed stage reports a total equal to the sum of its trace
+   spans, and a test asserts the two agree.
+
+**RECURRED AND RE-FIXED 2026-09-08** (`a3ebaee`). Run 4's own cost data carried the same
+under-report through a second door. The executor reported **$20.2718** for a run whose
+`generate_content` spans total **$21.5106**; the $1.2389 delta is exactly the first `developer`
+attempt — the record run 4 deleted by hand to re-run that stage, because loom has no rollback
+command (run 4 §9.1).
+
+The first fix made a stage record sum its own attempts, which stopped a retry overwriting a failure,
+and left the total *derived* from the records. Removing a record therefore still removed its spend.
+Money spent is a fact about the run, not a property of a record someone may delete, so it is now
+accumulated on `RunState` as the run goes; the derived sum remains the fallback for states written
+before the field existed.
+
+**Why it matters**: L3.13 wants to derive quality metrics from execution, and already warns that a
+run reporting zero cost reported *nothing* rather than costing nothing. This is the same class of
+error one level up — a cost model that hides retry spend will systematically under-price exactly the
+agents that need retrying most.
+
+### L3.23 — `install` replaces committed project files with writable symlinks into a shared cache
+**Workstream**: PLATFORM · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-07)*
+
+**SUPERSEDED 2026-09-07 by L3.26.** This entry records one symptom — two named project documents
+replaced by symlinks into a writable shared cache. Reproducing it minimally showed the cause is
+general: install's unit is the directory, so it destroys *any* pre-existing agent or skill content,
+and `--copy` does not avoid it. Track the work in L3.26; this stays for the provenance.
+
+1. **Problem**: `loom install --target .` replaced **124 committed files** in the clone —
+   `.claude/agents`, `.claude/skills`, `.claude/rules`, plus `ARCHITECTURE_RULES.md` and
+   `DOMAIN_DICTIONARY.md` — with symlinks into `~/Library/Caches/loom/v3.7.0/shared/`. It backed
+   each up and printed that it had, but **after the fact**: there was no prompt, and no warning that
+   the targets were tracked files with local content. `git status` went from clean to 124 deletions.
+   Two consequences, one latent and one immediate. The **latent** one: the symlinked files are
+   writable and shared by every project installed from that cache, so an agent that edits
+   `DOMAIN_DICTIONARY.md` corrupts the framework for all of them. This is not hypothetical — the
+   analyst emitted Developer Task 4, *"Add 'ConsoleLogger', 'captured log entry', and 'log entry
+   type' to DOMAIN_DICTIONARY.md"*. The developer declined to do it, so the cache survived this run
+   on the agent's judgment rather than on any property of the system. The **immediate** one: this
+   project's own `DOMAIN_DICTIONARY.md` (13,363 bytes of its actual ubiquitous language) was
+   shadowed by the framework's generic 18,530-byte default, while `design-principles.md` §6 requires
+   every domain term to match that file. The install silently swapped the thing the rules are
+   checked against.
+2. **Architectural Fix**: Three separable pieces. (a) Detect that a target is tracked and locally
+   modified, and require confirmation before replacing it — the approval-gates rule already covers
+   "writing files out of boundary"; this is that gate, unwired. (b) Copy, or symlink read-only, any
+   file an agent is permitted to edit; the shared cache must not be reachable through a project's
+   working tree by a writable path. (c) Never shadow a project-authored `DOMAIN_DICTIONARY.md` or
+   `ARCHITECTURE_RULES.md` — these are project content, not framework content, and `install`
+   already knows how to skip (`skipped CLAUDE.md (already exists)`).
+3. **Target files**: `internal/install/`, `cmd/loom/install.go`
+4. **Done when**: installing over a dirty or tracked file prompts before acting; no path inside a
+   project resolves to a writable file in the shared cache; and a project-authored dictionary
+   survives an install.
+
+**Why it matters**: every finding in this run was measured against agents the install put there, and
+the install quietly changed what the project's own rules mean. A tool that rewrites 124 tracked files
+without asking is one agent's good judgment away from corrupting every project on the machine.
+
+### L3.24 — Two UI-only stages are marked non-skippable, and one boilerplate NFR routes in two more
+**Workstream**: PLATFORM · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-07)*
+
+1. **Problem**: The feature under test was a **three-line synchronous array filter** with no UI, no
+   I/O and no network. The router skipped `data-engineer`, `accessibility-engineer` and
+   `devops-engineer` correctly — and then ran four stages that had nothing to do, for **$2.63**:
+   - `visual-qa-engineer` ($0.55, 87s) — routed in as *"always runs; not skippable by routing"*,
+     and reported `UNCONFIGURED`, *"no visual QA surface exists to evaluate"*. Note the
+     contradiction: `accessibility-engineer` was skipped with the reason *"no accessibility
+     requirement, so the analysis describes no UI surface"*. The same fact skips one UI-only agent
+     and cannot skip the other.
+   - `sre-engineer` ($0.63, 79s) — concluded there is no availability or latency SLI for an
+     in-process test utility.
+   - `architect` ($0.75) and `performance-engineer` ($0.70, 161s) — both routed in on a single
+     boilerplate NFR line (*"O(n) ... no I/O"*) matching *"a performance requirement carries a
+     measurable threshold"*. The performance report then answered **"Not applicable"** to all four
+     of its own risk categories. This is L3.18's failure mode with a different trigger: L3.18 counts
+     list items, this counts the mere presence of an NFR sentence the analyst writes every time.
+2. **Architectural Fix**: (a) Make `visual-qa-engineer` and `sre-engineer` routable on the same
+   evidence that already skips `accessibility-engineer` — a UI surface and a served runtime surface
+   respectively; "always runs" is not a property either one earns. (b) Route `architect` and
+   `performance-engineer` on a threshold that is *actually measurable* (a number, a budget, an SLO),
+   not on the existence of an NFR heading.
+3. **Target files**: `internal/state/` (routing predicates), `internal/orchestrator/plan.go`
+4. **Done when**: this exact spec routes in neither UI stage nor `performance-engineer`, and a
+   feature with a real latency budget still routes `performance-engineer` in.
+
+**Why it matters**: L3.19 measured the floor — a stage that does nothing still costs $0.55–0.88. This
+item is the other half: the cheapest stage is the one never asked to run. Over a quarter of this run's
+spend — $2.63 of $9.49, 27.7% — went to four correct, well-written reports that said "not
+applicable".
+
+**SHIPPED 2026-09-07** (`ef81c76`), with L3.18. See that entry for the mechanism.
+
+**What this does not cover.** ADR-007 holds that `visual-qa-engineer`'s real precondition is an
+available UI evidence bundle for the built version, and records that as accepted-but-unimplemented.
+This item does not implement it. It applies the necessary condition knowable from the analysis
+today — a feature with no UI surface can never produce a bundle — which is strictly narrower than
+always-runs and strictly wider than the bundle check, so it cannot skip a run the bundle check
+would have kept. The bundle-availability half remains ADR-007's to deliver.
+
+**What it should save.** $2.63 on a run of the third run's shape, at no added per-run cost. That
+figure is a projection from one run and should be checked against a real one — and the repeat runs
+under §9.1 of the run-3 audit are the right vehicle, since without a variance estimate a
+before/after comparison cannot distinguish the saving from noise.
+
+### L3.25 — `context-engineer` reports a token budget that is ~7x under, with arithmetic
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-07)*
+
+1. **Problem**: `context-engineer.md` states *"Recomputed precisely: 84 + 164 + 34 + 10 + 376 + 238
+   ≈ **906 tokens**"*, then *"≈ **1,350 tokens total**"*, then *"Status: OK (≈1,350 tokens is ~1.1%
+   of the Analyst tier budget — no cuts needed)"*. The real total is **~9,100 tokens**. Every term
+   is derived from a ~2-tokens-per-line rule that holds for nothing in the list:
+   `ARCHITECTURE_RULES.md` is 188 lines / 14,949 bytes — **~3,737 tokens, counted as 376**;
+   `DOMAIN_DICTIONARY.md` 119 lines / 18,530 bytes — **~4,632 tokens, counted as 238**. The
+   presentation is the problem as much as the number: "Recomputed precisely", a per-file breakdown,
+   a percentage, and a Status line, all resting on a per-line rate that is wrong by an order of
+   magnitude for prose. A budget that is 7x under will report OK right up to the point it overflows.
+2. **Architectural Fix**: Estimate from **bytes** (`bytes/4`), not lines, and have the agent read
+   file sizes rather than infer them from line counts. Better, compute the estimate in the executor
+   from the files the manifest pins and hand it to the agent — this is arithmetic over known
+   quantities, and there is no reason a model is doing it.
+3. **Target files**: `shared/agents/context-engineer.md`, `internal/orchestrator/executor.go`
+4. **Done when**: the manifest's estimate for a known file set is within 20% of a real token count,
+   and the estimate is produced by the executor rather than asserted by the agent.
+
+**Why it matters**: this is the run's clearest instance of the category that has been most valuable
+in all three runs — not a wrong answer, but a **confidently** wrong one, dressed in enough supporting
+detail that a reader has no reason to check it. The `context-engineer` exists to protect the context
+budget; the number it reports that budget with is the one number in the run nothing verifies.
+
+**SHIPPED 2026-09-07** (`bf302c8`) — `context-engineer` is now a typed stage producing
+`ContextState`. It pins files and names a tier; the executor measures the pinned files from disk
+(`bytes/4`), sums them, compares against the tier ceiling and writes the budget in. Anything an
+agent puts there is discarded. Measured through a real run, `ARCHITECTURE_RULES.md` returns **3,737
+tokens** against the manifest's claimed **376** — the audit's figure, reproduced.
+
+The prompt, template and guardrail that asked for the estimate are corrected alongside the code that
+trusted it, since the instruction was the cause and not a bystander.
+
+**Honest scope on the accuracy claim.** This item's done-when said "within 20% of a real token
+count". That is **not** what is asserted, because this repository has no tokenizer and nothing here
+was compared against one. What is asserted is that the estimate is `bytes/4` over the real byte
+counts, exactly, and that it is no longer wrong by an order of magnitude for prose — which is the
+defect that was actually observed. `bytes/4` remains an estimate and will be wrong for content that
+tokenizes unusually (minified files, dense CJK, long base64). Closing the remaining gap needs a real
+tokenizer, and claiming 20% without one would repeat the mistake this item is about.
+
+Two things fell out of building it. A pinned path that escapes the project root, names a directory,
+or cannot be read is reported as unmeasurable rather than counted as zero. And a budget that fits
+but could not see every file reports **INCOMPLETE**, not OK — a confident status resting on a
+knowably short total is the same defect one level down.
+
+### L3.26 — `install` clobbers agent and skill files it did not create
+**Workstream**: PLATFORM · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-07, supersedes L3.23)*
+
+**SHIPPED 2026-09-07** (`e9ed447`, `7340cd4`) — ownership is recorded per path in the manifest and
+install resolves the four cases below; a directory source expands into one entry per file. A project
+holding its own agent, skill and `DOMAIN_DICTIONARY.md` now survives an install with every byte
+intact, no backups written, and `git status` clean apart from loom's own paths. Four tests assert it,
+each confirmed to fail against the previous behaviour before being kept.
+
+Cache files are read-only. That is not precautionary: while testing this, appending one line to a
+linked `.claude/agents/analyst.md` wrote through the symlink and modified the copy shared by every
+project on the machine — the corruption L3.23 §9.7 could only argue was possible. Cache directories
+stay writable so the cache remains evictable. `ARCHITECTURE_RULES.md` and `DOMAIN_DICTIONARY.md` are
+copied only when absent.
+
+**Still open, and not part of this fix**: the four unimplemented level bundle actions described
+under "Related" below. Until they exist, levels 2–4 install `.mcp.json` and documentation only.
+
+L3.23 recorded one symptom — `DOMAIN_DICTIONARY.md` replaced by a symlink into a writable shared
+cache. This is the general defect behind it, reproduced in a minimal case rather than inferred from
+the run.
+
+1. **Problem**: The unit of installation is the **directory**, not the file.
+   `internal/platform/claude.go:7-8` maps `shared/agents` -> `.claude/agents` as one atom, and
+   `Writer.Install` replaces whatever occupies a destination. A project that already has its own
+   agents or skills loses all of them:
+
+   ```
+   $ echo "..." > .claude/agents/our-team-reviewer.md      # committed
+   $ echo "..." > .claude/skills/my-deploy/SKILL.md        # committed
+   $ loom install --target . --platform claude-code --level 1
+     backed up .claude/agents -> agents.bak.1788807242968860000
+     linked    .claude/agents -> ~/Library/Caches/loom/v3.7.0/shared/agents
+     backed up .claude/skills -> skills.bak.1788807242969205000
+     linked    .claude/skills -> ~/Library/Caches/loom/v3.7.0/shared/skills
+   $ git status --short
+    D .claude/agents/our-team-reviewer.md
+    D .claude/skills/my-deploy/SKILL.md
+   ```
+
+   Three aggravating factors:
+   - **`--copy` does not avoid it.** Same `backup` -> `replace` path (`fs/install.go:19-24`). There
+     is currently no safe install mode, so L3.23's implied mitigation is not available.
+   - **The manifest cannot tell ours from theirs.** `.loom-manifest.json` records paths at directory
+     granularity (`.claude/agents`), so `loom uninstall` is blind in the same way in reverse.
+   - **The cache is writable and shared.** Cache files are `0644` under
+     `~/Library/Caches/loom/<version>/shared/`, shared by every project installed from it — the
+     L3.23 near-miss.
+
+   The blast radius is the whole adoption story: the projects most worth installing into are the
+   ones that already have agent content, and those are exactly the ones this destroys.
+
+2. **Architectural Fix**: **Own files explicitly; never touch anything unowned.** The manifest
+   records every installed path with the content hash loom wrote, and install resolves four cases:
+
+   | Destination state | Action |
+   |---|---|
+   | absent | install; record path + hash |
+   | present, not in manifest | **skip and warn** — foreign, never backed up, never replaced |
+   | present, in manifest, hash matches | ours and unmodified -> update |
+   | present, in manifest, hash differs | user edited our file -> skip and warn; `--force` overrides |
+
+   The last row is what makes the 1 -> 2 -> 3 upgrade path safe, which is the property "install into
+   a project at any adoption level" actually requires.
+
+   **Namespacing is not uniformly available — verified 2026-09-07, and it constrains the design.**
+   Agents *are* discovered recursively (`.claude/agents/loom/analyst.md` is found), but a subagent's
+   identity is its frontmatter `name`, not its path — so nesting prevents file collision and **not**
+   name collision. Skills are worse: discovery is **not** recursive, a skill must sit at exactly
+   `.claude/skills/<name>/SKILL.md`, and its invocation name *is* the directory name. So
+   `.claude/skills/loom/deliver-feature/` would simply not load. Conclusion: per-file ownership is
+   the mechanism, not namespacing. Name collisions are **detected and reported**, not prevented by
+   layout. Ownership granularity therefore differs by kind — the file for agents and rules, the
+   skill directory for skills, because that directory is the identity unit.
+
+   Two further changes fall out of the same principle:
+   - `ARCHITECTURE_RULES.md` and `DOMAIN_DICTIONARY.md` are **project** documents —
+     `design-principles.md` §6 requires every domain term to match the latter. Symlinking them into
+     a shared cache silently changes what the rules are checked against. They become
+     `CopyIfMissing`, as `CLAUDE.md` already is (`claude.go:58`).
+   - Cache contents become read-only (`0444` files, `0555` directories), which closes L3.23's
+     latent corruption path outright instead of relying on an agent declining to write.
+
+3. **Target files**: `cmd/loom/internal/manifest/`, `cmd/loom/internal/fs/`,
+   `cmd/loom/internal/platform/`, `cmd/loom/cmd/install_levels.go`, `cmd/loom/cmd/uninstall_run.go`
+4. **Done when**: a project with pre-existing `.claude/agents/our-team-reviewer.md` and
+   `.claude/skills/my-deploy/SKILL.md` survives an install with both files intact, no `.bak`
+   directories created, and `git status` clean apart from paths loom recorded as its own — asserted
+   by a test, not by inspection.
+
+**Why it matters**: this is the one defect that makes the framework unsafe to adopt incrementally.
+Every other item on this roadmap improves a run; this one decides whether a team with existing AI
+tooling can run it at all. It is also the second instance of the L3.23 pattern — a destructive
+default that announces itself only after the fact, and whose damage was survivable by luck.
+
+**Related: `--level` gates far less than its name implies.** Measured 2026-09-07, correcting an
+earlier claim in this entry that `--level` defaults to "the maximum":
+
+- **Every level installs all 39 agents and all 69 skills.** The platform install writes those
+  unconditionally, before any level bundle is considered. `--level` narrows exactly one thing —
+  rules, from 14 to the 5 core ones plus whatever `--stack` adds. So "level 1: foundational prompts,
+  minimal footprint" is not what level 1 does.
+- **Levels 2–4 install documentation and `.mcp.json`, and nothing else.** Four bundles (`executor`,
+  `telemetry-stream`, `policy-engine`, `eval-loop`) declare an `action` that
+  `installBundleAction` does not implement; only `mcp-config` exists. Everything else at those
+  levels is `docsOnly`.
+- **`shared/levels.yaml`'s `landed:` list had gone stale**, so those bundles were reported as
+  *"requires roadmap item M0.4, which has not landed"* for M0.4, L3.9 and L2.16 — all three shipped
+  between 2026-08-29 and 2026-09-02. Corrected in this commit; the install outcome is unchanged
+  because the actions are unimplemented either way, but the message is now true. The file's own
+  comment already required updating `landed` in the shipping commit, so the fix is discipline, not
+  design.
+
+Sequencing follows from that: changing the `--level` default is not the useful next move, because
+the levels barely differentiate yet. Implementing the four bundle actions is, and until they exist
+"supports levels 1–4" should be stated as "installs level 1, registers the MCP server at level 2,
+and ships level 3–4 documentation".
+
+### L3.27 — Give a pipeline a definition, so a project can have more than one
+**Workstream**: KERNEL · **Effort**: L · **Blocked by**: none · **Blocks**: a plan-editing TUI · *(raised 2026-09-07)*
+
+**SHIPPED 2026-09-08.** `loom run --plan <name>` executes a plan defined in
+`.claude/plans/<name>.yaml` (project-local) or `shared/plans/<name>.yaml` (installed), and
+`shared/plans/deliver-bugfix.yaml` ships as the worked example — 8 stages against
+deliver-feature's 15.
+
+**The design decision, and it is the whole item**: a plan **selects and orders** stages from
+`orchestrator.BuiltInStages()`. It does not define them. Gate, typed state kind, upstream reads,
+skippability and timeout are all inherited and cannot be restated, so a plan cannot drop a gate,
+un-type a contract, or make a routed stage unconditional. Two roadmap items paid for that
+restriction: L3.24 measured an always-runs stage on a feature it could not serve at $0.55–0.88 a
+time, and L2.17 bounded the review loop because prose said "repeat until APPROVED". A format
+letting each project restate either would hand both bills back per-project. Loops are **named**,
+not defined, for the same reason.
+
+Validation rejects, each naming the offending line: an unknown stage, an unknown loop, a stage
+whose `Consumes` upstream the plan omits, a loop spanning stages the plan lacks or ordered
+backwards, the built-in plan's name, an unsupported version, and — the L3.24 preserver — **a
+routable stage in a plan with no `router`**, which would otherwise always run with nothing
+reporting the route that was never computed.
+
+Upstreams are checked for **presence, not order**. `developer` consumes `code-reviewer`, which runs
+after it, because on a second loop round the developer reads the findings that sent it back;
+requiring upstreams to appear earlier would reject the built-in plan.
+
+The built-in plan **stays in Go** and remains the default: it is the pipeline every run has
+exercised, and putting it behind the loader on day one would make a malformed embed break every run
+rather than only the custom ones. `TestTheBuiltInPlanIsExpressibleInTheFormat` generates the YAML
+from the built-in plan's own stage order and asserts a byte-equal round trip, so the done-when holds
+and adding a stage never requires editing the test.
+
+**Not built**: new stages, project-defined routing predicates, and custom loop bounds. Those were
+considered and declined — see the design decision above. A plan-editing TUI remains an adoption
+decision (`bubbletea`/`huh`) on top of this, not an extension of it; `go.mod` still has no TUI stack.
+
+1. **Problem**: There is exactly one pipeline and it is a Go function.
+   `DefaultDeliverFeaturePlan()` builds the stage list, the gates, the typed-state kinds, the
+   `Consumes` edges, the skippable set and the loop bound in code, and `selectPlan` rejects every
+   other name:
+
+   ```
+   unknown plan %q — only %q exists today (custom plans are a later roadmap item)
+   ```
+
+   That error has been honest since it was written, and it is now the limiting factor. A team that
+   wants a shorter pipeline for a bugfix, a longer one for a migration, or the same one minus a
+   stage they do not staff has no way to say so short of editing Go and rebuilding. The framework
+   ships fifteen agents and one arrangement of them.
+
+2. **Architectural Fix**: A serialized plan — YAML alongside the other `.claude/` content — loaded
+   and validated the way `shared/levels.yaml` already is, with `DefaultDeliverFeaturePlan()` becoming
+   the built-in default rather than the only option. What the format has to carry is already fixed by
+   what `Plan` holds today: stage order, agent, gate, state kind, `Consumes` edges, skippability,
+   timeout, and loop bounds.
+
+   Two properties the format must not lose, both of which cost real money to learn:
+   - **Skippability is not free-form.** L3.24 showed that a stage marked always-runs on a feature it
+     cannot serve costs $0.55–0.88 to say so. A custom plan declaring its own stages must also
+     declare what evidence routes each one in, or every custom plan re-earns L3.24 privately.
+   - **A loop needs a bound.** L2.17 put a bound on the review loop precisely because prose said
+     "repeat until APPROVED". A plan format that lets someone write an unbounded loop hands that
+     failure back to every project that writes one.
+
+3. **Target files**: `internal/orchestrator/plan.go`, `cmd/loom/cmd/run.go`, a new plan loader
+   package, `shared/plans/`
+4. **Done when**: `loom run --plan <name>` executes a plan defined in a file, an invalid plan is
+   rejected with the line that is wrong, and the built-in deliver-feature plan is expressible in the
+   format without special-casing.
+
+**Why it matters**: this is the prerequisite for every "custom workflow" conversation, including a
+TUI for assembling one. A YAML plan is diffable, reviewable in a PR, testable, and shareable across
+projects; a plan assembled only through a UI is none of those. Note also that the CLI is cobra and
+`go-isatty` today — there is no TUI stack in `go.mod` — so a plan editor is an adoption decision
+(bubbletea/huh) on top of this item, not an extension of something already present. Building the
+format first also avoids designing it through a form, which is how a format ends up shaped by a
+widget.
+
+### L3.30 — A read-only stage modified source, through Bash
+**Workstream**: TOOLS · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-08, from run 4)*
+
+**SHIPPED 2026-09-08** (`28ac6d3`) — the posture half. L3.36 is the other half.
+
+1. **Problem**: `accessibility-engineer` declares `tools: Read, Glob, Grep, Bash` — no edit tool —
+   and modified `handlers.go`, saying so in its own report. `--allowed-tools` (L2.22) is an allowlist
+   over named tools, not a write barrier: any stage holding Bash can write through a heredoc or
+   `sed -i`, and six of the plan's stages hold Bash. "Read-only stage" was a property nothing
+   enforced and nothing checked. `security-reviewer`, same posture, did not edit — so this is stage
+   behaviour, not an inevitable consequence of granting Bash.
+2. **Fix**: the executor fingerprints the working tree around each stage and records any that
+   changed it without declaring write access, printing them at the end of the run. It **records
+   rather than fails**: the edits were correct and improved the code, so the defect is that nothing
+   noticed, not that it happened. Enforcing would mean removing Bash from six reviewing stages that
+   use it to run checks, which costs more than the defect.
+3. **Detail that matters**: the digest hashes content, not status. `git status --porcelain` alone
+   would have missed this entirely — the edit was to a file the developer had already modified, so
+   its status never changed, only its bytes did. A test pins that case.
+4. Also corrects the comment on `writeTools`, which run 4 falsified: it claimed a stage declaring
+   Bash without an edit tool "declares it to run checks, not to author code", which is true about
+   what the declaration MEANS and false as the guarantee about behaviour it was written as.
+
+### L3.31 — QA reports one package's coverage as the feature's
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-08, from run 4)*
+
+**SHIPPED 2026-09-08** (`74283e9`).
+
+1. **Problem**: `qa-engineer` reported `statementCoveragePercent: 89.7` with no qualifier. Real and
+   correctly measured — for `internal/runs`. The feature also spanned `internal/httpserver`, holding
+   the handlers, the pagination link and the page rendering, at **43.1%**. Neither the lower figure
+   nor the word "package" appeared anywhere, and `testing-conventions.md` makes coverage >= 85%
+   CRITICAL, so a reader concluded the feature cleared a bar most of its new surface did not.
+   Nothing was fabricated: a real measurement of the wrong scope, presented unqualified.
+2. **Fix**: a bare float cannot carry a scope, so coverage is a list of named units and the rendered
+   report leads with the lowest — the number a coverage bar is judged against. `qa-engineer.md` is
+   corrected alongside the schema, with these figures in it: the instruction said to ensure coverage
+   meets 85% and never said whose.
+
+### L3.32 — A gate halts on a stage the router already skipped
+**Workstream**: KERNEL · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-08, from run 4)*
+
+**SHIPPED 2026-09-08** (`c0ca216`).
+
+1. **Problem**: `confirm-ship` halted on `devops-engineer`, which the router had routed out.
+   Approving it proved the stage still does not run, so routing is not bypassed and L3.24's saving
+   is real — the audit downgraded this to INFO-to-LOW on that evidence. Two narrower defects
+   survived: the halt stamped its own clock over the settled record, producing one whose `StartedAt`
+   was **eight hours after** its `FinishedAt`; and nothing told the human the gated stage would not
+   run.
+2. **Fix**: a settled stage keeps the times it actually ran, and the halt carries the skip reason so
+   the CLI can say the gate guards no work. **The gate still halts, deliberately** — `advance()`
+   checks the gate before the settled check so a human checkpoint cannot vanish because routing
+   removed the stage behind it.
+
+### L3.33 — The architecture schema under-specifies what the validator enforces
+**Workstream**: KERNEL · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-08, from run 4)*
+
+**SHIPPED 2026-09-08.**
+
+1. **Problem**: `validateDecision` requires `fitness` unless the decision is flagged
+   `judgmentOnly`. The generated schema said none of it — `required` listed only `decision` and
+   `rationale`, there was no `if`/`then` or `dependentRequired`, the real rule appeared solely in
+   one field's prose description, and `judgmentOnly` (the escape hatch) carried **no description at
+   all**. Run 4's Experiment A adds one method to one class, so the architect reasonably had a
+   decision with no meaningful fitness function, omitted it, and had no way to learn that
+   `judgmentOnly: true` was how to say so. **$2.52 spent, run abandoned at stage 4 of 12** — and
+   with L3.18's incomplete filter (fixed separately in `a96b6aa`) this is why Experiment A produced
+   no cost or variance data at all.
+2. **Fix**: the conditional is declared once as data in `internal/state/conditional.go`. The
+   validator reads its error message from that declaration and the generator emits it into the
+   schema as an `anyOf` — either `fitness` is present, or `judgmentOnly` is present and `true`.
+   One statement, two consumers, no room to drift. The escape hatch is now documented, since a flag
+   nothing describes cannot be used.
+3. **Done when**: a document using the escape hatch the schema offers is accepted by the validator,
+   and one with neither is still refused naming the hatch. Both asserted.
+
+**The third instance of one defect.** L2.25 (STRIDE enum), L3.28 (`schemaVersion`), L3.33 (this) are
+all "a constraint the validator enforces and the schema does not communicate", and all three were
+invisible to mocks because mocks build valid state in Go.
+`TestEveryConditionalRequirementReachesTheSchema` is the fitness function for the third shape.
+
+**Measured limitation, worth recording.** L3.35's model-boundary test does **not** catch this. It
+was run with L3.33 reintroduced and **passed**: `fitness` only binds when the architect has a
+decision without one, and against L3.35's trivial spec it wrote one for every decision — the same
+reason run 4's Experiment B passed where A failed. L3.35 catches *always-binding* contract defects;
+*conditionally-binding* ones need the unit test. Both files now say so.
+
+### L3.35 — Test the model boundary, not the mock behind it
+**Workstream**: OBSERVE · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-08, from run 4)*
+
+**SHIPPED 2026-09-08** (`internal/provider/claude/contract_integration_test.go`).
+
+1. **Problem**: run 4's audit §12.6 — four of its seven findings were invisible to the test suite,
+   which was green before the run and green after it. Neither state predicted anything. Three had
+   one shape: a property asserted in the framework and verified against mocks, which does not hold
+   when a real model is asked. **L3.28** ($2.09, two runs dead at stage 1), **L3.33** (halted
+   Experiment A at stage 4), **L3.29** (developer reported success against an empty `git diff`).
+   A mock cannot find any of them: it builds state in Go, where every constant is correct by
+   construction and no instruction is obeyed or disobeyed. The gap was never coverage — the tests
+   were on the wrong side of the boundary.
+2. **Fix**: a contract test that asks a **real model** for each typed stage's document and asserts
+   the validator accepts it, plus one that asserts the developer actually writes a file. The
+   assertion is the validator itself rather than a restated field list, because the defect class is
+   "the schema says something weaker than the validator enforces" and any restatement would drift
+   from it exactly as the schemas did.
+3. **Cost control**: excluded from `go test ./...` by a build tag **and** gated on `LOOM_INTEGRATION`,
+   because a suite that silently spends money is worse than no suite. ~$0.50–1.50 per stage; run one
+   kind while iterating.
+4. **Verified as an instrument, not just as a test**: reintroducing L3.28 makes it fail in 23
+   seconds with the production error verbatim — `field "schemaVersion" is 1, this build supports 2`
+   — for about $0.50, against the $2.09 and two dead runs it cost to learn the same thing from a
+   real pipeline.
+
+**What it does not prove**: that a stage's output is *correct*, only that it conforms. A model can
+return a schema-valid analysis that is nonsense and this passes. It is also n=1 per run against a
+nondeterministic system, so a pass is evidence and not proof. Both limits are stated in the file.
+
+**Why this is worth the effort**: run 4's cheapest correct response was never seven fixes. Every
+mock-verified claim in this repository is now one command away from being checked at the boundary
+that matters, and the remaining ones have not been audited — §12.3 of that run's audit says so
+explicitly.
+
+### L3.36 — Nothing re-reviews what the post-review stages write
+**Workstream**: KERNEL · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-08, split from L3.30)*
+
+1. **Problem**: `code-reviewer` returned `APPROVED` against a **312-insertion** tree in run 4. The
+   tree that ended the run was **343**. Three stages modified it afterwards:
+
+   | Stage | Declares write tools? | Changed | Re-reviewed? |
+   |---|---|---|---|
+   | `accessibility-engineer` | no | production source (+12) | no |
+   | `qa-engineer` | yes | test files only | no — its own remit |
+   | `sre-engineer` | **yes** | production source (+19/-8) | no |
+
+   The posture half of L3.30 is fixed (`28ac6d3`) and covers only the first row. This is the
+   structural half, and it implicates a stage that **did nothing wrong**: `sre-engineer` is entitled
+   to write, its `slog` instrumentation was correct and low-cardinality, and the suite still passed.
+
+   The plan orders `code-reviewer` before four stages that can modify source. Nothing re-reviews,
+   and **no artifact records that the approved tree and the shipped tree differ** — neither the fact
+   nor its size appears anywhere in run state.
+
+2. **Architectural Fix**: not obvious, which is why this is separate rather than bolted onto a
+   check. Candidates, none costed:
+   - Record the divergence without acting on it — cheapest, and at least makes it visible.
+   - Re-run `code-reviewer` over the delta when post-review stages changed production source, which
+     costs a review invocation on most runs.
+   - Move the review later in the plan, which trades this problem for a longer feedback loop and
+     makes the design gate approve less.
+
+   The executor now fingerprints the tree around every stage (L3.30), so the mechanism to detect the
+   divergence exists; what to *do* about it is the open question.
+
+3. **Target files**: `internal/orchestrator/`, `internal/orchestrator/plan.go`
+4. **Done when**: a run whose tree changed after `code-reviewer` approved says so in an artifact a
+   human reads.
+
+**Why it matters**: "review sees what ships" is a property the pipeline sells. Run 4's audit rates
+this arguable at §12.4 — the unreviewed edits were correct, so the finding rests on process rather
+than outcome — and it is recorded as a defect for exactly that reason: the run got a good result
+from a mechanism that does not guarantee one.
+
+### L3.37 — A form for composing pipelines
+**Workstream**: PLATFORM · **Effort**: M · **Blocked by**: L3.27 (shipped) · **Blocks**: none · *(raised 2026-09-09)*
+
+**SHIPPED 2026-09-09** (`6785221`).
+
+1. **Problem**: L3.27 gave a pipeline a definition; nothing made the definition discoverable. A team
+   had to know the YAML by heart, and had no way to see which plans a project could run.
+2. **What shipped**: `loom plan list` and `loom plan show <name>`, which work anywhere including CI,
+   and `loom plan new`, a `huh` form. A plan file that does not parse is listed as **BROKEN with its
+   error** rather than omitted.
+3. **The design decision**: the form gathers a name and a stage set and **does not validate**. What
+   it renders goes through `planfile.Parse` before it reaches disk, so a composed plan obeys exactly
+   the rules a hand-written one does and a rule added to the loader covers this command for free. A
+   form with its own idea of what is legal is how the two drift. A test composes a plan with a
+   missing upstream and asserts the refusal carries the loader's words.
+4. **Deselect, do not reorder.** Stages are offered in the built-in plan's order, all selected.
+   Reordering is a text edit — the built-in order is the only one this command could offer without
+   inventing a second source of truth for which order is right, and "the same pipeline minus the
+   stages we do not staff" is the case L3.27 came from. Each option carries its gate and whether it
+   is routable, since that is the reason to keep a stage and is invisible in a list of bare names.
+5. **`--accessible`** swaps the full-screen TUI for plain prompts: for screen readers, and because
+   it is the only mode that works in a terminal which does not answer the capability queries
+   (OSC 11, cursor position) the full-screen renderer blocks on.
+
+**Two defects found by driving the real form, not by reading it.** `validatePlanName` trimmed before
+checking while the raw value became the filename, so a name with a trailing space produced
+`my-plan .yaml` — observed in a PTY, not theorised. And the write path now validates too, because
+`--name` skips the prompt the form's validator runs in.
+
+**Dependency added**: `charmbracelet/huh`. The CLI was cobra and `go-isatty` before this; a TUI stack
+was the adoption decision L3.27 named, and it is taken here rather than assumed.
+
+**Not built**: reordering stages, and editing an existing plan. Both are text edits on a format
+designed to be edited by hand, and neither is worth a form until someone finds the text edit
+insufficient.
 
 ### L3.13 — Derive agent quality metrics from execution
 **Workstream**: OBSERVE · **Effort**: M · **Blocked by**: L3.5 (shipped), L3.8 (shipped) · **Blocks**: none

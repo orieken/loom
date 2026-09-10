@@ -124,13 +124,23 @@ const RouterStageID = "router"
 
 // defaultSkippableStages declares which stages the router may route around.
 // Everything absent from this map always runs. The review stages
-// (code-reviewer, security-reviewer) are absent deliberately.
+// (code-reviewer, security-reviewer) are absent deliberately: an unnecessary
+// review wastes an invocation, a skipped one does not fail so cheaply.
+//
+// visual-qa-engineer and sre-engineer joined the list in L3.24. Being
+// unskippable was never a property either had earned — it was where they
+// happened to land — and it cost $1.18 on a three-line array filter, in a
+// run where accessibility-engineer was correctly skipped for having no UI.
+// A stage that can only review a surface should not run when the surface is
+// absent, whichever stage it is.
 func defaultSkippableStages() map[string]bool {
 	return map[string]bool{
 		"architect":              true,
 		"performance-engineer":   true,
 		"data-engineer":          true,
 		"accessibility-engineer": true,
+		"visual-qa-engineer":     true,
+		"sre-engineer":           true,
 		"devops-engineer":        true,
 	}
 }
@@ -140,6 +150,7 @@ func defaultSkippableStages() map[string]bool {
 // the analyst -> architect hop; every other stage still writes markdown.
 func defaultTypedStages() (kinds map[string]string, consumes map[string][]string) {
 	return map[string]string{
+		"context-engineer":  string(state.KindContext),
 		"analyst":           string(state.KindAnalysis),
 		RouterStageID:       string(state.KindRoute),
 		"architect":         string(state.KindArchitecture),
@@ -162,6 +173,37 @@ func defaultTypedStages() (kinds map[string]string, consumes map[string][]string
 		// state — what a stage reads and what it writes vary separately.
 		"tech-writer": {"qa-engineer", "analyst"},
 	}
+}
+
+// BuiltInStages returns every stage the framework ships, keyed by ID, fully
+// configured — gate, typed state kind, upstream reads, skippability and
+// timeout.
+//
+// It is the catalogue a plan file selects from (roadmap L3.27). Plans pick
+// and order these; they do not redefine them. That is the whole safety
+// property: a plan cannot drop a stage's gate, un-type its contract, or make
+// a routed stage unconditional, because it never states any of those things.
+// L3.24 measured what an always-runs stage costs on a feature it cannot
+// serve, and a format that let each project re-declare skippability would
+// hand that bill back to every project that wrote a plan.
+func BuiltInStages() map[string]Stage {
+	catalogue := make(map[string]Stage)
+	for _, stage := range DefaultDeliverFeaturePlan().Stages {
+		catalogue[stage.ID] = stage
+	}
+	return catalogue
+}
+
+// BuiltInLoops returns the loops of the built-in plan, keyed by ID, so a
+// plan file can name one rather than restating its bound. L2.17 put a number
+// on the review loop because prose said "repeat until APPROVED"; a format
+// that let a project write its own bound would hand that back too.
+func BuiltInLoops() map[string]Loop {
+	loops := make(map[string]Loop)
+	for _, loop := range DefaultDeliverFeaturePlan().Loops {
+		loops[loop.ID] = loop
+	}
+	return loops
 }
 
 // DefaultDeliverFeaturePlanName names the built-in plan.

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 10,
+  "planName": "deliver-feature",
+  "createdBy": "executor",
+  "featureName": "console-log-filtering",
+  "specPath": "/tmp/loom-e2e4-a2/docs/features/console-log-filtering.md",
+  "startedAt": "2026-09-08T01:59:59.946142Z",
+  "stages": {
+    "context-engineer": {
+      "status": "FAILED",
+      "startedAt": "2026-09-08T01:59:59.946433Z",
+      "finishedAt": "2026-09-08T02:02:22.906383Z",
+      "sequence": 1,
+      "iteration": 1,
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 42,
+        "outputTokens": 10638,
+        "cacheReadTokens": 2005958,
+        "cacheCreationTokens": 83616,
+        "costUsd": 1.2631794
+      },
+      "error": "stage \"context-engineer\" returned invalid state: field \"schemaVersion\" is 1, this build supports 2"
+    }
+  },
+  "approvals": {},
+  "updatedAt": "2026-09-08T02:02:22.906383Z"
+}

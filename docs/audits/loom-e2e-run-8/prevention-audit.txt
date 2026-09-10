@@ -1,0 +1,25 @@
+# Prevention audit (brief §6)
+
+## 8A before
+node_modules=ABSENT
+npmrc=NONE
+pkgjson=1b38142e0d5b5860cc4101f96993258c00ed7768b55b528799c4e672f40f62bf
+gitstatus=34930e9f6abd42e81d42b6f85f31e0dd1fa86d7fc8277773db36b6ab9ea08a1b
+
+## 8A after
+node_modules=ABSENT
+npmrc=NONE
+pkgjson=1b38142e0d5b5860cc4101f96993258c00ed7768b55b528799c4e672f40f62bf
+gitstatus=0aee1f0de6c3240dec8126fa8684998c7be6be1237a227ef241bf75a159cdb86
+
+## 8B before
+node_modules=ABSENT
+npmrc=4b3356a3a6ea56443ea1724128ffa2ed904c8ae594518f01c2a5148979b7c60c
+pkgjson=121523e018b563a110a6f2db3cb64c864accc760b0c08028bd729ae14e5d5364
+gitstatus=3e043bfad22a36a400aa908c19427f62c4e93724ffae3ff03fc084f1e482fde7
+
+## 8B after
+node_modules=ABSENT
+npmrc=4b3356a3a6ea56443ea1724128ffa2ed904c8ae594518f01c2a5148979b7c60c
+pkgjson=121523e018b563a110a6f2db3cb64c864accc760b0c08028bd729ae14e5d5364
+gitstatus=3d48cb279d8829159b51df9168565a0291ecdbf3c6601d009d9af9b5cd25eba8

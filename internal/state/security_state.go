@@ -63,7 +63,7 @@ type StrideAnalysis struct {
 // contract's rule turns on: "A Critical/High finding with `Fix applied:
 // Recommendation only` is a FAIL".
 type SecurityFinding struct {
-	Severity     Severity       `json:"severity" jsonschema:"required,enum=CRITICAL,enum=HIGH,enum=MEDIUM,enum=LOW,enum=INFO"`
+	Severity     Severity       `json:"severity" jsonschema:"required"`
 	Title        string         `json:"title" jsonschema:"required"`
 	Location     string         `json:"location" jsonschema:"required,description=Repo-relative path and line"`
 	Category     StrideCategory `json:"category,omitempty"`

@@ -70,32 +70,35 @@ func (p *Provider) Invoke(ctx context.Context, stage orchestrator.Stage, input o
 			"claude binary %q not found on PATH — install it (npm install -g @anthropic-ai/claude-code) or run with --provider mock for a dry run: %w",
 			p.binaryName, err)
 	}
-	prompt, err := p.buildPrompt(stage, input)
+	prompt, allowed, err := p.buildPrompt(stage, input)
 	if err != nil {
 		return orchestrator.StageOutput{}, err
 	}
-	return p.runSubprocess(ctx, binaryPath, prompt, stage, input)
+	output, err := p.runSubprocess(ctx, binaryPath, prompt, allowed, stage, input)
+	output.DeclaredWriteAccess = writesFiles(allowed)
+	return output, err
 }
 
 // buildPrompt composes the stage prompt: the full agent definition, then the
 // delivery task naming the spec and workspace so the agent reads them itself.
-func (p *Provider) buildPrompt(stage orchestrator.Stage, input orchestrator.StageInput) (string, error) {
+func (p *Provider) buildPrompt(stage orchestrator.Stage, input orchestrator.StageInput) (string, []string, error) {
 	definitionPath := filepath.Join(p.agentsDir, stage.Agent+".md")
 	definition, err := os.ReadFile(definitionPath)
 	if err != nil {
-		return "", fmt.Errorf("agent definition for stage %q not found at %s: %w", stage.ID, definitionPath, err)
+		return "", nil, fmt.Errorf("agent definition for stage %q not found at %s: %w", stage.ID, definitionPath, err)
 	}
+	allowed := allowedToolsFor(definition)
 	prompt := fmt.Sprintf(
 		"%s\n\n---\n\nAct exactly as the agent defined above.\nFeature spec: %s\nWorkspace directory (read prior stage artifacts here): %s\nProduce your complete markdown artifact on stdout and nothing else.\n",
 		definition, input.SpecPath, input.WorkspaceDir)
 	if stage.StateKind == "" {
-		return prompt, nil
+		return prompt, allowed, nil
 	}
-	instruction, err := typedInstruction(stage, input)
+	instruction, err := typedInstruction(stage, input, allowed)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
-	return prompt + instruction, nil
+	return prompt + instruction, allowed, nil
 }
 
 // runSubprocess executes `claude -p --output-format json <prompt>` and
@@ -106,13 +109,17 @@ func (p *Provider) buildPrompt(stage orchestrator.Stage, input orchestrator.Stag
 // The envelope has to be parsed before the agent's own output can be
 // separated from the accounting around it, so there is nothing left to
 // stream straight to a file.
-func (p *Provider) runSubprocess(ctx context.Context, binaryPath, prompt string, stage orchestrator.Stage, input orchestrator.StageInput) (orchestrator.StageOutput, error) {
+func (p *Provider) runSubprocess(ctx context.Context, binaryPath, prompt string, allowed []string, stage orchestrator.Stage, input orchestrator.StageInput) (orchestrator.StageOutput, error) {
 	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 	// The prompt travels over stdin, not argv: agent definitions begin with
 	// `---` YAML frontmatter, which the claude CLI's argument parser would
 	// treat as an option — and stdin also sidesteps ARG_MAX for large
 	// definitions. `claude -p` reads the prompt from stdin when piped.
-	command := exec.CommandContext(ctx, binaryPath, "-p", "--output-format", "json")
+	// The stage's declared tools travel as an explicit allowlist. Without
+	// them `claude -p` denies every Write and Edit and the run fails
+	// silently (roadmap L2.22).
+	args := append([]string{"-p", "--output-format", "json"}, permissionArgs(allowed)...)
+	command := exec.CommandContext(ctx, binaryPath, args...)
 	command.Stdin = strings.NewReader(prompt)
 	command.Stdout = stdout
 	command.Stderr = stderr
@@ -124,7 +131,8 @@ func (p *Provider) runSubprocess(ctx context.Context, binaryPath, prompt string,
 	command.Env = append(os.Environ(), telemetry.TraceParentEnv(ctx)...)
 
 	started := time.Now()
-	p.logger.Info("stage.started", "stage", stage.ID, "agent", stage.Agent, "binary", binaryPath)
+	p.logger.Info("stage.started", "stage", stage.ID, "agent", stage.Agent, "binary", binaryPath,
+		"allowedTools", strings.Join(allowed, ","))
 	runErr := command.Run()
 	p.logger.Info("stage.finished", "stage", stage.ID, "durationMs", time.Since(started).Milliseconds(), "success", runErr == nil)
 	return p.finish(ctx, runErr, stage, input, stdout, stderr)

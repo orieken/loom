@@ -19,6 +19,9 @@ landed:
   - D.2 # public embedding API (commit f597c8d)
   - M0.3 # transport-free domain layer (commit c67262e)
   - L2.4 # tool registry (commit a68a23e)
+  - M0.4 # executor skeleton (epic 76, ba78f21 + cab0156, shipped 2026-08-29)
+  - L3.9 # telemetry schema generated from one Go enum (epic 86, shipped 2026-09-01)
+  - L2.16 # typed policy evaluator and audit trail (epic 87, shipped 2026-09-02)
 
 # Context budget for the level 1 core rules bundle. The ceiling is asserted
 # by a Go test (cmd/loom/internal/levels); measured size 2026-08-29 was
@@ -85,6 +88,12 @@ levels:
         paths: [shared/workflows]
       - id: orchestration
         paths: [shared/orchestration]
+      # Pipeline definitions a project can select with `loom run --plan`
+      # (roadmap L3.27). Level 2 because a second pipeline is only meaningful
+      # once the executor runs one.
+      - id: plans
+        requires: M0.4
+        paths: [shared/plans]
       - id: executor
         requires: M0.4
         action: executor

@@ -89,13 +89,23 @@ func TestOnDemandModulesResolveAndExist(t *testing.T) {
 	}
 }
 
+// TestLandedGatesMatchProfile guards the discipline shared/levels.yaml asks
+// for in its own header: update `landed` in the commit that ships an item.
+//
+// This test previously asserted M0.4 was NOT landed, and kept asserting it
+// for the nine days after M0.4 shipped — so install told users the executor
+// had not shipped when it had (roadmap L3.26). A landed item and an unlanded
+// one are both checked now, because pinning only one direction is what let
+// the list drift.
 func TestLandedGatesMatchProfile(t *testing.T) {
 	profile := loadProfile(t)
-	if !profile.IsLanded("D.1") {
-		t.Error("D.1 (loom mcp serve) should be landed")
+	for _, shipped := range []string{"D.1", "M0.4", "L3.9", "L2.16"} {
+		if !profile.IsLanded(shipped) {
+			t.Errorf("%s has shipped and must be marked landed", shipped)
+		}
 	}
-	if profile.IsLanded("M0.4") {
-		t.Error("M0.4 (executor) must not be marked landed until it ships")
+	if profile.IsLanded("L4.1") {
+		t.Error("L4.1 (bounded Reflexion) has not shipped and must not be marked landed")
 	}
 }
 

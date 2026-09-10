@@ -100,9 +100,24 @@ func askApproval(out io.Writer, in io.Reader, waiting *orchestrator.WaitingAppro
 // haltForApproval prints the exact command that resumes the run and returns
 // the gate error, which Execute turns into exit code 3.
 func haltForApproval(cmd *cobra.Command, waiting *orchestrator.WaitingApprovalError, err error) error {
-	cmd.PrintErrf("Halted at gate %q before stage %q — approval required.\n", waiting.Gate, waiting.Stage)
+	cmd.PrintErrf("Halted at gate %q before stage %q — approval required.%s\n",
+		waiting.Gate, waiting.Stage, routedOutNote(waiting))
 	cmd.PrintErrf("Approve and continue with: loom run --spec %s --resume --approve %s\n", runArgs.spec, waiting.Gate)
 	return err
+}
+
+// routedOutNote says so when the gate guards a stage this run already
+// routed out. The gate still halts — a human checkpoint must not vanish
+// because routing removed the stage behind it — but asking someone to
+// approve work that will not happen, without saying so, is what made this
+// look like a routing bypass in run 4 (roadmap L3.32). Approving it
+// completes the run; the stage stays skipped.
+func routedOutNote(waiting *orchestrator.WaitingApprovalError) string {
+	if waiting.SkipReason == "" {
+		return ""
+	}
+	return fmt.Sprintf("\n  Note: %q was routed out of this run (%s), so approving this gate "+
+		"completes the run rather than starting that stage.", waiting.Stage, waiting.SkipReason)
 }
 
 // reportApprovalReset explains a reset approval as it happens, so a halt

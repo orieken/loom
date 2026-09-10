@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -109,10 +110,16 @@ cat > `+stdinFile+`
 func assertPromptPlumbing(t *testing.T, argsFile, stdinFile string, input orchestrator.StageInput) {
 	t.Helper()
 	args := strings.Fields(readFile(t, argsFile))
-	wantArgs := []string{"-p", "--output-format", "json"}
-	if strings.Join(args, " ") != strings.Join(wantArgs, " ") {
-		t.Errorf("argv = %v, want %v — the prompt must travel over stdin (agent frontmatter starts with ---), "+
-			"and the JSON envelope is where token counts come from", args, wantArgs)
+	// The property is that the prompt is NOT in argv, not that argv is a
+	// fixed list — pinning the list made adding the permission flags look
+	// like a regression (roadmap L2.22).
+	for _, want := range []string{"-p", "--output-format", "json"} {
+		if !slices.Contains(args, want) {
+			t.Errorf("argv %v is missing %q — the JSON envelope is where token counts come from", args, want)
+		}
+	}
+	if strings.Contains(strings.Join(args, " "), "You are a") {
+		t.Errorf("argv = %v carries the prompt; it must travel over stdin (agent frontmatter starts with ---)", args)
 	}
 	prompt := readFile(t, stdinFile)
 	for _, want := range []string{testAgentDefinition, input.SpecPath, input.WorkspaceDir} {

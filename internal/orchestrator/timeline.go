@@ -35,6 +35,9 @@ const (
 	// EventStageSkipped records a stage the router routed around, with the
 	// reason (roadmap L3.0).
 	EventStageSkipped EventKind = "stage.skipped"
+	// EventPostureViolation records a stage that changed the working tree
+	// without declaring a tool that writes files (roadmap L3.30).
+	EventPostureViolation EventKind = "posture.violation"
 	// EventLoopIterated records the review loop sending the developer back
 	// for another round; EventLoopExhausted records it hitting its bound.
 	EventLoopIterated  EventKind = "loop.iterated"

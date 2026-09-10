@@ -104,15 +104,21 @@ func decideStage(analysis AnalysisState, stage RoutableStage) RouteDecision {
 // predicate reads only fields the analysis contract promises.
 func stagePredicates() map[string]func(AnalysisState, string) RouteDecision {
 	return map[string]func(AnalysisState, string) RouteDecision{
+		// The architect's reason names the disjunct that fired, not the
+		// disjunction (roadmap L3.34). A route file whose reason is the
+		// whole condition cannot tell a reader which fact decided it, and
+		// run 4 produced one that was provably false against its own input.
 		"architect": func(a AnalysisState, id string) RouteDecision {
-			return decide(id, a.RequiresArchitect(),
-				"structural work: a context crossing, a data-model change, a new dependency, a performance threshold, or an explicit flag",
-				"no context crossing, data-model change, new dependency, performance threshold, or architectural flag")
+			if reason := a.architectReason(); reason != "" {
+				return RouteDecision{Stage: id, Included: true, Reason: "structural work: " + reason}
+			}
+			return RouteDecision{Stage: id, Included: false,
+				Reason: "no context crossing, data-model change, new dependency, performance threshold, or architectural flag"}
 		},
 		"performance-engineer": func(a AnalysisState, id string) RouteDecision {
 			return decide(id, a.RequiresPerformanceEngineer(),
 				"a performance requirement carries a measurable threshold",
-				"no performance requirement carries a measurable threshold")
+				"no performance requirement carries a threshold with a number and a unit")
 		},
 		"data-engineer": func(a AnalysisState, id string) RouteDecision {
 			return decide(id, a.RequiresDataEngineer(),
@@ -121,8 +127,21 @@ func stagePredicates() map[string]func(AnalysisState, string) RouteDecision {
 		},
 		"accessibility-engineer": func(a AnalysisState, id string) RouteDecision {
 			return decide(id, a.RequiresAccessibilityEngineer(),
-				"the analysis declares an accessibility requirement, which the contract makes mandatory for any UI surface",
-				"no accessibility requirement, so the analysis describes no UI surface")
+				"the analysis declares a UI surface",
+				"the analysis declares no UI surface")
+		},
+		// Same question as accessibility-engineer, so deliberately the same
+		// answer: two stages reviewing the same surface disagreeing about
+		// whether it exists is the defect L3.24 records.
+		"visual-qa-engineer": func(a AnalysisState, id string) RouteDecision {
+			return decide(id, a.RequiresVisualQAEngineer(),
+				"the analysis declares a UI surface",
+				"the analysis declares no UI surface, so there is nothing to look at")
+		},
+		"sre-engineer": func(a AnalysisState, id string) RouteDecision {
+			return decide(id, a.RequiresSREEngineer(),
+				"the analysis declares a served runtime surface",
+				"the analysis declares no served runtime surface, so no availability or latency SLI applies")
 		},
 		"devops-engineer": func(a AnalysisState, id string) RouteDecision {
 			return decide(id, a.RequiresDevOpsEngineer(),

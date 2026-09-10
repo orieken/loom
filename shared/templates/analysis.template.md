@@ -24,10 +24,19 @@ List criteria that must be true for this feature to be considered complete. Use 
 **Specification by Example (SBE)**: Ambiguity hides in abstractions. You MUST provide concrete examples and data tables for complex business rules, not just abstract Gherkin scenarios.
 **MANDATORY**: For any feature containing User Interface (UI) elements, you MUST explicitly define an Accessibility (a11y) requirement (e.g., "Keyboard Navigation must work", "Screen readers must announce X").
 
+### Surfaces
+- **UI Surface**: [yes/no — does this feature render something a person looks at?]
+- **Served Runtime Surface**: [yes/no — does this run in a deployed process whose availability or latency someone operates? An in-process library or test utility does not.]
+- These decide whether `accessibility-engineer`, `visual-qa-engineer` and `sre-engineer` run at all.
+
 ### Non-Functional Requirements
 - Performance (Must explicitly define SLAs and Timeout thresholds for all external or long-running calls)
 - Security considerations (auth, data privacy)
 - Scaling considerations (e.g., will this generate millions of rows?)
+- **A threshold is a number and a unit** — `p99 request latency: 200ms`. If a requirement has no
+  measurable limit, describe it in the requirement text and give it no threshold. A threshold
+  routes in both the architect and the performance-engineer, so prose in that field bills for two
+  reports that will say "not applicable".
 
 ## Proposed Fitness Functions
 For every Non-Functional Requirement identified above, propose a measurable fitness function:
@@ -56,15 +65,15 @@ For every Non-Functional Requirement identified above, propose a measurable fitn
 ### Data Model Changes
 - New tables/collections, modified schemas, migration needs
 - MUST specify if this is an **Expand** phase (additive/safe, runs before deploy) or a **Contract** phase (destructive/cleanup, runs after deploy). Destructive changes cannot happen in the same release as the code they support.
-- "None" if not applicable
+- Leave empty if not applicable — never write "None" (see the analysis contract: a prose "none" reads as work to the router and invokes an agent to discover it meant zero)
 
 ### API Changes
 - New endpoints, modified signatures, new request/response shapes
-- "None" if not applicable
+- Leave empty if not applicable — never write "None" (see the analysis contract: a prose "none" reads as work to the router and invokes an agent to discover it meant zero)
 
 ### New Dependencies
 - Any new packages, services, or external integrations needed
-- "None" if not applicable
+- Leave empty if not applicable — never write "None" (see the analysis contract: a prose "none" reads as work to the router and invokes an agent to discover it meant zero)
 
 ## Task List
 

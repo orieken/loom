@@ -3,13 +3,33 @@
   "$id": "https://github.com/orieken/loom/internal/state/architecture-state",
   "properties": {
     "schemaVersion": {
-      "type": "integer"
+      "type": "integer",
+      "const": 2,
+      "description": "Always 2 — the schema version this build accepts."
     },
     "feature": {
       "type": "string"
     },
     "structuralDecisions": {
       "items": {
+        "anyOf": [
+          {
+            "required": [
+              "fitness"
+            ]
+          },
+          {
+            "properties": {
+              "judgmentOnly": {
+                "type": "boolean",
+                "const": true
+              }
+            },
+            "required": [
+              "judgmentOnly"
+            ]
+          }
+        ],
         "properties": {
           "decision": {
             "type": "string"
@@ -52,7 +72,8 @@
             "description": "Omitted only when judgmentOnly is true"
           },
           "judgmentOnly": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Set true when no meaningful fitness exists for this decision, which is the only way to omit it. The rationale must then carry the justification."
           }
         },
         "additionalProperties": false,

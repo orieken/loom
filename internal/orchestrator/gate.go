@@ -57,6 +57,10 @@ var ErrWaitingApproval = errors.New("waiting for gate approval")
 type WaitingApprovalError struct {
 	Gate  string
 	Stage string
+	// SkipReason is set when the gated stage was already routed out of this
+	// run, so a caller can say the gate guards work that will not happen
+	// (roadmap L3.32). Empty for the ordinary case.
+	SkipReason string
 }
 
 func (e *WaitingApprovalError) Error() string {

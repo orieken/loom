@@ -1,0 +1,198 @@
+{
+  "schemaVersion": 10,
+  "planName": "deliver-feature",
+  "createdBy": "executor",
+  "featureName": "run-history-browsing",
+  "specPath": "/tmp/loom-e2e4b-b/docs/features/run-history-browsing.md",
+  "startedAt": "2026-09-08T04:05:05.314771Z",
+  "stages": {
+    "analyst": {
+      "status": "COMPLETED",
+      "startedAt": "2026-09-08T04:07:25.055479Z",
+      "finishedAt": "2026-09-08T04:09:27.907446Z",
+      "artifactPath": "/tmp/loom-e2e4b-b/.claude/feature-workspace/run-history-browsing/state/analyst.json",
+      "artifactSha256": "271709ec47a80a2fd7323f80b81a90f9175d52b3e5bc7dccdc5cf035ffc002ce",
+      "sequence": 2,
+      "iteration": 1,
+      "stateKind": "analysis",
+      "agent": "analyst",
+      "viewPath": "/tmp/loom-e2e4b-b/.claude/feature-workspace/run-history-browsing/analysis.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 12,
+        "outputTokens": 12150,
+        "cacheReadTokens": 506175,
+        "cacheCreationTokens": 82090,
+        "costUsd": 0.8266785000000001
+      }
+    },
+    "architect": {
+      "status": "COMPLETED",
+      "startedAt": "2026-09-08T04:09:27.909832Z",
+      "finishedAt": "2026-09-08T04:14:33.464166Z",
+      "artifactPath": "/tmp/loom-e2e4b-b/.claude/feature-workspace/run-history-browsing/state/architect.json",
+      "artifactSha256": "b8f96310518a0b0681d64528a0fcd2e4979efb6a346f7916fafe4f54c95aec1f",
+      "sequence": 6,
+      "iteration": 1,
+      "stateKind": "architecture",
+      "agent": "architect",
+      "viewPath": "/tmp/loom-e2e4b-b/.claude/feature-workspace/run-history-browsing/architecture-notes.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 10,
+        "outputTokens": 26604,
+        "cacheReadTokens": 456698,
+        "cacheCreationTokens": 115428,
+        "costUsd": 1.2286674
+      }
+    },
+    "code-reviewer": {
+      "status": "INTERRUPTED",
+      "startedAt": "2026-09-08T04:31:53.831933Z",
+      "finishedAt": "2026-09-08T04:32:28.696584Z",
+      "sequence": 9,
+      "iteration": 1,
+      "error": "stage \"code-reviewer\" subprocess terminated: context canceled"
+    },
+    "context-engineer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-09-08T04:05:05.315101Z",
+      "finishedAt": "2026-09-08T04:07:25.054736Z",
+      "artifactPath": "/tmp/loom-e2e4b-b/.claude/feature-workspace/run-history-browsing/state/context-engineer.json",
+      "artifactSha256": "b274eab9ee0932e77105dc1000826a55cf19917b127c5ce4256dfd7175efed49",
+      "sequence": 1,
+      "iteration": 1,
+      "stateKind": "context",
+      "agent": "context-engineer",
+      "viewPath": "/tmp/loom-e2e4b-b/.claude/feature-workspace/run-history-browsing/context-manifest.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 36,
+        "outputTokens": 9164,
+        "cacheReadTokens": 1802308,
+        "cacheCreationTokens": 121342,
+        "costUsd": 1.4063124000000002
+      }
+    },
+    "data-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-09-08T04:09:27.909327Z",
+      "sequence": 4,
+      "skipReason": "no data-model change to sequence",
+      "iteration": 1
+    },
+    "developer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-09-08T04:28:40.441497Z",
+      "finishedAt": "2026-09-08T04:31:53.831225Z",
+      "artifactPath": "/tmp/loom-e2e4b-b/.claude/feature-workspace/run-history-browsing/state/developer.json",
+      "artifactSha256": "a1073fa980339f755f4e7c43657c4c3b94eabd26003608d2e328ccda34286ec6",
+      "gate": "confirm-design",
+      "sequence": 8,
+      "iteration": 1,
+      "stateKind": "implementation",
+      "agent": "developer",
+      "viewPath": "/tmp/loom-e2e4b-b/.claude/feature-workspace/run-history-browsing/implementation-notes.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 24,
+        "outputTokens": 17030,
+        "cacheReadTokens": 1221914,
+        "cacheCreationTokens": 102795,
+        "costUsd": 1.2388662000000001
+      }
+    },
+    "devops-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-09-08T04:09:27.909574Z",
+      "sequence": 5,
+      "skipReason": "the analysis lists no DevOps tasks",
+      "iteration": 1
+    },
+    "performance-engineer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-09-08T04:14:33.465184Z",
+      "finishedAt": "2026-09-08T04:15:58.447917Z",
+      "artifactPath": "/tmp/loom-e2e4b-b/.claude/feature-workspace/run-history-browsing/performance-engineer.md",
+      "artifactSha256": "c44d4b39cb0b484968bcf4abb2d362c713fd6e0dcc41e2080a84f1bfca94e969",
+      "sequence": 7,
+      "iteration": 1,
+      "agent": "performance-engineer",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 16,
+        "outputTokens": 6999,
+        "cacheReadTokens": 722107,
+        "cacheCreationTokens": 81274,
+        "costUsd": 0.8093091
+      }
+    },
+    "router": {
+      "status": "COMPLETED",
+      "startedAt": "2026-09-08T04:09:27.908293Z",
+      "finishedAt": "2026-09-08T04:09:27.909006Z",
+      "artifactPath": "/tmp/loom-e2e4b-b/.claude/feature-workspace/run-history-browsing/state/router.json",
+      "artifactSha256": "41faa4a2dcd287c660432ca016b8f049fa30d396089ea071cae9e05d86be3ad0",
+      "sequence": 3,
+      "iteration": 1,
+      "stateKind": "route",
+      "agent": "router",
+      "viewPath": "/tmp/loom-e2e4b-b/.claude/feature-workspace/run-history-browsing/route.md"
+    }
+  },
+  "approvals": {
+    "confirm-design": {
+      "approvedAt": "2026-09-08T04:28:40.435278Z",
+      "method": "flag",
+      "approver": "oscarrieken",
+      "artifactDigests": {
+        "analyst": "271709ec47a80a2fd7323f80b81a90f9175d52b3e5bc7dccdc5cf035ffc002ce",
+        "architect": "b8f96310518a0b0681d64528a0fcd2e4979efb6a346f7916fafe4f54c95aec1f",
+        "context-engineer": "b274eab9ee0932e77105dc1000826a55cf19917b127c5ce4256dfd7175efed49",
+        "performance-engineer": "c44d4b39cb0b484968bcf4abb2d362c713fd6e0dcc41e2080a84f1bfca94e969",
+        "router": "41faa4a2dcd287c660432ca016b8f049fa30d396089ea071cae9e05d86be3ad0"
+      }
+    }
+  },
+  "baselines": {
+    "confirm-design": {
+      "at": "2026-09-08T04:28:40.436718Z",
+      "reason": "APPROVED",
+      "artifacts": {
+        "analyst": {
+          "stage": "analyst",
+          "path": "/tmp/loom-e2e4b-b/.claude/feature-workspace/run-history-browsing/.approved/confirm-design/analyst.md",
+          "sha256": "e6b1a46c733c8d0cc99d99f76b78827a85b7d31886c8da6d99dd1909e9a492ce",
+          "at": "2026-09-08T04:28:40.437298Z"
+        },
+        "architect": {
+          "stage": "architect",
+          "path": "/tmp/loom-e2e4b-b/.claude/feature-workspace/run-history-browsing/.approved/confirm-design/architect.md",
+          "sha256": "d01bb5199d6ca20aca756a99dea937b3c3b882b7aa68c45357443aa6011fd41a",
+          "at": "2026-09-08T04:28:40.437498Z"
+        },
+        "context-engineer": {
+          "stage": "context-engineer",
+          "path": "/tmp/loom-e2e4b-b/.claude/feature-workspace/run-history-browsing/.approved/confirm-design/context-engineer.md",
+          "sha256": "3f5432d362f4b3d1114e377f46dd8312ba06304336181b76d00f65edf4f6373f",
+          "at": "2026-09-08T04:28:40.437587Z"
+        },
+        "performance-engineer": {
+          "stage": "performance-engineer",
+          "path": "/tmp/loom-e2e4b-b/.claude/feature-workspace/run-history-browsing/.approved/confirm-design/performance-engineer.md",
+          "sha256": "c44d4b39cb0b484968bcf4abb2d362c713fd6e0dcc41e2080a84f1bfca94e969",
+          "at": "2026-09-08T04:28:40.436945Z"
+        },
+        "router": {
+          "stage": "router",
+          "path": "/tmp/loom-e2e4b-b/.claude/feature-workspace/run-history-browsing/.approved/confirm-design/router.md",
+          "sha256": "8a952d30ad192d21f680ea83feab71cb57b5615c3c40171636ecfccb12218b2e",
+          "at": "2026-09-08T04:28:40.437148Z"
+        }
+      }
+    }
+  },
+  "updatedAt": "2026-09-08T04:32:28.696591Z"
+}

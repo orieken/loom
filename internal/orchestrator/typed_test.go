@@ -1,8 +1,10 @@
 package orchestrator_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -105,7 +107,7 @@ func assertTypedArtifactRecorded(t *testing.T, store *orchestrator.StateStore, i
 
 func TestTypedStageRejectsInvalidPayload(t *testing.T) {
 	scripts := typedScripts(t)
-	scripts["analyst"] = mock.Script{Payload: []byte(`{"schemaVersion":1,"feature":"x"}`)}
+	scripts["analyst"] = mock.Script{Payload: fmt.Appendf(nil, `{"schemaVersion":%d,"feature":"x"}`, state.SchemaVersion)}
 	executor, provider, store, input := newHarness(t, scripts)
 
 	err := executor.Run(context.Background(), typedPlan(), input)
@@ -181,6 +183,9 @@ func TestUntypedStagesAreUnaffected(t *testing.T) {
 func TestDefaultPlanTypedStages(t *testing.T) {
 	kinds := typedStagesOf(orchestrator.DefaultDeliverFeaturePlan())
 	want := map[string]string{
+		// The context manifest is typed so the executor measures its token
+		// budget instead of the agent asserting it (L3.25).
+		"context-engineer":         string(state.KindContext),
 		"analyst":                  string(state.KindAnalysis),
 		orchestrator.RouterStageID: string(state.KindRoute),
 		"architect":                string(state.KindArchitecture),
@@ -329,5 +334,94 @@ func TestMissingUpstreamIsNotAFailure(t *testing.T) {
 	}
 	if _, present := received.UpstreamState["later-stage"]; present {
 		t.Error("a stage that had not produced state was projected anyway")
+	}
+}
+
+// The executor measures a context manifest from the files on disk, replacing
+// whatever the agent claimed (roadmap L3.25). The agent asserting this number
+// is how a pinned set of ~9,100 tokens was reported as 1,350 with an OK
+// status — and it is the one number in a run that nothing else checks.
+func TestExecutorMeasuresTheContextBudgetFromDisk(t *testing.T) {
+	root := t.TempDir()
+	writeSized(t, filepath.Join(root, "ARCHITECTURE_RULES.md"), 14949)
+	writeSized(t, filepath.Join(root, "DOMAIN_DICTIONARY.md"), 18530)
+
+	manifest := runManifestStage(t, root, `{
+		"schemaVersion": 2, "feature": "console-log-filtering", "tier": "analyst",
+		"pinnedFiles": [
+			{"path": "ARCHITECTURE_RULES.md", "reason": "rules"},
+			{"path": "DOMAIN_DICTIONARY.md", "reason": "terms"}
+		],
+		"budget": {"files": [], "estimatedTokens": 1350, "tierLimitTokens": 120000, "status": "OK"}
+	}`)
+
+	const want = (14949 + 18530) / 4
+	if manifest.Budget.EstimatedTokens != want {
+		t.Errorf("budget = %d, want the measured %d rather than the agent's 1350",
+			manifest.Budget.EstimatedTokens, want)
+	}
+}
+
+// A pinned path that escapes the project is not measured, and not silently
+// counted as zero either.
+func TestExecutorRefusesToMeasureOutsideTheProject(t *testing.T) {
+	root := t.TempDir()
+
+	manifest := runManifestStage(t, root, `{
+		"schemaVersion": 2, "feature": "f", "tier": "analyst",
+		"pinnedFiles": [{"path": "../../../etc/passwd", "reason": "nope"}]
+	}`)
+
+	if manifest.Budget.Unmeasured != 1 {
+		t.Fatalf("unmeasured = %d, want the escaping path reported", manifest.Budget.Unmeasured)
+	}
+	if manifest.Budget.EstimatedTokens != 0 {
+		t.Errorf("estimate = %d, want 0 for a path that was refused", manifest.Budget.EstimatedTokens)
+	}
+}
+
+// runManifestStage runs a one-stage plan whose context-engineer returns the
+// given payload, and returns the manifest as it was persisted.
+func runManifestStage(t *testing.T, root, payload string) state.ContextState {
+	t.Helper()
+	workspace := filepath.Join(root, ".claude", "feature-workspace", "f")
+	if err := os.MkdirAll(workspace, 0o755); err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+	store := orchestrator.NewStateStore(filepath.Join(workspace, orchestrator.RunStateFileName))
+	provider := mock.New(map[string]mock.Script{"context-engineer": {Payload: []byte(payload)}})
+	plan := orchestrator.Plan{Name: "manifest-only", Stages: []orchestrator.Stage{{
+		ID: "context-engineer", Agent: "context-engineer",
+		StateKind: string(state.KindContext), Timeout: 5 * time.Second}}}
+	input := orchestrator.StageInput{WorkspaceDir: workspace, ProjectRoot: root,
+		SpecPath: filepath.Join(workspace, "spec.md")}
+
+	if err := orchestrator.NewExecutor(provider, store).Run(context.Background(), plan, input); err != nil {
+		t.Fatalf("run manifest stage: %v", err)
+	}
+	return readPersistedManifest(t, workspace)
+}
+
+func readPersistedManifest(t *testing.T, workspace string) state.ContextState {
+	t.Helper()
+	path := filepath.Join(workspace, state.TypedStateDir, "context-engineer.json")
+	written, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read persisted state: %v", err)
+	}
+	var manifest state.ContextState
+	if err := json.Unmarshal(written, &manifest); err != nil {
+		t.Fatalf("decode persisted state: %v", err)
+	}
+	if manifest.Budget == nil {
+		t.Fatal("the persisted manifest carries no measured budget")
+	}
+	return manifest
+}
+
+func writeSized(t *testing.T, path string, size int) {
+	t.Helper()
+	if err := os.WriteFile(path, bytes.Repeat([]byte("x"), size), 0o644); err != nil {
+		t.Fatalf("write %s: %v", path, err)
 	}
 }

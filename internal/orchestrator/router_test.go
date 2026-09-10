@@ -296,3 +296,28 @@ func TestRouterFailsClearlyWithoutAnAnalysis(t *testing.T) {
 		t.Errorf("error = %v, want a clear failure about the missing analysis", err)
 	}
 }
+
+// Every stage that can only review a surface must be skippable, or the
+// router cannot route around it however clearly the analysis says there is
+// no such surface (roadmap L3.24). visual-qa-engineer and sre-engineer were
+// unskippable and cost $1.18 on a three-line array filter.
+func TestSurfaceSpecificStagesAreSkippableInTheBuiltInPlan(t *testing.T) {
+	plan := orchestrator.DefaultDeliverFeaturePlan()
+	skippable := map[string]bool{}
+	for _, stage := range plan.Stages {
+		skippable[stage.ID] = stage.Skippable
+	}
+
+	for _, stage := range []string{"accessibility-engineer", "visual-qa-engineer", "sre-engineer"} {
+		if !skippable[stage] {
+			t.Errorf("stage %q reviews one kind of surface but cannot be routed around", stage)
+		}
+	}
+	// The asymmetry the skippable set exists to protect: an unnecessary
+	// review wastes an invocation, a skipped one does not fail so cheaply.
+	for _, stage := range []string{"code-reviewer", "security-reviewer", "qa-engineer", "developer"} {
+		if skippable[stage] {
+			t.Errorf("stage %q must never be skippable by routing", stage)
+		}
+	}
+}

@@ -56,6 +56,7 @@ func runAndStageDocs() []EventDoc {
 		{EventStageInterrupted, "A stage was cancelled, leaving a resumable checkpoint.", []string{"stage", "sequence", "error"}, "M0.4"},
 		{EventStageStale, "A completed stage was demoted because its artifact or an input changed.", []string{"stage", "sequence", "staleReason"}, "L2.12"},
 		{EventStageSkipped, "The router routed around a stage the run does not need.", []string{"stage", "reason"}, "L3.0"},
+		{EventPostureViolation, "A stage changed the working tree without declaring a tool that writes files.", []string{"stage", "reason"}, "L3.30"},
 	}
 }
 

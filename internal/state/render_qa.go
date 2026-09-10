@@ -26,8 +26,22 @@ func coverageLines(coverage CoverageSummary) []string {
 	if coverage.NewTests > 0 {
 		lines = append(lines, fmt.Sprintf("- Total new tests: %d", coverage.NewTests))
 	}
-	if coverage.StatementCoveragePercent > 0 {
-		lines = append(lines, fmt.Sprintf("- Statement coverage: %.1f%%", coverage.StatementCoveragePercent))
+	return append(lines, statementCoverageLines(coverage)...)
+}
+
+// statementCoverageLines names every unit measured and leads with the
+// weakest, because that is the number a coverage bar is judged against
+// (roadmap L3.31). A single unqualified percentage let run 4's report read
+// as clearing 85% while the package holding most of the change sat at 43.1%.
+func statementCoverageLines(coverage CoverageSummary) []string {
+	lowest, measured := coverage.LowestStatementCoverage()
+	if !measured {
+		return nil
+	}
+	lines := []string{fmt.Sprintf("- Statement coverage, lowest unit: **%.1f%%** (`%s`)",
+		lowest.Percent, lowest.Unit)}
+	for _, entry := range coverage.Statements {
+		lines = append(lines, fmt.Sprintf("  - `%s`: %.1f%%", entry.Unit, entry.Percent))
 	}
 	return lines
 }

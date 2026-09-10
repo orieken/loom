@@ -3,7 +3,9 @@
   "$id": "https://github.com/orieken/loom/internal/state/security-state",
   "properties": {
     "schemaVersion": {
-      "type": "integer"
+      "type": "integer",
+      "const": 2,
+      "description": "Always 2 — the schema version this build accepts."
     },
     "feature": {
       "type": "string"
@@ -21,7 +23,15 @@
       "items": {
         "properties": {
           "category": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "SPOOFING",
+              "TAMPERING",
+              "REPUDIATION",
+              "INFORMATION_DISCLOSURE",
+              "DENIAL_OF_SERVICE",
+              "ELEVATION_OF_PRIVILEGE"
+            ]
           },
           "assessed": {
             "type": "string",
@@ -58,7 +68,15 @@
             "description": "Repo-relative path and line"
           },
           "category": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "SPOOFING",
+              "TAMPERING",
+              "REPUDIATION",
+              "INFORMATION_DISCLOSURE",
+              "DENIAL_OF_SERVICE",
+              "ELEVATION_OF_PRIVILEGE"
+            ]
           },
           "description": {
             "type": "string"
