@@ -1645,6 +1645,37 @@ proving it.
 and it does not block the repo-map decision, which turned on whether a *large* term exists. See
 `docs/audits/loom-e2e-run-6-audit-2026-09-08.md`.
 
+**L3.19a ANSWERED 2026-09-10 — the prefix is attributed, and it re-orders this item.** A controlled
+ablation against `claude -p` (~$0.85, n=1 per condition, haiku) measured what each part of an
+install contributes to a stage's prompt. Full method, raw numbers and limits:
+`docs/audits/loom-prompt-tax-attribution-2026-09-10.md`.
+
+| Component | On disk | Tokens |
+|---|---:|---:|
+| CLI system prompt + tools (empty directory) | — | **38,519** |
+| `CLAUDE.md` | 8KB | +1,793 |
+| `.claude/rules/` (5 core) | 32KB | **+7,707** |
+| `ARCHITECTURE_RULES.md` + `DOMAIN_DICTIONARY.md` | 36KB | +21 |
+| `.claude/agents/` (39) | 320KB | +3,637 |
+| `.claude/skills/` (69) | 552KB | +458 |
+| loom's per-stage prompt (definition + schema) | 17.5KB | +4,573 |
+
+**Agent and skill bodies never enter the prompt** — 872KB of them costs 4,095 tokens, under 2% of
+their size, because only names and descriptions load. So "install only what a plan uses", which I
+proposed as the first lever, is worth **~4.6%** and is a papercut, not a lever.
+
+**68% of a stage's prefix is the CLI's own baseline**, which loom cannot reduce: 38,519 tokens to
+start a `claude -p` process at all, repeated byte-identically ~578,000 times' worth per fifteen-stage
+run. Sharing the prefix across stages is therefore not one option among three — it is the only one
+that reaches the majority term, and its crux is *why stages 2–15 pay cache-creation rather than
+cache-read*. Revised order: **(c) share the prefix**, then (d) cheap decline, then trimming
+`.claude/rules/` (7,707 tokens, loaded in full — the only per-byte win), with (b) install-less last.
+
+A confound was caught mid-measurement and is recorded rather than buried: the first pass showed
+agents and skills costing zero because the user's global `~/.claude` already held all of them, so
+the baseline was never bare. The corrected run installs the same surface under non-colliding names
+and reads the marginal cost.
+
 **Therefore**: `aider-repo-map` and `repomix-codebase-packing` should **not** be built. They optimize
 source-discovery cost, which this measurement shows is near zero, and they would add a per-run
 indexing pass to a system whose spend is ~90% prompt-prefix re-caching. The two levers named in
