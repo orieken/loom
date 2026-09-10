@@ -77,7 +77,7 @@ func withUpstream(existing map[string][]byte, upstream string, projected []byte)
 // stage's artifact. An invalid payload fails the stage loudly: no repair
 // prompt, no retry — those are L3.x, and a silent repair would hide the
 // modelling failures this epic exists to surface.
-func persistTypedOutput(stage Stage, input StageInput, output StageOutput) (string, error) {
+func (e *Executor) persistTypedOutput(stage Stage, input StageInput, output StageOutput) (string, error) {
 	if len(output.Payload) == 0 {
 		return "", fmt.Errorf("stage %q is typed but returned no state payload", stage.ID)
 	}
@@ -88,6 +88,9 @@ func persistTypedOutput(stage Stage, input StageInput, output StageOutput) (stri
 	payload, err := measureTypedOutput(decoded, input, output.Payload)
 	if err != nil {
 		return "", fmt.Errorf("stage %q: %w", stage.ID, err)
+	}
+	if err := e.verifyPathClaims(stage, decoded, input, e.changedPaths()); err != nil {
+		return "", err
 	}
 	path, err := writeTypedState(stage, input, payload)
 	if err != nil {
@@ -203,4 +206,9 @@ func (p Plan) stateKindOf(stageID string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
 }

@@ -13,6 +13,7 @@ import (
 // standing in for a stage that edited source while it ran.
 type changingTree struct {
 	digests []string
+	changed []string
 	calls   int
 	err     error
 }
@@ -28,6 +29,8 @@ func (t *changingTree) Digest() (string, error) {
 	t.calls++
 	return t.digests[index], nil
 }
+
+func (t *changingTree) ChangedPaths() ([]string, error) { return t.changed, t.err }
 
 // A stage that declares no tool which writes files, and changes the working
 // tree anyway, is recorded (roadmap L3.30).

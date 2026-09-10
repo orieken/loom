@@ -19,6 +19,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os/exec"
+	"strings"
 )
 
 // Git digests a git working tree.
@@ -68,4 +69,31 @@ func (g *Git) run(args ...string) ([]byte, error) {
 		return nil, fmt.Errorf("git %s in %s: %w", args[0], g.root, err)
 	}
 	return output, nil
+}
+
+// ChangedPaths lists every path with uncommitted changes, repo-relative and
+// slash-separated (roadmap L2.24). Rename entries carry "old -> new" and
+// both halves are reported: a stage may legitimately claim either.
+func (g *Git) ChangedPaths() ([]string, error) {
+	output, err := g.run("status", "--porcelain", "--untracked-files=all")
+	if err != nil {
+		return nil, err
+	}
+	var paths []string
+	for _, line := range strings.Split(string(output), "\n") {
+		if len(line) < 4 {
+			continue
+		}
+		// Porcelain v1: two status characters, a space, then the path.
+		paths = append(paths, splitRename(strings.TrimSpace(line[3:]))...)
+	}
+	return paths, nil
+}
+
+func splitRename(entry string) []string {
+	entry = strings.Trim(entry, `"`)
+	if before, after, found := strings.Cut(entry, " -> "); found {
+		return []string{strings.Trim(before, `"`), strings.Trim(after, `"`)}
+	}
+	return []string{entry}
 }

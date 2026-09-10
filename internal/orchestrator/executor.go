@@ -26,6 +26,7 @@ type Executor struct {
 	// the check.
 	workTree       WorkTree
 	onPostureError func(error)
+	onClaimWarning func(error)
 	// onBaselineError reports a failure to retain what a human was shown at
 	// a gate (roadmap L4.5). Retention is best-effort: it observes a human's
 	// action rather than controlling the run, so a failure is reported and
@@ -470,11 +471,11 @@ func invokeOutcome(output StageOutput, err error) SpanOutcome {
 // artifactFor resolves what this stage's artifact is: a typed stage's
 // validated state document, written here, or the markdown file a provider
 // wrote itself.
-func artifactFor(stage Stage, input StageInput, output StageOutput) (string, error) {
+func (e *Executor) artifactFor(stage Stage, input StageInput, output StageOutput) (string, error) {
 	if stage.StateKind == "" {
 		return output.ArtifactPath, nil
 	}
-	return persistTypedOutput(stage, input, output)
+	return e.persistTypedOutput(stage, input, output)
 }
 
 // persistFailure distinguishes parent cancellation (SIGINT — checkpoint as
@@ -513,7 +514,7 @@ func (e *Executor) persistFailure(ctx context.Context, state *RunState, failure 
 }
 
 func (e *Executor) persistCompletion(state *RunState, stage Stage, plan Plan, input StageInput, output StageOutput) error {
-	artifactPath, err := artifactFor(stage, input, output)
+	artifactPath, err := e.artifactFor(stage, input, output)
 	if err != nil {
 		return e.persistFailure(context.Background(), state, stageFailure{stage: stage, err: err, usage: output.Usage})
 	}

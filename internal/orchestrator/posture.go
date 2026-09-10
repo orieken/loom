@@ -23,6 +23,10 @@ import "sort"
 // check, which is what every test that does not care about it uses.
 type WorkTree interface {
 	Digest() (string, error)
+	// ChangedPaths lists every uncommitted path, repo-relative and
+	// slash-separated. It is how a claim to have modified a file is checked
+	// against whether the file actually changed (roadmap L2.24).
+	ChangedPaths() ([]string, error)
 }
 
 // WithWorkTree enables posture checking against a repository.
@@ -88,4 +92,23 @@ func (s *RunState) PostureViolations() []string {
 	}
 	sort.Strings(stages)
 	return stages
+}
+
+// changedPaths lists what has changed in the tree, as a set. An empty set
+// means "not observed" — posture checking off, or the tree unreadable —
+// never "nothing changed", so callers must not read absence as evidence.
+func (e *Executor) changedPaths() map[string]bool {
+	if e.workTree == nil {
+		return nil
+	}
+	paths, err := e.workTree.ChangedPaths()
+	if err != nil {
+		e.reportPostureError(err)
+		return nil
+	}
+	changed := make(map[string]bool, len(paths))
+	for _, path := range paths {
+		changed[path] = true
+	}
+	return changed
 }
