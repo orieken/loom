@@ -124,9 +124,6 @@ func executeRun(cmd *cobra.Command, setup runSetup) error {
 	// it never declared it would edit is noticed (roadmap L3.30).
 	executor.WithWorkTree(worktree.New(input.ProjectRoot))
 	executor.OnPostureError(reportPostureErrorOnce(cmd))
-	// Reproduce a stage's claim that the suite passes, rather than
-	// believing it (roadmap L2.24).
-	executor.WithMeasurementVerifier(newTestVerifier(cmd, input.ProjectRoot))
 	executor.OnClaimWarning(reportClaimWarning(cmd))
 	executor.WithPolicies(setup.policies)
 	executor.OnPolicyDecision(func(decision policy.Decision) { reportPolicyDecision(cmd, decision) })

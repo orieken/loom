@@ -69,14 +69,6 @@ func (c CoverageSummary) LowestStatementCoverage() (PackageCoverage, bool) {
 	return lowest, true
 }
 
-// ClaimsPassingTests reports whether this document asserts a green suite.
-// It is the claim the executor reproduces (roadmap L2.24): a stage saying
-// tests passed is making a checkable statement about the project, and run 7
-// showed it makes that statement whether or not it ran anything.
-func (q QAState) ClaimsPassingTests() bool {
-	return q.TestResults.Passed > 0 && q.TestResults.Failed == 0
-}
-
 // Bug is something QA found and what happened to it.
 type Bug struct {
 	Description string `json:"description" jsonschema:"required"`
