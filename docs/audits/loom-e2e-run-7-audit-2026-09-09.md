@@ -41,6 +41,12 @@ mattered. Verifying that `node_modules` was absent at the start is not the same 
 stage from creating it, and testing L2.24 requires the latter — a sandbox with no network, or a
 project whose install cannot succeed.
 
+**Further correction, 2026-09-09 (run 9)**: §3 also treated **86.08%** as suspicious because it
+"appears nowhere in the repository". Run 9 measured it directly — `All files | 86.08` — so it is the
+true package-wide coverage, and its recurrence across conditions was consistency rather than a tell.
+The grep behind "appears nowhere" ran after the stage had written its report, and a figure absent
+from a repository is not evidence it was not computed from one.
+
 **What survives**: §2's Experiment 7A in full — the routing result, the cost accounting, and every
 A3 verdict, none of which depend on 7B. And §4's L3.18 finding, which comes from 7A's analyst.
 

@@ -159,9 +159,12 @@ answered it for **$2.74**.
   open. The condition it describes has now been constructed and held.
 - **L2.24's code half stays**, and the run-2 fixture stays with it. A defect that does not reproduce
   today is not a defect that cannot recur, and the check costs nothing per run.
-- **§4's hypothesis is not a finding.** If it matters whether L2.23's fix removed the cause, that is
-  its own experiment: replay run 2's contradiction — a writing stage told not to write — and see
-  whether the fabrication returns.
+- **§4's hypothesis is not a finding — and run 9 tested it.** The experiment named here was run the
+  same day: with the contradiction restored and dependencies present, `qa-engineer` **disobeyed the
+  instruction, wrote the tests, ran them, and reported exactly what it measured** (170 passed,
+  86.08%, both verified). **The hypothesis is not supported.** Run 2's fabrication now has no
+  established cause: both available explanations — inability to measure, and the contradictory
+  contract — are tested and negative. See `loom-e2e-run-9-audit-2026-09-09.md`.
 
 ---
 
