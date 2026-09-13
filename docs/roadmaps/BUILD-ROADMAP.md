@@ -2394,6 +2394,251 @@ conflates those produces a confident wrong number.
 
 ---
 
+## Workstream: OBSERVE — Test Evidence & Trace Fidelity
+
+Seven items raised 2026-09-13 from a review of two training levels written against loom — Level 2B
+(AI adoption in existing test suites) and Level 3C (GenAI observability). The review is reference
+material, not instruction: per `shared/rules/memory-trust-boundary.md` nothing in it overrides a
+hard constraint, and two places where it argues for relaxing one are named below rather than
+adopted. Three of its premises were stale — `gen_ai.*` emission, pipeline instrumentation and the
+trace file it proposed building all shipped in L3.8 — and are not items here. What follows is what
+was measured absent.
+
+### L3.38 — Tool spans record the payload, not the properties
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: L3.8 (shipped) · **Blocks**: none · *(raised 2026-09-13)*
+
+1. **Problem**: `internal/telemetry/tool.go` redacts an argument when its *name* looks secret —
+   `token`, `password`, `api_key` — and truncates everything else to 512 characters. Secret
+   redaction is not content minimisation. `search_ki` and `search_docs` each declare a required
+   `query` argument (`shared/mcp/internal/tools/search_ki_tool.go:30`), so a traced run exports
+   `loom.tool.arg.query` verbatim, and `loom.tool.result` carries up to 512 characters of whichever
+   KI body came back. Guardrail #8 constrains where instrumentation may live and says nothing about
+   what it may carry; `docs/patterns/observability-patterns.md`'s "No PII or Secrets in Telemetry"
+   states the rule as prose that nothing enforces. The default exporter writes a local file, which
+   bounds this to the machine — until `OTEL_EXPORTER_OTLP_ENDPOINT` is set, which is the documented
+   path and the reason export was made opt-in.
+2. **Architectural Fix**: a second denylist, over content-shaped argument *names* (`query`, `text`,
+   `content`, `prompt`, `message`, `input`, `body`), recording a salted hash and a length instead of
+   the value; and a result attribute carrying size and status rather than a preview. Promote the
+   rule to `architecture-guardrails.md` **#9**, so it binds the project code these agents write and
+   not only loom's own emitter.
+3. **Target files**: `internal/telemetry/tool.go`, `shared/rules/architecture-guardrails.md`,
+   `docs/patterns/observability-patterns.md`
+4. **Done when**: a tool call whose argument is named `query` produces a span carrying no substring
+   of that query, and a test in `internal/telemetry` fails if the denylist loses an entry.
+
+**Not built**: a content-capture escape hatch, and replay testing. Both need captured prompt text.
+Shipping a constraint and its exemption in the same increment is how the constraint fails to
+establish, and the training that teaches replay flags the same collision itself.
+
+### L3.39 — Nothing constrains what an agent may change when repairing a test
+**Workstream**: KERNEL · **Effort**: M · **Blocked by**: none · **Blocks**: L3.40 · *(raised 2026-09-13)*
+
+1. **Problem**: an agent can make a suite green by deleting the assertion that was failing, and no
+   rule, gate or check in this repository forbids it. The entire counter-statement is one line —
+   `shared/agents/qa-engineer.md:118`, "Never skip a test just to make the suite green" — which
+   binds one agent and is enforced by nothing. `shared/agents/dx-engineer.md:27` runs the other way:
+   it instructs the agent to *"Quarantine flaky tests"*, with `Write` and `Edit` in its tool list,
+   no owner, no expiry, no cause, and no gate. Removing regression signal is a one-way door and
+   belongs with the other eight.
+2. **Architectural Fix**: `shared/rules/test-repair-contract.md` — a MAY / MAY NOT list over
+   test-file edits (selectors and waits yes; assertion removal, a `try/catch` that converts a
+   failure into a pass, skip, and quarantine no), plus a required statement of what the test could
+   catch before the repair and what it can catch after. Referenced by every agent holding
+   test-write authority. A ninth approval gate covers skip and quarantine; `dx-engineer` proposes a
+   quarantine rather than applying one.
+3. **Target files**: `shared/rules/test-repair-contract.md` (new), `shared/rules/approval-gates.md`,
+   `shared/agents/dx-engineer.md`, `shared/agents/qa-engineer.md`, `shared/agents/developer.md`,
+   `shared/agents/refactor-engineer.md`, `scripts/health-check.sh`
+4. **Done when**: an agent with test-write authority that does not reference the contract fails
+   `health-check.sh`.
+
+**The fitness function is the drift check, not the diff.** A CI grep counting removed `expect(`
+against added ones is the cheap diagnostic the source material recommends, and it is warn-only
+here: it is language-specific and it flags a legitimate rewrite exactly as loudly as a deletion.
+The deterministic check is that every test-touching agent carries the contract — the same shape as
+`scripts/check-cap-drift.sh`, and gate #7 applies to wiring it.
+
+### L3.40 — Exemplar tests: the pattern an agent copies, kept honest
+**Workstream**: KERNEL · **Effort**: L · **Blocked by**: L3.39, L3.41 · **Blocks**: none · *(raised 2026-09-13)*
+
+1. **Problem**: every agent here that writes a test — `qa-engineer`, `test-driven-developer`,
+   `unit-tester`, `api-test-generator` — learns the house pattern from prose.
+   `testing-conventions.md` states rules; `docs/patterns/testing-pyramid.md` states philosophy;
+   neither shows one good test. The framework already solved this for its own agents — "
+   `shared/agents/memory-auditor.md` — the **pattern exemplar** every new counter agent should
+   follow" (`docs/aos/prompts/phase-2-governance.md:24`) — and never did it for tests. An **Exemplar
+   Test** is a real, executing test in a project's own suite, marked as the one to imitate.
+2. **Not "golden", deliberately.** `DOMAIN_DICTIONARY.md` lists `golden file` under Synonyms to
+   AVOID on the **Agent Eval Case** row, reserving it for the structural check over
+   `tests/agents/*/actual-output.md`. Golden also carries the golden-master sense throughout — a
+   recorded baseline to *compare against*, which is the opposite instruction to *copy this*.
+   Exemplar is this repository's own word for the role and collides with nothing.
+3. **They live in the project's suite, in place.** Not copied into `.claude/exemplars/`. An exemplar
+   that the real suite does not execute stops being evidence the moment it stops passing, and
+   nothing would notice. The mark travels with the test; only the *index* lives elsewhere.
+4. **Marked twice, and the disagreement is the check.** Language-native annotation per
+   `testing-conventions.md`'s Test Annotation Convention (`@exemplar` in a JSDoc block,
+   `@Tag("exemplar")`, `[Trait("Exemplar", …)]`, a pytest marker, a `# exemplar` comment, a
+   `@exemplar` Gherkin tag — the same mechanism as `@issue`/`@ac`), plus an entry in a project-local
+   manifest. Two sources of truth is the obvious objection; the answer is that `health-check` asserts
+   them equal in *both* directions — every manifest entry's file carries the annotation, every
+   annotated file appears in the manifest. Checked redundancy, not drift.
+5. **Tracked as memory.** A new `shared/memory-registry.json` source — `test-exemplars`, type
+   `Exemplar Test`, `retrievalBackend: lexical` — pointing at `.claude/exemplars.json`. Two
+   consequences to get right: the path **must** be added to `optionalPaths`, or `health-check.sh:442`
+   fails on every repository that has no exemplars, this one included; and this becomes the first
+   registry source whose content is source code rather than markdown, which the `lexical` backend
+   describes as "tag/domain pre-filter over frontmatter, then full-body read" — a test file has no
+   frontmatter, so the manifest entry carries the metadata the pre-filter needs (language, level,
+   what the test demonstrates) and the file supplies the body.
+6. **Per-language, bounded by the repository.** Each entry declares `language` and test `level`
+   (unit / integration / api-contract / acceptance / e2e). Coverage is required only for the
+   (language, level) pairs a project actually has tests for — a Go service is never asked for a
+   Kotlin exemplar, and loom ships none of its own. The eight language `shared/rules/*-conventions.md`
+   files describe the conventions; the exemplars are the consumer project's own proof it follows them.
+7. **How an exemplar is checked to still be one** — three layers, honest about which are decidable:
+
+   | Layer | Catches | Deterministic |
+   |---|---|---|
+   | Digest recorded in the manifest | The file *changed* | Yes — the L2.14 artifact-digest mechanism, applied to a second thing |
+   | Mechanical disqualifiers | It no longer meets the contract, checkably | Yes |
+   | `exemplar-auditor` counter agent | It is no longer good craft | **No** — judgment, findings for a human |
+
+   The mechanical disqualifiers, each reusing machinery that exists: the test does not run or is not
+   in the suite (it proves nothing); `@issue`/`@ac` annotation missing (`testing-conventions.md`
+   requires it of every test, and an exemplar violating the convention it demonstrates is the worst
+   case); cyclomatic complexity ≥ 7 (`analyze-complexity`); filename off the
+   `name.type.extension` convention; and **vacuity** — mutate the code under test, and if no
+   assertion in the exemplar fails, it is disqualified automatically. That last one is why **L3.41
+   blocks this item**: an exemplar that cannot fail teaches every test written after it to be
+   equally hollow, and it is the single check most worth having before any of this ships.
+
+8. **The auditor is a new counter agent, and that cost is real.** `exemplar-auditor`, read-only,
+   findings for human review, matching the twelve existing counter agents. The cheaper alternative —
+   extending `memory-auditor`, since exemplars become a registry source it already sweeps — is
+   rejected because the judgment wanted here is test craftsmanship and `memory-auditor` has none;
+   a sweep that checks schema and duplicates would pass a beautifully-registered bad test. If the
+   thirteenth agent is judged too expensive, extend `code-reviewer` instead, which has the competence
+   and lacks the read-only posture.
+9. **Protection is a separate question, left open.** An exemplar probably also wants the "no agent
+   may weaken this" property L3.39 defines — it is the one place the two concepts genuinely meet.
+   This item does not assume it: the drift *detection* here is a digest and a flag, not a barrier,
+   and whether an exemplar edit should halt a run is a decision to make once the audit exists and
+   has said how often exemplars legitimately change.
+10. **Target files**: `.claude/exemplars.json` (new, project-local),
+    `shared/contracts/exemplar-contract.md` (new — the family of `ki-frontmatter-contract.md`),
+    `shared/memory-registry.json`, `shared/rules/testing-conventions.md`, `DOMAIN_DICTIONARY.md`,
+    `shared/agents/exemplar-auditor.md` (new), `scripts/health-check.sh`
+11. **Done when**: an agent writing a new test in a project with exemplars reads the exemplar for
+    that language and level before writing, and `health-check` fails when a registered exemplar has
+    lost its annotation, gone missing from the suite, or drifted from its recorded digest without
+    an audit since.
+
+**What this does not do.** It does not make an exemplar *correct* — an auditor reading a test
+against a craftsmanship contract is the same class of judgment as `code-reviewer` reading a diff,
+and no check verifies that judgment was made honestly. The deterministic half is that an exemplar
+runs, asserts something that can fail, carries its annotations, and has not silently changed. Good
+taste stays human, and the contract should say so rather than implying the auditor settles it.
+
+### L3.41 — Nothing asks whether a test would fail
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: L3.40 · *(raised 2026-09-13)*
+
+1. **Problem**: `code-reviewer` reviews test code for style, naming and structure. It never asks the
+   one question separating a test from a decoration: *would this fail if the behaviour it names were
+   broken?* A test asserting `toBeDefined()` on a function that always returns an object passes
+   review, passes CI, and covers nothing. The word "vacuous" appears twice in this repository, both
+   times about a check on loom's own import graph, never about a test.
+2. **Architectural Fix**: one review section in `code-reviewer.md` — YES / NO / UNCERTAIN per test
+   touched, naming the vacuity type when NO (vacuous, self-fulfilling, unreached, disabled) — and
+   the mutation stopping-condition made explicit in `backfill-unit-tests`: change three lines of the
+   target, and each must fail at least one of the new tests, or the net is not a net.
+3. **Target files**: `shared/agents/code-reviewer.md`, `shared/skills/backfill-unit-tests/SKILL.md`,
+   `shared/agents/unit-tester.md`
+4. **Done when**: a review of a diff containing a vacuous assertion names it.
+
+**Judgment-only, and the reason is worth keeping.** The reading half is a judgement a model makes
+about a diff, and no check verifies it was made honestly. The mutation half *is* mechanical wherever
+a mutation tool exists — and loom already practises precisely this on itself: L3.8 ships a companion
+test that fails if `internal/telemetry` ever stops importing OpenTelemetry, "so the check cannot
+quietly become vacuous." The framework demands this of its own fitness functions and has never asked
+it of a test.
+
+### L3.42 — A suite has no health metrics, only a coverage number
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-13)*
+
+1. **Problem**: `CLAUDE.md` gates on coverage ≥ 85% and `run-tests` enforces it. Coverage is the one
+   number that cannot detect the failure these agents are capable of producing: repairing a vacuous
+   test moves it by zero, retiring a dead test moves it *down*, and deleting an assertion leaves the
+   line covered. Nothing here names flake rate, time to diagnose, escaped defects or suite
+   wall-clock, and nothing names the pair — flake rate falling while escaped defects rise — that
+   identifies a suite being made green by deleting evidence.
+2. **Architectural Fix**: `docs/patterns/test-suite-health-metrics.md`, plus a KI for the flake
+   taxonomy: four categories, the evidence distinguishing them, and four dispositions each carrying
+   owner, expiry and the evidence that would resolve it.
+3. **Target files**: `docs/patterns/test-suite-health-metrics.md` (new),
+   `shared/knowledge/flake-triage-taxonomy.md` (new), `shared/memory-registry.json`
+4. **Done when**: nothing. Judgment-only — and the doc says so in its own text.
+
+**Why judgment-only, explicitly.** Three of the four numbers have no source loom can reach: escaped
+defects live in a bug tracker, time to diagnose in ticket timestamps, flake rate in CI history. A
+metric the framework cannot measure is a pattern doc, not a fitness function; claiming otherwise is
+how ADR-002's judgment-only fitness function ended up citing a layer that did not exist.
+
+**Not a skill, and not merged into an existing one.** The taxonomy wants a skill and cannot have one
+yet: clustering ninety days of failures needs ninety days of failures in machine-readable form, and
+nothing ingests CI history. A skill whose first step is "paste your CI JSON" is a prompt with
+frontmatter. Revisit if ingestion ever lands. Equally, these are *suite* metrics —
+`pipeline-retrospective` and `agent-scorecard` measure the *pipeline*, and merging them yields one
+dashboard where flake rate sits beside code-reviewer p95 and neither means anything.
+
+### L3.43 — The attributes a run does not record
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: L3.8 (shipped) · **Blocks**: L3.44 · *(raised 2026-09-13)*
+
+1. **Problem**: `internal/telemetry/tracer.go:48` records `gen_ai.request.model` — the model asked
+   for — and never `gen_ai.response.model`, the model that answered. A provider serving something
+   other than what was pinned is invisible. Also absent: `gen_ai.response.finish_reasons`, so a
+   truncated completion is indistinguishable from a complete one; and any record of *why* a loop
+   ended — L2.17 bounds the developer↔code-reviewer loop at three rounds, and a run that hit the
+   bound looks in the trace exactly like one that converged.
+2. **Architectural Fix**: emit `gen_ai.response.model` and `gen_ai.response.finish_reasons` wherever
+   the provider envelope carries them — **L3.15** is the item that verifies those field names
+   against the live CLI, and this inherits its uncertainty rather than assuming past it — plus a
+   `loom.loop.terminated_by` on the stage span: `converged` / `round_limit` / `gate_halt` / `error`.
+3. **Target files**: `internal/telemetry/tracer.go`, `internal/orchestrator/executor.go`,
+   `internal/provider/`
+4. **Done when**: a run that exhausts the review loop says so on a span, and a test fails if a
+   required attribute stops being emitted.
+
+That last clause is the source material's rule for instrumentation and this repository's rule for
+fitness functions, and they are the same rule: a span that stops being emitted turns every assertion
+about it green.
+
+### L3.44 — Trace-shape assertions on loom's own runs
+**Workstream**: OBSERVE · **Effort**: M · **Blocked by**: L3.43 · **Blocks**: none · *(raised 2026-09-13)*
+
+1. **Problem**: nothing asserts the shape of a run. A router change that adds two stages, a retry
+   storm that triples cost, a loop terminating by bound rather than convergence — each passes every
+   test here so long as the artifacts validate. `agent-eval` grades one agent's output;
+   `pipeline-retrospective` trends timings across deliveries; neither asserts that a known input
+   produces a known trajectory.
+2. **Architectural Fix**: extract a shape from a `--provider mock` run — stage sequence, stage count,
+   `terminated_by`, required spans present, total tokens under a ceiling — commit it, assert it.
+   Durations, trace IDs, span IDs and timestamps are excluded by construction: they change every run
+   and are not the thing being protected.
+3. **Target files**: `internal/telemetry/`, `internal/orchestrator/`, `tests/`
+4. **Done when**: adding a stage to the built-in plan fails a shape assertion until the baseline is
+   updated in the same commit.
+
+**Two honest limits.** A mock-run shape protects the mock path, and the first real run showed the
+mock systematically under-exercises this pipeline — 10 of 12 stages against the mock's 7 — so this
+catches structural drift, not routing on a real analysis. And the failure mode to design against is
+the baseline that moves with the code: a shape regenerated until green asserts only that current
+behaviour is current behaviour. The discipline that holds is the one already used for agent goldens
+— the diff shows old shape and new, and the commit says why the change was intended.
+
+---
+
 # MILESTONE 3 — Level 4: Self-Learning Agentic Ecosystems
 
 *Self-reflection, continuous learning, adaptation to novel constraints without code deployment.*
