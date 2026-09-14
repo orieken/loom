@@ -5,8 +5,11 @@
 // spec path; stdout carries a JSON result envelope whose `result` becomes the
 // stage's artifact and whose `usage` becomes the stage's cost (roadmap L3.8).
 // Timeouts arrive
-// via ctx (the executor applies the stage's timeout) and are enforced by
-// exec.CommandContext, which kills the subprocess when ctx ends. If the
+// via ctx (the executor applies the stage's timeout). exec.CommandContext
+// kills the subprocess when ctx ends — but only the process it started, so
+// WaitDelay bounds the wait for output pipes an agent's own children may
+// still hold open. Without it a stage could outlive its deadline by however
+// long a grandchild chose to run. If the
 // claude binary is absent the stage FAILS with a remediation message — it
 // never silently falls back to the mock provider.
 package claude
@@ -14,6 +17,7 @@ package claude
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -101,9 +105,16 @@ func (p *Provider) buildPrompt(stage orchestrator.Stage, input orchestrator.Stag
 	return prompt + instruction, allowed, nil
 }
 
+// subprocessWaitDelay bounds how long Wait will keep waiting for output
+// after the process is gone or its context has ended. Long enough for a
+// well-behaved child to flush its last write, short enough that a deadline
+// stays a deadline.
+const subprocessWaitDelay = 2 * time.Second
+
 // runSubprocess executes `claude -p --output-format json <prompt>` and
 // parses the result envelope. exec.CommandContext kills the subprocess when
-// ctx ends — that is how stage timeouts and SIGINT reach it.
+// ctx ends — that is how stage timeouts and SIGINT reach it, and it reaches
+// only the direct child.
 //
 // stdout is captured in memory for every stage now, not only typed ones.
 // The envelope has to be parsed before the agent's own output can be
@@ -129,6 +140,15 @@ func (p *Provider) runSubprocess(ctx context.Context, binaryPath, prompt string,
 	// loom does not spawn the MCP server — the claude CLI does. Best-effort
 	// by construction, and nothing downstream depends on it arriving.
 	command.Env = append(os.Environ(), telemetry.TraceParentEnv(ctx)...)
+	// Stdout and Stderr are buffers, so exec gives the child a pipe and Wait
+	// blocks until every writer closes it. Killing the child does not close
+	// what its own children inherited: `claude -p` spawns MCP servers and
+	// tools, and on a shell whose /bin/sh forks rather than execs (dash on
+	// Debian and Ubuntu) even a one-line wrapper leaves a grandchild holding
+	// the pipe. Without this the stage returns when that grandchild exits
+	// rather than when its deadline passes, which is the timeout guarantee
+	// the executor is built on.
+	command.WaitDelay = subprocessWaitDelay
 
 	started := time.Now()
 	p.logger.Info("stage.started", "stage", stage.ID, "agent", stage.Agent, "binary", binaryPath,
@@ -141,6 +161,13 @@ func (p *Provider) runSubprocess(ctx context.Context, binaryPath, prompt string,
 func (p *Provider) finish(ctx context.Context, waitErr error, stage orchestrator.Stage, input orchestrator.StageInput, stdout, stderr *bytes.Buffer) (orchestrator.StageOutput, error) {
 	if ctx.Err() != nil {
 		return orchestrator.StageOutput{}, fmt.Errorf("stage %q subprocess terminated: %w", stage.ID, ctx.Err())
+	}
+	// ErrWaitDelay means the process itself finished but something it spawned
+	// still held the output pipe open. The envelope is already captured, so a
+	// lingering grandchild is not this stage's failure — and if the output was
+	// genuinely cut short, parseEnvelope below is what says so.
+	if errors.Is(waitErr, exec.ErrWaitDelay) {
+		waitErr = nil
 	}
 	if waitErr != nil {
 		return orchestrator.StageOutput{}, fmt.Errorf("stage %q agent exited with error: %w — stderr: %s",

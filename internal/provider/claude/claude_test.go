@@ -163,8 +163,14 @@ func TestInvokeFailsWhenAgentDefinitionMissing(t *testing.T) {
 	}
 }
 
+// The script backgrounds its sleep and waits on it, so /bin/sh forks a
+// grandchild on every platform. Without that, macOS's sh exec's the sleep
+// and the direct child IS the sleep, which hides the bug this test exists
+// for: exec.CommandContext kills the direct child only, and a grandchild
+// that inherited the output pipe keeps Wait blocked until it exits. Ubuntu's
+// dash forks either way, which is why this failed only in CI.
 func TestInvokeKillsSubprocessOnTimeout(t *testing.T) {
-	binary := writeFakeClaude(t, t.TempDir(), `sleep 30`)
+	binary := writeFakeClaude(t, t.TempDir(), "sleep 30 &\nwait")
 	provider, stage, input := newTestProvider(t, binary)
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
@@ -179,6 +185,28 @@ func TestInvokeKillsSubprocessOnTimeout(t *testing.T) {
 	}
 	if elapsed := time.Since(start); elapsed > 5*time.Second {
 		t.Errorf("subprocess was not killed on deadline: took %v", elapsed)
+	}
+}
+
+// WaitDelay bounds the wait for output, and that must not turn a successful
+// run into a failure. An agent that leaves anything running — an MCP server,
+// a watcher, a stray tool — keeps the output pipe open after it exits, so
+// Wait returns ErrWaitDelay even though the envelope arrived and the agent
+// succeeded. A lingering grandchild is not this stage's failure.
+func TestInvokeSucceedsWhenTheAgentLeavesAChildRunning(t *testing.T) {
+	binary := writeFakeClaude(t, t.TempDir(), "sleep 30 &\n"+envelopeScript("# analysis output"))
+	provider, stage, input := newTestProvider(t, binary)
+
+	output, err := provider.Invoke(context.Background(), stage, input)
+	if err != nil {
+		t.Fatalf("Invoke() = %v, want success despite a lingering child", err)
+	}
+	content, readErr := os.ReadFile(output.ArtifactPath)
+	if readErr != nil {
+		t.Fatalf("read artifact: %v", readErr)
+	}
+	if strings.TrimSpace(string(content)) != "# analysis output" {
+		t.Errorf("artifact content = %q, want the envelope result", content)
 	}
 }
 
