@@ -94,20 +94,16 @@ with extra steps.
 Gate: user must say "approve quarantine" or "approve test removal".
 Reset condition: any edit to the pending artifact resets the gate.
 **Policy-eligible: No — Always Human.**
-Reason: the judgement is whether losing this specific signal is acceptable, which requires knowing
-what the test was protecting — a fact no run state carries. A category-A flake (the system really is
-racy and the test is correctly reporting it) is indistinguishable from a category-B one (the test is
-wrong) to any condition an evaluator could check, and quarantining the first is how a real defect
-becomes invisible.
+Reason: the judgement is whether losing *this* signal is acceptable, which needs to know what the
+test protected — a fact no run state carries. A category-A flake (the system is racy and the test is
+right) is indistinguishable from a category-B one (the test is wrong) to any condition an evaluator
+could check, and quarantining the first hides a real defect.
 
-A quarantine approved here MUST carry four fields, or it rots: **owner**, **expiry**, **cause**, and
-the **evidence that would resolve it**. Make the expiry real with a scheduled job that fails the
-build when a quarantine passes its date.
+A quarantine MUST carry **owner**, **expiry**, **cause**, and the **evidence that would resolve it**,
+with a scheduled job failing the build past the expiry. Without that it is a deletion with extra steps.
 
-Note the division with `shared/rules/test-repair-contract.md`: that contract *forbids* removing or
-weakening an assertion outright, so there is no gate for it — a rule that says no is cheaper than a
-halt, and would otherwise fire on every legitimate test rewrite. This gate covers only the narrower
-case where a human deliberately accepts the loss.
+Scope: `test-repair-contract.md` forbids weakening an assertion outright, so that needs no gate —
+this covers only the narrower case where a human deliberately accepts the loss.
 
 ---
 
@@ -246,11 +242,11 @@ Never hardcode API keys, passwords, connection strings, or tokens. Use `.env` pl
 ## 9. Telemetry Records Properties, Not Payloads
 Guardrail #8 governs *where* instrumentation may live. This governs *what* it may carry.
 - NEVER record raw prompt or completion text, retrieved document bodies, user email/name/account ID, credentials, or a tool argument's value that the code owning it has not declared non-sensitive.
-- Record the properties instead: a salted hash, a length, a count, an ID, a status, a version. A hash answers "is this the same input that failed yesterday?" without storing the input; a token count reveals truncation without storing text.
-- Never emit an unsalted hash of low-entropy input — it is recoverable by brute force. Salted, or nothing.
-- Permission to record a value is **opt-in per field, declared by the code that owns it**. A denylist of sensitive-looking names is not sufficient: it cannot cover a field it has never been told about, and the failure is silent.
-- Span and metric names stay low-cardinality. The variable part goes in a bounded or hashed attribute, never in the name.
-- "We will redact it later" is not available. Once exported, the data is in the vendor's storage, their backups, and their retention — not yours.
+- Record the properties instead: a salted hash, a length, a count, an ID, a status, a version. A hash answers "is this the same input that failed yesterday?" without storing it; a token count shows truncation without storing text.
+- Never emit an unsalted hash of low-entropy input — it brute-forces. Salted, or nothing.
+- Permission to record a value is **opt-in per field, declared by the code that owns it**. A denylist of sensitive-looking names cannot cover a field it was never told about, and fails silently.
+- Span and metric names stay low-cardinality; the variable part goes in a bounded or hashed attribute.
+- "We will redact it later" is not available — once exported it is in the vendor's storage and retention, not yours.
 
 ---
 *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*

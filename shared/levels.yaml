@@ -24,11 +24,23 @@ landed:
   - L2.16 # typed policy evaluator and audit trail (epic 87, shipped 2026-09-02)
 
 # Context budget for the level 1 core rules bundle. The ceiling is asserted
-# by a Go test (cmd/loom/internal/levels); measured size 2026-08-29 was
-# 22,258 bytes (~5.6k tokens at 4 bytes/token). Raise deliberately, not by
+# by a Go test (cmd/loom/internal/levels); measured size 2026-09-13 is
+# 30,082 bytes (~7.5k tokens at 4 bytes/token). Raise deliberately, not by
 # drift.
+#
+# Raised 28,000 -> 31,000 on 2026-09-13 for guardrail #9 (telemetry records
+# properties, not payloads) and approval gate #9 (removing test coverage),
+# both hard constraints every agent must know, so both belong in core.
+#
+# Two honest notes from that raise. The stale figure above said 22,258; the
+# bundle was already 27,734 when it was measured again — 5.5KB of drift
+# nobody saw, 266 bytes under the ceiling, because 26% headroom is enough
+# room to drift in unnoticed. So the new ceiling leaves ~900 bytes rather
+# than a comfortable margin: the next addition should have to argue for
+# itself. And this bundle is loaded into every agent's session, so growth
+# here is paid on every invocation — trim before raising.
 contextBudget:
-  coreRulesCeilingBytes: 28000
+  coreRulesCeilingBytes: 31000
 
 levels:
   - level: 1

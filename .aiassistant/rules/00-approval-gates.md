@@ -94,20 +94,16 @@ with extra steps.
 Gate: user must say "approve quarantine" or "approve test removal".
 Reset condition: any edit to the pending artifact resets the gate.
 **Policy-eligible: No — Always Human.**
-Reason: the judgement is whether losing this specific signal is acceptable, which requires knowing
-what the test was protecting — a fact no run state carries. A category-A flake (the system really is
-racy and the test is correctly reporting it) is indistinguishable from a category-B one (the test is
-wrong) to any condition an evaluator could check, and quarantining the first is how a real defect
-becomes invisible.
+Reason: the judgement is whether losing *this* signal is acceptable, which needs to know what the
+test protected — a fact no run state carries. A category-A flake (the system is racy and the test is
+right) is indistinguishable from a category-B one (the test is wrong) to any condition an evaluator
+could check, and quarantining the first hides a real defect.
 
-A quarantine approved here MUST carry four fields, or it rots: **owner**, **expiry**, **cause**, and
-the **evidence that would resolve it**. Make the expiry real with a scheduled job that fails the
-build when a quarantine passes its date.
+A quarantine MUST carry **owner**, **expiry**, **cause**, and the **evidence that would resolve it**,
+with a scheduled job failing the build past the expiry. Without that it is a deletion with extra steps.
 
-Note the division with `shared/rules/test-repair-contract.md`: that contract *forbids* removing or
-weakening an assertion outright, so there is no gate for it — a rule that says no is cheaper than a
-halt, and would otherwise fire on every legitimate test rewrite. This gate covers only the narrower
-case where a human deliberately accepts the loss.
+Scope: `test-repair-contract.md` forbids weakening an assertion outright, so that needs no gate —
+this covers only the narrower case where a human deliberately accepts the loss.
 
 ---
 
