@@ -2,6 +2,7 @@ package telemetry_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -287,4 +288,64 @@ func TestResultRecordsShapeNotText(t *testing.T) {
 	if attr := span.find("loom.tool.result"); attr != nil {
 		t.Errorf("result text attribute survived: %v", attr.Value)
 	}
+}
+
+// otlpStatusError is STATUS_CODE_ERROR in the OTLP/JSON encoding.
+const otlpStatusError = 2
+
+// TraceIDs is how a log line carries correlation IDs without the logging
+// package learning what OpenTelemetry is. Both branches matter: an untraced
+// call must yield empty strings rather than a zero-valued ID that looks real.
+func TestTraceIDsReportsTheActiveSpanAndNothingWithoutOne(t *testing.T) {
+	if traceID, spanID := telemetry.TraceIDs(context.Background()); traceID != "" || spanID != "" {
+		t.Errorf("TraceIDs(no span) = %q/%q, want empty", traceID, spanID)
+	}
+
+	path := filepath.Join(t.TempDir(), telemetry.TracesFileName)
+	session, err := telemetry.Start(telemetry.Options{Version: "test-version", TraceFile: path})
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	defer func() { _ = session.Shutdown(context.Background()) }()
+
+	ctx, span := session.StartTool(context.Background(), telemetry.ToolCall{Name: "search_ki"})
+	defer span.End(telemetry.ToolResult{})
+
+	traceID, spanID := telemetry.TraceIDs(ctx)
+	if len(traceID) != 32 {
+		t.Errorf("traceID = %q, want 32 hex characters", traceID)
+	}
+	if len(spanID) != 16 {
+		t.Errorf("spanID = %q, want 16 hex characters", spanID)
+	}
+}
+
+// A tool that ran and reported failure is distinct from one that failed to
+// run at all, and the span records both as errors while keeping the
+// distinction in is_error.
+func TestToolStatusSeparatesAToolErrorFromATransportError(t *testing.T) {
+	reported := toolSpan(t, traceTool(context.Background(), t,
+		telemetry.ToolCall{Name: "search_ki"},
+		telemetry.ToolResult{IsError: true, Bytes: 12, Blocks: 1}))
+	if reported.Status.Code != otlpStatusError {
+		t.Errorf("status = %d, want error (%d) for a tool that reported failure", reported.Status.Code, otlpStatusError)
+	}
+
+	failed := toolSpan(t, traceTool(context.Background(), t,
+		telemetry.ToolCall{Name: "search_ki"},
+		telemetry.ToolResult{Err: errors.New("transport exploded")}))
+	if failed.Status.Code != otlpStatusError {
+		t.Errorf("status = %d, want error (%d) for a transport failure", failed.Status.Code, otlpStatusError)
+	}
+}
+
+// A nil session must be usable: the MCP server runs untraced far more often
+// than traced, and its call sites should not each branch on that.
+func TestNilSessionTracesNothingAndDoesNotPanic(t *testing.T) {
+	var session *telemetry.Session
+	ctx, span := session.StartTool(context.Background(), telemetry.ToolCall{Name: "search_ki"})
+	if ctx == nil {
+		t.Fatal("StartTool on a nil session returned a nil context")
+	}
+	span.End(telemetry.ToolResult{Bytes: 1, Blocks: 1})
 }

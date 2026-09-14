@@ -184,3 +184,49 @@ func TestUntracedToolCallLogsWithoutEmptyCorrelationFields(t *testing.T) {
 		t.Errorf("untraced call did not log at all:\n%s", logs.String())
 	}
 }
+
+// A tool declares which arguments may be recorded verbatim. stubTool does
+// not implement tools.SafeArguments, which is the common case for a
+// consumer's own tool — and the safe default is that none of its values
+// reach a span (guardrail #9).
+func TestSafeArgumentNamesIsEmptyForAToolThatDeclaresNothing(t *testing.T) {
+	if names := safeArgumentNames(&stubTool{name: "echo"}); len(names) != 0 {
+		t.Errorf("safeArgumentNames(undeclaring tool) = %v, want none", names)
+	}
+}
+
+func TestSafeArgumentNamesReturnsWhatTheToolDeclares(t *testing.T) {
+	names := safeArgumentNames(&declaringTool{stubTool{name: "search_ki"}})
+	if len(names) != 1 || names[0] != "domain" {
+		t.Errorf("safeArgumentNames = %v, want [domain]", names)
+	}
+}
+
+type declaringTool struct{ stubTool }
+
+func (*declaringTool) SafeArgumentNames() []string { return []string{"domain"} }
+
+// Arguments arrive as `any` off the wire. Strings stay themselves; anything
+// else is JSON-encoded so a nested object arrives readable rather than as a
+// Go %v dump — which matters because the rendered value is what the span's
+// length and hash are computed from.
+func TestRenderArgumentEncodesNonStrings(t *testing.T) {
+	for _, testCase := range []struct {
+		name  string
+		value any
+		want  string
+	}{
+		{"string passes through", "clean architecture", "clean architecture"},
+		{"number", float64(7), "7"},
+		{"bool", true, "true"},
+		{"nested object", map[string]any{"a": 1}, `{"a":1}`},
+		{"list", []any{"x", "y"}, `["x","y"]`},
+		{"nil", nil, "null"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := renderArgument(testCase.value); got != testCase.want {
+				t.Errorf("renderArgument(%v) = %q, want %q", testCase.value, got, testCase.want)
+			}
+		})
+	}
+}
