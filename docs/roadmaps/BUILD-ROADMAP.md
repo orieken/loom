@@ -2711,6 +2711,41 @@ about it green.
 ### L3.44 — Trace-shape assertions on loom's own runs
 **Workstream**: OBSERVE · **Effort**: M · **Blocked by**: L3.43 · **Blocks**: none · *(raised 2026-09-13)*
 
+**SHIPPED** 2026-09-14 — `internal/orchestrator/shape.go` (an exported `ShapeRecorder` that
+implements `Tracer`), the committed baseline at
+`internal/orchestrator/testdata/shape-deliver-feature.json`, and three tests.
+
+**The done-when, verified rather than asserted**: a stage added to the built-in plan was inserted,
+the test failed naming it, and the baseline was restored. The failure prints the whole committed and
+current shape plus the exact `-update` command, so a shape change arrives in review as a diff.
+
+**What the built-in plan's shape actually is**: eight of fifteen stages run — the router skips seven
+— the review loop converges, and seven model calls are made (eight stages minus the internal
+router). That last number is the one a routing regression moves, and nothing recorded it before.
+
+**The token-budget assertion this item called for was dropped, deliberately.** The mock reports the
+usage a fixture hands it, so a ceiling over a mock run asserts the fixture rather than anything the
+system decided — it would pass forever and catch nothing, which is exactly the vacuous assertion
+L3.41 now has `code-reviewer` reject. Cost regression needs a real-provider run, which is a
+different kind of test and not this one.
+
+**Two limits, both in the code's own comment.** A shape records what RAN: a stage the router skips
+is settled before its span opens and appears nowhere, so a change in *why* a stage was skipped, with
+the executed set otherwise identical, is invisible here — the route in run state is where that
+question belongs. And a mock run exercises the mock path; the first real run showed the mock
+under-exercises this pipeline, so this catches structural drift, not routing on a real analysis.
+
+**The `-update` flag exists, with the agent-goldens discipline attached**: hand-edited JSON drifts
+from what the run emits, so the flag is the honest tool — and what stops it becoming
+regenerate-until-green is that a failure prints both shapes and the commit that moves the baseline
+has to say why. A second test asserts two identical runs produce identical shapes, so a baseline can
+never contain something that varies run to run.
+
+**One dead field removed before shipping.** `StageStep` briefly carried a `SkipReason`, written from
+the span outcome — until the generated baseline showed eight stages rather than fifteen and
+`IsStageSettled` turned out to short-circuit before a skipped stage's span opens. An unpopulated
+field in a committed baseline would have read as "nothing was skipped for a reason".
+
 1. **Problem**: nothing asserts the shape of a run. A router change that adds two stages, a retry
    storm that triples cost, a loop terminating by bound rather than convergence — each passes every
    test here so long as the artifacts validate. `agent-eval` grades one agent's output;

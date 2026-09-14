@@ -1,0 +1,49 @@
+{
+  "plan": "deliver-feature",
+  "stages": [
+    {
+      "id": "context-engineer",
+      "iteration": 1,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "analyst",
+      "iteration": 1,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "router",
+      "iteration": 1,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "developer",
+      "iteration": 1,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "code-reviewer",
+      "iteration": 1,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "security-reviewer",
+      "iteration": 1,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "qa-engineer",
+      "iteration": 1,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "tech-writer",
+      "iteration": 1,
+      "status": "COMPLETED"
+    }
+  ],
+  "loops": {
+    "review": "converged"
+  },
+  "providerCalls": 7
+}
