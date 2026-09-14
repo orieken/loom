@@ -66,3 +66,9 @@ func (t *CheckUbiquitousLanguageTool) Execute(_ context.Context, request domain.
 	t.logger.Info("Ubiquitous language analysis completed", "path", projectPath, "violations", result.ViolationsCount)
 	return domain.NewTextResult(string(body)), nil
 }
+
+// SafeArgumentNames declares which arguments may be recorded verbatim in
+// telemetry (tools.SafeArguments, guardrail #9).
+func (t *CheckUbiquitousLanguageTool) SafeArgumentNames() []string {
+	return []string{"projectPath", "dictionaryPath"}
+}

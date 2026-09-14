@@ -117,3 +117,9 @@ func (t *ValidateArtifactTool) resolveContractPath(artifactPath, explicit string
 	}
 	return filepath.Join(t.contractsDir, contractFile), nil
 }
+
+// SafeArgumentNames declares which arguments may be recorded verbatim in
+// telemetry (tools.SafeArguments, guardrail #9).
+func (t *ValidateArtifactTool) SafeArgumentNames() []string {
+	return []string{"artifactPath", "contractPath"}
+}

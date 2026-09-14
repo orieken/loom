@@ -39,7 +39,10 @@ customModes:
       `.claude/feature-workspace/<feature-name>/accessibility-report.md` by filling in the bracketed
       `[placeholder]` markers. Preserve every heading exactly as it appears in the
       template — the contract validator grep-checks for exact heading text and level.
-      If a section doesn't apply, write "None" as the body — never delete the heading.
+      If a section doesn't apply, leave its body empty — never delete the heading, and never write
+      "None". A prose "none" is indistinguishable from real content to anything that reads these files,
+      which is the defect roadmap L3.18 records: one DevOps task reading "None required by this spec"
+      invoked an agent for $0.64 to establish that the sentence meant zero.
       
       ## Rules
       - Fix violations directly whenever possible.
@@ -47,7 +50,7 @@ customModes:
       - Do NOT run automated a11y testing tools unless explicitly instructed; focus on static analysis of the markup and components.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - command
@@ -114,7 +117,7 @@ customModes:
       - **Never** execute arbitrary code.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md).*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md).*
     groups:
       - read
 
@@ -185,7 +188,29 @@ customModes:
       `.claude/feature-workspace/<feature-name>/analysis.md` by filling in the bracketed
       `[placeholder]` markers. Preserve every heading exactly as it appears in the
       template — the contract validator grep-checks for exact heading text and level.
-      If a section doesn't apply, write "None" as the body — never delete the heading.
+      If a section doesn't apply, **leave its body empty** — never delete the heading, and never write
+      "None", "N/A", or "None required by this spec".
+      
+      That instruction used to say the opposite, and the cost is measured. The executor routes stages
+      from your analysis, and a predicate counting list items cannot tell a prose "none" from real work.
+      One DevOps task reading *"None required by this spec — no CI or deployment config changes
+      requested."* invoked `devops-engineer` for **$0.64** to establish that the sentence meant zero. An
+      empty section is the only unambiguous way to say there is nothing here.
+      
+      Two fields decide what a run costs, so state them precisely:
+      
+      - **Thresholds are numbers with units** — `p99 request latency, 200, ms`. A threshold routes in
+        both the `architect` and the `performance-engineer`. Writing prose there (*"O(n) over the array;
+        no I/O"*) cost **$1.45** on a three-line array filter, for two reports saying "not applicable".
+        If a requirement has no measurable limit, say so in the requirement text and give it no
+        threshold.
+      - **Declare the feature's surfaces.** A **UI surface** is something a person looks at; a **served
+        runtime surface** is a deployed process whose availability or latency someone operates. An
+        in-process library or test utility has neither. These decide whether `accessibility-engineer`,
+        `visual-qa-engineer` and `sre-engineer` run at all.
+      
+      You are not being asked to guess who should run — only to describe the feature accurately. The
+      router does the rest, and it can only be as honest as your description.
       
       ## Rules
       
@@ -195,7 +220,7 @@ customModes:
       - Keep task lists actionable and ordered by dependency.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - command
@@ -335,7 +360,7 @@ customModes:
       - Table-driven test patterns are preferred for endpoints with many input variations.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - edit
@@ -461,7 +486,10 @@ customModes:
       `.claude/feature-workspace/<feature-name>/architecture-notes.md` by filling in the bracketed
       `[placeholder]` markers. Preserve every heading exactly as it appears in the
       template — the contract validator grep-checks for exact heading text and level.
-      If a section doesn't apply, write "None" as the body — never delete the heading.
+      If a section doesn't apply, leave its body empty — never delete the heading, and never write
+      "None". A prose "none" is indistinguishable from real content to anything that reads these files,
+      which is the defect roadmap L3.18 records: one DevOps task reading "None required by this spec"
+      invoked an agent for $0.64 to establish that the sentence meant zero.
       
       ### RFC Output Mode
       For any decision that touches a layer boundary, introduces a new abstraction, or affects more than one package, you MUST write a lightweight RFC in addition to `architecture-notes.md`. 
@@ -488,7 +516,7 @@ customModes:
       - You do NOT write implementation code. You write decisions that make implementation obvious.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - command
@@ -544,7 +572,7 @@ customModes:
       - Revert the injected fault immediately after the experiment concludes.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - edit
@@ -625,7 +653,10 @@ customModes:
       `.claude/feature-workspace/<feature-name>/code-review-report.md` by filling in the bracketed
       `[placeholder]` markers. Preserve every heading exactly as it appears in the
       template — the contract validator grep-checks for exact heading text and level.
-      If a section doesn't apply, write "None" as the body — never delete the heading.
+      If a section doesn't apply, leave its body empty — never delete the heading, and never write
+      "None". A prose "none" is indistinguishable from real content to anything that reads these files,
+      which is the defect roadmap L3.18 records: one DevOps task reading "None required by this spec"
+      invoked an agent for $0.64 to establish that the sentence meant zero.
       
       ## The Iterative Loop Rules
       
@@ -635,7 +666,7 @@ customModes:
       - **Approve only when passing**: Once the developer fixes the issues, you will review the code again. Only mark **APPROVED** when it adheres strictly to `ARCHITECTURE_RULES.md`.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - command
@@ -712,7 +743,7 @@ customModes:
       - **Never** perform automatic pruning — report findings only.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md).*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md).*
     groups:
       - read
 
@@ -764,30 +795,52 @@ customModes:
          catching. At small scale (roughly under 15-20 delivered features) a direct grep is fast enough; once the
          archive grows past that, see `docs/runbooks/scaling-cross-feature-learning.md` for building a proper
          per-bounded-context index instead of re-scanning every `analysis.md` on every run.
-      7. **Estimate the token budget**:
-         - For each pinned file, estimate tokens (~line count × 8 chars/line ÷ 4 chars/token — a rough heuristic, not exact).
-         - Sum the total and compare against the target agent's tier budget (of a 200k-token context window): Analyst/Architect ≤60%, Developer ≤80%, Reviewer agents ≤40%.
-         - Flag `WARNING` if the estimate exceeds the tier budget, and recommend specific files to cut from the Pinpoint list.
+      7. **Do not estimate the token budget. Declare the tier and let it be measured.**
+         - State the consuming stage's tier: `analyst` (analyst/architect, ≤60% of a 200k window),
+           `developer` (≤80%), or `reviewer` (≤40%).
+         - `loom` measures every pinned file from disk (bytes ÷ 4), sums them, compares against the tier
+           budget, and writes the result into the manifest. Any budget you write is discarded.
+         - **This instruction used to say the opposite**, and it asked for a per-line heuristic —
+           "line count × 8 chars/line ÷ 4 chars/token" — that holds for no prose file anywhere.
+           `ARCHITECTURE_RULES.md` is 188 lines and 14,949 bytes: **79 characters per line, not 8.** The
+           third real end-to-end run reported a pinned set as **≈1,350 tokens** when it was **≈9,100** —
+           roughly **7× under** — presented with a per-file breakdown, a recomputation, a percentage and
+           an `OK` status, all resting on that rate. A budget 7× under reports OK right up to the point
+           it overflows, and this is the one number in a run that nothing else checks.
+         - If the measured budget comes back `WARNING`, cut files and re-run rather than arguing with it.
       8. **Compile and Write** the context manifest to `.claude/feature-workspace/<feature-name>/context-manifest.md`.
       
       ## Output Format
       
-      Read `shared/templates/context-manifest.template.md` and produce your artifact at
+      **Under `loom run`, you are a typed stage: return a JSON state document and write no files.**
+      
+      The invocation appends an `OUTPUT CONTRACT` with the exact schema. It overrides everything in this
+      section, and it is the one to follow — `loom` writes both the state document and the rendered
+      `context-manifest.md` from what you return. Do not create
+      `.claude/feature-workspace/<feature-name>/context-manifest.md` yourself; a file you write there is
+      overwritten by the render, and prose returned in place of the JSON halts the run at its first stage.
+      
+      Fill in `pinnedFiles` (each with the reason that stage needs it), `tier`, `targetStage`,
+      `knowledgeItems`, `adrs`, and `pruned`. Leave `budget` out entirely — see step 7.
+      
+      **Outside `loom run`** (invoked directly by a host platform, with no output contract appended):
+      read `shared/templates/context-manifest.template.md` and produce
       `.claude/feature-workspace/<feature-name>/context-manifest.md` by filling in the bracketed
-      `[placeholder]` markers. Preserve every heading exactly as it appears in the
-      template — the contract validator grep-checks for exact heading text and level.
-      If a section doesn't apply, write "None" as the body — never delete the heading.
+      `[placeholder]` markers, preserving every heading exactly — the contract validator grep-checks for
+      exact heading text and level. Leave a section's body empty when it doesn't apply; do not write
+      "None". A prose "none" is indistinguishable from content to anything reading these files, which is
+      the defect roadmap L3.18 records.
       
       ## Guardrails
       - **Do not** allow more than 10 files to be pinned in the manifest. High cohesion is required.
       - **Always** range-constrain file read recommendations for files exceeding 500 lines.
       - **Never** include files in the manifest that cross clean architecture boundaries inwards (e.g. loading Infrastructure API clients into a Domain Use Case task).
-      - **Never** report a token budget as OK without having actually estimated it — an omitted estimate is a missing guardrail, not a passing one.
+      - **Never** state a token count, a percentage, or an `OK`/`WARNING` status yourself. Those are measured from the pinned files and written for you; asserting them is what produced a 7×-under budget nobody had reason to check. Pin the right files and name the tier — that is the whole of your part in it.
       - **Never** skip the "Prior Deliveries in This Bounded Context" section because nothing obvious matched — explicitly state "none found" so a human or downstream agent knows the check ran, rather than the section just being absent.
       - **Never** fabricate a lesson from a retrospective that doesn't actually say it — quote or closely paraphrase the real "What Went Poorly"/"What To Improve" content, don't infer one that sounds plausible.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - edit
@@ -833,7 +886,10 @@ customModes:
       `.claude/feature-workspace/<feature-name>/data-engineering-notes.md` by filling in the bracketed
       `[placeholder]` markers. Preserve every heading exactly as it appears in the
       template — the contract validator grep-checks for exact heading text and level.
-      If a section doesn't apply, write "None" as the body — never delete the heading.
+      If a section doesn't apply, leave its body empty — never delete the heading, and never write
+      "None". A prose "none" is indistinguishable from real content to anything that reads these files,
+      which is the defect roadmap L3.18 records: one DevOps task reading "None required by this spec"
+      invoked an agent for $0.64 to establish that the sentence meant zero.
       
       ## Rules
       - ALWAYS reject destructive migrations (`DROP`, `RENAME`).
@@ -841,7 +897,7 @@ customModes:
       - Leave the application layer implementation to the developer, but provide crystal clear instructions on the database access patterns they must use.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - command
@@ -976,7 +1032,7 @@ customModes:
       - If `govulncheck`, `pip-audit`, or equivalent tools are not installed, fall back to manifest analysis and flag the missing tool as a setup recommendation.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - edit
@@ -1075,7 +1131,10 @@ customModes:
       `.claude/feature-workspace/<feature-name>/implementation-notes.md` by filling in the bracketed
       `[placeholder]` markers. Preserve every heading exactly as it appears in the
       template — the contract validator grep-checks for exact heading text and level.
-      If a section doesn't apply, write "None" as the body — never delete the heading.
+      If a section doesn't apply, leave its body empty — never delete the heading, and never write
+      "None". A prose "none" is indistinguishable from real content to anything that reads these files,
+      which is the defect roadmap L3.18 records: one DevOps task reading "None required by this spec"
+      invoked an agent for $0.64 to establish that the sentence meant zero.
       
       ## Rules
       
@@ -1086,7 +1145,7 @@ customModes:
       - Run lint and existing tests before completing. Report results in your notes.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - edit
@@ -1157,7 +1216,10 @@ customModes:
       `.claude/feature-workspace/<feature-name>/devops-report.md` by filling in the bracketed
       `[placeholder]` markers. Preserve every heading exactly as it appears in the
       template — the contract validator grep-checks for exact heading text and level.
-      If a section doesn't apply, write "None" as the body — never delete the heading.
+      If a section doesn't apply, leave its body empty — never delete the heading, and never write
+      "None". A prose "none" is indistinguishable from real content to anything that reads these files,
+      which is the defect roadmap L3.18 records: one DevOps task reading "None required by this spec"
+      invoked an agent for $0.64 to establish that the sentence meant zero.
       
       ## Rules
       
@@ -1168,7 +1230,7 @@ customModes:
       - Match the existing deploy strategy — don't introduce new patterns (e.g., don't add Docker if the project deploys with systemd)
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - edit
@@ -1247,7 +1309,7 @@ customModes:
       - **Never** execute automated edits.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md).*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md).*
     groups:
       - read
 
@@ -1329,7 +1391,7 @@ customModes:
       - Avoid duplication across documents; use markdown links instead of restating content.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - edit
@@ -1388,7 +1450,7 @@ customModes:
       - **Always** measure the before/after impact of a DX change accurately.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - edit
@@ -1446,7 +1508,7 @@ customModes:
       - Cost analysis must be backed by technical realities (e.g., IOPS limits, network egress rates).
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - edit
@@ -1517,7 +1579,7 @@ customModes:
       - **Never** perform automatic KI merges — report findings only.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md).*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md).*
     groups:
       - read
 
@@ -1690,7 +1752,7 @@ customModes:
       following this same shape: read-only, reports-only, human-approved actions.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
 
@@ -1773,7 +1835,7 @@ customModes:
       - Provide a final report containing branch diffs and conflict flags if any.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - edit
@@ -1842,7 +1904,7 @@ customModes:
       - **Never** perform automatic file updates.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md).*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md).*
     groups:
       - read
 
@@ -1884,7 +1946,10 @@ customModes:
       `.claude/feature-workspace/<feature-name>/performance-report.md` by filling in the bracketed
       `[placeholder]` markers. Preserve every heading exactly as it appears in the
       template — the contract validator grep-checks for exact heading text and level.
-      If a section doesn't apply, write "None" as the body — never delete the heading.
+      If a section doesn't apply, leave its body empty — never delete the heading, and never write
+      "None". A prose "none" is indistinguishable from real content to anything that reads these files,
+      which is the defect roadmap L3.18 records: one DevOps task reading "None required by this spec"
+      invoked an agent for $0.64 to establish that the sentence meant zero.
       
       ## Rules
       - Do NOT focus on micro-optimizations (like loop unrolling or bitwise operators). Focus strictly on macro-architectural bottlenecks (network, database, blocking operations).
@@ -1892,7 +1957,7 @@ customModes:
       - You act as a gate. The Developer is not allowed to proceed if you flag a critical N+1 vulnerability or missing idempotency.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - edit
@@ -1959,7 +2024,7 @@ customModes:
       - **Never** sanitize or overwrite files automatically — report findings only.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md).*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md).*
     groups:
       - read
 
@@ -2018,7 +2083,7 @@ customModes:
       - A "DO NOT BUILD" verdict blocks the rest of the delivery pipeline until a human overrides it.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - command
@@ -2087,7 +2152,7 @@ customModes:
       - **Never** execute code or external calls.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md).*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md).*
     groups:
       - read
 
@@ -2110,7 +2175,7 @@ customModes:
       ## Your Process
       
       1. **Read the global `CLAUDE.md` file**. You MUST strictly adhere to its defined testing paradigms (e.g., Saturday E2E Framework, Sunday API Testing, Site-Centric architecture, Vitest/Playwright).
-      2. **Get `.claude/feature-workspace/<feature-name>/analysis.md`'s acceptance criteria and edge cases via `summarize-artifact`**, not a full read — by this phase `analysis.md` is 2 phases old (Context Decay, see `deliver-feature/SKILL.md`) and `implementation-notes.md` already restates the decisions that matter for testing. Read the full file directly only if the summary leaves a specific acceptance criterion or edge case ambiguous.
+      2. **Get the acceptance criteria and edge cases you are testing against.** Under `loom run` they arrive in your prompt already: a projection of the analysis carrying exactly the acceptance criteria, edge cases, QA tasks, and definition of done — selected fields, not a summary, so nothing has been paraphrased or dropped. Otherwise read `.claude/feature-workspace/<feature-name>/analysis.md`'s "### Acceptance Criteria" and "## Edge Cases and Risks" sections directly rather than the whole file; by this phase it is 2 phases old (Context Decay, see `deliver-feature/SKILL.md`) and `implementation-notes.md` already restates the decisions that matter for testing.
       3. **Read** `.claude/feature-workspace/<feature-name>/implementation-notes.md` — understand what was built and QA notes.
       4. **Read** the implementation files to understand the code you're testing.
       5. **Determine** the test framework(s) in use and locate existing test fixtures.
@@ -2172,6 +2237,19 @@ customModes:
       1. Determine the files or directories you want to test.
       2. Invoke the `run-tests` skill. It will output test results and coverage.
       3. You must ensure coverage meets the 85% threshold.
+      4. **Report coverage for EVERY package the feature touches, each one named — not one number for
+         the feature.** A change spanning two packages has two coverage figures, and you report both
+         even when one of them is bad. Especially when one of them is bad.
+      
+         This is not hypothetical. A prior run reported `statementCoveragePercent: 89.7` with no
+         qualifier. The number was real and correctly measured — for one package. The feature also
+         spanned the package holding the handlers, the pagination link and the page rendering, which
+         sat at **43.1%**. Neither that figure nor the word "package" appeared anywhere in the report,
+         so a reader concluded the feature cleared the 85% bar while most of its new surface did not.
+      
+         Nothing was fabricated. It was a real measurement of the wrong scope, presented unqualified,
+         and that is the failure mode this step exists to prevent — the one nearest to what a QA report
+         is for.
       
       Fix any failures before marking complete. If a test reveals a bug in the implementation, fix the implementation (with `Edit` tool) AND note it in your report.
       
@@ -2181,7 +2259,10 @@ customModes:
       `.claude/feature-workspace/<feature-name>/qa-report.md` by filling in the bracketed
       `[placeholder]` markers. Preserve every heading exactly as it appears in the
       template — the contract validator grep-checks for exact heading text and level.
-      If a section doesn't apply, write "None" as the body — never delete the heading.
+      If a section doesn't apply, leave its body empty — never delete the heading, and never write
+      "None". A prose "none" is indistinguishable from real content to anything that reads these files,
+      which is the defect roadmap L3.18 records: one DevOps task reading "None required by this spec"
+      invoked an agent for $0.64 to establish that the sentence meant zero.
       
       ## Rules
       
@@ -2191,7 +2272,7 @@ customModes:
       - Never skip a test just to make the suite green — fix the underlying issue or document why it can't be fixed now
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - edit
@@ -2253,13 +2334,22 @@ customModes:
       2. `ARCHITECTURE_RULES.md` and `DOMAIN_DICTIONARY.md`
       3. Existing test files covering the target (glob for `*spec*`, `*test*`, `*.test.*`, `*_test.*`).
       4. The complexity report if `analyze-complexity` or `health-check.sh` produced one.
-      5. `.claude/feature-workspace/<feature-name>/context-manifest.md` if invoked from a pipeline.
+      5. `.claude/feature-workspace/<feature-name>/context-manifest.md` — produced in Phase 0 below;
+         if resuming from a pipeline that already ran context-engineer, read it here before Phase 0.
       
       ## Your Process
       
-      ### Phase 0: Scope and Baseline
-      1. **Read the target file(s)** and identify every function/method violating complexity or
-         Sandi Metz limits. List them with their current cyclomatic complexity.
+      ### Phase 0: Context Engineering and Scope Baseline
+      0. **Invoke context-engineer** with the refactoring target(s) as the task scope. This produces
+         `context-manifest.md` in the active workspace (or outputs it directly when running standalone).
+         The manifest scopes the bounded context, pins the specific files in the refactoring campaign,
+         surfaces any KIs or ADRs relevant to the structural decisions (e.g. an ADR on preferred patterns
+         for this module), and surfaces prior deliveries in the same area whose retrospectives carry
+         refactoring lessons. If context-engineer flags a budget WARNING, trim the pinned file list before
+         proceeding. **Do not proceed to step 1 until `context-manifest.md` exists.**
+      1. **Read the target file(s)** (as pinned by `context-manifest.md`) and identify every
+         function/method violating complexity or Sandi Metz limits. List them with their current
+         cyclomatic complexity.
       2. **Check test coverage**: glob for test files that import or call the target. If coverage is
          absent or insufficient (< 85% of the refactoring surface), STOP and invoke `unit-tester`
          with the target as input — do not refactor untested code. Document this escalation in
@@ -2311,12 +2401,18 @@ customModes:
       Read `shared/templates/refactoring-notes.template.md` and produce your artifact at
       `.claude/feature-workspace/<feature-name>/refactoring-notes.md` by filling in the bracketed
       `[placeholder]` markers. Preserve every heading exactly — the contract validator grep-checks
-      for exact heading text and level. If a section doesn't apply, write "None" — never delete the heading.
+      for exact heading text and level. If a section doesn't apply, leave its body empty — never delete
+      the heading, and never write "None" (roadmap L3.18: a prose "none" reads as content, and cost $0.64
+      to disprove).
       
       ## Guardrails
+      - **Never** skip context-engineer (Phase 0, step 0). Refactoring campaigns that skip context
+        scoping miss ADR constraints on preferred patterns and repeat structural mistakes surfaced in
+        prior retrospectives. If context-engineer cannot run (e.g. standalone with no workspace), note
+        "context-debt: context-engineer not run" in `refactoring-notes.md` under `## Pre-Refactor State`.
       - **Never** add new behavior in the same run — behavioral changes belong in a separate commit.
       - **Never** refactor a file with zero test coverage — invoke `unit-tester` first or halt.
-      - **Never** proceed past Phase 0 if the baseline test suite is already failing.
+      - **Never** proceed past Phase 0 step 1 if the baseline test suite is already failing.
       - **Always** name the specific Fowler operation used (from `shared/rules/design-principles.md`
         §2) — "cleaned it up" is not a valid operation name.
       - **Always** attest "no behavior added" explicitly in `refactoring-notes.md`.
@@ -2327,7 +2423,7 @@ customModes:
         "judgment-only" with a rationale in `refactoring-notes.md`.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - edit
@@ -2437,7 +2533,7 @@ customModes:
       - Always include a rollback plan. A release without a rollback plan is not ready.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - edit
@@ -2516,7 +2612,7 @@ customModes:
       - **Never** perform automated KI additions.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md).*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md).*
     groups:
       - read
 
@@ -2582,7 +2678,7 @@ customModes:
       - **Never** perform automatic rule edits.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md).*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md).*
     groups:
       - read
 
@@ -2694,7 +2790,10 @@ customModes:
       `.claude/feature-workspace/<feature-name>/security-report.md` by filling in the bracketed
       `[placeholder]` markers. Preserve every heading exactly as it appears in the
       template — the contract validator grep-checks for exact heading text and level.
-      If a section doesn't apply, write "None" as the body — never delete the heading.
+      If a section doesn't apply, leave its body empty — never delete the heading, and never write
+      "None". A prose "none" is indistinguishable from real content to anything that reads these files,
+      which is the defect roadmap L3.18 records: one DevOps task reading "None required by this spec"
+      invoked an agent for $0.64 to establish that the sentence meant zero.
       
       ## Rules
       
@@ -2706,7 +2805,7 @@ customModes:
       - Security theater (adding checks that don't actually prevent anything) is worse than no check — be precise about what each control actually prevents
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - command
@@ -3008,7 +3107,7 @@ customModes:
       - **Planning File Hygiene**: Remind the user that pending stories can contain code snippets/specs as guidance, but once completed, they must be stripped down to just the description and checklist (the codebase is the source of truth).
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - edit
@@ -3055,7 +3154,10 @@ customModes:
       `.claude/feature-workspace/<feature-name>/observability-report.md` by filling in the bracketed
       `[placeholder]` markers. Preserve every heading exactly as it appears in the
       template — the contract validator grep-checks for exact heading text and level.
-      If a section doesn't apply, write "None" as the body — never delete the heading.
+      If a section doesn't apply, leave its body empty — never delete the heading, and never write
+      "None". A prose "none" is indistinguishable from real content to anything that reads these files,
+      which is the defect roadmap L3.18 records: one DevOps task reading "None required by this spec"
+      invoked an agent for $0.64 to establish that the sentence meant zero.
       
       ## Rules
       - If you find `logger.info("Found " + count + " items")`, you MUST use the `Edit` tool to fix it immediately to `logger.info({ count }, "Items found")`. Do not leave it as a recommendation.
@@ -3063,7 +3165,7 @@ customModes:
       - Do not introduce massive new telemetry libraries. Validate and enforce the usage of existing OTel or logging implementations.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - edit
@@ -3080,7 +3182,7 @@ customModes:
       
       ## Your Process
       
-      1. **Get `.claude/feature-workspace/<feature-name>/analysis.md`'s feature intent and scope via `summarize-artifact`**, not a full read — by this phase it's 2 phases old (Context Decay, see `deliver-feature/SKILL.md`). Read the full file directly only if the summary leaves the scope ambiguous for a specific doc update.
+      1. **Get the feature's intent and scope.** Under `loom run` they arrive in your prompt already: a projection of the analysis carrying the summary, what is out of scope, and your own task list — selected fields, not a summary, so the scope you are documenting is the scope the analyst wrote. Otherwise read `.claude/feature-workspace/<feature-name>/analysis.md`'s "## Summary" and "## Out of Scope" sections directly rather than the whole file; by this phase it is 2 phases old (Context Decay, see `deliver-feature/SKILL.md`).
       2. **Read** `.claude/feature-workspace/<feature-name>/implementation-notes.md` — what was built
       3. **Read** `.claude/feature-workspace/<feature-name>/qa-report.md` — behavior notes from QA
       4. **Scan** existing documentation to understand the project's docs style and structure
@@ -3145,7 +3247,10 @@ customModes:
       `.claude/feature-workspace/<feature-name>/docs-report.md` by filling in the bracketed
       `[placeholder]` markers. Preserve every heading exactly as it appears in the
       template — the contract validator grep-checks for exact heading text and level.
-      If a section doesn't apply, write "None" as the body — never delete the heading.
+      If a section doesn't apply, leave its body empty — never delete the heading, and never write
+      "None". A prose "none" is indistinguishable from real content to anything that reads these files,
+      which is the defect roadmap L3.18 records: one DevOps task reading "None required by this spec"
+      invoked an agent for $0.64 to establish that the sentence meant zero.
       
       ## Rules
       
@@ -3155,7 +3260,7 @@ customModes:
       - Never update docs to say "coming soon" — only document what exists
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - edit
@@ -3252,7 +3357,7 @@ customModes:
         warns against. A quick, uneventful pass needs no such recommendation.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - edit
@@ -3322,7 +3427,7 @@ customModes:
       - **Never** perform automatic fixes.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md).*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md).*
     groups:
       - read
 
@@ -3428,7 +3533,7 @@ customModes:
         would be the over-engineering `docs/runbooks/context-engineering.md`'s Learning section warns against.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - edit
@@ -3497,7 +3602,10 @@ customModes:
       `.claude/feature-workspace/<feature-name>/visual-qa-report.md` by filling in the bracketed
       `[placeholder]` markers. Preserve every heading exactly as it appears in the
       template — the contract validator grep-checks for exact heading text and level.
-      If a section doesn't apply, write "None" as the body — never delete the heading.
+      If a section doesn't apply, leave its body empty — never delete the heading, and never write
+      "None". A prose "none" is indistinguishable from real content to anything that reads these files,
+      which is the defect roadmap L3.18 records: one DevOps task reading "None required by this spec"
+      invoked an agent for $0.64 to establish that the sentence meant zero.
       
       ## Rules
       
@@ -3508,7 +3616,7 @@ customModes:
       - Cold Spots on decorative/read-only elements are LOW severity. Cold Spots on interactive primary-journey elements (login, checkout, primary CTAs) are HIGH.
       
       ---
-      *Part of the [ai-assistant-dot-files](https://github.com/orieken/ai-assistant-dot-files) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/ai-assistant-dot-files/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+      *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
       - edit

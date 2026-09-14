@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -46,14 +47,15 @@ func TestSecretArgumentsAreRedactedByName(t *testing.T) {
 	}
 
 	span := toolSpan(t, traceTool(context.Background(), t,
-		telemetry.ToolCall{Name: "search_ki", Arguments: arguments},
-		telemetry.ToolResult{Preview: "3 results"}))
+		telemetry.ToolCall{Name: "search_ki", Arguments: arguments,
+			SafeArguments: []string{"query"}},
+		telemetry.ToolResult{Bytes: 9, Blocks: 1}))
 
 	assertNoAttributeContains(t, span, "super-secret-value")
 	for _, key := range secrets {
 		assertStringAttribute(t, span, "loom.tool.arg."+key, telemetry.RedactedPlaceholder)
 	}
-	// A non-secret argument must still come through intact, or redaction
+	// A declared-safe argument must still come through intact, or redaction
 	// has been bought at the price of the span being useless.
 	assertStringAttribute(t, span, "loom.tool.arg.query", "clean architecture")
 }
@@ -81,10 +83,11 @@ func TestOversizedValuesAreTruncatedWithAMarker(t *testing.T) {
 	long := strings.Repeat("x", telemetry.AttributeValueLimit*3)
 
 	span := toolSpan(t, traceTool(context.Background(), t,
-		telemetry.ToolCall{Name: "search_ki", Arguments: map[string]string{"query": long}},
-		telemetry.ToolResult{Preview: long}))
+		telemetry.ToolCall{Name: "search_ki", Arguments: map[string]string{"query": long},
+			SafeArguments: []string{"query"}},
+		telemetry.ToolResult{Bytes: len(long), Blocks: 1}))
 
-	for _, key := range []string{"loom.tool.arg.query", "loom.tool.result"} {
+	for _, key := range []string{"loom.tool.arg.query"} {
 		value := span.attribute(t, key).Value.StringValue
 		if value == nil {
 			t.Fatalf("%s missing", key)
@@ -104,7 +107,7 @@ func TestTruncationDoesNotSplitAMultiByteCharacter(t *testing.T) {
 	span := toolSpan(t, traceTool(context.Background(), t,
 		telemetry.ToolCall{Name: "search_ki", Arguments: map[string]string{
 			"query": strings.Repeat("日", telemetry.AttributeValueLimit),
-		}},
+		}, SafeArguments: []string{"query"}},
 		telemetry.ToolResult{}))
 
 	value := span.attribute(t, "loom.tool.arg.query").Value.StringValue
@@ -192,5 +195,96 @@ func TestTraceParentEnvRoundTripsThroughTheEnvironment(t *testing.T) {
 func TestTraceParentEnvIsEmptyWithoutASpan(t *testing.T) {
 	if entries := telemetry.TraceParentEnv(context.Background()); entries != nil {
 		t.Errorf("TraceParentEnv = %v, want nil with no span in context", entries)
+	}
+}
+
+// The guardrail #9 headline: an argument the tool did not declare safe never
+// reaches a span in any recoverable form. `query` is the live case — search_ki
+// and search_docs both take one, and before roadmap L3.38 it was exported
+// verbatim along with 512 characters of whatever KI body came back.
+func TestUndeclaredArgumentsNeverAppearAsContent(t *testing.T) {
+	t.Setenv(telemetry.SaltEnvVar, "a-salt")
+	const secret = "how do I rotate the production database password"
+
+	span := toolSpan(t, traceTool(context.Background(), t,
+		telemetry.ToolCall{Name: "search_ki", Arguments: map[string]string{"query": secret}},
+		telemetry.ToolResult{Bytes: 4096, Blocks: 3}))
+
+	assertNoAttributeContains(t, span, secret)
+	assertNoAttributeContains(t, span, "rotate")
+	if attr := span.find("loom.tool.arg.query"); attr != nil {
+		t.Errorf("undeclared argument was recorded verbatim as %v", attr.Value)
+	}
+	// The properties survive, or the span stops being diagnostic.
+	assertIntAttribute(t, span, "loom.tool.arg.query.length", strconv.Itoa(len([]rune(secret))))
+	if digest := span.attribute(t, "loom.tool.arg.query.hash").Value.StringValue; digest == nil ||
+		!strings.HasPrefix(*digest, telemetry.HashPrefix) {
+		t.Errorf("hash attribute = %v, want a %s digest", digest, telemetry.HashPrefix)
+	}
+}
+
+// A salted hash is only worth recording if it correlates. The same input under
+// the same salt must produce the same digest, and a different salt must not —
+// otherwise one deployment's traces could be matched against another's.
+func TestHashesCorrelateUnderOneSaltAndNotAcrossTwo(t *testing.T) {
+	t.Setenv(telemetry.SaltEnvVar, "salt-one")
+	first := telemetry.HashValue("clean architecture")
+	again := telemetry.HashValue("clean architecture")
+	t.Setenv(telemetry.SaltEnvVar, "salt-two")
+	elsewhere := telemetry.HashValue("clean architecture")
+
+	if first == "" || first != again {
+		t.Errorf("same salt gave %q then %q, want a stable digest", first, again)
+	}
+	if first == elsewhere {
+		t.Error("digest survived a salt change, so the salt is doing nothing")
+	}
+}
+
+// No salt means no hash — never an unsalted one. A short query has little
+// entropy and an unsalted digest of it is recoverable by brute force, so the
+// choice is a salted hash or nothing. The length still goes on the span,
+// because it leaks nothing and truncation is diagnosable without it.
+func TestWithoutASaltNoHashIsEmittedAndTheLengthStillIs(t *testing.T) {
+	t.Setenv(telemetry.SaltEnvVar, "")
+
+	span := toolSpan(t, traceTool(context.Background(), t,
+		telemetry.ToolCall{Name: "search_ki", Arguments: map[string]string{"query": "dark mode"}},
+		telemetry.ToolResult{}))
+
+	if attr := span.find("loom.tool.arg.query.hash"); attr != nil {
+		t.Errorf("emitted a hash with no salt configured: %v", attr.Value)
+	}
+	assertIntAttribute(t, span, "loom.tool.arg.query.length", "9")
+	assertNoAttributeContains(t, span, "dark mode")
+}
+
+// A tool cannot opt its own credentials into a span. Declaring a
+// secret-shaped name safe is either a mistake or an attack, and the name
+// check wins either way.
+func TestDeclaringASecretArgumentSafeDoesNotRecordIt(t *testing.T) {
+	span := toolSpan(t, traceTool(context.Background(), t,
+		telemetry.ToolCall{
+			Name:          "search_ki",
+			Arguments:     map[string]string{"apiToken": "super-secret-value"},
+			SafeArguments: []string{"apiToken"},
+		}, telemetry.ToolResult{}))
+
+	assertNoAttributeContains(t, span, "super-secret-value")
+	assertStringAttribute(t, span, "loom.tool.arg.apiToken", telemetry.RedactedPlaceholder)
+}
+
+// The result records its shape and never its text. Zero blocks on a
+// successful call is the "found nothing" signal — the retrieval.hit_count
+// equivalent, and the one worth alerting on.
+func TestResultRecordsShapeNotText(t *testing.T) {
+	span := toolSpan(t, traceTool(context.Background(), t,
+		telemetry.ToolCall{Name: "search_ki"},
+		telemetry.ToolResult{Bytes: 2048, Blocks: 0}))
+
+	assertIntAttribute(t, span, "loom.tool.result.bytes", "2048")
+	assertIntAttribute(t, span, "loom.tool.result.blocks", "0")
+	if attr := span.find("loom.tool.result"); attr != nil {
+		t.Errorf("result text attribute survived: %v", attr.Value)
 	}
 }

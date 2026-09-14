@@ -62,3 +62,23 @@ type Tool interface {
 	OutputSchema() json.RawMessage
 	Execute(ctx context.Context, request ToolRequest) (*ToolResult, error)
 }
+
+// SafeArguments is an optional interface a Tool may implement to declare
+// which of its arguments may appear verbatim in telemetry (guardrail #9).
+//
+// It is opt-in because only the tool's author knows which of its arguments
+// carry content. `text` is a harmless echo payload in one tool and a user's
+// message in another, and no list maintained here could tell them apart —
+// which matters because the registry is consumer-extensible (see
+// examples/embedding). A tool that does not implement this has every
+// argument value recorded as a hash and a length instead, so the safe
+// default costs a value in a trace rather than leaking one.
+//
+// Declaring an argument safe is not a way to record a credential: an
+// argument whose name looks secret is redacted regardless of what this
+// returns.
+type SafeArguments interface {
+	// SafeArgumentNames returns the argument names whose values are
+	// non-sensitive. Names not listed are hashed.
+	SafeArgumentNames() []string
+}

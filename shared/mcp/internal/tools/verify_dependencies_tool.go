@@ -58,3 +58,9 @@ func (t *VerifyDependenciesTool) Execute(_ context.Context, request domain.ToolR
 	t.logger.Info("Dependency verification completed", "path", projectPath, "violations", result.ViolationsCount)
 	return domain.NewTextResult(string(body)), nil
 }
+
+// SafeArgumentNames declares which arguments may be recorded verbatim in
+// telemetry (tools.SafeArguments, guardrail #9).
+func (t *VerifyDependenciesTool) SafeArgumentNames() []string {
+	return []string{"projectPath"}
+}

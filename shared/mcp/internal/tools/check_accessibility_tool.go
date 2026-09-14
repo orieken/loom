@@ -74,3 +74,9 @@ func resolveAccessibilityTarget(request domain.ToolRequest) string {
 	}
 	return request.StringArg("projectPath")
 }
+
+// SafeArgumentNames declares which arguments may be recorded verbatim in
+// telemetry (tools.SafeArguments, guardrail #9).
+func (t *CheckAccessibilityTool) SafeArgumentNames() []string {
+	return []string{"filePath", "projectPath"}
+}

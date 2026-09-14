@@ -77,3 +77,9 @@ func parseComplexityArgs(args map[string]any) (projectPath string, maxComplexity
 	}
 	return
 }
+
+// SafeArgumentNames declares which arguments may be recorded verbatim in
+// telemetry (tools.SafeArguments, guardrail #9).
+func (t *AnalyzeComplexityTool) SafeArgumentNames() []string {
+	return []string{"projectPath", "maxComplexity", "maxLines"}
+}

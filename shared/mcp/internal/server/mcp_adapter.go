@@ -7,12 +7,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/orieken/loom/internal/telemetry"
 	"github.com/orieken/loom/shared/mcp/internal/domain"
+	"github.com/orieken/loom/tools"
 )
 
 // mcpToolDefinition converts a domain.Tool's metadata into the MCP wire type.
@@ -31,7 +31,11 @@ func mcpToolDefinition(tool domain.Tool) mcp.Tool {
 // of it, and `internal/domain` stays stdlib-only (guardrail #8 and M0.3).
 func (h *Handler) mcpToolHandler(tool domain.Tool) func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		call := telemetry.ToolCall{Name: tool.Name(), Arguments: stringArguments(request.GetArguments())}
+		call := telemetry.ToolCall{
+			Name:          tool.Name(),
+			Arguments:     stringArguments(request.GetArguments()),
+			SafeArguments: safeArgumentNames(tool),
+		}
 		ctx, span := h.session.StartTool(ctx, call)
 		h.logToolCall(ctx, tool.Name())
 		result, err := tool.Execute(ctx, domainRequest(tool.Name(), request))
@@ -54,19 +58,37 @@ func (h *Handler) logToolCall(ctx context.Context, name string) {
 	h.logger.Info("tool.called", "tool", name, "trace_id", traceID, "span_id", spanID)
 }
 
+// safeArgumentNames asks the tool which of its arguments may be recorded
+// verbatim. A tool that does not implement tools.SafeArguments declares
+// nothing, and every value it is called with is hashed (guardrail #9).
+func safeArgumentNames(tool domain.Tool) []string {
+	declaring, ok := tool.(tools.SafeArguments)
+	if !ok {
+		return nil
+	}
+	return declaring.SafeArgumentNames()
+}
+
 func toolResult(result *domain.ToolResult, err error) telemetry.ToolResult {
 	if result == nil {
 		return telemetry.ToolResult{Err: err}
 	}
-	return telemetry.ToolResult{Preview: resultText(result), IsError: result.IsError, Err: err}
+	return telemetry.ToolResult{
+		Bytes:   resultBytes(result),
+		Blocks:  len(result.Content),
+		IsError: result.IsError,
+		Err:     err,
+	}
 }
 
-func resultText(result *domain.ToolResult) string {
-	parts := make([]string, 0, len(result.Content))
+// resultBytes sizes the result without assembling it: the span records how
+// much came back, never what.
+func resultBytes(result *domain.ToolResult) int {
+	total := 0
 	for _, block := range result.Content {
-		parts = append(parts, block.Text)
+		total += len(block.Text)
 	}
-	return strings.Join(parts, "\n")
+	return total
 }
 
 // stringArguments renders each argument for a span attribute. Values are

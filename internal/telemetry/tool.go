@@ -2,13 +2,25 @@ package telemetry
 
 // Tool-call spans for the MCP server (roadmap L3.8, phase C).
 //
-// Two properties this file owes the rest of the system: a tool call's
-// arguments never leak a secret into a span, and never blow a span up with
-// an unbounded payload. Both are enforced here rather than at call sites,
-// because a call site that forgets is exactly the failure being prevented.
+// Three properties this file owes the rest of the system: a tool call's
+// arguments never leak a secret into a span, never leak content into one,
+// and never blow a span up with an unbounded payload. All three are
+// enforced here rather than at call sites, because a call site that forgets
+// is exactly the failure being prevented.
+//
+// Content minimisation is an allowlist, not a denylist (guardrail #9,
+// roadmap L3.38). A value is recorded verbatim only when the tool declared
+// that argument safe; everything else becomes a hash and a length. The
+// inversion matters because the tool registry is consumer-extensible: a
+// denylist of content-shaped names cannot cover an argument in someone
+// else's tool that this package has never heard of, and the failure is
+// silent.
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"os"
 	"sort"
 	"strings"
 
@@ -29,6 +41,20 @@ const TruncationMarker = "…(truncated)"
 // kept: knowing a token was passed is useful, knowing which token is not.
 const RedactedPlaceholder = "[redacted]"
 
+// SaltEnvVar names the environment variable holding the salt for argument
+// hashes. Without it no hash is emitted at all — an unsalted hash of a short
+// query is recoverable by brute force, so the choice is a salted hash or
+// nothing, never a weak one.
+const SaltEnvVar = "LOOM_TELEMETRY_SALT"
+
+// HashPrefix marks an attribute value as a salted digest rather than content,
+// so a reader never mistakes one for the other.
+const HashPrefix = "sha256:"
+
+// hashHexLength is how much of the digest is kept. 16 hex characters is ample
+// to correlate repeated inputs and short enough to keep spans small.
+const hashHexLength = 16
+
 // secretKeyParts are substrings that make an argument name secret-shaped.
 // Matching on the name rather than the value is deliberate — value-shaped
 // detection misses the secrets that do not look like secrets, and a name
@@ -44,12 +70,22 @@ var secretKeyParts = []string{
 type ToolCall struct {
 	Name      string
 	Arguments map[string]string
+	// SafeArguments names the arguments whose values may be recorded
+	// verbatim, as declared by the tool itself via tools.SafeArguments.
+	// Empty means every value is hashed, which is the safe default for a
+	// tool that declared nothing.
+	SafeArguments []string
 }
 
-// ToolResult is how a tool call ended.
+// ToolResult is how a tool call ended. It carries the result's shape and
+// never its text: a search tool's result body is the corpus it searched, and
+// a preview of it is content the span has no business holding.
 type ToolResult struct {
-	// Preview is the result text, truncated and redacted like any argument.
-	Preview string
+	// Bytes is the total size of the result text.
+	Bytes int
+	// Blocks is how many content blocks the tool returned. Zero blocks on a
+	// successful call is the "found nothing" signal worth alerting on.
+	Blocks int
 	// IsError marks a tool that ran and reported failure, as distinct from
 	// one that returned an error to the transport.
 	IsError bool
@@ -95,7 +131,8 @@ func (s *ToolSpan) End(result ToolResult) {
 		return
 	}
 	s.span.SetAttributes(
-		attribute.String("loom.tool.result", safeValue(result.Preview)),
+		attribute.Int("loom.tool.result.bytes", result.Bytes),
+		attribute.Int("loom.tool.result.blocks", result.Blocks),
 		attribute.Bool("loom.tool.is_error", result.IsError),
 	)
 	s.recordToolStatus(result)
@@ -115,11 +152,51 @@ func (s *ToolSpan) recordToolStatus(result ToolResult) {
 
 func toolAttributes(call ToolCall) []attribute.KeyValue {
 	attributes := []attribute.KeyValue{attribute.String("loom.tool.name", call.Name)}
+	safe := safeSet(call.SafeArguments)
 	for _, key := range sortedKeys(call.Arguments) {
-		attributes = append(attributes,
-			attribute.String("loom.tool.arg."+key, argumentValue(key, call.Arguments[key])))
+		attributes = append(attributes, argumentAttributes(key, call.Arguments[key], safe)...)
 	}
 	return attributes
+}
+
+// safeSet indexes the tool's declaration for lookup.
+func safeSet(names []string) map[string]bool {
+	safe := make(map[string]bool, len(names))
+	for _, name := range names {
+		safe[name] = true
+	}
+	return safe
+}
+
+// argumentAttributes renders one argument. A secret-shaped name is redacted
+// whatever the tool declared — a tool cannot opt its own credentials into a
+// span. An undeclared name yields a length, and a hash when a salt exists.
+func argumentAttributes(key, value string, safe map[string]bool) []attribute.KeyValue {
+	if IsSecretKey(key) {
+		return []attribute.KeyValue{attribute.String("loom.tool.arg."+key, RedactedPlaceholder)}
+	}
+	if safe[key] {
+		return []attribute.KeyValue{attribute.String("loom.tool.arg."+key, safeValue(value))}
+	}
+	attributes := []attribute.KeyValue{
+		attribute.Int("loom.tool.arg."+key+".length", len([]rune(value))),
+	}
+	if digest := HashValue(value); digest != "" {
+		attributes = append(attributes, attribute.String("loom.tool.arg."+key+".hash", digest))
+	}
+	return attributes
+}
+
+// HashValue returns a salted, truncated digest of value, or "" when no salt
+// is configured. Exported so anything else deciding what not to record
+// reaches the same answer.
+func HashValue(value string) string {
+	salt := os.Getenv(SaltEnvVar)
+	if salt == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(salt + value))
+	return HashPrefix + hex.EncodeToString(sum[:])[:hashHexLength]
 }
 
 // sortedKeys makes the attribute order deterministic, so two identical
@@ -131,13 +208,6 @@ func sortedKeys(arguments map[string]string) []string {
 	}
 	sort.Strings(keys)
 	return keys
-}
-
-func argumentValue(key, value string) string {
-	if IsSecretKey(key) {
-		return RedactedPlaceholder
-	}
-	return safeValue(value)
 }
 
 // IsSecretKey reports whether an argument name looks like it carries a

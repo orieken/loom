@@ -53,6 +53,17 @@ type otlpAttr struct {
 	} `json:"value"`
 }
 
+// find looks an attribute up without failing. Asserting that something is
+// absent needs a lookup that tolerates absence; attribute cannot, by design.
+func (s otlpSpan) find(key string) *otlpAttr {
+	for _, attr := range s.Attributes {
+		if attr.Key == key {
+			return &attr
+		}
+	}
+	return nil
+}
+
 func (s otlpSpan) attribute(t *testing.T, key string) otlpAttr {
 	t.Helper()
 	for _, attr := range s.Attributes {

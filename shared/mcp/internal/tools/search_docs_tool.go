@@ -117,3 +117,10 @@ func convertReferencesToDocMatches(refs []Reference) []DocMatch {
 func marshalJSON(v any) ([]byte, error) {
 	return json.Marshal(v)
 }
+
+// SafeArgumentNames declares which arguments may be recorded verbatim in
+// telemetry (tools.SafeArguments, guardrail #9). `query` is absent deliberately: it is free text a caller composed, and
+// guardrail #9 keeps it off the span as a hash and a length.
+func (t *SearchDocsTool) SafeArgumentNames() []string {
+	return []string{"docsPath"}
+}

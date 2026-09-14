@@ -123,3 +123,10 @@ func marshalToolResult(logger *logging.Logger, v any, toolName string) (*domain.
 	}
 	return domain.NewTextResult(string(resultJSON)), nil
 }
+
+// SafeArgumentNames declares which arguments may be recorded verbatim in
+// telemetry (tools.SafeArguments, guardrail #9). `query` is absent deliberately: it is free text a caller composed, and
+// guardrail #9 keeps it off the span as a hash and a length.
+func (t *SearchKITool) SafeArgumentNames() []string {
+	return []string{"tags", "domain"}
+}

@@ -37,5 +37,14 @@ Never hardcode API keys, passwords, connection strings, or tokens. Use `.env` pl
 - No OpenTelemetry (OTel) instrumentation logic is allowed inside domain entities or page logic.
 - Traces and spans must only be emitted from the adapter layer or interceptor layer.
 
+## 9. Telemetry Records Properties, Not Payloads
+Guardrail #8 governs *where* instrumentation may live. This governs *what* it may carry.
+- NEVER record raw prompt or completion text, retrieved document bodies, user email/name/account ID, credentials, or a tool argument's value that the code owning it has not declared non-sensitive.
+- Record the properties instead: a salted hash, a length, a count, an ID, a status, a version. A hash answers "is this the same input that failed yesterday?" without storing the input; a token count reveals truncation without storing text.
+- Never emit an unsalted hash of low-entropy input — it is recoverable by brute force. Salted, or nothing.
+- Permission to record a value is **opt-in per field, declared by the code that owns it**. A denylist of sensitive-looking names is not sufficient: it cannot cover a field it has never been told about, and the failure is silent.
+- Span and metric names stay low-cardinality. The variable part goes in a bounded or hashed attribute, never in the name.
+- "We will redact it later" is not available. Once exported, the data is in the vendor's storage, their backups, and their retention — not yours.
+
 ---
 *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*

@@ -76,6 +76,14 @@ allowed to live.
 **Context**: Traces, logs, and metrics must never contain cleartext passwords, tokens, or PII (unmasked
 emails, SSNs) unless explicitly approved and tagged for compliance routing.
 
+**Structure**: `shared/rules/architecture-guardrails.md` **#9** is the hard constraint this pattern
+describes, and it is wider than secrets: it covers prompt and completion text, retrieved document
+bodies, and any field value the code owning it has not declared non-sensitive. Permission to record
+a value is opt-in per field — a denylist of sensitive-looking names cannot cover a field it has
+never been told about. Record a salted hash, a length, a count, an ID, a status, or a version
+instead. loom's own tool-call spans implement this in `internal/telemetry/tool.go`, with the
+per-tool declaration expressed as the optional `tools.SafeArguments` interface.
+
 **Related**: This is the Information Disclosure category of STRIDE (see `security-patterns.md`) applied
 specifically to the observability pipeline — the same category that already flags "PII in OTel traces"
 as a concrete example finding in `security-reviewer.md`'s own threat table. Observability and security
