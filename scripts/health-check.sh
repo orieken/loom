@@ -310,6 +310,38 @@ else
 fi
 echo ""
 
+# --- 7a. Test-repair contract is carried by every test-writing agent --------
+# Fitness function for shared/rules/test-repair-contract.md (roadmap L3.39).
+#
+# The set is pinned rather than computed. Deriving it from "has Write or Edit"
+# binds 20 agents, 12 of which never touch a test file — a rule that most of
+# its audience cannot violate is a rule people skim. Deriving it from "mentions
+# tests in its description" catches 7 and misses `developer`, which writes
+# tests in every TDD cycle and is the agent most likely to delete an assertion
+# under deadline. So: an explicit list, and adding to it is a deliberate edit.
+echo "--- Test Repair Contract (agents that can write a test file) ---"
+CONTRACT_RULE="shared/rules/test-repair-contract.md"
+TEST_WRITING_AGENTS=(
+  developer qa-engineer dx-engineer refactor-engineer
+  test-driven-developer unit-tester api-test-generator visual-qa-engineer
+)
+if [[ -f "$SHARED_DIR/rules/test-repair-contract.md" ]]; then
+  pass "$CONTRACT_RULE exists"
+  for agent in "${TEST_WRITING_AGENTS[@]}"; do
+    agent_file="$SHARED_DIR/agents/${agent}.md"
+    if [[ ! -f "$agent_file" ]]; then
+      fail "pinned test-writing agent '$agent' has no file — update TEST_WRITING_AGENTS or restore it"
+    elif grep -qF "test-repair-contract.md" "$agent_file"; then
+      pass "$agent references the test repair contract"
+    else
+      fail "$agent can write test files but does not reference $CONTRACT_RULE"
+    fi
+  done
+else
+  fail "$CONTRACT_RULE is missing, but agents are bound by it"
+fi
+echo ""
+
 # --- 8. Knowledge Item frontmatter valid ------------------------------------
 echo "--- Knowledge Item Frontmatter (name, tags, domain, created) ---"
 for ki_dir in "$SHARED_DIR/knowledge" "$REPO_DIR/.claude/knowledge"; do
