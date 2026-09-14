@@ -342,6 +342,97 @@ else
 fi
 echo ""
 
+# --- 7b. Exemplar manifest and annotations agree ----------------------------
+# Fitness function for shared/contracts/exemplar-contract.md (roadmap L3.40).
+#
+# An exemplar is marked twice — an annotation on the test, an entry in the
+# manifest — and the contract's answer to "that is two sources of truth" is
+# that this asserts them equal in BOTH directions. A manifest entry whose test
+# lost its annotation is a stale pointer; an annotated test missing from the
+# manifest is invisible to every retrieval path the framework has.
+#
+# Absent manifest is a PASS, not a skip-with-warning: most projects have none,
+# and exemplars are opt-in.
+echo "--- Exemplar Tests (.claude/exemplars.yaml) ---"
+EXEMPLARS="$REPO_DIR/.claude/exemplars.yaml"
+if [[ ! -f "$EXEMPLARS" ]]; then
+  pass "no exemplars declared (opt-in; nothing to check)"
+elif ! command -v python3 >/dev/null 2>&1; then
+  warn "python3 unavailable — cannot validate .claude/exemplars.yaml"
+else
+  exemplar_report=$(python3 - "$EXEMPLARS" "$REPO_DIR" <<'PYEOF'
+import sys, os, re, hashlib
+try:
+    import yaml
+except ImportError:
+    print("SKIP:PyYAML not installed")
+    sys.exit(0)
+
+manifest_path, repo = sys.argv[1], sys.argv[2]
+data = yaml.safe_load(open(manifest_path)) or {}
+entries = data.get("exemplars") or []
+if not entries:
+    print("FAIL:manifest declares no exemplars — delete it or declare one")
+    sys.exit(0)
+
+MARKS = ["@exemplar", "pytest.mark.exemplar", 'Tag("exemplar")', '[Trait("Exemplar"', "// exemplar:"]
+declared_files = set()
+for entry in entries:
+    name = entry.get("test", "<unnamed>")
+    rel = entry.get("file", "")
+    for field in ("test", "file", "language", "level", "demonstrates"):
+        if not entry.get(field):
+            print("FAIL:%s — manifest entry missing required field '%s'" % (name, field))
+    if not rel:
+        continue
+    declared_files.add(rel)
+    full = os.path.join(repo, rel)
+    if not os.path.isfile(full):
+        print("FAIL:%s — declared file does not exist: %s" % (name, rel))
+        continue
+    body = open(full, encoding="utf-8", errors="replace").read()
+    if name not in body:
+        print("FAIL:%s — not found in %s" % (name, rel))
+    if not any(mark in body for mark in MARKS):
+        print("FAIL:%s — %s carries no exemplar annotation" % (name, rel))
+    else:
+        print("PASS:%s (%s/%s)" % (name, entry.get("language"), entry.get("level")))
+    recorded = (entry.get("digest") or "").replace("sha256:", "")
+    if recorded:
+        actual = hashlib.sha256(open(full, "rb").read()).hexdigest()[:len(recorded)]
+        if actual != recorded:
+            print("WARN:%s — %s changed since the digest was recorded; run exemplar-auditor" % (name, rel))
+
+# The other direction: an annotated test the manifest never mentions.
+for root, dirs, files in os.walk(repo):
+    dirs[:] = [d for d in dirs if d not in {".git", "node_modules", "archive", "tests"}]
+    for fname in files:
+        if not re.search(r"(_test\.go|\.spec\.[jt]s|\.test\.[jt]s|test_.*\.py|Tests?\.(java|cs|kt|swift))$", fname):
+            continue
+        full = os.path.join(root, fname)
+        rel = os.path.relpath(full, repo)
+        if rel in declared_files:
+            continue
+        try:
+            body = open(full, encoding="utf-8", errors="replace").read()
+        except OSError:
+            continue
+        if any(mark in body for mark in MARKS):
+            print("FAIL:%s carries an exemplar annotation but is not in the manifest" % rel)
+PYEOF
+)
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    case "$line" in
+      PASS:*) pass "exemplar ${line#PASS:}" ;;
+      WARN:*) warn "exemplar ${line#WARN:}" ;;
+      SKIP:*) warn "exemplar check skipped — ${line#SKIP:}" ;;
+      *)      fail "exemplar ${line#FAIL:}" ;;
+    esac
+  done <<< "$exemplar_report"
+fi
+echo ""
+
 # --- 8. Knowledge Item frontmatter valid ------------------------------------
 echo "--- Knowledge Item Frontmatter (name, tags, domain, created) ---"
 for ki_dir in "$SHARED_DIR/knowledge" "$REPO_DIR/.claude/knowledge"; do
