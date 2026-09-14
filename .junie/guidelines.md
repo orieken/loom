@@ -92,6 +92,29 @@ Reset condition: any edit to the pending artifact resets the gate.
 Reason: deployment failures can cause production downtime; the risk profile requires a human
 decision point regardless of prior stage verdicts.
 
+### 9. Removing Test Coverage
+Action: Marking a test skipped, pending, excluded or quarantined; or retiring/deleting a test.
+Irreversible because: It removes regression signal, and the loss is silent — the suite goes green and
+nothing reports what stopped being checked. A quarantine nobody is forced to revisit is a deletion
+with extra steps.
+Gate: user must say "approve quarantine" or "approve test removal".
+Reset condition: any edit to the pending artifact resets the gate.
+**Policy-eligible: No — Always Human.**
+Reason: the judgement is whether losing this specific signal is acceptable, which requires knowing
+what the test was protecting — a fact no run state carries. A category-A flake (the system really is
+racy and the test is correctly reporting it) is indistinguishable from a category-B one (the test is
+wrong) to any condition an evaluator could check, and quarantining the first is how a real defect
+becomes invisible.
+
+A quarantine approved here MUST carry four fields, or it rots: **owner**, **expiry**, **cause**, and
+the **evidence that would resolve it**. Make the expiry real with a scheduled job that fails the
+build when a quarantine passes its date.
+
+Note the division with `shared/rules/test-repair-contract.md`: that contract *forbids* removing or
+weakening an assertion outright, so there is no gate for it — a rule that says no is cheaper than a
+halt, and would otherwise fire on every legitimate test rewrite. This gate covers only the narrower
+case where a human deliberately accepts the loss.
+
 ---
 
 ## Executor Enforcement (L2.13)
@@ -120,7 +143,7 @@ exists to establish, and it is held by a test, not by this sentence.
 **Honest scope.** This covers `loom run` only. The markdown pipeline (the `deliver-feature` skill
 and every agent invoked through the host platform) and the other prose gates above — commit,
 migration phases, external API mutation, deployment — remain prompt-discipline until those actions
-themselves run under the executor. None of the eight gates above is weakened or replaced by this
+themselves run under the executor. None of the nine gates above is weakened or replaced by this
 section.
 
 **Reset on edit is enforced here (L2.14).** An approval binds to the SHA-256 of every artifact
@@ -131,7 +154,7 @@ a byte-identical artifact changes no digest, so its approval survives: the rule 
 *any re-run*. An approval binds only what was complete when it was given, so work done afterwards
 belongs to the next gate.
 
-Note the scope difference from the eight gates above. Each of those says "any edit to **the pending
+Note the scope difference from the nine gates above. Each of those says "any edit to **the pending
 artifact**", which is the right description for an action-shaped gate — one commit, one migration,
 one deploy. The executor's gates guard pipeline *stages*, so what a human approves there is the
 state of the run rather than a single file, and the binding is correspondingly wider.
@@ -900,6 +923,97 @@ PascalCase for all Swift source files; one public type per file; filename matche
 // Snapshot testing: swift-snapshot-testing
 // Complexity tool: SwiftLint cyclomatic_complexity rule capped at 6
 ```
+
+---
+*Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+
+# Test Repair Contract
+
+**Binds every agent that can write a test file.** A green suite is not the goal. A suite that tells
+you the truth is the goal — and an agent optimising for green has many ways to get there, most of
+which destroy the thing the test was built for.
+
+Each change below is locally reasonable, produces a passing build, and some of them permanently
+remove regression signal. "Make this test pass" and "make this test correct" are different
+instructions, and only one of them is easy.
+
+---
+
+## An agent repairing a failing test MAY
+
+- Update a selector, locator, or identifier to match a renamed or restructured element.
+- Replace a fixed sleep with an explicit wait-for-condition.
+- Widen a timeout, **stating the measured p95 and why the previous value was wrong**. A widening with
+  no measurement behind it is a guess that hides a real slowdown.
+- Correct a genuinely wrong expected value, **only** when accompanied by the source-code evidence
+  that the intended behavior changed. The evidence is the diff or the commit, not an explanation.
+
+## An agent repairing a failing test MAY NOT
+
+- Remove, weaken, or comment out any assertion.
+- Add `try`/`catch`, optional chaining, a broadened matcher, or any construct whose effect is to
+  convert a failure into a pass.
+- Change an assertion's expected value without source-code evidence.
+- Mark a test skipped, pending, excluded, or quarantined. That is a human decision — see
+  `approval-gates.md` gate #9.
+- Retire or delete a test.
+- Change a CI gating threshold — coverage floors, complexity caps, budget limits — to accommodate a
+  failure.
+
+## Every proposed repair MUST state
+
+1. **What the test could catch before, and what it can catch after.** This is the load-bearing
+   requirement. It is very hard to write that sentence honestly about a deleted assertion, and
+   requiring it makes the loss visible in the agent's own words rather than in a diff nobody reads.
+2. **The evidence that the fix is a fix and not a mask** — the source change, the measurement, or the
+   reproduction.
+
+---
+
+## Why a plausible rationale is not enough
+
+The dangerous diff is not the careless one. It is this one:
+
+```diff
+  test('rejects orders over the credit limit', async () => {
+    const order = await createOrder({ total: 5000, creditLimit: 1000 });
+-   expect(order.status).toBe('REJECTED');
+-   expect(order.rejectionReason).toBe('CREDIT_LIMIT_EXCEEDED');
++   expect(order.status).toBeDefined();
+  });
+```
+
+*"The test was failing intermittently because `rejectionReason` is populated asynchronously and is
+sometimes null when asserted. Relaxing the assertion removes the race."*
+
+That rationale is **accurate**. The diagnosis is correct. And the fix converts a test that verified
+credit-limit rejection into one that verifies `createOrder` returns an object — while the real race
+it correctly identified stays in the product, now unobserved.
+
+The correct action is to escalate: the test found a genuine defect. "Does the explanation sound
+reasonable?" is not a sufficient review standard, which is why this contract asks what was lost
+rather than whether the change was justified.
+
+---
+
+## Where this applies
+
+- **Repairing an existing test** — every clause above.
+- **Writing a new test** — the MAY NOT list still binds. A new test that cannot fail is the same
+  defect arriving earlier; `code-reviewer` asks whether it would fail (see its Test Evidence
+  criterion) and a `NO` blocks.
+- **Refactoring** — a refactor that changes a test file has moved the safety net it was being
+  verified against. Say so explicitly; do not let it pass as part of the refactor.
+
+## What this contract is not
+
+It is not a claim that these repairs are usually wrong. Selector healing against a redesigned
+frontend is legitimate, saves real time, and meets every clause here. The line is clean: repair the
+*path to* the assertion freely, and never the assertion itself. Healing that touches evidence is not
+a category that should exist.
+
+It is also not a mechanism. The reviewer is the control; this contract makes the review cheap by
+saying in advance what to look for.
 
 ---
 *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*

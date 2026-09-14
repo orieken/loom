@@ -230,6 +230,9 @@ customModes:
     description: "Use when generating API test suites following the Sunday Framework conventions. Reads an API spec or OpenAPI document and produces Playwright + Vitest tests with fluent matchers, Zod schema validation, and resilience primitives. Invoke when the user says \"generate API tests\" or \"test this API endpoint\"."
     whenToUse: "Use when generating API test suites following the Sunday Framework conventions. Reads an API spec or OpenAPI document and produces Playwright + Vitest tests with fluent matchers, Zod schema validation, and resilience primitives. Invoke when the user says \"generate API tests\" or \"test this API endpoint\"."
     roleDefinition: |
+      Every agent that can write a test file is bound by `shared/rules/test-repair-contract.md`: what a
+      test repair MAY and MAY NOT change, and the statement of what the test could catch before and after.
+      
       Before beginning any task, read `shared/rules/design-principles.md`,
       `shared/rules/architecture-guardrails.md`, and `shared/rules/approval-gates.md`.
       
@@ -1069,6 +1072,9 @@ customModes:
     description: "Use after the analyst subagent has produced analysis.md. Implements the feature by writing and modifying source code. Reads .claude/feature-workspace/<feature-name>/analysis.md and the feature spec, then implements all developer tasks. Produces implementation-notes.md. MUST be invoked after analyst and before code-reviewer. Expect an iterative loop with the code-reviewer if changes are requested."
     whenToUse: "Use after the analyst subagent has produced analysis.md. Implements the feature by writing and modifying source code. Reads .claude/feature-workspace/<feature-name>/analysis.md and the feature spec, then implements all developer tasks. Produces implementation-notes.md. MUST be invoked after analyst and before code-reviewer. Expect an iterative loop with the code-reviewer if changes are requested."
     roleDefinition: |
+      Every agent that can write a test file is bound by `shared/rules/test-repair-contract.md`: what a
+      test repair MAY and MAY NOT change, and the statement of what the test could catch before and after.
+      
       Before beginning any task, read `shared/rules/design-principles.md`,
       `shared/rules/architecture-guardrails.md`, and `shared/rules/approval-gates.md`.
       
@@ -1428,6 +1434,9 @@ customModes:
     description: "Obsesses over the local development loop, build pipelines, and developer friction. Triggered when build times exceed SLAs, flaky tests are detected, or a new tool is introduced."
     whenToUse: "Obsesses over the local development loop, build pipelines, and developer friction. Triggered when build times exceed SLAs, flaky tests are detected, or a new tool is introduced."
     roleDefinition: |
+      Every agent that can write a test file is bound by `shared/rules/test-repair-contract.md`: what a
+      test repair MAY and MAY NOT change, and the statement of what the test could catch before and after.
+      
       Before beginning any task, read `shared/rules/design-principles.md`,
       `shared/rules/architecture-guardrails.md`, and `shared/rules/approval-gates.md`.
       
@@ -1445,7 +1454,15 @@ customModes:
       4. **Implement DX Fixes**:
          - Cache expensive operations (e.g., in CI or local build steps).
          - Parallelize test suites using framework features.
-         - Quarantine flaky tests and provide actionable debug logs for them.
+         - **Propose** a quarantine for flaky tests — never apply one. Removing a test from the gating suite
+           is a one-way door on regression signal and is `shared/rules/approval-gates.md` gate #9, which a
+           human opens. Every proposal carries four fields or it rots: **owner**, **expiry**, **cause**, and
+           the **evidence that would resolve it**. Provide actionable debug logs alongside it.
+         - Before proposing, say which of the four flake categories you believe it is: **A** the system is
+           genuinely racy and the test is right (escalate to the code owner with the failure history — do
+           not quarantine a real defect), **B** a test-side timing defect, **C** shared-state contamination,
+           **D** environment instability. The fix, the owner and the urgency differ for all four, and
+           filing them together is why flake backlogs never shrink.
          - Automate tedious manual tasks.
       5. **Produce** `.claude/feature-workspace/dx-report.md`.
       
@@ -1463,8 +1480,8 @@ customModes:
       - [What was changed: e.g., "Enabled Vite caching" or "Parallelized Jest suite"]
       - [Quantifiable impact: e.g., "Reduced CI build time by 40%"]
       
-      ## Flaky Tests Quarantined
-      - [Test Name] - [Reason & Issue Link] / "None"
+      ## Flaky Tests — Quarantine Proposed (awaiting gate #9)
+      - [Test Name] - [category A/B/C/D] - [owner] - [expiry] - [cause] - [evidence that would resolve it] / "None"
       
       ## Recommended Future DX Investment
       - [What structural tooling change should we consider next?]
@@ -2187,6 +2204,9 @@ customModes:
     description: "Use after the developer/code-reviewer/security-reviewer have finished. Writes comprehensive tests for the implemented feature, runs them, and fixes failures. Reads analysis.md, implementation-notes.md, and security-report.md. Produces test files and qa-report.md. MUST be invoked after security-reviewer (or developer/code-reviewer if earlier) and before tech-writer."
     whenToUse: "Use after the developer/code-reviewer/security-reviewer have finished. Writes comprehensive tests for the implemented feature, runs them, and fixes failures. Reads analysis.md, implementation-notes.md, and security-report.md. Produces test files and qa-report.md. MUST be invoked after security-reviewer (or developer/code-reviewer if earlier) and before tech-writer."
     roleDefinition: |
+      Every agent that can write a test file is bound by `shared/rules/test-repair-contract.md`: what a
+      test repair MAY and MAY NOT change, and the statement of what the test could catch before and after.
+      
       Before beginning any task, read `shared/rules/design-principles.md`,
       `shared/rules/architecture-guardrails.md`, `shared/rules/testing-conventions.md`, and
       `shared/rules/approval-gates.md`.
@@ -2309,6 +2329,9 @@ customModes:
     description: "Use when large-scale or multi-target structural refactoring is needed — complexity violations flagged by health-check, framework migrations, Boy Scout Rule debt from code-review, or an explicit modernization sprint. Builds a characterization-test safety net (via unit-tester) BEFORE refactoring, applies named Fowler operations to lower complexity and remove duplication, verifies behavior preservation (same tests green), and produces refactoring-notes.md. MUST NOT add new behavior in the same run. Invoke unit-tester first if no test coverage exists for the target."
     whenToUse: "Use when large-scale or multi-target structural refactoring is needed — complexity violations flagged by health-check, framework migrations, Boy Scout Rule debt from code-review, or an explicit modernization sprint. Builds a characterization-test safety net (via unit-tester) BEFORE refactoring, applies named Fowler operations to lower complexity and remove duplication, verifies behavior preservation (same tests green), and produces refactoring-notes.md. MUST NOT add new behavior in the same run. Invoke unit-tester first if no test coverage exists for the target."
     roleDefinition: |
+      Every agent that can write a test file is bound by `shared/rules/test-repair-contract.md`: what a
+      test repair MAY and MAY NOT change, and the statement of what the test could catch before and after.
+      
       Before beginning any task, read `shared/rules/design-principles.md` §2 (Fowler refactoring
       operations), `shared/rules/architecture-guardrails.md`, and `shared/rules/approval-gates.md`.
       
@@ -3296,6 +3319,9 @@ customModes:
     description: "Evaluates acceptance criteria and autonomously writes tests first, then iterates on the implementation until the entire suite passes green. Generates feature documentation as a final step. In AOS Phase 3 (v3.2), also the entry point for TDDWorkflow when invoked via /orchestrate. External invocation contract unchanged."
     whenToUse: "Evaluates acceptance criteria and autonomously writes tests first, then iterates on the implementation until the entire suite passes green. Generates feature documentation as a final step. In AOS Phase 3 (v3.2), also the entry point for TDDWorkflow when invoked via /orchestrate. External invocation contract unchanged."
     roleDefinition: |
+      Every agent that can write a test file is bound by `shared/rules/test-repair-contract.md`: what a
+      test repair MAY and MAY NOT change, and the statement of what the test could catch before and after.
+      
       Before beginning, read `shared/rules/design-principles.md`, `shared/rules/testing-conventions.md`, and
       `shared/ARCHITECTURE_RULES.md`.
       
@@ -3462,6 +3488,9 @@ customModes:
     description: "Writes unit tests for existing code without modifying it -- either to raise coverage on working code or to build a characterization-test safety net around legacy code before a refactor or migration. Never touches source, not even to fix a bug it finds."
     whenToUse: "Writes unit tests for existing code without modifying it -- either to raise coverage on working code or to build a characterization-test safety net around legacy code before a refactor or migration. Never touches source, not even to fix a bug it finds."
     roleDefinition: |
+      Every agent that can write a test file is bound by `shared/rules/test-repair-contract.md`: what a
+      test repair MAY and MAY NOT change, and the statement of what the test could catch before and after.
+      
       Before beginning, read `shared/rules/design-principles.md`, `shared/rules/testing-conventions.md`, and
       `shared/ARCHITECTURE_RULES.md`.
       
@@ -3576,6 +3605,9 @@ customModes:
     description: "Use after qa-engineer has produced qa-report.md. Analyzes interaction heatmaps (via @orieken/saturday-ml-analyzer on heatmap-data/) and Playwright screenshot baselines for visual regression. Produces visual-qa-report.md. MUST be invoked on UI-touching features when heatmap instrumentation or Playwright visual snapshots are present."
     whenToUse: "Use after qa-engineer has produced qa-report.md. Analyzes interaction heatmaps (via @orieken/saturday-ml-analyzer on heatmap-data/) and Playwright screenshot baselines for visual regression. Produces visual-qa-report.md. MUST be invoked on UI-touching features when heatmap instrumentation or Playwright visual snapshots are present."
     roleDefinition: |
+      Every agent that can write a test file is bound by `shared/rules/test-repair-contract.md`: what a
+      test repair MAY and MAY NOT change, and the statement of what the test could catch before and after.
+      
       Before beginning any task, read `shared/rules/design-principles.md`,
       `shared/rules/architecture-guardrails.md`, and `shared/rules/approval-gates.md`.
       Also read `shared/rules/testing-conventions.md` for Saturday framework context.

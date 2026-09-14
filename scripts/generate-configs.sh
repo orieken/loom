@@ -104,6 +104,7 @@ collect_rules() {
       "$SHARED_DIR/rules/architecture-guardrails.md" \
       "$SHARED_DIR/rules/design-principles.md" \
       "$SHARED_DIR/rules/memory-trust-boundary.md" \
+      "$SHARED_DIR/rules/test-repair-contract.md" \
       "$SHARED_DIR/rules/testing-conventions.md"; do
       [[ -f "$rule_file" ]] || continue
       result+=$'\n'"$(cat "$rule_file")"$'\n'
@@ -260,6 +261,11 @@ $(extract_rule_content "$SHARED_DIR/ARCHITECTURE_RULES.md")"
     "Testing framework rules — Saturday (E2E) and Sunday (API) conventions" \
     "false" '["**/*.spec.*", "**/*.test.*", "**/*.feature", "**/steps/**"]' \
     "$(testing_rules_body)"
+
+  generate_mdc "$rules_dir/test-repair-contract.mdc" \
+    "Test repair contract — what an agent MAY and MAY NOT change when repairing a failing test" \
+    "false" '["**/*.spec.*", "**/*.test.*", "**/*.feature", "**/steps/**", "**/test_*.py", "**/*_test.go"]' \
+    "$(extract_rule_content "$SHARED_DIR/rules/test-repair-contract.md")"
 
   generate_mdc "$rules_dir/go-backend.mdc" \
     "Go backend conventions — Clean Architecture, error handling, migrations" \

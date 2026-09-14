@@ -16,6 +16,24 @@ Semantic-ish, not strict SemVer:
 When you bump an agent's `version:` frontmatter field, add a row under a new dated heading here in the same
 commit — the pre-commit hook checks for exactly this.
 
+## 2026-09-13 — every test-writing agent is bound by the test repair contract (roadmap L3.39)
+
+New rule `shared/rules/test-repair-contract.md` and approval gate #9 (Removing Test Coverage). Before
+this, nothing in the framework stopped an agent making a suite green by deleting the assertion that
+was failing — the only counter-language was one line in `qa-engineer`, binding one agent, enforced by
+nothing.
+
+| Agent | Version | Change |
+|---|---|---|
+| dx-engineer | 1.0.1 -> 1.1.0 | Minor, and the reason this item existed: step 4 said "Quarantine flaky tests", with Write and Edit and no gate — an unsupervised one-way door on regression signal. It now **proposes** a quarantine carrying owner, expiry, cause and resolving evidence, and a human applies it at gate #9. Also names the four flake categories, because a category-A flake is a product defect the test correctly found and quarantining it hides a real bug |
+| developer | 1.1.0 -> 1.2.0 | Minor: bound by the test repair contract |
+| qa-engineer | 1.4.0 -> 1.5.0 | Minor: bound by the test repair contract. Its existing "never skip a test just to make the suite green" line now has a rule behind it instead of standing alone |
+| refactor-engineer | 1.1.0 -> 1.2.0 | Minor: bound by the test repair contract — a refactor that changes a test file has moved the net it was being verified against |
+| test-driven-developer | 1.3.0 -> 1.4.0 | Minor: bound by the test repair contract |
+| unit-tester | 1.3.0 -> 1.4.0 | Minor: bound by the test repair contract |
+| api-test-generator | 1.0.1 -> 1.1.0 | Minor: bound by the test repair contract |
+| visual-qa-engineer | 1.0.0 -> 1.1.0 | Minor: bound by the test repair contract |
+
 ## 2026-09-13 — the reviewer asks whether a test would fail (roadmap L3.41)
 
 | Agent | Version | Change |

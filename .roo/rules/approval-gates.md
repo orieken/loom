@@ -83,6 +83,29 @@ Reset condition: any edit to the pending artifact resets the gate.
 Reason: deployment failures can cause production downtime; the risk profile requires a human
 decision point regardless of prior stage verdicts.
 
+### 9. Removing Test Coverage
+Action: Marking a test skipped, pending, excluded or quarantined; or retiring/deleting a test.
+Irreversible because: It removes regression signal, and the loss is silent — the suite goes green and
+nothing reports what stopped being checked. A quarantine nobody is forced to revisit is a deletion
+with extra steps.
+Gate: user must say "approve quarantine" or "approve test removal".
+Reset condition: any edit to the pending artifact resets the gate.
+**Policy-eligible: No — Always Human.**
+Reason: the judgement is whether losing this specific signal is acceptable, which requires knowing
+what the test was protecting — a fact no run state carries. A category-A flake (the system really is
+racy and the test is correctly reporting it) is indistinguishable from a category-B one (the test is
+wrong) to any condition an evaluator could check, and quarantining the first is how a real defect
+becomes invisible.
+
+A quarantine approved here MUST carry four fields, or it rots: **owner**, **expiry**, **cause**, and
+the **evidence that would resolve it**. Make the expiry real with a scheduled job that fails the
+build when a quarantine passes its date.
+
+Note the division with `shared/rules/test-repair-contract.md`: that contract *forbids* removing or
+weakening an assertion outright, so there is no gate for it — a rule that says no is cheaper than a
+halt, and would otherwise fire on every legitimate test rewrite. This gate covers only the narrower
+case where a human deliberately accepts the loss.
+
 ---
 
 ## Executor Enforcement (L2.13)
@@ -111,7 +134,7 @@ exists to establish, and it is held by a test, not by this sentence.
 **Honest scope.** This covers `loom run` only. The markdown pipeline (the `deliver-feature` skill
 and every agent invoked through the host platform) and the other prose gates above — commit,
 migration phases, external API mutation, deployment — remain prompt-discipline until those actions
-themselves run under the executor. None of the eight gates above is weakened or replaced by this
+themselves run under the executor. None of the nine gates above is weakened or replaced by this
 section.
 
 **Reset on edit is enforced here (L2.14).** An approval binds to the SHA-256 of every artifact
@@ -122,7 +145,7 @@ a byte-identical artifact changes no digest, so its approval survives: the rule 
 *any re-run*. An approval binds only what was complete when it was given, so work done afterwards
 belongs to the next gate.
 
-Note the scope difference from the eight gates above. Each of those says "any edit to **the pending
+Note the scope difference from the nine gates above. Each of those says "any edit to **the pending
 artifact**", which is the right description for an action-shaped gate — one commit, one migration,
 one deploy. The executor's gates guard pipeline *stages*, so what a human approves there is the
 state of the run rather than a single file, and the binding is correspondingly wider.

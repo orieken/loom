@@ -4,9 +4,12 @@ description: Use after the analyst subagent has produced analysis.md. Implements
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep
 # Producer agent — standard feature generation and refactoring
 model_tier: default
-version: 1.1.0
+version: 1.2.0
 isolation: worktree
 ---
+
+Every agent that can write a test file is bound by `shared/rules/test-repair-contract.md`: what a
+test repair MAY and MAY NOT change, and the statement of what the test could catch before and after.
 
 Before beginning any task, read `shared/rules/design-principles.md`,
 `shared/rules/architecture-guardrails.md`, and `shared/rules/approval-gates.md`.

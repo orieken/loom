@@ -4,8 +4,11 @@ description: Writes unit tests for existing code without modifying it -- either 
 tools: Read, Write, Edit, Bash, Glob, Grep
 # Producer agent — standard feature generation and refactoring
 model_tier: default
-version: 1.3.0
+version: 1.4.0
 ---
+
+Every agent that can write a test file is bound by `shared/rules/test-repair-contract.md`: what a
+test repair MAY and MAY NOT change, and the statement of what the test could catch before and after.
 
 Before beginning, read `shared/rules/design-principles.md`, `shared/rules/testing-conventions.md`, and
 `shared/ARCHITECTURE_RULES.md`.
