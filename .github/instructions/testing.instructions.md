@@ -136,6 +136,14 @@ Scenario: PROJ-123 - user can register with valid credentials
 - **Acceptance** and **E2E/UI**: the Gherkin scenario IS the AC. Tag with issue-ref; scenario name/text
   IS the AC. Nothing further needed.
 
+### Exemplar tests
+
+One test per `(language, level)` pair may additionally be marked as the **exemplar** — the one to
+read before writing a new test of that kind. It is a real test in the suite, marked in place with a
+language-native `exemplar` tag alongside its issue/AC annotation, and declared in
+`.claude/exemplars.yaml`. Per-language marks, the manifest schema and the disqualifiers live in
+`shared/contracts/exemplar-contract.md`. Not "golden" — `DOMAIN_DICTIONARY.md` reserves that word.
+
 ### Enforcement
 
 Documented convention only — no CI fitness function today. Matches how Sandi Metz's class/method line

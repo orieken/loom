@@ -69,3 +69,4 @@ retrieval-evaluator/actual-output.md
 rule-auditor/actual-output.md
 tool-validator/actual-output.md
 refactor-engineer/actual-output.md
+exemplar-auditor/actual-output.md

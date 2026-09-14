@@ -1,10 +1,17 @@
 {
-  "optionalPaths": [".claude/knowledge/", "docs/features/*/summary.md"],
+  "optionalPaths": [
+    ".claude/knowledge/",
+    "docs/features/*/summary.md",
+    ".claude/exemplars.yaml"
+  ],
   "sources": [
     {
       "name": "knowledge-items",
       "type": "KI",
-      "paths": ["shared/knowledge/", ".claude/knowledge/"],
+      "paths": [
+        "shared/knowledge/",
+        ".claude/knowledge/"
+      ],
       "owner": "memory-engineer (curation, dedup, expiration) + create-ki (authoring)",
       "portable": {
         "shared/knowledge/": true,
@@ -13,8 +20,16 @@
       "indexable": true,
       "retrievalBackend": "lexical",
       "format": "markdown-frontmatter",
-      "frontmatterFields": ["name", "tags", "domain", "created"],
-      "syncFrontmatterFields": ["sync_source", "sync_pulled"],
+      "frontmatterFields": [
+        "name",
+        "tags",
+        "domain",
+        "created"
+      ],
+      "syncFrontmatterFields": [
+        "sync_source",
+        "sync_pulled"
+      ],
       "notes": "Portable KIs apply across any project using this framework; project KIs are local to one codebase. KIs pulled from an org knowledge-hub repo carry sync_source (org repo URL) and sync_pulled (ISO date) frontmatter fields. See shared/knowledge/README.md and docs/adrs/ADR-003-enterprise-memory-sync.md.",
       "enterpriseSync": {
         "protocol": "separate-git-repo",
@@ -26,97 +41,132 @@
           "shared/knowledge/": "org-repo-wins",
           ".claude/knowledge/": "local-wins"
         },
-        "authStrategies": ["SSH (primary)", "HTTPS + MEMORY_SYNC_TOKEN env var (fallback)"],
-        "pushFlow": "PR only — never direct commit to org repo"
+        "authStrategies": [
+          "SSH (primary)",
+          "HTTPS + MEMORY_SYNC_TOKEN env var (fallback)"
+        ],
+        "pushFlow": "PR only \u2014 never direct commit to org repo"
       }
     },
     {
       "name": "adrs",
       "type": "ADR",
-      "paths": ["docs/adrs/"],
-      "owner": "adr / badr skills (authoring), memory-engineer (staleness review only — ADRs are a historical record, never edited after the fact)",
+      "paths": [
+        "docs/adrs/"
+      ],
+      "owner": "adr / badr skills (authoring), memory-engineer (staleness review only \u2014 ADRs are a historical record, never edited after the fact)",
       "portable": false,
       "indexable": true,
       "retrievalBackend": "lexical",
       "format": "markdown",
-      "notes": "Answers 'why did we choose X over Y' — never expired or deleted, only superseded by a newer ADR that references it."
+      "notes": "Answers 'why did we choose X over Y' \u2014 never expired or deleted, only superseded by a newer ADR that references it."
     },
     {
       "name": "feature-archive",
       "type": "Feature Delivery Record",
-      "paths": ["docs/features/"],
-      "owner": "deliver-feature (writes), memory-engineer (does not curate — this is an immutable historical record, not memory subject to expiration)",
+      "paths": [
+        "docs/features/"
+      ],
+      "owner": "deliver-feature (writes), memory-engineer (does not curate \u2014 this is an immutable historical record, not memory subject to expiration)",
       "portable": false,
       "indexable": true,
       "retrievalBackend": "lexical",
       "format": "markdown (multiple files per feature directory)",
-      "notes": "Retrieved via context-engineer's bounded-context grep (recency-independent) and analyst's 3-most-recent scan (recency-based) — see docs/runbooks/context-engineering.md section 2."
+      "notes": "Retrieved via context-engineer's bounded-context grep (recency-independent) and analyst's 3-most-recent scan (recency-based) \u2014 see docs/runbooks/context-engineering.md section 2."
     },
     {
       "name": "feature-archive-summaries",
       "type": "Retrieval Surrogate",
-      "paths": ["docs/features/*/summary.md"],
-      "owner": "deliver-feature (writes via summarize-artifact --persist), memory-engineer (does not curate — surrogates are overwritten on re-delivery, not manually edited)",
+      "paths": [
+        "docs/features/*/summary.md"
+      ],
+      "owner": "deliver-feature (writes via summarize-artifact --persist), memory-engineer (does not curate \u2014 surrogates are overwritten on re-delivery, not manually edited)",
       "portable": false,
       "indexable": true,
       "retrievalBackend": "lexical",
       "format": "markdown with HTML retrieval-surrogate comment header",
-      "notes": "Written by deliver-feature step 37a after all pipeline artifacts are persisted. These are the files that future BM25/vector retrieval tiers should index first — they contain a ~200-word distillation of the feature's scope and outcome. The HTML comment at the top carries machine-readable metadata (retrieval-surrogate: true, feature, source-artifact, generated, index-first). Lexical search over these surrogates is faster than grepping full artifact sets; vector tiers that land later should build their initial index from these files rather than raw analysis.md files."
+      "notes": "Written by deliver-feature step 37a after all pipeline artifacts are persisted. These are the files that future BM25/vector retrieval tiers should index first \u2014 they contain a ~200-word distillation of the feature's scope and outcome. The HTML comment at the top carries machine-readable metadata (retrieval-surrogate: true, feature, source-artifact, generated, index-first). Lexical search over these surrogates is faster than grepping full artifact sets; vector tiers that land later should build their initial index from these files rather than raw analysis.md files."
     },
     {
       "name": "incident-records",
       "type": "Incident Record",
-      "paths": ["docs/incidents/"],
-      "owner": "on-call (response + timeline), five-whys (root cause chain) — both write here; human closes each record",
+      "paths": [
+        "docs/incidents/"
+      ],
+      "owner": "on-call (response + timeline), five-whys (root cause chain) \u2014 both write here; human closes each record",
       "portable": false,
       "indexable": true,
       "retrievalBackend": "lexical",
       "format": "markdown",
-      "notes": "Permanent production incident records. Key fields: 'Affected Feature' links to docs/features/<name>/ for incident-feature pair mining by extract-lessons; 'Candidate Records' uses promote-memory's exact format so the gated promotion machinery can consume incident-sourced lessons unchanged. Established by Epic 67. Never deleted — Status field updated to Resolved when incident closes."
+      "notes": "Permanent production incident records. Key fields: 'Affected Feature' links to docs/features/<name>/ for incident-feature pair mining by extract-lessons; 'Candidate Records' uses promote-memory's exact format so the gated promotion machinery can consume incident-sourced lessons unchanged. Established by Epic 67. Never deleted \u2014 Status field updated to Resolved when incident closes."
     },
     {
       "name": "lessons-learned",
       "type": "Lesson",
-      "paths": ["docs/lessons-learned/"],
+      "paths": [
+        "docs/lessons-learned/"
+      ],
       "owner": "extract-lessons (authoring, cross-delivery patterns), promote-memory (authoring, single-delivery triage)",
       "portable": false,
       "indexable": true,
       "retrievalBackend": "lexical",
       "format": "markdown",
-      "notes": "Gated by shared/rules/approval-gates.md — a lesson becoming a rule/prompt change requires explicit human approval."
+      "notes": "Gated by shared/rules/approval-gates.md \u2014 a lesson becoming a rule/prompt change requires explicit human approval."
     },
     {
       "name": "domain-dictionary",
       "type": "Glossary",
-      "paths": ["shared/DOMAIN_DICTIONARY.md"],
-      "owner": "analyst (adds new terms), memory-engineer (flags orphaned/unused terms — see scripts/health-check.sh)",
+      "paths": [
+        "shared/DOMAIN_DICTIONARY.md"
+      ],
+      "owner": "analyst (adds new terms), memory-engineer (flags orphaned/unused terms \u2014 see scripts/health-check.sh)",
       "portable": true,
       "indexable": true,
       "retrievalBackend": "lexical",
       "format": "markdown table",
-      "notes": "Never expired — terms are removed only when the concept they name is fully removed from the codebase."
+      "notes": "Never expired \u2014 terms are removed only when the concept they name is fully removed from the codebase."
     },
     {
       "name": "team-topology",
       "type": "Topology",
-      "paths": ["shared/TEAM_TOPOLOGY.md"],
+      "paths": [
+        "shared/TEAM_TOPOLOGY.md"
+      ],
       "owner": "architect (reads), human (fills in team names/ownership)",
       "portable": true,
       "indexable": true,
       "retrievalBackend": "lexical",
       "format": "markdown table",
       "notes": "Registry entry exists for completeness; this is org-structure data, not a candidate for the promotion/expiration lifecycle."
+    },
+    {
+      "name": "test-exemplars",
+      "type": "Exemplar Test",
+      "paths": [
+        ".claude/exemplars.yaml"
+      ],
+      "owner": "exemplar-auditor (audit) + the project's own engineers (authoring)",
+      "portable": {
+        ".claude/exemplars.yaml": false
+      },
+      "indexable": true,
+      "retrievalBackend": "lexical",
+      "format": "yaml manifest pointing at real test files in the project's own suite",
+      "notes": "Project-local by design: an exemplar is this project's proof it follows the conventions, so nothing here is portable between repositories. The manifest carries the metadata (language, level, demonstrates) because the retrieval pre-filter has no frontmatter to read \u2014 a test file is source code, not markdown. Declared in optionalPaths because most projects have none and a missing manifest must not fail health-check. See shared/contracts/exemplar-contract.md."
     }
   ],
   "retrievalBackends": {
     "lexical": {
       "status": "active",
-      "description": "Tag/domain pre-filter over frontmatter, then full-body LLM judgment read. No embeddings, no vector index — see search-ki's own guardrails for why this is a deliberate choice, not a gap.",
-      "usedBy": ["search-ki", "query-memory"]
+      "description": "Tag/domain pre-filter over frontmatter, then full-body LLM judgment read. No embeddings, no vector index \u2014 see search-ki's own guardrails for why this is a deliberate choice, not a gap.",
+      "usedBy": [
+        "search-ki",
+        "query-memory"
+      ]
     },
     "lightrag": {
       "status": "disabled",
-      "description": "Optional future retrieval backend. Markdown remains canonical regardless of status — any LightRAG result must be verified against its source markdown file before being trusted. See docs/runbooks/lightrag-integration.md for when and how to enable this; not built yet because no source in this registry has outgrown lexical search.",
+      "description": "Optional future retrieval backend. Markdown remains canonical regardless of status \u2014 any LightRAG result must be verified against its source markdown file before being trusted. See docs/runbooks/lightrag-integration.md for when and how to enable this; not built yet because no source in this registry has outgrown lexical search.",
       "usedBy": []
     }
   }

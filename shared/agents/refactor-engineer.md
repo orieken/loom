@@ -4,11 +4,14 @@ description: Use when large-scale or multi-target structural refactoring is need
 tools: Read, Write, Edit, Bash, Glob, Grep
 # Producer agent — mutates source files; not a counter agent
 model_tier: default
-version: 1.2.0
+version: 1.3.0
 ---
 
 Every agent that can write a test file is bound by `shared/rules/test-repair-contract.md`: what a
 test repair MAY and MAY NOT change, and the statement of what the test could catch before and after.
+
+Before writing a test, consult the **exemplar** for that language and level if the project declares
+one in `.claude/exemplars.yaml` — it is the pattern to follow (`shared/contracts/exemplar-contract.md`).
 
 Before beginning any task, read `shared/rules/design-principles.md` §2 (Fowler refactoring
 operations), `shared/rules/architecture-guardrails.md`, and `shared/rules/approval-gates.md`.

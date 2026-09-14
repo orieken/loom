@@ -2462,6 +2462,35 @@ The deterministic check is that every test-touching agent carries the contract �
 ### L3.40 — Exemplar tests: the pattern an agent copies, kept honest
 **Workstream**: KERNEL · **Effort**: L · **Blocked by**: L3.39, L3.41 · **Blocks**: none · *(raised 2026-09-13)*
 
+**SHIPPED (concept scope)** 2026-09-14 — `shared/contracts/exemplar-contract.md`,
+`.claude/exemplars.yaml`, the `test-exemplars` registry source, the `exemplar-auditor` counter agent,
+and the eight test-writing agents told to consult the exemplar for their language and level.
+**The executor barrier is deliberately not in it — see L3.46.**
+
+**What the scope split bought.** §9 of this item left protection open, and it stayed open: marking a
+test as an exemplar does not yet stop an agent editing it. Gating reverses `posture.go`'s explicit
+observe-don't-gate stance, and that reversal deserves its own argument rather than riding inside a
+large increment — particularly before anyone knows how often an exemplar legitimately changes, which
+is exactly what the audit trail will say.
+
+**loom declares three of its own**, against the earlier "consumer projects only" instinct. A
+mechanism with no live users is one nobody has verified: the manifest, the annotation convention and
+the health-check agreement were all exercised against real files rather than a fixture. The set is
+bounded by what this repository actually tests — Go at unit and integration, nothing invented for
+languages it does not use.
+
+**Two costs paid, as predicted.** Adding a fortieth agent cascaded further than the item guessed:
+config regeneration, a golden-file fixture with a real baseline, inventory counts in four documents,
+and a Go test pinning the agent count. And the exemplar section in `testing-conventions.md` pushed
+the core rules bundle 40 bytes past the ceiling raised only the day before — which is the tight
+margin working as intended. The fix was not another raise: the per-language mark table moved into
+the contract, where detail belongs, leaving a pointer in the rule every agent loads.
+
+**What is enforced, and what is not.** `health-check` asserts the manifest and the annotations agree
+in both directions, and the mechanical disqualifiers are checkable. Whether an exemplar is *good*
+stays judgment — `exemplar-auditor` reads it against the contract and reports, and nothing verifies
+that judgment was made honestly. The contract says so rather than implying the auditor settles it.
+
 1. **Problem**: every agent here that writes a test — `qa-engineer`, `test-driven-developer`,
    `unit-tester`, `api-test-generator` — learns the house pattern from prose.
    `testing-conventions.md` states rules; `docs/patterns/testing-pyramid.md` states philosophy;
@@ -2711,6 +2740,31 @@ behaviour is current behaviour. The discipline that holds is the one already use
 threshold to accommodate a failure, and that rule held here: the agent measured, reported that the
 drift predated its own work, and stopped. A human made the call. Recording that because the contract
 working as intended is easier to see in an example than in its own prose.
+
+
+### L3.46 — Decide whether an exemplar edit halts a run
+**Workstream**: KERNEL · **Effort**: M · **Blocked by**: L3.40 (shipped) · **Blocks**: none · *(raised 2026-09-14)*
+
+1. **Problem**: an exemplar is declared, annotated, registered and audited — and an agent can still
+   edit one. L3.40 shipped detection (a digest, and a flag when it changes), not protection. The
+   question it deferred is whether editing an exemplar should halt the run.
+2. **The mechanism already exists**, which is why this is a decision rather than a build: L2.24's
+   `WorkTree.ChangedPaths()` lists every changed path, L3.30 already consumes it after every stage,
+   and the exemplar manifest is a path list. Matching one against the other is small.
+3. **What makes it a real argument**: `internal/orchestrator/posture.go:37-40` says the check
+   "observes a stage rather than gating one", deliberately — L3.30's finding was that the unreviewed
+   edits were *correct*. A barrier here reverses that posture for one class of file. That may well be
+   right, since an exemplar an agent can quietly edit is not protected; but it is a different
+   philosophy of enforcement from the one beside it, and the two should be reconciled out loud.
+4. **Evidence to gather first**: how often does an exemplar legitimately change? The digest flag
+   L3.40 ships produces exactly that number. Decide with it rather than before it.
+5. **If it gates**, it is approval gate #9's shape, not a new one — a human deliberately accepting a
+   change to something the project declared load-bearing.
+6. **Target files**: `internal/orchestrator/posture.go`, `shared/rules/approval-gates.md`,
+   `shared/contracts/exemplar-contract.md`
+7. **Done when**: either a stage that edits an exemplar halts the run at a gate, or the contract
+   records the decision not to gate and why — with the change-frequency evidence either way.
+
 
 ---
 

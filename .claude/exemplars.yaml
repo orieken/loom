@@ -1,0 +1,44 @@
+# Exemplar tests — the test an agent should read before writing one of this kind.
+# Schema and rules: shared/contracts/exemplar-contract.md
+# Registered as the `test-exemplars` source in shared/memory-registry.json.
+#
+# loom declares its own because a mechanism with no live users is a mechanism
+# nobody has verified. Coverage is bounded by what this repository actually
+# tests: Go, at unit and integration. No project is asked for a pair it does
+# not have.
+
+exemplars:
+  - test: TestReportedDistinguishesUnmeasuredFromCheap
+    file: internal/provider/claude/envelope_test.go
+    language: go
+    level: unit
+    digest: "sha256:45f38224da3cea91"
+    demonstrates: >
+      Table-driven cases with descriptive names, boundary values on each input
+      dimension, and exactly one behaviour asserted per subtest. Note what it
+      does NOT do: no shared mutable fixture, no assertion on how the value was
+      computed, and each case names the distinction it draws rather than
+      numbering itself.
+
+  - test: TestProviderClaimingApprovalCannotUnlockAGate
+    file: internal/orchestrator/gate_test.go
+    language: go
+    level: integration
+    digest: "sha256:421f7426c38d45b9"
+    demonstrates: >
+      Setup noise lives in a harness while the interesting input and the
+      critical assertion stay visible in the test body — "moist, not dry", per
+      testing-conventions.md. The test name states the invariant it protects,
+      so a failure reads as a property lost rather than a step broken.
+
+  - test: TestInnerLayersDoNotImportOpenTelemetry
+    file: internal/telemetry/boundary_test.go
+    language: go
+    level: unit
+    digest: "sha256:b704bf8c2dda9d2f"
+    demonstrates: >
+      An architectural guardrail asserted as a test rather than left as a review
+      note — guardrail #7's requirement that every structural decision produce a
+      fitness function. It checks the transitive import graph rather than the
+      import list a reader would eyeball, which is the difference between
+      catching the violation and catching the obvious violation.

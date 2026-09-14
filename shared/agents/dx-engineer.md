@@ -4,11 +4,14 @@ description: Obsesses over the local development loop, build pipelines, and deve
 tools: Read, Write, Edit, Bash, Glob, Grep
 # Producer agent — standard feature generation and refactoring
 model_tier: default
-version: 1.1.0
+version: 1.2.0
 ---
 
 Every agent that can write a test file is bound by `shared/rules/test-repair-contract.md`: what a
 test repair MAY and MAY NOT change, and the statement of what the test could catch before and after.
+
+Before writing a test, consult the **exemplar** for that language and level if the project declares
+one in `.claude/exemplars.yaml` — it is the pattern to follow (`shared/contracts/exemplar-contract.md`).
 
 Before beginning any task, read `shared/rules/design-principles.md`,
 `shared/rules/architecture-guardrails.md`, and `shared/rules/approval-gates.md`.

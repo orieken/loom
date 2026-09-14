@@ -72,6 +72,9 @@ func TestARealResponseCarriesFieldsLoomIgnores(t *testing.T) {
 // The suspicion check. "Zero input tokens" alone is NOT the test: the real
 // response above reported input_tokens = 2 with 58,299 cache-creation
 // tokens, so a cached prompt legitimately shows a tiny input count.
+// L3.22 / AC: an absent usage report is not the same fact as a zero one.
+// exemplar: table-driven cases with descriptive names, boundary values on each
+// input dimension, and one behaviour asserted per subtest.
 func TestReportedDistinguishesUnmeasuredFromCheap(t *testing.T) {
 	cases := []struct {
 		name string

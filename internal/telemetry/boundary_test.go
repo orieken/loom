@@ -38,6 +38,9 @@ var innerLayers = []string{
 	"github.com/orieken/loom/tools",
 }
 
+// L3.8 / AC: no inner layer reaches an OpenTelemetry package by any path.
+// exemplar: a guardrail asserted as a test rather than a review note, checking
+// the transitive graph instead of the import list a reader would eyeball.
 func TestInnerLayersDoNotImportOpenTelemetry(t *testing.T) {
 	for _, layer := range innerLayers {
 		t.Run(layer, func(t *testing.T) {

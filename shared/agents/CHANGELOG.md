@@ -16,6 +16,30 @@ Semantic-ish, not strict SemVer:
 When you bump an agent's `version:` frontmatter field, add a row under a new dated heading here in the same
 commit — the pre-commit hook checks for exactly this.
 
+## 2026-09-14 — exemplar tests: the pattern an agent copies (roadmap L3.40)
+
+New contract `shared/contracts/exemplar-contract.md`, manifest `.claude/exemplars.yaml`, and the
+`test-exemplars` memory-registry source. Agents here write tests constantly and learned the house
+pattern from prose; nothing showed them one good test. The framework already did this for its own
+agents — `memory-auditor` is "the pattern exemplar every new counter agent should follow" — and had
+never done it for tests.
+
+| Agent | Version | Change |
+|---|---|---|
+| exemplar-auditor | — -> 1.0.0 | **New.** Thirteenth read-only counter agent. Audits each declared exemplar against the contract: still exists and runs, still annotated, digest still confirmed, and still demonstrates what it claims. The judgement is test craftsmanship, which `memory-auditor` has none of — a sweep checking schema and duplicates would pass a beautifully-registered bad test |
+| developer | 1.2.0 -> 1.3.0 | Minor: consult the exemplar for the language and level before writing a test |
+| qa-engineer | 1.5.0 -> 1.6.0 | Minor: same |
+| dx-engineer | 1.1.0 -> 1.2.0 | Minor: same |
+| refactor-engineer | 1.2.0 -> 1.3.0 | Minor: same |
+| test-driven-developer | 1.4.0 -> 1.5.0 | Minor: same |
+| unit-tester | 1.4.0 -> 1.5.0 | Minor: same |
+| api-test-generator | 1.1.0 -> 1.2.0 | Minor: same |
+| visual-qa-engineer | 1.1.0 -> 1.2.0 | Minor: same |
+
+Not "golden": `DOMAIN_DICTIONARY.md` reserves that term for the structural check over
+`tests/agents/*/actual-output.md`, and golden carries the golden-master sense — a recorded baseline
+you compare *against*, the opposite instruction to *copy this*.
+
 ## 2026-09-13 — every test-writing agent is bound by the test repair contract (roadmap L3.39)
 
 New rule `shared/rules/test-repair-contract.md` and approval gate #9 (Removing Test Coverage). Before

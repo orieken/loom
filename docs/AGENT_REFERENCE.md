@@ -2,7 +2,7 @@
 
 Every agent in this framework produces an output that *something* checks — another agent's review, a
 structural contract, a human approval gate, an aggregate metric measured after the fact, or (stated plainly
-where true) nothing yet. This doc makes that explicit for all 39 agents, one at a time, instead of leaving
+where true) nothing yet. This doc makes that explicit for all 40 agents, one at a time, instead of leaving
 it scattered implicitly across `deliver-feature/SKILL.md`, `shared/contracts/`, and each agent's own file.
 
 This is documentation of what already exists in v2 today — it does not introduce new agents or roles. Where
@@ -13,7 +13,7 @@ actually has running today.)
 
 ## How to read "Counterbalance"
 
-Five different *kinds* of check show up across these 39 agents, and they're not interchangeable:
+Five different *kinds* of check show up across these 40 agents, and they're not interchangeable:
 
 | Kind | What it catches | Example |
 |---|---|---|
@@ -487,11 +487,27 @@ tier — `model-tier-auditor` catches that drift before a harness run encounters
 counter agent claiming `heavy` tier), but boundary cases — when is `default` better served as `light`? —
 require understanding the agent's actual inference needs, not just its tool list.
 
+### 40. `exemplar-auditor`
+**Role**: Counter to the exemplar set a project declares in `.claude/exemplars.yaml`. Checks each entry
+against `shared/contracts/exemplar-contract.md` — the test still exists and runs, still carries its
+exemplar and issue/AC annotations, still has a confirmed digest, and still demonstrates what the manifest
+claims it demonstrates.
+**Counterbalance**: Read-only tool boundary, and a different competence from the auditors around it. An
+exemplar is a few-shot prompt delivered through the filesystem: every test written after it inherits its
+pattern, so a stale exemplar is worse than none. `memory-auditor` sweeps the same manifest as a registry
+source and would confirm it is well-formed — which a beautifully-registered vacuous test also is. This
+agent asks the question that matters instead: would this test fail if the behavior it names were broken,
+and would someone copying it learn what it promises?
+**Gap**: It is read-only, so it cannot run the mutation that would settle vacuity mechanically — it answers
+from control flow and assertions, and says UNCERTAIN plus the file it would need rather than guessing.
+`backfill-unit-tests` step 6 runs the real mutation, in a throwaway worktree, and the two are complementary
+rather than redundant.
+
 ---
 
 ## What this survey actually shows
 
-Reading all 39 agents together, three patterns stand out:
+Reading all 40 agents together, three patterns stand out:
 
 1. **The 14 pipeline agents are well-checked** — the fourteen the delivery plan invokes, per "What counts as
    a pipeline agent" above, which includes `visual-qa-engineer` and excludes the pre-pipeline `spec-writer`

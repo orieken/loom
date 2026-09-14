@@ -1,0 +1,9 @@
+# Fuzzy patterns expected in exemplar-auditor's audit output.
+
+FINDINGS|findings
+rate.limit|rate-limit.spec|self.fulfilling|mock.*APPROVED|asserts.*value.*mocked|toBeDefined
+vacuous|would.*fail|cannot fail|NO
+checkout.feature|missing|does not exist|renamed|purchase-flow
+integration|coverage gap|no exemplar
+user-service|HEALTHY|pass|matches
+missing.*@ac|annotation|AC reference
