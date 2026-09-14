@@ -16,6 +16,21 @@ Semantic-ish, not strict SemVer:
 When you bump an agent's `version:` frontmatter field, add a row under a new dated heading here in the same
 commit — the pre-commit hook checks for exactly this.
 
+## 2026-09-14 — a suite has health numbers, not just a coverage number (roadmap L3.42)
+
+New `docs/patterns/test-suite-health-metrics.md` and `shared/knowledge/flake-triage-taxonomy.md`.
+Coverage is the one number that cannot detect what this framework's agents can produce: repairing a
+vacuous test moves it by zero, retiring a dead test moves it down, and deleting an assertion leaves
+the line covered.
+
+| Agent | Version | Change |
+|---|---|---|
+| dx-engineer | 1.2.0 -> 1.3.0 | Minor: step 3 now says to cluster flaky tests by **cause** rather than by test, pointing at the taxonomy KI for the four categories and the evidence that separates them, and at the metrics pattern for the numbers that say whether triage worked. It is the only agent bound: these are suite-over-time numbers a lead reads, and `qa-engineer` works per feature |
+
+The KI records a deliberate divergence from the source material rather than applying it silently:
+the wider practice treats quarantine as a disposition an engineer applies, and here it is approval
+gate #9 — an agent proposes, a human applies.
+
 ## 2026-09-14 — exemplar tests: the pattern an agent copies (roadmap L3.40)
 
 New contract `shared/contracts/exemplar-contract.md`, manifest `.claude/exemplars.yaml`, and the

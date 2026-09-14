@@ -2627,6 +2627,34 @@ it of a test.
 ### L3.42 — A suite has no health metrics, only a coverage number
 **Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-13)*
 
+**SHIPPED** 2026-09-14 — `docs/patterns/test-suite-health-metrics.md`,
+`shared/knowledge/flake-triage-taxonomy.md`, and one reference from `dx-engineer` 1.3.0.
+
+**Judgment-only, as this item said, and the doc says so in its own text.** Three of the four numbers
+have no source loom can read: escaped defects live in a bug tracker, time to diagnose in ticket
+timestamps, flake rate in CI history. Only wall-clock is reachable, and one of four is not a metric
+set. Claiming a check would repeat what ADR-002 records — a judgment-only fitness function citing a
+layer that did not exist. The doc also names the cheapest honest way to start capturing escaped
+defects (one line per delivery in `retrospective.md`) and deliberately does not build it.
+
+**The KI records a divergence rather than applying it silently.** The wider practice treats
+quarantine as a disposition an engineer applies; here it is approval gate #9, so an agent proposes
+one with owner, expiry, cause and resolving evidence and a human applies it. That is what
+`memory-trust-boundary.md` asks for when source material and a framework rule disagree — surface the
+conflict, do not let a retrieved KI quietly contradict a gate.
+
+**One KI, not two, and only one agent bound.** The taxonomy is operational: an agent triaging
+failures acts on it, so it belongs in the retrievable corpus. The four numbers are for a human
+reporting upward across a quarter and nothing an agent does mid-task depends on them — so they live
+in the pattern doc, which is reachable by direct reference rather than retrieval, since
+`docs/patterns/` is not a memory-registry source. `dx-engineer` is bound because build and flake
+health is its remit; `qa-engineer` works per feature and has no use for a ninety-day trend.
+
+**Not merged into `pipeline-retrospective` or `agent-scorecard`**, as this item required. Those
+measure the pipeline — which agent is slowest, which loops most. These measure the suite. Merging
+them produces one dashboard where flake rate sits beside code-reviewer p95 and neither means
+anything.
+
 1. **Problem**: `CLAUDE.md` gates on coverage ≥ 85% and `run-tests` enforces it. Coverage is the one
    number that cannot detect the failure these agents are capable of producing: repairing a vacuous
    test moves it by zero, retiring a dead test moves it *down*, and deleting an assertion leaves the

@@ -59,6 +59,9 @@ structure, a concrete example, and the trade-offs each pattern brings, not just 
   `openapi` skill already enforces all of these per-endpoint; never written down as a standalone
   reference until now.
 - [testing-pyramid.md](testing-pyramid.md) — the five test levels (Unit, Integration, API Contract,
+- [test-suite-health-metrics.md](test-suite-health-metrics.md) — the four numbers that detect a suite
+  getting greener and blinder at once (flake rate, time to diagnose, escaped defects, wall-clock), and
+  why coverage is not one of them. Judgment-only: three of the four have no source loom can read.
   Acceptance, E2E/UI), FIRST principles for unit tests, and the Three Laws of TDD with an honest
   scoping note: XP TDD's design pressure only fully applies to agent-written code when there's role
   separation (as in `deliver-atdd`). For single-agent `test-driven-developer` use, tests are still
