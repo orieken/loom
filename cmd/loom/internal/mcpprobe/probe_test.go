@@ -29,7 +29,14 @@ func TestToolsListFailures(t *testing.T) {
 func TestToolsListParsesAdvertisedTools(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	script := `cat >/dev/null & echo '{"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"alpha"},{"name":"beta"}]}}'`
+	// The fake server answers, then holds stdin open until the probe closes
+	// it — exactly what a real MCP server does. It must be a FOREGROUND read:
+	// POSIX assigns an asynchronous command's stdin to /dev/null before any
+	// explicit redirection, so `cat >/dev/null &` reads /dev/null and never
+	// the pipe. With the read in the background, nothing holds the read end
+	// once sh exits, and the probe's writes race that exit — winning on a
+	// fast machine and losing on a loaded CI runner with EPIPE.
+	script := `echo '{"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"alpha"},{"name":"beta"}]}}'; cat >/dev/null`
 	names, err := ToolsList(ctx, t.TempDir(), "sh", "-c", script)
 	if err != nil {
 		t.Fatalf("ToolsList: %v", err)
