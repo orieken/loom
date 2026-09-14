@@ -38,6 +38,18 @@ fi
 
 FAILED=0
 
+# changelog_mentions avoids `git show | grep -q`, which returns 141 under
+# `set -o pipefail`: grep -q exits on the first match, git show is killed
+# writing to the closed pipe, and the pipeline's status becomes SIGPIPE even
+# though the pattern was found. That false-FAILed every agent change whose
+# name appeared early in a CHANGELOG long enough for git show to still be
+# writing. Buffer first, match second — no pipe, no signal.
+changelog_mentions() {
+  local name="$1" body
+  body=$(git show "$HEAD_REF:$CHANGELOG" 2>/dev/null || true)
+  [[ -n "$body" ]] && grep -qF -- "$name" <<< "$body"
+}
+
 get_version() {
   local ref="$1" file="$2"
   git show "$ref:$file" 2>/dev/null | grep '^version:' | head -1 | sed 's/version: *//' || true
@@ -68,7 +80,7 @@ while IFS= read -r file; do
   if ! $CHANGELOG_CHANGED; then
     echo "  FAIL: $CHANGELOG was not touched in this range. Add a dated entry for '$agent_name'."
     FAILED=1
-  elif [[ -n "$agent_name" ]] && ! git show "$HEAD_REF:$CHANGELOG" 2>/dev/null | grep -qF "$agent_name"; then
+  elif [[ -n "$agent_name" ]] && ! changelog_mentions "$agent_name"; then
     echo "  FAIL: $CHANGELOG doesn't mention '$agent_name' at $HEAD_REF. Add a row for it."
     FAILED=1
   fi
