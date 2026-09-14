@@ -43,6 +43,11 @@ func TestDecoderMatchesARealResponse(t *testing.T) {
 	want := orchestrator.Usage{
 		Model: "claude-sonnet-5", InputTokens: 2, OutputTokens: 4,
 		CacheReadTokens: 0, CacheCreationTokens: 58299, CostUSD: 0.34986,
+		// The captured response carries both: end_turn is the model's own
+		// reason for stopping, completed is how the CLI's process ended. A
+		// completion cut off at the token ceiling would differ in the first
+		// and not the second (roadmap L3.43).
+		FinishReason: "end_turn", TerminalReason: "completed",
 	}
 	if got := *result.usage(); got != want {
 		t.Errorf("usage = %+v, want the captured %+v", got, want)

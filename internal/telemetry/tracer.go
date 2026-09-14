@@ -8,6 +8,7 @@ package telemetry
 
 import (
 	"context"
+	"sort"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -44,10 +45,20 @@ const (
 // actually defines, used only on the invocation span — a generic GenAI
 // dashboard reads these and needs to know nothing about loom.
 const (
-	attrGenAIOperation   = "gen_ai.operation.name"
-	attrGenAIModel       = "gen_ai.request.model"
-	attrGenAIInputTokens = "gen_ai.usage.input_tokens"
-	attrGenAIOutputToken = "gen_ai.usage.output_tokens"
+	attrGenAIOperation = "gen_ai.operation.name"
+	// The model loom records is the one that ANSWERED, read from the
+	// envelope's modelUsage keys. loom passes no --model, so it never
+	// expresses a request and has no honest source for
+	// gen_ai.request.model — an absent attribute is honest, and one naming
+	// a model nobody asked for is worse than missing, because a reader
+	// comparing it against a pin would conclude there was no substitution.
+	// Recording what served is therefore the limit of what this can say
+	// (roadmap L3.43).
+	attrGenAIModel         = "gen_ai.response.model"
+	attrGenAIFinishReasons = "gen_ai.response.finish_reasons"
+	attrTerminalReason     = "loom.provider.terminal_reason"
+	attrGenAIInputTokens   = "gen_ai.usage.input_tokens"
+	attrGenAIOutputToken   = "gen_ai.usage.output_tokens"
 )
 
 // Cache traffic and cost have no GenAI semconv key, so they take the loom
@@ -141,6 +152,7 @@ func (s *otelSpan) End(outcome orchestrator.SpanOutcome) {
 		s.span.SetAttributes(attribute.String(attrReason, outcome.Reason))
 	}
 	s.span.SetAttributes(usageAttributes(outcome.Usage)...)
+	s.span.SetAttributes(loopAttributes(outcome.LoopOutcomes)...)
 	s.recordStatus(outcome)
 	s.span.End()
 }
@@ -162,6 +174,36 @@ func usageAttributes(usage *orchestrator.Usage) []attribute.KeyValue {
 	}
 	if usage.Model != "" {
 		attributes = append(attributes, attribute.String(attrGenAIModel, usage.Model))
+	}
+	// finish_reasons is an array in the GenAI convention: one completion can
+	// stop for more than one reason. loom reports the one the CLI gives it
+	// rather than inventing a second.
+	if usage.FinishReason != "" {
+		attributes = append(attributes,
+			attribute.StringSlice(attrGenAIFinishReasons, []string{usage.FinishReason}))
+	}
+	if usage.TerminalReason != "" {
+		attributes = append(attributes, attribute.String(attrTerminalReason, usage.TerminalReason))
+	}
+	return attributes
+}
+
+// loopAttributes renders how each loop settled, one attribute per loop. The
+// key count is bounded by the loops a plan declares, so this stays low
+// cardinality however many rounds a loop actually ran.
+func loopAttributes(outcomes map[string]string) []attribute.KeyValue {
+	if len(outcomes) == 0 {
+		return nil
+	}
+	ids := make([]string, 0, len(outcomes))
+	for id := range outcomes {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	attributes := make([]attribute.KeyValue, 0, len(ids))
+	for _, id := range ids {
+		attributes = append(attributes,
+			attribute.String("loom.loop."+id+".terminated_by", outcomes[id]))
 	}
 	return attributes
 }

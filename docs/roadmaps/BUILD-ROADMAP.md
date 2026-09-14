@@ -2655,6 +2655,40 @@ dashboard where flake rate sits beside code-reviewer p95 and neither means anyth
 ### L3.43 — The attributes a run does not record
 **Workstream**: OBSERVE · **Effort**: S · **Blocked by**: L3.8 (shipped) · **Blocks**: L3.44 · *(raised 2026-09-13)*
 
+**SHIPPED** 2026-09-14 — `gen_ai.response.model`, `gen_ai.response.finish_reasons`,
+`loom.provider.terminal_reason`, and `loom.loop.<id>.terminated_by` on the run span.
+
+**The premise was wrong in a way worth recording.** This item said `response.model` was missing. It
+was not missing — it was **mislabelled**. `orchestrator.Usage.Model` is read from the envelope's
+`modelUsage` keys, which is the model that *answered*, and `tracer.go` emitted it under
+`gen_ai.request.model`. That is worse than absent: a reader comparing the attribute against a pinned
+model would see the served model and conclude there had been no substitution. Renamed, and
+`gen_ai.request.model` is now emitted by nothing.
+
+**The honest limit, stated rather than engineered around.** loom passes no `--model`, so it never
+expresses a request and has no source for a request model. Recording what served is therefore all
+this can do: the trace says which model answered, never whether it was the one you wanted. Detecting
+substitution needs an expressed intent, which is a change to how loom selects models rather than a
+telemetry fix, and it was deliberately not made here.
+
+**L3.15's capture settled the uncertainty this item inherited.** The real envelope carries
+`stop_reason: "end_turn"` and `terminal_reason: "completed"` — so both attributes have a verified
+source rather than an assumed one. They answer different questions and are namespaced apart: a
+completion cut off at the token ceiling and one that finished its thought both terminate with
+`completed`.
+
+**A second defect found while building it.** `internal/telemetry/otlpjson.go` had no `ArrayValue`
+case. Its comment was candid — slice attributes fall back to their string form, "and nothing this
+package emits uses a slice attribute today" — and this item made that sentence false, since the
+GenAI convention specifies `finish_reasons` as a list. A tool reading the convention would have
+failed on a flattened string. The encoder now emits a real `ArrayValue`.
+
+**Loop termination.** `converged` / `gate_approved` / `round_limit` / `error`, keyed by loop ID on
+the run span. `gate_approved` was not in this item's plan: reading `closeLoop` showed a loop can also
+be settled by a human having already approved its gate, which is a different fact from converging and
+deserved its own name. The key count is bounded by the loops a plan declares, so cardinality stays
+low however many rounds run. Both paths are tested through the real executor, not the tracer alone.
+
 1. **Problem**: `internal/telemetry/tracer.go:48` records `gen_ai.request.model` — the model asked
    for — and never `gen_ai.response.model`, the model that answered. A provider serving something
    other than what was pinned is invisible. Also absent: `gen_ai.response.finish_reasons`, so a

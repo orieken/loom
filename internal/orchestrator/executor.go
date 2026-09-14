@@ -125,8 +125,9 @@ func (e *Executor) Run(ctx context.Context, plan Plan, input StageInput) error {
 		return err
 	}
 	ctx, span := e.tracer.StartRun(ctx, e.runSpanFor(plan, input))
-	err = e.runStages(ctx, plan, input, state)
-	span.End(runOutcome(err))
+	loopOutcomes := map[string]string{}
+	err = e.runStages(ctx, plan, input, state, loopOutcomes)
+	span.End(runOutcome(err, loopOutcomes))
 	if err != nil {
 		return err
 	}
@@ -136,12 +137,12 @@ func (e *Executor) Run(ctx context.Context, plan Plan, input StageInput) error {
 // runStages is the loop itself, split out so Run can close the root span on
 // every exit path — including the gate halt, which is a normal outcome that
 // still has to flush what it recorded.
-func (e *Executor) runStages(ctx context.Context, plan Plan, input StageInput, state *RunState) error {
+func (e *Executor) runStages(ctx context.Context, plan Plan, input StageInput, state *RunState, loopOutcomes map[string]string) error {
 	for index := 0; index < len(plan.Stages); index++ {
 		if err := e.advance(ctx, plan.Stages[index], plan, input, state); err != nil {
 			return err
 		}
-		back, err := e.closeLoop(plan, plan.Stages[index], input, state)
+		back, err := e.closeLoop(plan, plan.Stages[index], input, state, loopOutcomes)
 		if err != nil {
 			return err
 		}
@@ -165,17 +166,18 @@ func (e *Executor) runSpanFor(plan Plan, input StageInput) RunSpan {
 // so a trace and run state never describe the same run differently. A halt
 // at a gate is not a failure: the run is waiting on a human, which is the
 // outcome the design intends.
-func runOutcome(err error) SpanOutcome {
+func runOutcome(err error, loopOutcomes map[string]string) SpanOutcome {
+	outcome := SpanOutcome{Status: StageStatusCompleted, LoopOutcomes: loopOutcomes}
 	switch {
 	case err == nil:
-		return SpanOutcome{Status: StageStatusCompleted}
 	case errors.Is(err, ErrWaitingApproval):
-		return SpanOutcome{Status: StageStatusWaitingApproval, Err: err}
+		outcome.Status, outcome.Err = StageStatusWaitingApproval, err
 	case errors.Is(err, context.Canceled):
-		return SpanOutcome{Status: StageStatusInterrupted, Err: err}
+		outcome.Status, outcome.Err = StageStatusInterrupted, err
 	default:
-		return SpanOutcome{Status: StageStatusFailed, Err: err}
+		outcome.Status, outcome.Err = StageStatusFailed, err
 	}
+	return outcome
 }
 
 // advance moves one stage forward: clear its gate, then run it unless it is

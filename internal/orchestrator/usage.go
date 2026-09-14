@@ -21,6 +21,14 @@ type Usage struct {
 	CacheCreationTokens int64 `json:"cacheCreationTokens,omitempty"`
 	// CostUSD is what the provider says the invocation cost.
 	CostUSD float64 `json:"costUsd,omitempty"`
+	// FinishReason is why generation stopped, as the model reported it
+	// ("end_turn", "max_tokens", …). It is the difference between a
+	// completion that finished its thought and one cut off at a ceiling,
+	// which are indistinguishable from the text alone.
+	FinishReason string `json:"finishReason,omitempty"`
+	// TerminalReason is how the provider's own process ended, which is a
+	// different question: a truncated completion still terminates cleanly.
+	TerminalReason string `json:"terminalReason,omitempty"`
 }
 
 // Add accumulates another invocation's usage. A nil addend changes nothing,

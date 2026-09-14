@@ -71,10 +71,19 @@ type otlpAttribute struct {
 
 // otlpAnyVal is OTLP's AnyValue: exactly one field is set.
 type otlpAnyVal struct {
-	StringValue *string  `json:"stringValue,omitempty"`
-	BoolValue   *bool    `json:"boolValue,omitempty"`
-	IntValue    *string  `json:"intValue,omitempty"`
-	DoubleValue *float64 `json:"doubleValue,omitempty"`
+	StringValue *string       `json:"stringValue,omitempty"`
+	BoolValue   *bool         `json:"boolValue,omitempty"`
+	IntValue    *string       `json:"intValue,omitempty"`
+	DoubleValue *float64      `json:"doubleValue,omitempty"`
+	ArrayValue  *otlpArrayVal `json:"arrayValue,omitempty"`
+}
+
+// otlpArrayVal is OTLP's ArrayValue. The GenAI convention specifies
+// gen_ai.response.finish_reasons as a list — one completion can stop for
+// more than one reason — so a consumer reading the convention expects this
+// shape and cannot parse a flattened string.
+type otlpArrayVal struct {
+	Values []otlpAnyVal `json:"values"`
 }
 
 // encodeExport renders a batch of finished spans as one OTLP/JSON line.
@@ -146,12 +155,19 @@ func encodeAttributes(attributes []attribute.KeyValue) []otlpAttribute {
 	return encoded
 }
 
-// encodeValue maps OTel's scalar value types onto AnyValue. Anything else —
-// the slice types — is rendered as its string form rather than dropped: a
-// reader seeing the value is better served than one seeing an absent key,
-// and nothing this package emits uses a slice attribute today.
+// encodeValue maps OTel's value types onto AnyValue.
+//
+// STRINGSLICE is encoded as a real ArrayValue because the GenAI convention
+// uses one (finish_reasons) and a tool reading the convention would fail on
+// a flattened string. The remaining slice types keep the string-form
+// fallback: rendering a value a reader can still see beats an absent key,
+// and nothing here emits them. That sentence was true of every slice type
+// until roadmap L3.43 added the first one — which is why the fallback was
+// not sufficient on its own.
 func encodeValue(value attribute.Value) otlpAnyVal {
 	switch value.Type() {
+	case attribute.STRINGSLICE:
+		return encodeStringSlice(value.AsStringSlice())
 	case attribute.BOOL:
 		boolean := value.AsBool()
 		return otlpAnyVal{BoolValue: &boolean}
@@ -165,4 +181,13 @@ func encodeValue(value attribute.Value) otlpAnyVal {
 		text := value.String()
 		return otlpAnyVal{StringValue: &text}
 	}
+}
+
+func encodeStringSlice(values []string) otlpAnyVal {
+	encoded := make([]otlpAnyVal, 0, len(values))
+	for _, value := range values {
+		text := value
+		encoded = append(encoded, otlpAnyVal{StringValue: &text})
+	}
+	return otlpAnyVal{ArrayValue: &otlpArrayVal{Values: encoded}}
 }

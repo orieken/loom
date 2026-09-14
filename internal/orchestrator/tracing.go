@@ -63,7 +63,29 @@ type SpanOutcome struct {
 	// Usage is what the invocation reported consuming, when it reported
 	// anything. Nil elsewhere.
 	Usage *Usage
+	// LoopOutcomes says how each loop in the plan ended, keyed by loop ID.
+	// Set on the run span only. A run that hit its review bound and one that
+	// converged are otherwise identical in a trace — same stages, same
+	// statuses — and which of the two happened is the question anyone
+	// reading the trace is actually asking (roadmap L3.43).
+	LoopOutcomes map[string]string
 }
+
+// How a loop ended. A loop that is still iterating has no outcome yet; the
+// last pass through closeLoop overwrites any earlier value, so what survives
+// is how the loop finally settled.
+const (
+	// LoopConverged means the loop's condition was satisfied.
+	LoopConverged = "converged"
+	// LoopGateApproved means a human had already approved the loop's gate,
+	// which settles it regardless of the condition.
+	LoopGateApproved = "gate_approved"
+	// LoopRoundLimit means the bound was reached with the condition still
+	// unmet. The output that ships is whatever the last round produced.
+	LoopRoundLimit = "round_limit"
+	// LoopConditionError means the condition could not be evaluated.
+	LoopConditionError = "error"
+)
 
 // Span is one open unit of work. End is safe to call on the zero value of
 // any implementation, so callers never guard it.

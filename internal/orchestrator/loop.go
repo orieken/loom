@@ -162,19 +162,25 @@ func writeCopy(in io.Reader, target string) error {
 // closeLoop runs at the end of a loop's span. It returns the plan index to
 // re-enter at, or -1 to carry on. The condition and the count are both
 // evaluated here, in Go: this is the whole point of L2.17.
-func (e *Executor) closeLoop(plan Plan, stage Stage, input StageInput, runState *RunState) (int, error) {
+func (e *Executor) closeLoop(plan Plan, stage Stage, input StageInput, runState *RunState, outcomes map[string]string) (int, error) {
 	loop, closes := plan.loopEndingAt(stage.ID)
-	if !closes || runState.IsGateApproved(loop.Gate) {
+	if !closes {
+		return -1, nil
+	}
+	if runState.IsGateApproved(loop.Gate) {
+		outcomes[loop.ID] = LoopGateApproved
 		return -1, nil
 	}
 	satisfied, err := evaluateCondition(loop, input)
 	if err != nil {
+		outcomes[loop.ID] = LoopConditionError
 		return -1, err
 	}
 	if satisfied {
+		outcomes[loop.ID] = LoopConverged
 		return -1, nil
 	}
-	return e.iterateOrExhaust(plan, loop, input, runState)
+	return e.iterateOrExhaust(plan, loop, input, runState, outcomes)
 }
 
 func evaluateCondition(loop Loop, input StageInput) (bool, error) {
@@ -188,9 +194,10 @@ func evaluateCondition(loop Loop, input StageInput) (bool, error) {
 // iterateOrExhaust sends the span round again, or halts at the loop's gate
 // when the bound is reached. Exhaustion is not a failure: it is the point
 // where automation has done what it can and a human has to decide.
-func (e *Executor) iterateOrExhaust(plan Plan, loop Loop, input StageInput, runState *RunState) (int, error) {
+func (e *Executor) iterateOrExhaust(plan Plan, loop Loop, input StageInput, runState *RunState, outcomes map[string]string) (int, error) {
 	next := runState.Stages[loop.To].Iteration + 1
 	if next > loop.MaxIterations {
+		outcomes[loop.ID] = LoopRoundLimit
 		return -1, e.exhaust(loop, runState)
 	}
 	if err := e.reenter(plan, loop, input, runState, next); err != nil {

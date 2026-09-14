@@ -287,3 +287,36 @@ func TestRetainedIterationsLiveBesideTheWorkspace(t *testing.T) {
 		t.Error("no iteration artifacts were retained")
 	}
 }
+
+// loopOutcomeFor drives a run under a recording tracer and returns how the
+// named loop was reported to have settled on the run span.
+func loopOutcomeFor(t *testing.T, scripts map[string]mock.Script, loopID string) string {
+	t.Helper()
+	executor, _, _, input := newHarness(t, scripts)
+	tracer := &recordingTracer{}
+	executor.WithTracer(tracer)
+	_ = executor.Run(context.Background(), loopPlan(2), input)
+	for _, outcome := range tracer.ended {
+		if reason, found := outcome.LoopOutcomes[loopID]; found {
+			return reason
+		}
+	}
+	return ""
+}
+
+// A run that converged and a run that hit its bound produce the same stages
+// with the same statuses. Which of the two happened is the question anyone
+// reading the trace is actually asking, and before roadmap L3.43 nothing
+// answered it.
+func TestRunSpanSaysHowTheReviewLoopSettled(t *testing.T) {
+	approved := reviewerScript(t)
+	approved["code-reviewer"] = mock.Script{Payload: reviewPayload(t, state.VerdictApproved)}
+
+	if got := loopOutcomeFor(t, approved, "review"); got != orchestrator.LoopConverged {
+		t.Errorf("approved review settled as %q, want %q", got, orchestrator.LoopConverged)
+	}
+	// reviewerScript keeps requesting changes, so the bound is what stops it.
+	if got := loopOutcomeFor(t, reviewerScript(t), "review"); got != orchestrator.LoopRoundLimit {
+		t.Errorf("exhausted review settled as %q, want %q", got, orchestrator.LoopRoundLimit)
+	}
+}

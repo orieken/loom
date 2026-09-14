@@ -27,6 +27,14 @@ type envelope struct {
 	TotalCost  float64                    `json:"total_cost_usd"`
 	Usage      envelopeUsage              `json:"usage"`
 	ModelUsage map[string]json.RawMessage `json:"modelUsage"`
+	// StopReason is the model's own account of why generation stopped
+	// ("end_turn", "max_tokens", …) — the GenAI convention's finish reason.
+	// TerminalReason is the CLI's account of how the invocation ended
+	// ("completed", …). They answer different questions: a completion cut
+	// short at the token ceiling and one that finished its thought both end
+	// with a terminal_reason of "completed".
+	StopReason     string `json:"stop_reason"`
+	TerminalReason string `json:"terminal_reason"`
 }
 
 type envelopeUsage struct {
@@ -76,6 +84,8 @@ func (e *envelope) Reported() bool {
 func (e *envelope) usage() *orchestrator.Usage {
 	return &orchestrator.Usage{
 		Model:               e.model(),
+		FinishReason:        e.StopReason,
+		TerminalReason:      e.TerminalReason,
 		InputTokens:         e.Usage.InputTokens,
 		OutputTokens:        e.Usage.OutputTokens,
 		CacheReadTokens:     e.Usage.CacheReadInputTokens,

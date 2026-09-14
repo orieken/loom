@@ -50,7 +50,30 @@ type otlpAttr struct {
 		BoolValue   *bool    `json:"boolValue"`
 		IntValue    *string  `json:"intValue"`
 		DoubleValue *float64 `json:"doubleValue"`
+		// ArrayValue carries the GenAI convention's list-valued attributes —
+		// finish_reasons is one, because a completion can stop for more than
+		// one reason.
+		ArrayValue *struct {
+			Values []struct {
+				StringValue *string `json:"stringValue"`
+			} `json:"values"`
+		} `json:"arrayValue"`
 	} `json:"value"`
+}
+
+// strings flattens an array-valued attribute, or returns nil when it is not
+// one.
+func (a otlpAttr) strings() []string {
+	if a.Value.ArrayValue == nil {
+		return nil
+	}
+	out := make([]string, 0, len(a.Value.ArrayValue.Values))
+	for _, v := range a.Value.ArrayValue.Values {
+		if v.StringValue != nil {
+			out = append(out, *v.StringValue)
+		}
+	}
+	return out
 }
 
 // find looks an attribute up without failing. Asserting that something is
@@ -320,15 +343,24 @@ func TestProviderSpanCarriesGenAIUsageAttributes(t *testing.T) {
 	spans := traceInvocation(t, &orchestrator.Usage{
 		Model: "claude-opus-5", InputTokens: 1200, OutputTokens: 340,
 		CacheReadTokens: 800, CacheCreationTokens: 64, CostUSD: 0.0425,
+		FinishReason: "end_turn", TerminalReason: "completed",
 	})
 	span := findSpan(t, spans, orchestrator.GenAIOperationName+" developer")
 	assertIntAttribute(t, span, "gen_ai.usage.input_tokens", "1200")
 	assertIntAttribute(t, span, "gen_ai.usage.output_tokens", "340")
 	assertIntAttribute(t, span, "loom.usage.cache_read_tokens", "800")
-	model := span.attribute(t, "gen_ai.request.model")
+	// The model recorded is the one that ANSWERED. loom passes no --model, so
+	// gen_ai.request.model has no honest source and must not be emitted: a
+	// reader comparing it against a pin would read the served model as
+	// confirmation there was no substitution (roadmap L3.43).
+	model := span.attribute(t, "gen_ai.response.model")
 	if model.Value.StringValue == nil || *model.Value.StringValue != "claude-opus-5" {
-		t.Errorf("gen_ai.request.model = %+v, want \"claude-opus-5\"", model.Value)
+		t.Errorf("gen_ai.response.model = %+v, want \"claude-opus-5\"", model.Value)
 	}
+	if stale := span.find("gen_ai.request.model"); stale != nil {
+		t.Errorf("emitted gen_ai.request.model = %+v; loom never requests a model", stale.Value)
+	}
+	assertStringAttribute(t, span, "loom.provider.terminal_reason", "completed")
 	cost := span.attribute(t, "loom.usage.cost_usd")
 	if cost.Value.DoubleValue == nil || *cost.Value.DoubleValue != 0.0425 {
 		t.Errorf("loom.usage.cost_usd = %+v, want 0.0425", cost.Value)
@@ -357,4 +389,59 @@ func TestNoUsageReportedMeansNoUsageAttributes(t *testing.T) {
 			t.Errorf("attribute %q present with no usage reported — absent and zero are different facts", attr.Key)
 		}
 	}
+}
+
+// finish_reasons is an array in the GenAI convention, not a string: one
+// completion can stop for more than one reason. Recording it as a bare string
+// would be the convention's name on a shape it does not describe, and any
+// tool reading the convention would fail to parse it.
+func TestFinishReasonIsRecordedAsTheConventionsArray(t *testing.T) {
+	spans := traceInvocation(t, &orchestrator.Usage{
+		Model: "claude-opus-5", FinishReason: "max_tokens", TerminalReason: "completed",
+	})
+	span := findSpan(t, spans, orchestrator.GenAIOperationName+" developer")
+
+	reasons := span.attribute(t, "gen_ai.response.finish_reasons").strings()
+	if len(reasons) != 1 || reasons[0] != "max_tokens" {
+		t.Errorf("gen_ai.response.finish_reasons = %v, want [max_tokens]", reasons)
+	}
+}
+
+// A provider that reports nothing must produce no attribute, rather than an
+// empty one asserting the completion stopped for a reason named "".
+func TestAbsentFinishReasonEmitsNoAttribute(t *testing.T) {
+	spans := traceInvocation(t, &orchestrator.Usage{Model: "claude-opus-5"})
+	span := findSpan(t, spans, orchestrator.GenAIOperationName+" developer")
+
+	for _, key := range []string{"gen_ai.response.finish_reasons", "loom.provider.terminal_reason"} {
+		if attr := span.find(key); attr != nil {
+			t.Errorf("%s = %+v, want no attribute when the provider reported none", key, attr.Value)
+		}
+	}
+}
+
+// The run span says how each loop settled. A run that exhausted its review
+// bound and one that converged are otherwise identical in a trace — same
+// stages, same statuses — and which happened is what a reader is asking.
+func TestRunSpanRecordsHowEachLoopEnded(t *testing.T) {
+	path := filepath.Join(t.TempDir(), telemetry.TracesFileName)
+	session, err := telemetry.Start(telemetry.Options{Version: "test-version", TraceFile: path})
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	_, run := session.Tracer().StartRun(context.Background(), orchestrator.RunSpan{Plan: "test-plan"})
+	run.End(orchestrator.SpanOutcome{
+		Status: orchestrator.StageStatusCompleted,
+		LoopOutcomes: map[string]string{
+			"review":    orchestrator.LoopRoundLimit,
+			"contracts": orchestrator.LoopConverged,
+		},
+	})
+	if err := session.Shutdown(context.Background()); err != nil {
+		t.Fatalf("Shutdown: %v", err)
+	}
+
+	span := findSpan(t, decodeSpans(t, path), "loom.run test-plan")
+	assertStringAttribute(t, span, "loom.loop.review.terminated_by", orchestrator.LoopRoundLimit)
+	assertStringAttribute(t, span, "loom.loop.contracts.terminated_by", orchestrator.LoopConverged)
 }
