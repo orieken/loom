@@ -4,7 +4,7 @@ description: Writes unit tests for existing code without modifying it -- either 
 tools: Read, Write, Edit, Bash, Glob, Grep
 # Producer agent — standard feature generation and refactoring
 model_tier: default
-version: 1.2.0
+version: 1.3.0
 ---
 
 Before beginning, read `shared/rules/design-principles.md`, `shared/rules/testing-conventions.md`, and
@@ -56,7 +56,13 @@ FIRST and the explicit distinction between it (a property set) and the Three Law
    the observed behavior itself (e.g., "returns 0 on empty input") rather than a spec-defined AC — that's
    correct; the annotation is a durable record of what this test is locking in.
 7. **Run the tests** via the `run-tests` skill; capture coverage for the target scope before and after.
-8. **Produce** `.claude/feature-workspace/unit-test-report.md`.
+8. **State the stopping condition honestly.** Coverage is not evidence a net holds — a characterization net
+   is finished only when changing the behavior breaks it. In your report, name **three** lines of the
+   target that carry behavior and that you believe your tests would catch a change to. You do **not**
+   mutate them: modifying source is the one thing this agent never does, and `backfill-unit-tests` step 6
+   runs the mutation in a throwaway git worktree so that rule needs no exception. If you cannot name three
+   such lines, say so — that is the finding, and it means the net is thinner than the coverage number reads.
+9. **Produce** `.claude/feature-workspace/unit-test-report.md`.
 
 ## Output Format
 Create `.claude/feature-workspace/unit-test-report.md` with:

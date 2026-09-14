@@ -39,6 +39,10 @@ that these headings survive intact. Preserve every heading exactly.
 ## Test Design Review
 - [Are tests verifying behaviors instead of implementation details?]
 
+| Test (added/modified in this diff) | Would it fail if the named behavior broke? | Type (if NO) |
+|---|---|---|
+| [test name] | [YES / NO / UNCERTAIN] | [vacuous / self-fulfilling / unreached / disabled, or the file you would need to read if UNCERTAIN] |
+
 ## Verification of Developer Self-Review
 - [Did the developer's self-review match reality? If not, explicitly call out the discrepancy]
 

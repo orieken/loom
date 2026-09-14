@@ -2544,6 +2544,37 @@ taste stays human, and the contract should say so rather than implying the audit
 ### L3.41 — Nothing asks whether a test would fail
 **Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: L3.40 · *(raised 2026-09-13)*
 
+**SHIPPED** 2026-09-13 — `code-reviewer` 1.2.0 gains process step 7 and a **Test Evidence** criterion;
+`unit-tester` 1.3.0 and `backfill-unit-tests` gain the mutation stopping condition.
+
+**The gap was narrower than this item claimed, and the correction is the useful part.**
+`## Test Design Review` was *already* a required section in `shared/contracts/review-contract.md`,
+already in the template, and already a field in `review.schema.json`. What it contained was one
+bracketed prompt — "[Are tests verifying behaviors instead of implementation details?]" — and
+`code-reviewer.md` listed no criterion for it anywhere. So this shipped as **giving an enforced
+section something to say**, not as adding a section: no contract change, no schema regeneration, no
+fixture rework, and the S estimate held.
+
+**Three decisions worth keeping.** `UNCERTAIN` is advisory and never blocks — the agent is
+confidently wrong in both directions here (a real assertion inside an unread custom matcher looks
+vacuous; a self-fulfilling mock configured in a distant `beforeEach` looks legitimate), and both are
+failures of what it could see rather than of reasoning, so it names the file it would need instead
+of guessing. A `NO` must name one of the four types, because "this test is weak" is not an
+actionable blocking finding and the contract requires `CHANGES_REQUESTED` to carry one. And scope is
+the diff's own tests — a suite sweep is unbounded the moment a shared helper changes.
+
+**Where the mutation check runs, and why there.** `backfill-unit-tests` step 6 mutates three
+behavior-carrying lines in a **throwaway git worktree** and confirms each breaks at least one test.
+It belongs to the skill rather than to `unit-tester` because that agent may never modify source,
+full stop — and a worktree keeps that rule absolute instead of granting it a
+revert-afterwards exception that a crashed run would leave behind as mutated source. A surviving
+mutation is blocking: either the test that catches it gets written, or the gap is recorded in the
+report's NOT COVERED list.
+
+**Still judgment, and the item said so.** No check verifies the reviewer answered honestly — the
+reading half is the same class of judgment as any other review criterion. What is now mechanical is
+the mutation half, and it is the half L3.40 depends on.
+
 1. **Problem**: `code-reviewer` reviews test code for style, naming and structure. It never asks the
    one question separating a test from a decoration: *would this fail if the behaviour it names were
    broken?* A test asserting `toBeDefined()` on a function that always returns an object passes

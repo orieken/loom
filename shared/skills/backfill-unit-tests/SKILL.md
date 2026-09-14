@@ -44,9 +44,31 @@ coverage/characterization work with no accompanying feature delivery.
    untouched source. This is the counterbalance `unit-tester` doesn't have on its own: nothing else checks
    whether the tests it wrote are well-structured, correctly scoped, and free of the complexity/SOLID issues
    this framework flags everywhere else.
-6. **Capture final coverage** — invoke `run-tests` again for the same scope, compute the delta against step
+6. **Prove the net with mutation** — a characterization net that has never been tested against a change is
+   an assumption, and green is not evidence. Pick **three** lines of the target that carry behavior (a
+   comparison, a returned value, a branch condition — not a log line or an import). Change each one, run
+   the new tests, and confirm **each mutation fails at least one test**. Revert every mutation.
+
+   **Run this in a throwaway git worktree, never in the working tree:**
+
+   ```bash
+   git worktree add --detach "$(mktemp -d)/mutation-check" HEAD
+   # mutate, run the suite in that directory, record which tests failed
+   git worktree remove --force <path>
+   ```
+
+   This is why the check belongs to the skill and not to `unit-tester`: that agent may never modify
+   source, full stop, and a worktree keeps the rule absolute rather than granting it an exception that a
+   crashed run would leave behind as mutated source. If the project is not a git repository, copy the
+   scope to a temp directory instead — never mutate in place.
+
+   **A surviving mutation is a blocking finding.** A line you could change with every test still green is
+   a line the net does not cover: either add the test that catches it, or record the gap explicitly in
+   the report's NOT COVERED list. Do not report the backfill complete with a surviving mutation
+   unrecorded.
+7. **Capture final coverage** — invoke `run-tests` again for the same scope, compute the delta against step
    3's baseline.
-7. **Produce the combined report** — display to the user.
+8. **Produce the combined report** — display to the user.
 
 ## Output Format
 
@@ -73,6 +95,10 @@ Coverage backfill | Characterization (legacy/migration)
 ## Behavior Notes (characterization mode only)
 - [Bug-like behavior captured as-is, not fixed] / "N/A"
 
+## Mutation Verification
+- **Lines mutated**: [file:line x3]
+- **Result**: [each mutation failed at least one test] / [N survived — listed under NOT COVERED]
+
 ## Blocked by Structure
 - [Code that needs a seam to be testable — proposed seam, awaiting explicit "approve file write"] / "None"
 
@@ -86,6 +112,8 @@ Coverage backfill | Characterization (legacy/migration)
   `shared/rules/approval-gates.md` gate #6 — never performed automatically by this skill.
 - Never mark the backfill complete if `code-reviewer` finds a Critical-severity issue in the new tests —
   fix the tests (not the source) before reporting done.
+- Never mutate the working tree. Step 6 runs in a throwaway worktree or a temp copy, and every mutation
+  is reverted by discarding it — not by editing the line back.
 - In characterization mode, never "correct" behavior the tests capture — that's what the next
   refactor/migration is for, not this skill.
 

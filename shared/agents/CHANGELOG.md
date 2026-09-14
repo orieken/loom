@@ -16,6 +16,13 @@ Semantic-ish, not strict SemVer:
 When you bump an agent's `version:` frontmatter field, add a row under a new dated heading here in the same
 commit — the pre-commit hook checks for exactly this.
 
+## 2026-09-13 — the reviewer asks whether a test would fail (roadmap L3.41)
+
+| Agent | Version | Change |
+|---|---|---|
+| code-reviewer | 1.1.0 -> 1.2.0 | Minor: new process step 7 and a **Test Evidence** criterion. For every test added or modified in the diff, answers "would this test fail if the behavior its name claims were broken?" as YES / NO / UNCERTAIN under the existing `## Test Design Review` heading. A `NO` names one of four types (vacuous, self-fulfilling, unreached, disabled) and requests changes; `UNCERTAIN` is advisory and never blocks, because a real assertion inside an unread custom matcher looks vacuous and a mock configured in a distant `beforeEach` looks legitimate. Scope is the diff's own tests, never a suite sweep. No contract change — the heading already existed and specified nothing |
+| unit-tester | 1.2.0 -> 1.3.0 | Minor: a characterization net is not finished until mutation proves it. Names the stopping condition and points at `backfill-unit-tests`, which runs the mutation in a throwaway git worktree — this agent's "never modify source, full stop" rule is unchanged and stays absolute |
+
 ## 2026-08-31 — analysis reaches QA and tech-writer as a projection, not a summary
 
 | Agent | Version | Change |
