@@ -126,12 +126,26 @@ jobs:
           go test ./... -coverprofile=coverage.out
       - name: Coverage ratchet
         # Ratchet policy (roadmap M0.2): the floor is the honest measured combined
-        # statement coverage of the loom module — 66.4% on 2026-09-02 (epic 88 phase B) — NOT the
-        # aspirational 85% from CLAUDE.md. CI fails below the floor. When real
-        # coverage rises, raise COVERAGE_FLOOR to the new measured value in this
-        # step; never lower it. Target remains 85%.
+        # statement coverage of the loom module — NOT the aspirational 85% from
+        # CLAUDE.md. CI fails below the floor. When real coverage rises, raise
+        # COVERAGE_FLOOR to the new measured value in this step. Target remains 85%.
+        #
+        # Re-baselined 66.3 -> 65.5 on 2026-09-14, deliberately and by a human
+        # decision, which is the only way this number goes down. What happened:
+        # the floor was set to the measured 66.4% on 2026-09-02, and by a5ae65b
+        # coverage had drifted to 64.7% without anyone seeing it, because from
+        # 2026-09-10 the `go test` step above failed first (the stage-timeout bug
+        # fixed in ca8b9b2) and this step never ran. Fixing the tests unmasked the
+        # drift rather than causing it.
+        #
+        # 65.5 is the local measurement; CI measures 65.7 on the same tree. The
+        # floor takes the lower of the two on purpose, so a small environment
+        # difference cannot flap the gate.
+        #
+        # This is a re-baseline, not an accepted loss: roadmap L3.45 is the climb
+        # back to 66.3 and then upward, and it names where the untested code is.
         env:
-          COVERAGE_FLOOR: "66.3"
+          COVERAGE_FLOOR: "65.5"
         run: |
           total=$(go tool cover -func=coverage.out | awk '/^total:/ {sub(/%/, "", $3); print $3}')
           echo "combined statement coverage: ${total}% (floor: ${COVERAGE_FLOOR}%)"

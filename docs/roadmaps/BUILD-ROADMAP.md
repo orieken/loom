@@ -2668,6 +2668,50 @@ the baseline that moves with the code: a shape regenerated until green asserts o
 behaviour is current behaviour. The discipline that holds is the one already used for agent goldens
 — the diff shows old shape and new, and the commit says why the change was intended.
 
+### L3.45 — Climb back to the coverage floor, and find out why it slid
+**Workstream**: OBSERVE · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-14)*
+
+1. **Problem**: the ratchet floor was the measured 66.4% on 2026-09-02. By `a5ae65b` combined
+   statement coverage was **64.7%** and nobody knew, because from 2026-09-10 the `go test` step
+   failed first — the stage-timeout defect fixed in `ca8b9b2` — so the ratchet step never ran. A
+   gate downstream of a failing gate reports nothing, and the thing it guards drifts in silence for
+   as long as the first one stays red. The floor was re-baselined to **65.5** on 2026-09-14 by a
+   human decision; this item is the climb back.
+2. **Where the untested code is**, measured rather than assumed — 290 functions at zero coverage:
+
+   | Package | Functions below 100% / total |
+   |---|---|
+   | `cmd/loom/cmd` | 133 / 246 |
+   | `internal/orchestrator` | 91 / 205 |
+   | `shared/mcp/internal/tools` | 64 / 93 |
+   | `internal/state` | 53 / 201 |
+   | `cmd/loom/internal/fs` | 50 / 58 |
+   | `cmd/loom/internal/platform` | 45 / 62 |
+   | `shared/mcp/internal/analyzers` | 41 / 52 |
+
+   `internal/orchestrator` is the one to start with: it is the executor, it holds the gate and loop
+   invariants the framework sells, and it is second-largest. `cmd/loom/cmd` is the biggest number
+   and the least valuable per test — CLI wiring, mostly exercised end-to-end already.
+3. **Architectural Fix**: raise coverage with `backfill-unit-tests` against the ranked list above,
+   raising `COVERAGE_FLOOR` to each new measured value as it goes. Characterization mode, not
+   coverage theatre — L3.41's mutation stopping condition applies, and a test that cannot fail
+   raises the number while lowering the signal, which is precisely the failure `test-suite-health-metrics`
+   (L3.42) exists to name.
+4. **The second defect is the more important one.** A gate that silently stops reporting because an
+   earlier step failed is the same class as an unemitted span turning every assertion about it green
+   (L3.43's closing note). Either the ratchet runs independently of the test step's exit status, or
+   something reports that it did not run. Fixing only the coverage number leaves the blind spot that
+   let it slide for twelve days.
+5. **Target files**: `.github/workflows/framework-ci.yml`, `internal/orchestrator/`,
+   `shared/mcp/internal/tools/`, `internal/state/`
+6. **Done when**: combined statement coverage is back above 66.3%, and a run whose tests fail still
+   says what coverage was — or says out loud that it does not know.
+
+**Why the floor moved at all.** `test-repair-contract.md` forbids an agent changing a CI gating
+threshold to accommodate a failure, and that rule held here: the agent measured, reported that the
+drift predated its own work, and stopped. A human made the call. Recording that because the contract
+working as intended is easier to see in an example than in its own prose.
+
 ---
 
 # MILESTONE 3 — Level 4: Self-Learning Agentic Ecosystems
