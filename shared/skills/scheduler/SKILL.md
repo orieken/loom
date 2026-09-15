@@ -30,6 +30,22 @@ Do NOT use when:
 
 ## Examples
 
+### Monthly exemplar audit
+
+```markdown
+Schedule a monthly exemplar-auditor run on the first of the month at 09:00 UTC.
+Findings write to: docs/audits/exemplar-audit-YYYY-MM-DD.md
+```
+
+Cron expression: `0 9 1 * *`
+Action: invoke `exemplar-auditor` agent
+Declared in: `shared/hooks/scheduled-monthly.yaml` (disabled by default, like every entry there)
+
+Worth knowing why this one exists: exemplars are deliberately not gated (roadmap L3.46), so nothing
+stops an agent editing one, and this audit is the only thing that notices a degraded exemplar. The
+digest warning in `health-check` reports that an exemplar's *file* changed; the auditor is what says
+whether the exemplar still holds.
+
 ### Weekly documentation-auditor run
 
 ```markdown
@@ -51,6 +67,7 @@ Copy the expression into your `schedule` tool invocation or `.claude/hooks/` ent
 ## Active Timers / Cron Schedules
 - Event: `weekly-memory-audit` | Cadence: `0 0 * * 1` | Action: `memory-auditor`
 - Event: `weekly-doc-audit`    | Cadence: `0 0 * * 1` | Action: `documentation-auditor`
+- Event: `exemplar-auditor-monthly` | Cadence: `0 9 1 * *` | Action: `exemplar-auditor`
 ```
 
 ## Guardrails

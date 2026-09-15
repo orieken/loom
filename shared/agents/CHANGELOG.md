@@ -16,6 +16,16 @@ Semantic-ish, not strict SemVer:
 When you bump an agent's `version:` frontmatter field, add a row under a new dated heading here in the same
 commit — the pre-commit hook checks for exactly this.
 
+## 2026-09-15 — the exemplar audit gets a cadence
+
+| Agent | Version | Change |
+|---|---|---|
+| exemplar-auditor | 1.0.0 -> 1.1.0 | Minor: step 7 splits its output by how it was invoked. Ad hoc still writes `.claude/feature-workspace/exemplar-audit.md`; a scheduled run writes `docs/audits/exemplar-audit-YYYY-MM-DD.md`, dated and never overwritten, because an audit whose output is replaced each run cannot be told stale from fresh. `health-check` reads that date |
+
+Wired into `shared/hooks/scheduled-monthly.yaml` as `exemplar-auditor-monthly`, disabled by default
+like every entry in that file. Exemplars are deliberately not gated (L3.46), so this audit is the
+only thing that notices a degraded one.
+
 ## 2026-09-14 — a suite has health numbers, not just a coverage number (roadmap L3.42)
 
 New `docs/patterns/test-suite-health-metrics.md` and `shared/knowledge/flake-triage-taxonomy.md`.

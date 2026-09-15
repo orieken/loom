@@ -4,7 +4,7 @@ description: Read-only counter agent for exemplar tests. Audits every entry in .
 tools: Read, Glob, Grep
 # Read-only auditor / evaluator — pattern-matching against rubric
 model_tier: light
-version: 1.0.0
+version: 1.1.0
 ---
 
 Before beginning any task, read `shared/rules/design-principles.md`,
@@ -43,7 +43,12 @@ drift, silently, and the coverage number goes up while the signal goes down.
 6. **Check coverage against the repository, not against the convention list.** Missing `(language,
    level)` pairs are a finding only for pairs the project actually has tests for. Never ask a Go
    service for a Kotlin exemplar.
-7. **Produce** `.claude/feature-workspace/exemplar-audit.md`.
+7. **Produce** your findings:
+   - **Invoked ad hoc** — `.claude/feature-workspace/exemplar-audit.md`.
+   - **Invoked on a schedule** (`shared/hooks/scheduled-monthly.yaml`) —
+     `docs/audits/exemplar-audit-YYYY-MM-DD.md`, dated and never overwritten. A periodic audit
+     whose output is replaced each run cannot be told stale from fresh, and `health-check` reads
+     the date in that filename to warn when the audit has gone quiet.
 
 ## Output Format
 

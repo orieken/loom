@@ -49,3 +49,33 @@ hooks:
     guardrails:
       - "memory-auditor is read-only — it never modifies files"
       - "Audit findings go to .claude/feature-workspace/memory-audit-report.md for human review"
+
+  - id: "exemplar-auditor-monthly"
+    event: "scheduled-monthly"
+    enabled: false
+    description: >
+      Monthly exemplar audit: invokes exemplar-auditor to check every entry in
+      .claude/exemplars.yaml against shared/contracts/exemplar-contract.md — that the test still
+      exists and runs, still carries its annotations, and still demonstrates what the manifest
+      claims. Read-only; produces findings for human review.
+
+      This is the only thing that notices a degraded exemplar. Exemplars are deliberately NOT
+      gated (roadmap L3.46, measured), so nothing stops an agent editing one, and a stale
+      exemplar is worse than none — it is a few-shot prompt delivered through the filesystem, and
+      every test written after it drifts inherits the drift. The digest warning in health-check
+      says an exemplar's FILE changed; this says whether the exemplar still holds.
+    schedule:
+      cron: "0 9 1 * *"
+    action:
+      type: "agent"
+      target: "exemplar-auditor"
+      args:
+        passContext: false
+        # Dated, not overwritten: a scheduled audit whose output is replaced each run cannot be
+        # told stale from fresh, and health-check warns on the date in this filename.
+        output: "docs/audits/exemplar-audit-YYYY-MM-DD.md"
+    guardrails:
+      - "exemplar-auditor is read-only — it never modifies a test, the manifest, or any source"
+      - "Retiring or replacing an exemplar is a human decision; the audit only reports"
+      - "A project with no .claude/exemplars.yaml is a legitimate state — report and skip, never fail"
+      - "If the agent is not found, log a warning and skip — do not fail the schedule"

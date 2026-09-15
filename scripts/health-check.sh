@@ -825,6 +825,52 @@ except Exception:
 fi
 echo ""
 
+# --- Exemplar audit freshness (opt-in) ---------------------------------------
+# Approval gate #7 (Wiring a New Fitness Function) — approved by the user.
+#
+# Exemplars are deliberately NOT gated (roadmap L3.46, measured): nothing stops
+# an agent editing one. exemplar-auditor is the only thing that notices a
+# degraded exemplar, and an audit nobody runs is the same silence. This warns
+# when a project that HAS exemplars has not audited them lately.
+#
+# Only applies to projects that declare exemplars — no manifest, nothing to
+# audit, no warning. WARN only, never FAIL: running the auditor is a judgment
+# call, same as the doc-audit check above.
+echo "--- Exemplar Audit Freshness ---"
+EXEMPLAR_AUDIT_MAX_DAYS=45   # the monthly schedule plus room for a late month
+if [[ ! -f "$REPO_DIR/.claude/exemplars.yaml" ]]; then
+  pass "no exemplars declared — audit freshness check skipped (opt-in)"
+elif [[ ! -d "$REPO_DIR/docs/audits" ]]; then
+  warn "exemplars are declared but docs/audits/ has no exemplar audit — run exemplar-auditor, or enable exemplar-auditor-monthly in shared/hooks/scheduled-monthly.yaml"
+else
+  newest_exemplar_audit=$(find "$REPO_DIR/docs/audits" -maxdepth 1 -name "exemplar-audit-*.md" | sort | tail -1 || true)
+  if [[ -z "$newest_exemplar_audit" ]]; then
+    warn "exemplars are declared but never audited — run exemplar-auditor, or enable exemplar-auditor-monthly in shared/hooks/scheduled-monthly.yaml"
+  else
+    exemplar_audit_date=$(basename "$newest_exemplar_audit" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' || true)
+    if [[ -z "$exemplar_audit_date" ]]; then
+      warn "newest exemplar audit filename has no parseable date — consider re-running exemplar-auditor"
+    elif command -v python3 &>/dev/null; then
+      exemplar_days=$(python3 -c "
+import datetime
+try:
+    last = datetime.datetime.strptime('${exemplar_audit_date}', '%Y-%m-%d')
+    print((datetime.datetime.utcnow() - last).days)
+except Exception:
+    print(-1)
+" 2>/dev/null || echo "-1")
+      if [[ "$exemplar_days" -ge $EXEMPLAR_AUDIT_MAX_DAYS ]]; then
+        warn "exemplar audit is $exemplar_days day(s) old ($(basename "$newest_exemplar_audit")) — a stale exemplar teaches every test written after it"
+      else
+        pass "exemplar audit is $exemplar_days day(s) old ($(basename "$newest_exemplar_audit"))"
+      fi
+    else
+      pass "exemplar audit present ($(basename "$newest_exemplar_audit")) — python3 unavailable, skipping age check"
+    fi
+  fi
+fi
+echo ""
+
 # --- CODEMAP freshness --------------------------------------------------
 echo "--- CODEMAP Freshness ---"
 CODEMAP_FILE="$REPO_DIR/CODEMAP.md"
