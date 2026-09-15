@@ -102,6 +102,38 @@ honestly. The deterministic half is that an exemplar runs, can fail, carries its
 simple, and has not silently changed. Taste stays human, and this contract does not pretend
 otherwise.
 
+## Exemplars are not gated, and that was measured rather than assumed
+
+Marking a test as an exemplar does **not** stop an agent editing it. That looks like an oversight, so
+here is the reasoning and the evidence behind it (roadmap L3.46).
+
+The manifest addresses exemplars by **file path**, so a barrier could only fire on file changes. Over
+this repository's own three exemplars:
+
+| | |
+|---|---|
+| Commits touching an exemplar's file | 10 |
+| …that created the exemplar | 3 |
+| …that added the exemplar annotation | 1 |
+| **…that changed the file without touching the exemplar** | **4** |
+| **…that changed an exemplar's body after it was declared** | **0** |
+
+A barrier would have halted four runs for edits to *neighbouring functions in the same file*, and
+none for an actual exemplar change. A gate that halts wrongly every time it fires is one people learn
+to approve without reading, which costs more than the protection is worth — and it would have been
+protecting against something that has not yet happened once.
+
+**What exists instead**: the manifest records a digest, `health-check` warns when it moves, and
+`exemplar-auditor` reads the test and says whether it still holds. Detection and judgment, without a
+barrier.
+
+**What would reverse this**: an exemplar actually being edited in a way that degraded it, or function
+-level addressing becoming cheap. The first is the signal to watch; the second was rejected in L3.40
+because finding function boundaries in six languages is worse than the duplication it would remove.
+
+*Sample: three exemplars, one repository, roughly three weeks. Small, and the honest basis for a
+decision that is cheap to revisit.*
+
 ## Staleness
 
 The manifest records each exemplar's digest. A changed digest does not mean the exemplar is wrong —

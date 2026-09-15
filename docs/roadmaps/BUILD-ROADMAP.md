@@ -2878,6 +2878,44 @@ working as intended is easier to see in an example than in its own prose.
 ### L3.46 — Decide whether an exemplar edit halts a run
 **Workstream**: KERNEL · **Effort**: M · **Blocked by**: L3.40 (shipped) · **Blocks**: none · *(raised 2026-09-14)*
 
+**SHIPPED as a decision** 2026-09-15 — **exemplars are not gated**, recorded in
+`shared/contracts/exemplar-contract.md` with the measurement behind it. No barrier was built.
+
+This item required deciding with change-frequency evidence rather than before it, and said the digest
+flag would produce that number. It did not have to be gathered prospectively: the exemplars are real
+files with real history, so the question was answerable the same day by measuring backwards.
+
+| | |
+|---|---|
+| Commits touching an exemplar's file | 10 |
+| …that created the exemplar | 3 |
+| …that added the exemplar annotation | 1 |
+| **…that changed the file without touching the exemplar** | **4** |
+| **…that changed an exemplar's body after it was declared** | **0** |
+
+**The manifest addresses exemplars by file path**, so a barrier can only fire on file changes. On
+this evidence it would have halted four runs for edits to neighbouring functions and none for an
+actual exemplar change. A gate that halts wrongly every time it fires is one people learn to approve
+without reading — worse than no gate, because it also spends the credibility of the gates that do
+matter.
+
+**The posture question this item framed turned out to be secondary.** It expected the argument to be
+about reversing `posture.go`'s observe-don't-gate stance. The evidence moved it to granularity: at
+file addressing there is nothing worth gating, and function-level addressing was already rejected in
+L3.40 because finding function boundaries across six languages is worse than the duplication it
+removes. The posture debate is still there to have, and it is not blocking anything.
+
+**The workflow proved itself while this shipped.** The digest warning fired on `envelope_test.go` —
+because `6a66be3` changed `TestDecoderMatchesARealResponse`, a different function in the same file.
+`git log -L` confirmed the exemplar's own body untouched since creation, so the digest was
+re-recorded. Warning → confirm → re-record, exactly the loop the design intends, and a live instance
+of the false-positive class the decision rests on.
+
+**What would reverse this**: an exemplar actually edited in a way that degraded it. That is the
+signal to watch, and the digest warning is what surfaces it. Its text now says plainly that a file
+digest cannot distinguish an exemplar edit from a neighbouring one — an honest noisy signal beats a
+silent one, and an unexplained noisy signal gets muted.
+
 1. **Problem**: an exemplar is declared, annotated, registered and audited — and an agent can still
    edit one. L3.40 shipped detection (a digest, and a flag when it changes), not protection. The
    question it deferred is whether editing an exemplar should halt the run.

@@ -353,6 +353,11 @@ echo ""
 #
 # Absent manifest is a PASS, not a skip-with-warning: most projects have none,
 # and exemplars are opt-in.
+#
+# This check is the whole enforcement story for exemplars: they are deliberately
+# NOT gated, so nothing stops an agent editing one. That decision was measured
+# rather than assumed — see the contract's "Exemplars are not gated" section.
+# The digest warning below is the signal that would reverse it.
 echo "--- Exemplar Tests (.claude/exemplars.yaml) ---"
 EXEMPLARS="$REPO_DIR/.claude/exemplars.yaml"
 if [[ ! -f "$EXEMPLARS" ]]; then
@@ -401,7 +406,9 @@ for entry in entries:
     if recorded:
         actual = hashlib.sha256(open(full, "rb").read()).hexdigest()[:len(recorded)]
         if actual != recorded:
-            print("WARN:%s — %s changed since the digest was recorded; run exemplar-auditor" % (name, rel))
+            print("WARN:%s — %s changed since its digest was recorded. A file digest cannot tell "
+                  "an edit to this exemplar from an edit to a neighbouring test in the same file; "
+                  "run exemplar-auditor to confirm it still holds" % (name, rel))
 
 # The other direction: an annotated test the manifest never mentions.
 for root, dirs, files in os.walk(repo):

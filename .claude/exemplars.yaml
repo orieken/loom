@@ -12,7 +12,7 @@ exemplars:
     file: internal/provider/claude/envelope_test.go
     language: go
     level: unit
-    digest: "sha256:45f38224da3cea91"
+    digest: "sha256:42a416a25bd509f1"
     demonstrates: >
       Table-driven cases with descriptive names, boundary values on each input
       dimension, and exactly one behaviour asserted per subtest. Note what it
