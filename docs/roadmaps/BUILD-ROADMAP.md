@@ -2797,6 +2797,42 @@ behaviour is current behaviour. The discipline that holds is the one already use
 ### L3.45 — Climb back to the coverage floor, and find out why it slid
 **Workstream**: OBSERVE · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-14)*
 
+**SHIPPED** 2026-09-14 — coverage back to **66.3%** (from 64.7% before this work began), the floor
+raised to match, and the reporting defect fixed.
+
+**The second defect was the point, and it is closed.** The ratchet and the embedding-example build
+now carry `if: always()`. The ratchet always **reports** the number and **gates** only when the test
+step passed: `go test` writes a coverage profile even when tests fail, so the number is always
+available, but coverage across a failing run is not comparable to a clean one and failing on it
+would be noise stacked on a failure that already has a cause. It prints `NOT GATED` and says why.
+Twelve days of drift went unseen because a step that never ran also never said so.
+
+**What the tests cover, and why these.** `internal/orchestrator`, as this item specified — the
+executor holds the invariants the framework sells. `WouldInvalidateApprovals` had no test at all,
+and the CLI calls it before recording an approval so it never writes one the same command is about
+to destroy. Also covered: the policy dry-run context, the route and loop callbacks that tell a human
+what is about to happen before a gate asks them to approve it, and the gate-halt message.
+
+**Every new test was mutation-verified**, per `backfill-unit-tests` step 6 — raising a coverage
+number with tests nobody has shown can fail is exactly what
+`docs/patterns/test-suite-health-metrics.md` was written to name. Two findings from doing it:
+
+- One mutation **survived**. The dry-run test does not fail when `cloneForInspection` is removed,
+  because `WouldInvalidateApprovals` loads fresh state and never saves it, so an in-memory demotion
+  is discarded and unobservable. The test does fail when the check **persists** what it inspected,
+  which is the failure that matters. The comment now says precisely that instead of claiming the
+  broader property — the clone is defence against a future caller that persists.
+- One mutant was **ineffective and looked like a passing test**: a deferred mutation of a local in a
+  function with an unnamed return never reaches the caller. Mutation testing needs its own mutants
+  checked, or a bad mutant reads as a covered line.
+
+**One test premise was wrong and the code was right**, which is worth recording given how often that
+has been the other way round this week: a policy-context test asserted a review verdict would be
+visible after the loop exhausted. It is not, because the run halts at `confirm-unresolved-review`
+with `code-reviewer` in `WAITING_APPROVAL` — a stage that has settled nothing. The corrected pair
+now asserts both directions, including that an unsettled stage contributes no facts, since an absent
+fact resolves a policy check to UNKNOWN and a guessed one resolves it to a decision nobody made.
+
 1. **Problem**: the ratchet floor was the measured 66.4% on 2026-09-02. By `a5ae65b` combined
    statement coverage was **64.7%** and nobody knew, because from 2026-09-10 the `go test` step
    failed first — the stage-timeout defect fixed in `ca8b9b2` — so the ratchet step never ran. A

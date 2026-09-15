@@ -121,37 +121,64 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Build and test the loom module
+        id: gotest
         run: |
           go build ./...
           go test ./... -coverprofile=coverage.out
       - name: Coverage ratchet
+        # if: always() is the fix for roadmap L3.45's second defect. Steps in a
+        # job fail-fast, so when the test step above failed this one silently
+        # never ran — and the number it guards drifted 1.6% over twelve days
+        # with nothing reporting that it had stopped being measured. A gate
+        # downstream of a failing gate reports nothing, which is the same shape
+        # as a span that stops being emitted turning every assertion about it
+        # green.
+        #
+        # It always REPORTS and conditionally GATES: `go test` writes
+        # coverage.out even when tests fail, so the number is always available,
+        # but coverage measured across a failing run is not comparable to a
+        # clean one and failing the build on it would be noise on top of a
+        # failure that already has a cause.
+        if: always()
         # Ratchet policy (roadmap M0.2): the floor is the honest measured combined
         # statement coverage of the loom module — NOT the aspirational 85% from
         # CLAUDE.md. CI fails below the floor. When real coverage rises, raise
         # COVERAGE_FLOOR to the new measured value in this step. Target remains 85%.
         #
-        # Re-baselined 66.3 -> 65.5 on 2026-09-14, deliberately and by a human
-        # decision, which is the only way this number goes down. What happened:
-        # the floor was set to the measured 66.4% on 2026-09-02, and by a5ae65b
-        # coverage had drifted to 64.7% without anyone seeing it, because from
-        # 2026-09-10 the `go test` step above failed first (the stage-timeout bug
-        # fixed in ca8b9b2) and this step never ran. Fixing the tests unmasked the
-        # drift rather than causing it.
+        # History, because this number's movements are the interesting part:
+        #   2026-09-02  66.4  measured, set as the floor
+        #   2026-09-14  65.5  RE-BASELINED DOWN by a human decision, after
+        #                     coverage drifted to 64.7 unseen — from 2026-09-10
+        #                     the test step failed first (the stage-timeout bug
+        #                     fixed in ca8b9b2) so this step never ran at all
+        #   2026-09-14  66.3  climbed back (L3.45), floor raised again
         #
-        # 65.5 is the local measurement; CI measures 65.7 on the same tree. The
-        # floor takes the lower of the two on purpose, so a small environment
-        # difference cannot flap the gate.
+        # The floor takes the LOWER of the local and CI measurements, so a small
+        # environment difference cannot flap the gate: 66.3 local, ~66.5 in CI.
         #
-        # This is a re-baseline, not an accepted loss: roadmap L3.45 is the climb
-        # back to 66.3 and then upward, and it names where the untested code is.
+        # Raising it is routine. Lowering it is a human decision, and the only
+        # one so far is recorded above.
         env:
-          COVERAGE_FLOOR: "65.5"
+          COVERAGE_FLOOR: "66.3"
         run: |
+          if [[ ! -f coverage.out ]]; then
+            echo "NOT MEASURED: the test step produced no coverage profile"
+            exit 0
+          fi
           total=$(go tool cover -func=coverage.out | awk '/^total:/ {sub(/%/, "", $3); print $3}')
           echo "combined statement coverage: ${total}% (floor: ${COVERAGE_FLOOR}%)"
+          if [[ "${{ steps.gotest.outcome }}" != "success" ]]; then
+            echo "NOT GATED: tests failed, so this number is not comparable to a clean run."
+            echo "Reported so it cannot drift unmeasured while the suite is red."
+            exit 0
+          fi
           awk -v t="$total" -v f="$COVERAGE_FLOOR" 'BEGIN { exit (t + 0 < f + 0) ? 1 : 0 }' \
             || { echo "FAIL: coverage ${total}% is below the ratchet floor ${COVERAGE_FLOOR}%"; exit 1; }
       - name: Build the out-of-repo embedding example (D.2)
+        # Independent of the test run: it compiles a separate module against the
+        # public API. It was skipped for twelve days for no reason beyond step
+        # ordering, which is how a stale go.mod there went unnoticed (d23e5cd).
+        if: always()
         # Own go.mod + replace — proves a consumer can register a custom tool
         # against the public tools package without loom internals or mcp-go
         # types leaking into its signatures.
