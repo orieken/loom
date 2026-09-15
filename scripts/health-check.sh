@@ -440,6 +440,90 @@ PYEOF
 fi
 echo ""
 
+# --- 7c. Marked preconditions name an enforcer that exists -------------------
+# Fitness function for architecture-guardrails.md #7's third clause and
+# docs/patterns/framework-meta-patterns.md.
+#
+# A comment stating a condition the code depends on must name what holds it.
+# This does NOT detect stale prose — nothing mechanical can. It makes a
+# deliberately marked precondition impossible to leave unenforced, and makes
+# an unenforceable one say so out loud.
+echo "--- Marked Preconditions (PRECONDITION / ENFORCED-BY) ---"
+if ! command -v python3 >/dev/null 2>&1; then
+  warn "python3 unavailable — cannot validate marked preconditions"
+else
+  precondition_report=$(python3 - "$REPO_DIR" <<'PYEOF'
+import os, re, sys
+
+repo = sys.argv[1]
+SKIP_DIRS = {".git", "node_modules", "archive", ".claude", "scratch", "templates"}
+TEXT_SUFFIXES = (".go", ".yaml", ".yml", ".md", ".sh", ".py", ".ts", ".js")
+
+marks, enforcers = [], set()
+for root, dirs, files in os.walk(repo):
+    dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+    for name in files:
+        if not name.endswith(TEXT_SUFFIXES):
+            continue
+        path = os.path.join(root, name)
+        rel = os.path.relpath(path, repo)
+        try:
+            lines = open(path, encoding="utf-8", errors="replace").read().splitlines()
+        except OSError:
+            continue
+        # Every Go test function in the tree is a candidate enforcer.
+        if name.endswith("_test.go"):
+            enforcers.update(re.findall(r"^func (Test\w+)", "\n".join(lines), re.M))
+        for number, line in enumerate(lines):
+            if "PRECONDITION:" not in line:
+                continue
+            # The pattern doc and the guardrail describe the convention; they
+            # are not themselves preconditions.
+            # The convention's own definition, and this checker's source,
+            # both contain the marker without stating a precondition.
+            if rel in ("docs/patterns/framework-meta-patterns.md",
+                       "shared/rules/architecture-guardrails.md",
+                       "scripts/health-check.sh"):
+                continue
+            window = "\n".join(lines[number:number + 6])
+            found = re.search(r"ENFORCED-BY:\s*(.+)", window)
+            if not found:
+                marks.append(("MISSING", rel, number + 1, ""))
+            else:
+                marks.append(("OK", rel, number + 1, found.group(1).strip()))
+
+if not marks:
+    print("NONE")
+for status, rel, number, enforcer in marks:
+    if status == "MISSING":
+        print("FAIL:%s:%d states a PRECONDITION with no ENFORCED-BY" % (rel, number))
+    elif enforcer.startswith("judgment-only"):
+        if len(enforcer) <= len("judgment-only") + 3:
+            print("FAIL:%s:%d is judgment-only with no reason" % (rel, number))
+        else:
+            print("PASS:%s:%d judgment-only, with a reason" % (rel, number))
+    else:
+        named = enforcer.split()[0].rstrip(".,")
+        if named.startswith("Test") and named not in enforcers:
+            print("FAIL:%s:%d names enforcer %s, which does not exist" % (rel, number, named))
+        else:
+            print("PASS:%s:%d enforced by %s" % (rel, number, named))
+PYEOF
+)
+  if [[ "$precondition_report" == "NONE" ]]; then
+    pass "no marked preconditions (the convention is opt-in)"
+  else
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      case "$line" in
+        PASS:*) pass "precondition ${line#PASS:}" ;;
+        *)      fail "precondition ${line#FAIL:}" ;;
+      esac
+    done <<< "$precondition_report"
+  fi
+fi
+echo ""
+
 # --- 8. Knowledge Item frontmatter valid ------------------------------------
 echo "--- Knowledge Item Frontmatter (name, tags, domain, created) ---"
 for ki_dir in "$SHARED_DIR/knowledge" "$REPO_DIR/.claude/knowledge"; do

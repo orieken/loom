@@ -160,10 +160,15 @@ func encodeAttributes(attributes []attribute.KeyValue) []otlpAttribute {
 // STRINGSLICE is encoded as a real ArrayValue because the GenAI convention
 // uses one (finish_reasons) and a tool reading the convention would fail on
 // a flattened string. The remaining slice types keep the string-form
-// fallback: rendering a value a reader can still see beats an absent key,
-// and nothing here emits them. That sentence was true of every slice type
-// until roadmap L3.43 added the first one — which is why the fallback was
-// not sufficient on its own.
+// fallback: rendering a value a reader can still see beats an absent key.
+//
+// PRECONDITION: this package emits no slice attribute other than StringSlice.
+// ENFORCED-BY: TestNoUnencodableSliceAttributeIsEmitted
+//
+// That sentence was prose until roadmap L3.43, and it had already expired:
+// the comment said "nothing here emits a slice attribute today" while the
+// same change added the first one. A precondition that names its enforcer
+// cannot rot that way.
 func encodeValue(value attribute.Value) otlpAnyVal {
 	switch value.Type() {
 	case attribute.STRINGSLICE:

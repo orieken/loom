@@ -122,3 +122,43 @@ each other's context, so the artifact must be self-sufficient.
 
 ---
 *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+
+## Preconditions That Check Themselves
+
+**Context**: A comment states a condition the code depends on — "nothing in this package emits a
+slice attribute", "measured size was 22,258 bytes", "five of the nine fields have no source". The
+condition is true when written, the code moves, and nothing notices. The comment now misinforms
+every reader with the authority of something that was once verified.
+
+This happened four times in one week in this repository. In each case the prose was accurate when
+written and load-bearing when it rotted: a fallback that was safe *because* nothing emitted slices,
+a ceiling justified by a measurement that had drifted 5.5KB, a mutation procedure that said to
+confirm the test fails but never to confirm the mutation applied.
+
+**Structure**: a load-bearing claim names what holds it, in a fixed form:
+
+```go
+// PRECONDITION: nothing in this package emits a slice attribute.
+// ENFORCED-BY: TestOnlyScalarAttributesAreEmitted
+```
+
+`ENFORCED-BY` names a Go test function, a script, or the literal `judgment-only` with a reason:
+
+```go
+// PRECONDITION: the envelope's field names match the live CLI.
+// ENFORCED-BY: judgment-only — verified against one captured response (L3.15), and one
+// response is not a contract.
+```
+
+`scripts/health-check.sh` fails when a `PRECONDITION` has no `ENFORCED-BY`, and when the named
+enforcer does not exist. That is the whole check.
+
+**Trade-offs**: it catches nothing nobody marked, and every case that has bitten this repository was
+unmarked. It does not detect stale prose; it makes a *deliberately marked* precondition impossible
+to leave unenforced, and makes an unenforceable one say so. The bet is the same one the exemplar
+annotation makes — a convention that costs one line at the moment of writing, when the author still
+knows whether the claim is load-bearing.
+
+**Related**: `architecture-guardrails.md` #7 requires every structural *decision* to produce a
+fitness function or be flagged judgment-only. This is the same rule applied to a *claim*, which is
+the form a decision takes once it has been written down and forgotten.

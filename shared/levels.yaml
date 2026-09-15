@@ -23,10 +23,20 @@ landed:
   - L3.9 # telemetry schema generated from one Go enum (epic 86, shipped 2026-09-01)
   - L2.16 # typed policy evaluator and audit trail (epic 87, shipped 2026-09-02)
 
-# Context budget for the level 1 core rules bundle. The ceiling is asserted
-# by a Go test (cmd/loom/internal/levels); measured size 2026-09-13 is
-# 30,082 bytes (~7.5k tokens at 4 bytes/token). Raise deliberately, not by
-# drift.
+# Context budget for the level 1 core rules bundle.
+#
+# PRECONDITION: the bundle is under coreRulesCeilingBytes.
+# ENFORCED-BY: TestCoreRulesBundleStaysUnderCeiling
+#
+# Note what that does NOT cover: the observed figure below is a dated
+# reading, and nothing checks it. It read 22,258 while the bundle was
+# actually 27,734 — 5.5KB of drift, invisible because a number in a comment
+# has no enforcer. Stating the precondition as "the figure is accurate"
+# would claim more than the test holds, which is the failure this convention
+# exists to stop.
+#
+# Observed 2026-09-15: 30,794 bytes (~7.7k tokens at 4 bytes/token). Treat it
+# as a reading, not a guarantee; raise the ceiling deliberately, not by drift.
 #
 # Raised 28,000 -> 31,000 on 2026-09-13 for guardrail #9 (telemetry records
 # properties, not payloads) and approval gate #9 (removing test coverage),

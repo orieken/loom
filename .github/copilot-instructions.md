@@ -237,6 +237,7 @@ Never hardcode API keys, passwords, connection strings, or tokens. Use `.env` pl
 ## 7. Verifiable Architecture
 - Every structural or architectural decision made must produce a fitness function (a CI check, linter rule, or automated test).
 - If it cannot produce a fitness function, it MUST be explicitly flagged as "judgment-only" with a documented reason in the architecture notes.
+- A comment stating a condition the code depends on must name what holds it: `PRECONDITION:` + `ENFORCED-BY:` (a test, a script, or `judgment-only` with a reason). See `docs/patterns/framework-meta-patterns.md`.
 
 ## 8. Observability Boundaries
 - No OpenTelemetry (OTel) instrumentation logic is allowed inside domain entities or page logic.
