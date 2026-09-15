@@ -16,6 +16,17 @@ Semantic-ish, not strict SemVer:
 When you bump an agent's `version:` frontmatter field, add a row under a new dated heading here in the same
 commit — the pre-commit hook checks for exactly this.
 
+## 2026-09-15 — a mutant that never landed is not a passing test
+
+| Agent | Version | Change |
+|---|---|---|
+| exemplar-auditor | 1.1.0 -> 1.2.0 | Minor: step 5 must now say which standard its vacuity answer meets. A YES reasoned from control flow is weaker than one demonstrated by mutation, and for the one test every later test is copied from that difference is worth stating rather than smoothing over. With no mutation evidence, recommend `backfill-unit-tests` step 6 instead of presenting the reasoned answer as settled |
+
+`backfill-unit-tests` step 6 and `exemplar-contract.md`'s second disqualifier gained the same fix:
+confirm the mutant landed (non-empty diff) before trusting a survival, and mutate what an assertion
+depends on. Twice in two days a mutation failed to apply and the passing test read exactly like an
+uncovered line.
+
 ## 2026-09-15 — the exemplar audit gets a cadence
 
 | Agent | Version | Change |

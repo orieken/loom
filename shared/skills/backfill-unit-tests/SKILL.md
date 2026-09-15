@@ -62,10 +62,25 @@ coverage/characterization work with no accompanying feature delivery.
    crashed run would leave behind as mutated source. If the project is not a git repository, copy the
    scope to a temp directory instead — never mutate in place.
 
-   **A surviving mutation is a blocking finding.** A line you could change with every test still green is
-   a line the net does not cover: either add the test that catches it, or record the gap explicitly in
-   the report's NOT COVERED list. Do not report the backfill complete with a surviving mutation
-   unrecorded.
+   **Confirm each mutant actually landed before trusting its result.** In the worktree,
+   `git diff --quiet` must report a change; an empty diff means the edit did not apply and the test
+   run that follows proves nothing. This is not hypothetical — a mutation whose anchor did not match
+   has twice produced a passing test that read exactly like "the net does not cover this line".
+   **A mutant that never landed and an uncovered line are indistinguishable from the test output
+   alone.** The diff is what separates them.
+
+   **Mutate what an assertion depends on**, not whatever is easiest to edit: a compared value, a
+   returned value, a branch condition. Adding a statement, or editing something the function's result
+   does not flow through, produces a *live diff with no behavioural change* — which survives every
+   test for the same reason a vacuous test passes, and looks identical to a real gap. A deferred
+   write to a local in a function with an unnamed return is the example that got past a careful
+   reader.
+
+   **A surviving mutation is a blocking finding — once the mutant is shown to be live.** A line you
+   could change with every test still green is a line the net does not cover. Before recording that,
+   mutate the same line a second way: if the second mutant is also survived, the gap is real. Then
+   either add the test that catches it, or record the gap explicitly in the report's NOT COVERED
+   list. Do not report the backfill complete with a surviving mutation unrecorded.
 7. **Capture final coverage** — invoke `run-tests` again for the same scope, compute the delta against step
    3's baseline.
 8. **Produce the combined report** — display to the user.
@@ -96,8 +111,12 @@ Coverage backfill | Characterization (legacy/migration)
 - [Bug-like behavior captured as-is, not fixed] / "N/A"
 
 ## Mutation Verification
-- **Lines mutated**: [file:line x3]
-- **Result**: [each mutation failed at least one test] / [N survived — listed under NOT COVERED]
+- **Lines mutated**: [file:line x3, and what was changed at each — "returned true unconditionally",
+  not "mutated"]
+- **Mutant confirmed applied**: [yes, `git diff` non-empty for each] — a mutant that never landed
+  reads exactly like an uncovered line
+- **Result**: [each mutation failed at least one test] / [N survived, re-mutated a second way, still
+  survived — listed under NOT COVERED]
 
 ## Blocked by Structure
 - [Code that needs a seam to be testable — proposed seam, awaiting explicit "approve file write"] / "None"

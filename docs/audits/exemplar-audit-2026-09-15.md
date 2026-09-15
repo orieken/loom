@@ -78,11 +78,16 @@ git worktree and discarded.
 
 All three can fail. The YES answers above are now demonstrated rather than reasoned.
 
-**One process note worth keeping.** The second mutation did not apply on the first attempt — a regex
-missed `checkGate`'s signature — and the test passed, which reads exactly like "the mutation was not
-caught". A mutant that never landed is indistinguishable from a vacuous test unless the mutated
-source is checked. The same trap appeared during L3.45. **Confirm the mutant is present before
-trusting a passing result.**
+**One process note worth keeping.** The second mutation did not apply on the first attempt — the
+pattern was aimed at the wrong file, so nothing was written — and the test passed, which reads
+exactly like "the mutation was not caught". A mutant that never landed is indistinguishable from a
+vacuous test unless the mutated source is checked. The same trap appeared during L3.45.
+
+**Fixed at the source the same day**: `backfill-unit-tests` step 6 and this contract's second
+disqualifier now require confirming the mutant landed (a non-empty diff) before trusting a survival,
+and require mutating something an assertion depends on rather than whatever is easiest to edit. The
+guard was verified against this exact failure — pattern aimed at the wrong file, empty diff, guard
+fires.
 
 ## Recommended Actions
 1. Nothing blocking. Nothing to retire, repoint or rewrite.
