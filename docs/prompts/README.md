@@ -14,6 +14,13 @@ For tasks that require a human (not a fireable agent prompt), see [../human-task
 
 ## Active Prompts
 
+### Framework roadmap — next items (2026-09-15)
+
+| File | Scope | Estimated size |
+|---|---|---|
+| [loom-next-items-2026-09-15.md](loom-next-items-2026-09-15.md) | Handoff after L3.38–L3.46 shipped. Verified repo state, the credible unblocked items, the working method that produced that stream, this repo's verification discipline, and five loose threads. Includes the trap that ~49 items *look* open because older milestones predate the SHIPPED convention | Medium — pick one item per session |
+
+
 ### Documentation cleanup (from docs/TODO.md audit — 2026-08-15)
 
 Run in order where dependencies exist: `docs-cleanup-legacy-install-decision.md` before

@@ -2407,6 +2407,20 @@ was measured absent.
 ### L3.38 — Tool spans record the payload, not the properties
 **Workstream**: OBSERVE · **Effort**: S · **Blocked by**: L3.8 (shipped) · **Blocks**: none · *(raised 2026-09-13)*
 
+**SHIPPED** 2026-09-13 (`3b18bca`) — guardrail **#9** (telemetry records properties, not payloads),
+and `internal/telemetry/tool.go` inverted from a denylist to an allowlist.
+
+A value reaches a span only when the tool declared that argument safe; everything else becomes a
+length, plus a salted hash when `LOOM_TELEMETRY_SALT` is set. The inversion is what the
+consumer-extensible registry requires: a denylist of content-shaped names cannot cover an argument in
+someone else's tool (`examples/embedding`'s echotool takes `text`), and that failure is silent.
+
+`tools.SafeArguments` is an optional interface a Tool implements to declare its own non-sensitive
+arguments — opt-in because only the tool's author knows whether `text` is an echo payload or a user's
+message. A tool that implements nothing gets every value hashed. A secret-shaped name is redacted
+whatever the tool declares. No salt means no hash, never an unsalted one.
+
+
 1. **Problem**: `internal/telemetry/tool.go` redacts an argument when its *name* looks secret —
    `token`, `password`, `api_key` — and truncates everything else to 512 characters. Secret
    redaction is not content minimisation. `search_ki` and `search_docs` each declare a required
@@ -2433,6 +2447,30 @@ establish, and the training that teaches replay flags the same collision itself.
 
 ### L3.39 — Nothing constrains what an agent may change when repairing a test
 **Workstream**: KERNEL · **Effort**: M · **Blocked by**: none · **Blocks**: L3.40 · *(raised 2026-09-13)*
+
+**SHIPPED** 2026-09-13 (`0479b56`, fitness function `7a78e8c`) —
+`shared/rules/test-repair-contract.md`, approval gate **#9** (Removing Test Coverage), and nine
+agents bound.
+
+The contract states what a repair MAY change (selectors, fixed sleeps, an expected value *with source
+evidence*) and MAY NOT (remove or weaken an assertion, add a construct converting failure to pass,
+skip, quarantine, retire, move a CI threshold). Every repair states what the test could catch before
+and after — the load-bearing clause, because that sentence is hard to write honestly about a deleted
+assertion.
+
+Gate #9 is scoped to deliberate coverage removal and is Always Human. Assertion removal is forbidden
+outright rather than gated: a rule that says no is cheaper than a halt, and a gate there would fire
+on every legitimate test rewrite.
+
+`dx-engineer` 1.1.0 is why this existed — step 4 said "Quarantine flaky tests", with Write and Edit
+and no gate. It now proposes one carrying owner, expiry, cause and resolving evidence.
+
+Timeout widening requires the measured p95 and why the old value was wrong, with **no fixed
+percentage**: the source material's 25% is admitted arbitrary and exists to force a number into the
+conversation, which the evidence requirement does without hardcoding a threshold.
+
+`health-check` fails when any of eight pinned test-writing agents drops the contract reference.
+
 
 1. **Problem**: an agent can make a suite green by deleting the assertion that was failing, and no
    rule, gate or check in this repository forbids it. The entire counter-statement is one line —
