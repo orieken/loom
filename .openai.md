@@ -186,7 +186,7 @@ stays comparable when that changes.
 
 Three properties are now enforced in code rather than asserted in prose:
 
-- The **Always Human** list is a compiled constant. A policy targeting one of those five gates
+- The **Always Human** list is a compiled constant. A policy targeting one of those six gates
   fails to load, naming the gate and the reason. It used to be "silently ignored", which meant
   someone who wrote a policy to auto-approve a deployment saw no error.
 - A condition the run cannot answer resolves to **unknown**, never to true. Five of the nine

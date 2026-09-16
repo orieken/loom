@@ -524,6 +524,116 @@ PYEOF
 fi
 echo ""
 
+# --- 7d. Every gate in the rule exists in code, classified the same way -----
+# Fitness function for shared/rules/approval-gates.md.
+#
+# This check exists because the drift it catches already happened. Gate #9
+# was added to the rule and marked Always Human; nothing in Go followed. A
+# policy targeting it was rejected as `unknown gate` — the message a typo
+# gets — so the obvious repair was to add it to eligible(), which is the one
+# change the gate exists to prevent. Nothing would have reported that.
+#
+# The gate-number -> GateID mapping below is PINNED rather than parsed. Only
+# the three policy-eligible gates carry a `Policy gate ID:` line in the rule;
+# adding one to the other six costs ~180 bytes of a core rule that has 206
+# left, which would spend the entire remaining bundle budget on punctuation.
+# The same trade is documented at TEST_WRITING_AGENTS above: an explicit list
+# whose edit is deliberate beats a derivation that is clever and wrong.
+#
+# A gate added to the rule without a line here FAILS, which is the point —
+# pinning is only a control while someone has to widen it on purpose.
+echo "--- Approval Gates (rule and code agree) ---"
+if ! command -v python3 >/dev/null 2>&1; then
+  warn "python3 unavailable — cannot cross-check approval gates"
+else
+  gates_report=$(python3 - "$REPO_DIR" <<'PYEOF'
+import re, sys
+
+repo = sys.argv[1]
+rule_path = f"{repo}/shared/rules/approval-gates.md"
+code_path = f"{repo}/internal/policy/gate.go"
+
+# Pinned: gate number in approval-gates.md -> GateID declared in gate.go.
+PINNED = {
+    1: "ship-to-friday",      2: "git-commit",             3: "db-migration",
+    4: "db-contract-phase",   5: "external-api",           6: "out-of-boundary-write",
+    7: "fitness-function-wiring", 8: "deploy",             9: "test-removal",
+}
+
+try:
+    rule = open(rule_path, encoding="utf-8").read()
+    code = open(code_path, encoding="utf-8").read()
+except OSError as exc:
+    print(f"FAIL:cannot read {exc.filename}")
+    sys.exit(0)
+
+# Each gate's number, title, and whether the rule calls it always-human.
+declared = {}
+for match in re.finditer(r"^### (\d+)\. (.+)$", rule, re.M):
+    number, title = int(match.group(1)), match.group(2).strip()
+    body = rule[match.end():]
+    nxt = re.search(r"^### \d+\. ", body, re.M)
+    body = body[:nxt.start()] if nxt else body
+    eligibility = re.search(r"\*\*Policy-eligible: (No|Yes)", body)
+    if not eligibility:
+        print(f"FAIL:gate #{number} ({title}) states no Policy-eligible line")
+        continue
+    declared[number] = (title, eligibility.group(1) == "No")
+
+if not declared:
+    print("FAIL:no gates parsed from approval-gates.md — the heading format changed")
+    sys.exit(0)
+
+# GateID constants, and membership of the two classifying lists, by identifier.
+constants = dict(re.findall(r"(\w+)\s+GateID = \"([^\"]+)\"", code))
+
+def ids_in(function):
+    block = re.search(r"func " + function + r"\(\).*?\n}", code, re.S)
+    if not block:
+        return None
+    return {constants[name] for name in re.findall(r"\b(Gate\w+)\b", block.group(0))
+            if name in constants}
+
+always_human = ids_in("alwaysHuman")
+eligible = ids_in("EligibleGates")
+if always_human is None or eligible is None:
+    print("FAIL:cannot locate alwaysHuman() or EligibleGates() in internal/policy/gate.go")
+    sys.exit(0)
+
+for number in sorted(declared):
+    title, is_always_human = declared[number]
+    label = f"gate #{number} ({title})"
+    gate_id = PINNED.get(number)
+    if gate_id is None:
+        print(f"FAIL:{label} is not pinned in health-check.sh — add it deliberately")
+        continue
+    if gate_id not in constants.values():
+        print(f"FAIL:{label} has no GateID {gate_id!r} in internal/policy/gate.go")
+        continue
+    if is_always_human and gate_id not in always_human:
+        print(f"FAIL:{label} is Always Human in the rule but absent from alwaysHuman()")
+    elif is_always_human and gate_id in eligible:
+        print(f"FAIL:{label} is Always Human in the rule but policy-targetable in code")
+    elif not is_always_human and gate_id not in eligible:
+        print(f"FAIL:{label} is policy-eligible in the rule but absent from EligibleGates()")
+    else:
+        classification = "always human" if is_always_human else "policy-eligible"
+        print(f"PASS:{label} -> {gate_id}, {classification} in both")
+
+for stale in sorted(set(PINNED) - set(declared)):
+    print(f"FAIL:gate #{stale} is pinned in health-check.sh but no longer in the rule")
+PYEOF
+  )
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    case "$line" in
+      PASS:*) pass "${line#PASS:}" ;;
+      *)      fail "${line#FAIL:}" ;;
+    esac
+  done <<< "$gates_report"
+fi
+echo ""
+
 # --- 8. Knowledge Item frontmatter valid ------------------------------------
 echo "--- Knowledge Item Frontmatter (name, tags, domain, created) ---"
 for ki_dir in "$SHARED_DIR/knowledge" "$REPO_DIR/.claude/knowledge"; do

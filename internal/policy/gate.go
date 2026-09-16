@@ -23,7 +23,7 @@ import "fmt"
 // GateID names a gate a policy can watch.
 type GateID string
 
-// The gates policies may target. These mirror the eight gates in
+// The gates policies may target. These mirror the nine gates in
 // shared/rules/approval-gates.md.
 const (
 	GateGitCommit             GateID = "git-commit"
@@ -34,6 +34,7 @@ const (
 	GateDBContractPhase       GateID = "db-contract-phase"
 	GateExternalAPI           GateID = "external-api"
 	GateDeploy                GateID = "deploy"
+	GateTestRemoval           GateID = "test-removal"
 )
 
 // The executor's own gates (roadmap L2.13). These name stage progressions
@@ -66,6 +67,15 @@ func alwaysHuman() map[GateID]string {
 		GateDBContractPhase: "data destruction is irreversible",
 		GateExternalAPI:     "third-party mutations have no guaranteed rollback path",
 		GateDeploy:          "deployment failures can cause production downtime",
+		// Gate #9 existed in the rule for days before it existed here, and
+		// the gap was not benign: `unknown gate` is the message a typo gets,
+		// so anyone reconciling the two lists would reasonably have added
+		// this to eligible() instead. L2.19 (honour a policy decision at a
+		// gate) rests its safety argument on always-human gates being
+		// unreachable, and a test removal auto-approved by policy is the
+		// exact one-way door gate #9 was created to hold.
+		GateTestRemoval: "losing regression signal is silent, and what the test protected " +
+			"is a fact no run state carries",
 	}
 }
 
