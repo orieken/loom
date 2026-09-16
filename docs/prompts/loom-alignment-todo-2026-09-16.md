@@ -108,13 +108,25 @@ reader would trip on, and three of them are in one file.
       build until it is pinned. Deliberate — pinning is only a control while widening it is a
       conscious act — but it is a new way for a rule edit to break CI.
 
-- [ ] **`A5` — `unit-tester`'s report has no `## Not Covered`.** *(proposed L3.49 · S)*
+- [x] **`A5` — a characterization net says what it does not cover.** — `e4862ba` *(L3.49 · S)*
       A characterization net that does not say what it *didn't* pin reads as broader than it is. The
       curriculum requires naming untried inputs, env/locale/time dependencies, unobserved side
       effects, and that correctness was never asserted.
-      **Files**: `shared/agents/unit-tester.md` (template ~l.75-99, characterization mode only)
-      **Also needs**: `version:` bump + `shared/agents/CHANGELOG.md` row in the same commit, then
-      `check-agent-versions-ci.sh HEAD~1 HEAD`.
+      **Shipped**, with the item's own fix corrected. As written this said "add a `## Not Covered`
+      section to the report" — but `.claude/feature-workspace/` is **gitignored** (`.gitignore:14`), so
+      a note written only to the report dies with the workspace and the net ships recording nothing.
+      The note goes in the **test file**, which is where the curriculum puts it and why.
+      **Second defect, which the audit missed**: step 8 already required naming three
+      behavior-carrying lines while the output template had **no section for them** — an orphaned
+      instruction. They now live in the scope note, which is also what `backfill-unit-tests` step 6
+      mutates.
+      **Enforcement**: `judgment-only` with a reason, marked under PRECONDITION / ENFORCED-BY —
+      `health-check` runs against this repo and cannot see test files in a user's project.
+      `unit-tester` 1.5.0 -> 1.6.0; `check-agent-versions-ci.sh` OK; `health-check` 331 / 0 failed.
+      **Follow-up**: `tests/agents/unit-tester/actual-output.md` is a *recording* of 1.5.0 output and
+      now predates the requirement. It was deliberately **not** hand-edited — editing a golden is the
+      drift the agent-goldens discipline forbids. Regenerate it in a live session, then add a
+      scope-note line to `expected-patterns.txt` so the fixture actually tests this.
 
 - [ ] **`A6` — read-only reviewers hold `Bash`.** *(proposed L3.50 · S · informs L3.36)*
       `agent-frontmatter-contract.md:19` claims `tools` "enforces capability boundaries" and that a
