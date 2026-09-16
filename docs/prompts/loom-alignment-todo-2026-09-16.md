@@ -128,20 +128,33 @@ reader would trip on, and three of them are in one file.
       drift the agent-goldens discipline forbids. Regenerate it in a live session, then add a
       scope-note line to `expected-patterns.txt` so the fixture actually tests this.
 
-- [ ] **`A6` — read-only reviewers hold `Bash`.** *(proposed L3.50 · S · informs L3.36)*
-      `agent-frontmatter-contract.md:19` claims `tools` "enforces capability boundaries" and that a
-      read-only auditor **"CANNOT accidentally modify what it's auditing."** Six agents documented as
-      read-only carry `Bash`, which is an unbounded write **and** egress channel:
-      `code-reviewer`, `security-reviewer`, `accessibility-engineer`, `analyst`, `architect`,
-      `product-owner`.
-      The pure counter-agents (`rule-auditor`, `memory-auditor`, `exemplar-auditor`, …) are already
-      correctly `Read, Glob, Grep` — so the pattern exists, it just was not applied here.
-      **Decision required — do not pick this one alone:**
-      (a) drop `Bash` from those six (what do they lose? `code-reviewer` likely runs `git diff`);
-      (b) keep `Bash` and correct the contract's claim, which is currently false;
-      (c) split — drop where unused, correct the claim where it is needed.
-      **Files**: `shared/agents/*.md`, `shared/contracts/agent-frontmatter-contract.md`,
-      `docs/patterns/frontmatter-conventions.md`, `shared/schemas/agent-frontmatter.schema.json`
+- [x] **`A6` — `tools` describes what an agent can actually do.** — `b6823f3` + `5f5a6f0` *(L3.50 · S · **closes L3.36's open question**)*
+      **The item as written was wrong in two ways, and the real finding is bigger.**
+      It said six agents; it is **seven** — `data-engineer` was missed. And it framed `Bash` as an
+      over-permission on read-only agents. It is the opposite: **all seven are required to produce a
+      markdown artifact and none declared `Write`**, so `Bash` was the undeclared write channel the
+      markdown pipeline runs on. Dropping it would have broken the pipeline.
+      Three go further and are instructed to modify source with tools they do not hold:
+      `accessibility-engineer` ("Fix violations directly whenever possible"), `security-reviewer`
+      ("Write fixes … **using the Write/Edit tools**"), `data-engineer` ("rewrite the migration").
+      Both reviewers have carried exactly `Read, Glob, Grep, Bash` since their **first commit** —
+      `Write` was never removed, it was never there.
+      **This closes `L3.36`'s open question.** How did a stage that "declares write tools? no" change
+      production source? It was instructed to, `Bash` was the only channel, and that channel is
+      invisible to anything reading the `tools` field. `L3.36`'s remaining question is the *policy*
+      one — should a post-review stage modify an approved tree — not the mechanism.
+      **Shipped**: `Write` declared on all seven; `Edit` on the three told to fix source (removing
+      their write channel would have decided `L3.36` by the back door); `Bash` dropped from the five
+      with no execution use, kept for `code-reviewer` (complexity linter) and `security-reviewer`
+      (`pnpm audit`). All seven -> **2.0.0** (tool access is a Major bump). **No prompt behavior
+      changed.** The false "enforces capability boundaries" claim corrected in the contract, the
+      pattern doc and the schema.
+      **Fitness function** (`5f5a6f0`, gate #7 granted): health-check section `7e` — an agent whose
+      prompt obliges it to write must declare the tool. Proved red against `b6823f3^`: seven FAILs
+      with the right reason each; green at HEAD, 19 agents carrying an obligation.
+      **Its limit is measured, not assumed**: stripping `Write` from `spec-writer`, whose obligation
+      matches none of the patterns, **passes**. It is a tripwire on the commonest way this breaks,
+      not the invariant. Narrow on purpose; a miss fails open.
 
 ### Tier 2 — needs a design decision before code (S–M)
 
@@ -248,7 +261,7 @@ the warning: `L3.38`–`L3.46` were all verified in code for this audit and all 
 | L3.25 | `context-engineer` budget ~7x under | S | — |
 | **L2.19** | Honour a policy decision at a gate | S | **Unblocked** by `A3` (`2859f59`) — was not, before |
 | L3.24 | Two UI-only stages non-skippable | M | — |
-| **L3.36** | Nothing re-reviews post-review stages | M | **Read `A6` first** — it names the mechanism |
+| **L3.36** | Nothing re-reviews post-review stages | M | **Mechanism found** by `A6` (`b6823f3`): instructed to fix + `Bash`. Only the policy question remains |
 | L3.13 | Derive agent quality metrics from execution | M | — |
 | L3.19 | Cut the per-stage prompt tax | L | branch `measure/l3-19c-growth` may have context |
 
