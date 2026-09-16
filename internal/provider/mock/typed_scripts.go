@@ -64,6 +64,11 @@ func SampleReview(verdict state.Verdict) state.ReviewState {
 		Verdict:         verdict,
 		DesignNarrative: "Scripted review produced by the mock provider.",
 		DesignScore:     state.DesignScore{Clarity: 4, Cohesion: 4, Coupling: 4, Craft: 4},
+		// Required, and deliberately phrased as the "no tests here" answer
+		// rather than a YES: the mock reviews a scripted implementation that
+		// adds no tests, and a fixture claiming to have judged tests that do
+		// not exist is the vacuous assertion this field exists to catch.
+		TestDesignReview: []string{"No tests added or modified in this diff."},
 	}
 	if verdict == state.VerdictChangesRequested {
 		review.DesignScore.Cohesion = 2

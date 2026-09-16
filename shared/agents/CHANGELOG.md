@@ -16,6 +16,22 @@ Semantic-ish, not strict SemVer:
 When you bump an agent's `version:` frontmatter field, add a row under a new dated heading here in the same
 commit — the pre-commit hook checks for exactly this.
 
+## 2026-09-16 — a review answers whether its tests would fail, or says there were none
+
+| Agent | Version | Change |
+|---|---|---|
+| code-reviewer | 2.0.0 -> 2.1.0 | Minor: step 7 now says the Test Design Review section is **never empty** — a diff that adds or modifies no tests says exactly that. "There were none to judge" and "I did not look" are different facts and a blank section cannot distinguish them |
+
+The prose half of a defect whose other half was in Go. `review-contract.md` has always listed
+`## Test Design Review` as a required section and `validate-artifact` checks the heading — but
+`ReviewState.TestDesignReview` was `omitempty` and absent from `Validate()`, and an empty list
+renders as the word **"None"** under the heading. So a run under the executor could emit a report
+that satisfied the markdown contract and answered nothing, which is exactly the vacuous-assertion
+shape L3.41 exists to reject, arriving one level up.
+
+Now required in the validator and `required` in `review.schema.json`, so the provider is actually
+asked for it. Found by the alignment audit, item `A7`.
+
 ## 2026-09-16 — `tools` describes what an agent can actually do
 
 Seven agents declared `Read, Glob, Grep, Bash` while every one of them is required to produce a

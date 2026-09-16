@@ -69,7 +69,8 @@
       "items": {
         "type": "string"
       },
-      "type": "array"
+      "type": "array",
+      "description": "Per test added or modified: would it fail if the behavior its name claims were broken? YES/NO/UNCERTAIN. Say so explicitly when the diff changes no tests"
     },
     "selfReviewCheck": {
       "items": {
@@ -155,6 +156,7 @@
     "feature",
     "verdict",
     "designNarrative",
-    "designScore"
+    "designScore",
+    "testDesignReview"
   ]
 }

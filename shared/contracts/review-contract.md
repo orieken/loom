@@ -31,6 +31,7 @@ round again with nothing for the developer to do.
 `validate-artifact` checks presence of every heading above, plus:
 - `## Overall Status` must contain exactly one of `APPROVED` or `CHANGES REQUESTED` (bolded, per the agent's own template) — anything else is a FAIL, since the orchestrator's CHANGES REQUESTED loop parses this literal string.
 - `## Design Score` must contain all four dimensions (Clarity, Cohesion, Coupling, Craft) with a numeric 1-5 rating each — a missing dimension is a FAIL.
+- `## Test Design Review` is never empty. When the diff adds or modifies no tests, it says so explicitly. Under the executor this is enforced by `ReviewState.Validate()`; in the markdown pipeline it is the reviewer's discipline, because an empty section still renders the heading and passes a presence check. "There were none to judge" and "I did not look" are different facts.
 
 This is a structural check only. It does not re-judge whether APPROVED was the right call — that's the security-reviewer and qa-engineer's job to catch downstream, and the human's job at the CHANGES REQUESTED checkpoint.
 

@@ -15,6 +15,9 @@ func approvedReview() state.ReviewState {
 		Verdict:         state.VerdictApproved,
 		DesignNarrative: "Session issuing sits in the use-case layer behind a repository interface.",
 		DesignScore:     state.DesignScore{Clarity: 4, Cohesion: 4, Coupling: 5, Craft: 4},
+		TestDesignReview: []string{
+			"YES — session_test.go: expired-token case fails if the expiry check is removed.",
+		},
 	}
 }
 
@@ -54,6 +57,30 @@ func TestReviewValidationNamesTheOffendingField(t *testing.T) {
 			breakField(&review)
 			assertValidationNames(t, review.Validate(), field)
 		})
+	}
+}
+
+// A review that answers nothing about the tests in its diff is the defect
+// L3.41 was built to remove, arriving through the typed path instead of the
+// prose one. review-contract.md has always listed `## Test Design Review`
+// as required, and `validate-artifact` checks the heading — but an empty
+// list renders as the word "None" under that heading, so the rendered
+// artifact satisfied the markdown contract while carrying no judgment.
+//
+// Required unconditionally, which is what the contract says. A diff that
+// changes no tests answers in a sentence; "there were none to judge" and
+// "we did not look" are different facts and the reader cannot tell them
+// apart from an absent list.
+func TestAReviewMustAnswerWhetherItsTestsWouldFail(t *testing.T) {
+	review := approvedReview()
+	review.TestDesignReview = nil
+
+	assertValidationNames(t, review.Validate(), "testDesignReview")
+
+	// Saying the diff had no tests is a valid answer. Silence is not.
+	review.TestDesignReview = []string{"No tests added or modified in this diff."}
+	if err := review.Validate(); err != nil {
+		t.Errorf("a review stating the diff changed no tests was rejected: %v", err)
 	}
 }
 

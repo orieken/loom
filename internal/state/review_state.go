@@ -75,8 +75,15 @@ type ReviewState struct {
 
 	SecuritySurface    []string `json:"securitySurface,omitempty"`
 	PerformanceSurface []string `json:"performanceSurface,omitempty"`
-	TestDesignReview   []string `json:"testDesignReview,omitempty"`
-	SelfReviewCheck    []string `json:"selfReviewCheck,omitempty" jsonschema:"description=Whether the developer's self-review matched reality"`
+	// TestDesignReview carries the answer L3.41 exists to produce: for every
+	// test in the diff, would it fail if the behavior its name claims were
+	// broken? It is required, and required unconditionally — a diff with no
+	// test changes says so in a sentence. review-contract.md has always
+	// listed the heading as required; until this was enforced, the typed
+	// path could emit a report that satisfied that contract and answered
+	// nothing, because an empty list renders as the word "None".
+	TestDesignReview []string `json:"testDesignReview" jsonschema:"required,description=Per test added or modified: would it fail if the behavior its name claims were broken? YES/NO/UNCERTAIN. Say so explicitly when the diff changes no tests"`
+	SelfReviewCheck  []string `json:"selfReviewCheck,omitempty" jsonschema:"description=Whether the developer's self-review matched reality"`
 
 	Findings  []Finding `json:"findings,omitempty"`
 	Retrieval Retrieval `json:"retrieval,omitempty"`
@@ -95,6 +102,7 @@ func (r ReviewState) Validate() error {
 		requireVerdict(r.Verdict),
 		requireText("designNarrative", r.DesignNarrative),
 		r.DesignScore.validate(),
+		requireItems("testDesignReview", len(r.TestDesignReview)),
 		validateFindings(r.Findings),
 		r.requireActionableChanges(),
 	)
