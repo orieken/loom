@@ -91,7 +91,7 @@ func contains(values []string, want string) bool {
 // A policy targeting an always-human gate fails at LOAD, not at
 // evaluation. Someone who writes it must find out before a run, not never.
 func TestAlwaysHumanGatesAreRejectedAtLoad(t *testing.T) {
-	for _, gate := range []string{"deploy", "db-migration", "db-contract-phase", "external-api", "ship-to-friday"} {
+	for _, gate := range []string{"deploy", "db-migration", "db-contract-phase", "external-api", "ship-to-friday", "test-removal"} {
 		t.Run(gate, func(t *testing.T) {
 			_, err := policy.Parse("test.policy.yaml", []byte(policyTargeting(gate)))
 			if err == nil {
@@ -101,6 +101,27 @@ func TestAlwaysHumanGatesAreRejectedAtLoad(t *testing.T) {
 				t.Errorf("error does not explain the always-human rule: %v", err)
 			}
 		})
+	}
+}
+
+// Gate #9 was reachable only as `unknown gate` — the message a typo gets —
+// for as long as it had no GateID. That distinction is the whole control:
+// "unknown" invites someone reconciling the rule against the code to add
+// the gate to eligible(), which is precisely how a test removal would
+// become policy-approvable. The rejection must name the rule, and the
+// reason, so the reconciliation goes the other way.
+func TestRemovingTestCoverageIsRejectedAsAlwaysHumanNotAsUnknown(t *testing.T) {
+	_, err := policy.Parse("test.policy.yaml", []byte(policyTargeting("test-removal")))
+	if err == nil {
+		t.Fatal("a policy targeting test-removal loaded; gate #9 is always human")
+	}
+	if strings.Contains(err.Error(), "unknown gate") {
+		t.Errorf("test-removal rejected as an unknown gate, not as always human: %v", err)
+	}
+	for _, want := range []string{"always human", "regression signal", "approval-gates.md"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("rejection does not mention %q: %v", want, err)
+		}
 	}
 }
 
