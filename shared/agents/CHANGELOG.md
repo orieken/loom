@@ -16,6 +16,26 @@ Semantic-ish, not strict SemVer:
 When you bump an agent's `version:` frontmatter field, add a row under a new dated heading here in the same
 commit — the pre-commit hook checks for exactly this.
 
+## 2026-09-16 — a characterization net says what it does not cover
+
+| Agent | Version | Change |
+|---|---|---|
+| unit-tester | 1.5.0 -> 1.6.0 | Minor: step 8 now requires a scope note **in the test file** in characterization mode — records-behavior-as-of date, an explicit `NOT COVERED` list (inputs never tried, env/locale/clock dependencies, unobserved side effects, and that correctness was never asserted), and the three behavior-carrying lines. Not required in coverage-backfill mode, where "does not encode intent" would be false. New `## Scope Note` section in the report points at where the note lives |
+
+Two reasons it goes in the test file rather than the report. `.claude/feature-workspace/` is
+gitignored, so a note written only to the report is deleted with the workspace and the net ships with
+nothing recording its limits — the reader who needs it is looking at the test months later, not at the
+report today. And step 8 already required naming three behavior-carrying lines while the output
+template had **no section for them**: the instruction was orphaned, and relocating it to the scope note
+gives it a home that survives.
+
+Enforcement is `judgment-only` with a reason, marked in the agent under the
+PRECONDITION / ENFORCED-BY convention: `health-check` runs against this repository and cannot see test
+files in the projects this agent writes for, so there is nothing here to assert it against.
+
+Found by the alignment audit (`docs/prompts/loom-alignment-todo-2026-09-16.md`, item `A5`) against
+Level 2B's characterization scope note.
+
 ## 2026-09-15 — a mutant that never landed is not a passing test
 
 | Agent | Version | Change |

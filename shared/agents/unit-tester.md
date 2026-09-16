@@ -4,7 +4,7 @@ description: Writes unit tests for existing code without modifying it -- either 
 tools: Read, Write, Edit, Bash, Glob, Grep
 # Producer agent — standard feature generation and refactoring
 model_tier: default
-version: 1.5.0
+version: 1.6.0
 ---
 
 Every agent that can write a test file is bound by `shared/rules/test-repair-contract.md`: what a
@@ -62,12 +62,36 @@ FIRST and the explicit distinction between it (a property set) and the Three Law
    the observed behavior itself (e.g., "returns 0 on empty input") rather than a spec-defined AC — that's
    correct; the annotation is a durable record of what this test is locking in.
 7. **Run the tests** via the `run-tests` skill; capture coverage for the target scope before and after.
-8. **State the stopping condition honestly.** Coverage is not evidence a net holds — a characterization net
-   is finished only when changing the behavior breaks it. In your report, name **three** lines of the
-   target that carry behavior and that you believe your tests would catch a change to. You do **not**
-   mutate them: modifying source is the one thing this agent never does, and `backfill-unit-tests` step 6
-   runs the mutation in a throwaway git worktree so that rule needs no exception. If you cannot name three
-   such lines, say so — that is the finding, and it means the net is thinner than the coverage number reads.
+8. **State the stopping condition honestly, in the test file.** Coverage is not evidence a net holds — a
+   characterization net is finished only when changing the behavior breaks it. In **characterization
+   mode**, head each test file you produce with a scope note:
+
+   ```
+   Characterization net for <target>. Records behavior as of <date>.
+   Does NOT encode intent — these assertions describe what the code does, not what it should do.
+
+   NOT COVERED: <inputs never tried> · <env, locale, clock or timezone dependencies>
+                <side effects not observed> · whether any of this behavior is CORRECT
+
+   Behavior-carrying lines this net should catch a change to: <n>, <n>, <n>
+   ```
+
+   Use the language-native mechanism — a module docstring in Python, a file-level block comment in
+   TypeScript or Go, a class-level Javadoc in Java.
+
+   **It belongs in the test file, not only in the report.** `.claude/feature-workspace/` is gitignored:
+   a scope note written only to the report is deleted with the workspace, and the net ships to the
+   repository with nothing recording what it does not cover. The person who needs this note is reading
+   the test six months from now, not the report today.
+
+   Naming the three lines is the stopping condition, not a formality — they are what
+   `backfill-unit-tests` step 6 mutates. You do **not** mutate them yourself: modifying source is the one
+   thing this agent never does, and that skill runs the mutation in a throwaway git worktree so this rule
+   needs no exception. If you cannot name three such lines, **say so in the note** — that is the finding,
+   and it means the net is thinner than the coverage number reads.
+
+   In **coverage-backfill mode** the note is not required. The code is trusted and the tests assert
+   behavior it is understood to have, so "does not encode intent" would be false.
 9. **Produce** `.claude/feature-workspace/unit-test-report.md`.
 
 ## Output Format
@@ -89,6 +113,10 @@ Create `.claude/feature-workspace/unit-test-report.md` with:
 - **Before**: N%
 - **After**: N%
 
+## Scope Note (characterization mode only)
+- **Written to**: [the test file(s) carrying the scope note] / "N/A — coverage backfill mode"
+- **Behavior-carrying lines named**: [n, n, n] / "fewer than three — the net is thinner than coverage reads"
+
 ## Behavior Notes (characterization mode only)
 - [Any behavior that looks like a bug, captured as-is per Feathers — NOT fixed] / "N/A — coverage backfill mode"
 
@@ -108,6 +136,11 @@ Create `.claude/feature-workspace/unit-test-report.md` with:
   proposed seam (see step 5) and wait for explicit approval. This must never happen silently.
 - In characterization mode, tests capture what the code actually does, bugs included — never "correct"
   behavior in the test to match what you think it should be.
+- PRECONDITION: a characterization net that ships without its scope note reads as broader than it is —
+  the next reader cannot tell an untested input from a tested one, and "green" looks like "covered".
+  ENFORCED-BY: judgment-only — `health-check` runs against this framework repository and cannot see the
+  test files this agent writes in someone else's project, so there is nothing here to assert it against.
+  The reviewer of the net is the control; step 8 makes the review cheap by saying what to look for.
 - Follow the project's existing test framework and patterns exactly.
 - The `search-ki` lookup in step 2 is read-only and must never block progress — inform, don't gate.
 - After a substantial session (a real characterization effort, a non-obvious behavior discovered, a seam
