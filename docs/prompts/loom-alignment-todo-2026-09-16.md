@@ -128,7 +128,7 @@ reader would trip on, and three of them are in one file.
       drift the agent-goldens discipline forbids. Regenerate it in a live session, then add a
       scope-note line to `expected-patterns.txt` so the fixture actually tests this.
 
-- [x] **`A6` — `tools` describes what an agent can actually do.** — `b6823f3` + `5f5a6f0` *(L3.50 · S · **closes L3.36's open question**)*
+- [x] **`A6` — `tools` describes what an agent can actually do.** — `b6823f3` + `0255eb7` *(L3.50 · S · **closes L3.36's open question**)*
       **The item as written was wrong in two ways, and the real finding is bigger.**
       It said six agents; it is **seven** — `data-engineer` was missed. And it framed `Bash` as an
       over-permission on read-only agents. It is the opposite: **all seven are required to produce a
@@ -149,7 +149,7 @@ reader would trip on, and three of them are in one file.
       (`pnpm audit`). All seven -> **2.0.0** (tool access is a Major bump). **No prompt behavior
       changed.** The false "enforces capability boundaries" claim corrected in the contract, the
       pattern doc and the schema.
-      **Fitness function** (`5f5a6f0`, gate #7 granted): health-check section `7e` — an agent whose
+      **Fitness function** (`0255eb7`, gate #7 granted): health-check section `7e` — an agent whose
       prompt obliges it to write must declare the tool. Proved red against `b6823f3^`: seven FAILs
       with the right reason each; green at HEAD, 19 agents carrying an obligation.
       **Its limit is measured, not assumed**: stripping `Write` from `spec-writer`, whose obligation
