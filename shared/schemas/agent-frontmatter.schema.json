@@ -19,7 +19,7 @@
     },
     "tools": {
       "type": "string",
-      "description": "Comma-separated list of Claude Code tool names. Use least-privilege — read-only agents (auditors, reviewers) should NOT have Write. Recognized tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, Task, Skill, WebFetch, WebSearch.",
+      "description": "Comma-separated list of Claude Code tool names. Use least-privilege, and declare every capability the prompt actually uses: an agent told to produce an artifact needs Write, one told to fix source needs Edit. Bash is a write and egress channel, not a read tool. Read-only counter agents are Read, Glob, Grep with no Bash. Recognized tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, Task, Skill, WebFetch, WebSearch.",
       "pattern": "^(Read|Write|Edit|MultiEdit|Bash|Glob|Grep|Task|Skill|WebFetch|WebSearch)(,\\s*(Read|Write|Edit|MultiEdit|Bash|Glob|Grep|Task|Skill|WebFetch|WebSearch))*$"
     },
     "model_tier": {

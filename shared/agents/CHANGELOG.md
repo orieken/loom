@@ -16,6 +16,45 @@ Semantic-ish, not strict SemVer:
 When you bump an agent's `version:` frontmatter field, add a row under a new dated heading here in the same
 commit — the pre-commit hook checks for exactly this.
 
+## 2026-09-16 — `tools` describes what an agent can actually do
+
+Seven agents declared `Read, Glob, Grep, Bash` while every one of them is required to produce a
+markdown artifact, and none declared `Write`. `Bash` was not an over-permission on a read-only
+agent — it was **the write channel the markdown pipeline runs on**, undeclared. Three went further
+and were instructed to modify source: `accessibility-engineer` ("Fix violations directly whenever
+possible"), `security-reviewer` ("Write fixes … using the Write/Edit tools" — which it did not
+have), and `data-engineer` ("rewrite the migration to use the Expand pattern"). Both reviewers have
+carried exactly `Read, Glob, Grep, Bash` since their first commit; `Write` was never removed,
+it was never there.
+
+**This is the mechanism behind L3.36.** Its open question was how a stage that "declares write
+tools? no" changed production source. It was instructed to, `Bash` was the only channel, and that
+channel is invisible to anything reading the `tools` field.
+
+| Agent | Version | Change |
+|---|---|---|
+| accessibility-engineer | 1.1.0 -> 2.0.0 | **Major** (tool access): `Read, Glob, Grep, Bash` -> `Read, Write, Edit, Glob, Grep`. `Write` for its report, `Edit` because it is told to fix violations directly. `Bash` dropped — step 53 explicitly forbids running a11y tools, so it had no execution use at all |
+| analyst | 1.2.0 -> 2.0.0 | **Major** (tool access): `Read, Glob, Grep, Bash` -> `Read, Write, Glob, Grep`. `Write` for `analysis.md`; `Bash` dropped, unused |
+| architect | 1.2.0 -> 2.0.0 | **Major** (tool access): `Read, Glob, Grep, Bash` -> `Read, Write, Glob, Grep`. `Write` for `architecture-notes.md`; `Bash` dropped — it names `verify-dependencies` and `analyze-complexity` as fitness functions, it does not run them |
+| code-reviewer | 1.2.0 -> 2.0.0 | **Major** (tool access): `Read, Glob, Grep, Bash` -> `Read, Write, Glob, Grep, Bash`. `Write` for its report. `Bash` **kept**: one named use, the optional complexity linter |
+| data-engineer | 1.1.0 -> 2.0.0 | **Major** (tool access): `Read, Glob, Grep, Bash` -> `Read, Write, Edit, Glob, Grep`. `Write` for its notes and migration scripts, `Edit` to rewrite a destructive migration into the Expand pattern; `Bash` dropped, unused |
+| product-owner | 1.0.1 -> 2.0.0 | **Major** (tool access): `Read, Bash, Glob, Grep` -> `Read, Write, Glob, Grep`. `Write` for `product-review.md`; `Bash` dropped — the only one of the seven with no use for it anywhere in its prompt |
+| security-reviewer | 1.1.0 -> 2.0.0 | **Major** (tool access): `Read, Glob, Grep, Bash` -> `Read, Write, Edit, Glob, Grep, Bash`. `Write` and `Edit` make step 9 true — it cited tools it did not hold. `Bash` **kept**: `pnpm audit` / `pip-audit` / `go mod verify` in step 7 |
+
+**No prompt behavior changed.** Whether `security-reviewer` and `accessibility-engineer` *should*
+fix an already-approved tree is L3.36's question, which has three costed candidates; stripping their
+write channel here would have decided it by the back door. This commit only makes the declaration
+match what the prompts already instruct.
+
+`agent-frontmatter-contract.md`, `frontmatter-conventions.md` and `agent-frontmatter.schema.json`
+claimed `tools` "enforces capability boundaries" and that a read-only auditor "CANNOT accidentally
+modify what it's auditing". That was false for all seven. Corrected: `Bash` is a write and egress
+channel, read-only **counter agents** are `Read, Glob, Grep` with no `Bash` (and genuinely are), and
+pipeline reviewers are not read-only — they write reports.
+
+Found by the alignment audit (`docs/prompts/loom-alignment-todo-2026-09-16.md`, item `A6`), which
+undercounted the set at six and framed it as over-permission rather than under-declaration.
+
 ## 2026-09-16 — a characterization net says what it does not cover
 
 | Agent | Version | Change |

@@ -1,10 +1,10 @@
 ---
 name: data-engineer
 description: Use PROACTIVELY after the architect but before the developer on any feature that requires database schema changes, migrations, or complex querying. Reviews schema design, enforces the Expand/Contract pattern for zero-downtime migrations, and writes migration scripts. Produces data-engineering-notes.md.
-tools: Read, Glob, Grep, Bash
+tools: Read, Write, Edit, Glob, Grep
 # Producer agent — standard feature generation and refactoring
 model_tier: default
-version: 1.1.0
+version: 2.0.0
 ---
 
 Before beginning any task, read `shared/rules/design-principles.md`,

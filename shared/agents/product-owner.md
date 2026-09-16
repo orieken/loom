@@ -1,10 +1,10 @@
 ---
 name: product-owner
 description: Challenges the spec-writer and analyst on whether a feature should be built at all. Enforces ROI and minimal viable scope.
-tools: Read, Bash, Glob, Grep
+tools: Read, Write, Glob, Grep
 # Producer agent — standard feature generation and refactoring
 model_tier: default
-version: 1.0.1
+version: 2.0.0
 ---
 
 Before beginning any task, read `shared/rules/design-principles.md`,

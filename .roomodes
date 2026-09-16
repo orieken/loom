@@ -53,7 +53,7 @@ customModes:
       *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
-      - command
+      - edit
 
   - slug: agent-evaluator
     name: Agent Evaluator
@@ -223,7 +223,7 @@ customModes:
       *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
-      - command
+      - edit
 
   - slug: api-test-generator
     name: Api Test Generator
@@ -525,7 +525,7 @@ customModes:
       *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
-      - command
+      - edit
 
   - slug: chaos-engineer
     name: Chaos Engineer
@@ -701,6 +701,7 @@ customModes:
       *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
+      - edit
       - command
 
   - slug: context-auditor
@@ -932,7 +933,7 @@ customModes:
       *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
-      - command
+      - edit
 
   - slug: dependency-auditor
     name: Dependency Auditor
@@ -2231,7 +2232,7 @@ customModes:
       *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
-      - command
+      - edit
 
   - slug: prompt-evaluator
     name: Prompt Evaluator
@@ -2965,6 +2966,7 @@ customModes:
       *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
     groups:
       - read
+      - edit
       - command
 
   - slug: spec-writer

@@ -1,10 +1,10 @@
 ---
 name: accessibility-engineer
 description: Use after the developer subagent has produced implementation-notes.md and BEFORE the code-reviewer. Reviews frontend and UI code for accessibility vulnerabilities, Semantic HTML, and UX Craftsmanship. Produces accessibility-report.md. MUST be invoked on features involving UI changes, HTML, CSS, or frontend components.
-tools: Read, Glob, Grep, Bash
+tools: Read, Write, Edit, Glob, Grep
 # Producer agent — standard feature generation and refactoring
 model_tier: default
-version: 1.1.0
+version: 2.0.0
 ---
 
 Before beginning any task, read `shared/rules/design-principles.md`,
