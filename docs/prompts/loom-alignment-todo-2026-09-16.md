@@ -158,14 +158,28 @@ reader would trip on, and three of them are in one file.
 
 ### Tier 2 — needs a design decision before code (S–M)
 
-- [ ] **`A7` — the vacuity judgment is dropped on the typed path.** *(proposed L3.51 · S/M)*
+- [x] **`A7` — a review must answer whether its tests would fail.** — `634b4ba` *(L3.51 · S)*
       `shared/contracts/review-contract.md:26` makes `## Test Design Review` a **required** section
       and `validate-artifact` checks it. The executor does not:
       `internal/state/review_state.go:79` is `TestDesignReview []string \`json:"...,omitempty"\`` and
       it is **absent from `Validate()`** (l.91-101). A `loom run` review can therefore omit the
       would-this-test-fail answer entirely — the thing `L3.41` was built to add.
-      **Open question**: require it always, or only when the stage's diff touched test files? The
-      latter is correct and needs a fact the validator may not hold — check before committing to it.
+      **Open question resolved — my earlier lean was wrong.** Requiring it only when the diff touched
+      tests is not available: `Validate()` is a pure method on `ReviewState` with no access to
+      `ImplementationState`, and `FilesModified` is agent self-reported rather than measured. Required
+      **unconditionally**, which is what the contract already said; a diff with no tests answers in a
+      sentence.
+      **Worse than recorded**: an empty list renders as the word **"None"** under the heading
+      (`render.go:110-118`), so the artifact passed `validate-artifact`'s presence check while carrying
+      no judgment at all.
+      **Shipped**: `requireItems` in `Validate()`, `required` in `review.schema.json` so the provider is
+      asked for it, `code-reviewer` 2.0.0 -> 2.1.0, and the rule stated under the contract's Validation
+      Rules. Verified by deleting the check and watching the new test fail.
+      **Near-miss worth remembering**: the first attempt put the "never empty" note on the contract's
+      required-section bullet, which silently broke `test-agents.sh`'s parser (anchored
+      `^- \`(##...)\`$`) and removed the `## Test Design Review` section check — 281 passes quietly
+      became 280. Caught by diffing the check lists, not by a failure. Adding a check while removing
+      one is exactly what this audit exists to catch.
       **Files**: `internal/state/review_state.go`, `internal/state/review_state_test.go`
 
 - [ ] **`A8` — no layer-direction test for Loom's own code.** *(proposed L3.52 · S)*
