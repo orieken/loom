@@ -634,6 +634,98 @@ PYEOF
 fi
 echo ""
 
+# --- 7e. An agent obliged to write declares a tool that can ------------------
+# Fitness function for shared/contracts/agent-frontmatter-contract.md.
+#
+# Seven agents once declared `Read, Glob, Grep, Bash` while every one of them
+# was required to produce a markdown artifact, and three were told to modify
+# source. `Bash` was doing the writing — undeclared, and invisible to anything
+# reading the `tools` field. That is the mechanism behind roadmap L3.36.
+#
+# BE HONEST ABOUT WHAT THIS IS. It greps English prose for an obligation and
+# compares it against `tools`. It is a tripwire on the commonest way the
+# "tools describes real capability" invariant breaks, not the invariant
+# itself. Verified on the tree before the fix: it flags all seven, with the
+# right reason for each, and flags nothing at HEAD.
+#
+# Its blind spot is measured, not assumed: stripping `Write` from
+# `spec-writer` — whose obligation is phrased in none of these patterns —
+# passes this check. The patterns are deliberately narrow because widening
+# them buys false positives on agents that merely mention producing
+# something, and a check that cries wolf gets skimmed. A miss fails OPEN: the
+# agent keeps whatever it declared, and nothing is blocked.
+echo "--- Agent Write Obligations (tools can do what the prompt says) ---"
+if ! command -v python3 >/dev/null 2>&1; then
+  warn "python3 unavailable — cannot cross-check agent write obligations"
+else
+  obligations_report=$(python3 - "$SHARED_DIR" <<'PYEOF'
+import os, re, sys
+
+agents_dir = os.path.join(sys.argv[1], "agents")
+
+# Pinned, and deliberately narrow — see the comment above this heredoc.
+#
+# BACKTICK is built rather than written: this heredoc sits inside $( ), where
+# bash reads a literal backtick as legacy command substitution and the script
+# stops parsing. Learned the direct way.
+BACKTICK = chr(96)
+
+WRITE_OBLIGATION = [
+    (r"Produces\s+" + BACKTICK + r"?[\w./<>-]+\.md",
+     "description says it Produces an .md artifact"),
+    (r"\*\*Write\*\*\s+" + BACKTICK,
+     "a process step says **Write** with a path"),
+    (r"\*\*Produce\*\*\s+" + BACKTICK,
+     "a process step says **Produce** with a path"),
+    (r"produce your artifact at",
+     "Output Format says produce your artifact at"),
+]
+EDIT_OBLIGATION = [
+    (r"Fix\s+\w+\s+directly", "instructed to fix findings directly"),
+    (r"Write fixes",          "instructed to write fixes"),
+    (r"rewrite the \w+",      "instructed to rewrite existing code"),
+]
+
+def why(text, rules):
+    return [reason for pattern, reason in rules if re.search(pattern, text)]
+
+if not os.path.isdir(agents_dir):
+    print("FAIL:%s does not exist" % agents_dir)
+    sys.exit(0)
+
+for name in sorted(os.listdir(agents_dir)):
+    if not name.endswith(".md") or name == "CHANGELOG.md":
+        continue
+    text = open(os.path.join(agents_dir, name), encoding="utf-8").read()
+    declared = re.search(r"^tools:\s*(.+)$", text, re.M)
+    if not declared:
+        continue
+    tools = {tool.strip() for tool in declared.group(1).split(",")}
+    agent = name[:-3]
+
+    needs_write, needs_edit = why(text, WRITE_OBLIGATION), why(text, EDIT_OBLIGATION)
+    problems = []
+    if needs_write and not tools & {"Write", "MultiEdit"}:
+        problems.append("declares no Write but %s" % needs_write[0])
+    if needs_edit and not tools & {"Edit", "MultiEdit"}:
+        problems.append("declares no Edit but %s" % needs_edit[0])
+
+    if problems:
+        print("FAIL:%s %s" % (agent, "; ".join(problems)))
+    elif needs_write or needs_edit:
+        print("PASS:%s declares the tools its prompt requires" % agent)
+PYEOF
+  )
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    case "$line" in
+      PASS:*) pass "${line#PASS:}" ;;
+      *)      fail "${line#FAIL:}" ;;
+    esac
+  done <<< "$obligations_report"
+fi
+echo ""
+
 # --- 8. Knowledge Item frontmatter valid ------------------------------------
 echo "--- Knowledge Item Frontmatter (name, tags, domain, created) ---"
 for ki_dir in "$SHARED_DIR/knowledge" "$REPO_DIR/.claude/knowledge"; do
