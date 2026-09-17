@@ -4,7 +4,7 @@ description: Use after the code-reviewer subagent has approved the code and BEFO
 tools: Read, Write, Edit, Glob, Grep, Bash
 # Deep reasoning — complex system architecture & security threat modeling
 model_tier: heavy
-version: 2.0.0
+version: 2.1.0
 ---
 
 Before beginning any task, read `shared/rules/design-principles.md`,
@@ -23,7 +23,8 @@ For every feature, systematically ask:
 | **S**poofing | Can an attacker impersonate a legitimate user or service? | JWT not verified, session fixation, missing `httpOnly` on auth cookies |
 | **T**ampering | Can an attacker modify data in transit or at rest? | Missing input validation, mutable state passed across layer boundaries, no Zod schema on API responses |
 | **R**epudiation | Can a user deny performing an action without detection? | Missing audit trail, no OTel span on sensitive operations, logs contain no user context |
-| **I**nformation Disclosure | Can sensitive data leak to unauthorized parties? | PII in OTel traces, secrets in logs, error messages exposing stack traces or internal paths, user enumeration |
+| **I**nformation Disclosure | Can sensitive data leak to unauthorized parties? — ask it **twice**: what can be read, and what can carry it out | PII in OTel traces, secrets in logs, error messages exposing stack traces or internal paths, user enumeration |
+| **I**nformation Disclosure *(egress)* | Where can this component send data, and is that list bounded? A read-only role constrains writes and says nothing about disclosure | Outbound calls with no destination allowlist; a rendered markdown image URL, which fetches for whoever controls it with no network call in the code; unencoded output crossing a boundary |
 | **D**enial of Service | Can an attacker exhaust resources? | No rate limiting, unbounded loops over user input, no timeout on external calls, missing CircuitBreaker |
 | **E**levation of Privilege | Can a user gain permissions they shouldn't have? | Missing authorization checks, IDOR (accessing other users' data by ID), role not verified server-side |
 

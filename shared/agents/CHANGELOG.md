@@ -16,6 +16,27 @@ Semantic-ish, not strict SemVer:
 When you bump an agent's `version:` frontmatter field, add a row under a new dated heading here in the same
 commit — the pre-commit hook checks for exactly this.
 
+## 2026-09-17 — least privilege on egress is a separate question
+
+| Agent | Version | Change |
+|---|---|---|
+| security-reviewer | 2.0.0 -> 2.1.0 | Minor: STRIDE-I now asks Information Disclosure **twice** — what can be read, and what can carry it out. A new row covers egress specifically: outbound calls with no destination allowlist, and a rendered markdown image URL, which fetches for whoever controls it with no network call in the code for a reviewer to find |
+
+Least privilege on *data* is not least privilege on *egress*, and the framework only had the first.
+A read-only role answers whether a component can write; it says nothing about whether it can carry
+what it read somewhere else. `docs/patterns/security-patterns.md` gained a **Least Privilege on
+Egress** pattern separating the two axes.
+
+Verified rather than assumed: no agent declares `WebFetch` or `WebSearch`, so the whole egress
+surface is `Bash` — which is both axes at once, any file and any host.
+
+Enforcement is deliberately narrow and stated as such. `health-check` section `7f` holds the one
+property loom can: a read-only counter agent declares neither a write tool nor an egress tool. It
+cannot police egress inside a project loom does not run in, and no tool allowlist sees an
+output-rendered path.
+
+Found by the alignment audit, item `A9`.
+
 ## 2026-09-16 — a review answers whether its tests would fail, or says there were none
 
 | Agent | Version | Change |

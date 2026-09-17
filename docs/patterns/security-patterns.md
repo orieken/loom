@@ -63,6 +63,47 @@ than it would need to cause damage even if its reasoning went wrong.
 scope when a legitimate new need appears. That friction is much cheaper than the alternative: a component
 that could always do more than it needed to, discovered only after something goes wrong.
 
+**One axis, and there are two** — see the next pattern. The paragraph above treats `Write`/`Edit`/`Bash`
+as a single "can cause damage" grouping. That is right about damage and silent about disclosure.
+
+## Least Privilege on Egress
+
+**Context**: Least privilege on *data* is not least privilege on *egress*. They are different questions
+with different controls, and answering one is routinely mistaken for answering both.
+
+A read-only role answers exactly one question — can this component **write**? It says nothing about
+whether it can read everything, and nothing at all about whether it can carry what it read somewhere
+else. An agent with no `Write` and no `Edit` that can still reach the network is not constrained in the
+way "read-only" suggests to whoever reads the label.
+
+**Structure**: two independent axes, asked separately.
+
+| Axis | The question | Narrowed by |
+|---|---|---|
+| **Data** | What can it read, and what can it change? | Keyed reads over broad queries; no `Write`/`Edit` where none is needed |
+| **Egress** | What can it send, and where? | An allowlist on anything that makes an outbound request; encoding at the output boundary |
+
+The second axis has a trap the first does not: **egress does not require a tool that looks like egress.**
+Rendered output is a path out. A markdown image URL in a report renders as a fetch to whoever controls
+that URL, with no network tool called and nothing in a tool allowlist to notice. Encode at the boundary
+rather than trusting that only named tools can send.
+
+**In this framework**, the egress surface is `Bash`, and it is the whole surface — no agent declares
+`WebFetch` or `WebSearch`. `Bash` is both axes at once: it can write any file and reach any host, so an
+agent holding it is unconstrained on both regardless of what the rest of its `tools:` line says. That is
+the reason `agent-frontmatter-contract.md` stopped claiming `tools` "enforces capability boundaries"
+(see the alignment audit's `A6`): it describes declared capability, and `Bash` is a declaration that
+covers everything.
+
+**Trade-offs**: an egress allowlist is real work and is wrong at first — legitimate destinations get
+blocked and someone has to widen it. The honest comparison is not allowlist-versus-nothing but
+allowlist-versus-discovering-the-path-afterwards, and only one of those is recoverable.
+
+**Enforcement, stated plainly**: loom cannot police egress inside a project it does not run in. What it
+*can* hold is that its own read-only counter agents declare neither a write tool nor an egress tool —
+asserted by `TestCounterAgentsDeclareNoWriteOrEgress`. Everything else in this pattern is judgment, and
+is marked as such rather than implied to be checked.
+
 ## Paved Road / Golden Path
 
 **Context**: When a security flaw is found (e.g. custom crypto, manual auth checks), the fix isn't a

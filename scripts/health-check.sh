@@ -726,6 +726,90 @@ PYEOF
 fi
 echo ""
 
+# --- 7f. Counter agents declare neither a write nor an egress tool ----------
+# Fitness function for docs/patterns/security-patterns.md's "Least Privilege
+# on Egress", and the one property that pattern can actually hold.
+#
+# Least privilege on data is not least privilege on egress. A counter agent
+# is the one class in this framework where BOTH must hold: it audits work it
+# must not alter, and it reads the whole corpus, so a channel out is the
+# thing that turns a reader into an exfiltration path.
+#
+# `Bash` is the entire egress surface here — no agent declares WebFetch or
+# WebSearch — and it is both axes at once: any file, any host. So a counter
+# agent holding it is unconstrained on both, whatever the rest of its tools
+# line says.
+#
+# The set is derived, not pinned, because these agents already declare
+# themselves in prose ("read-only counter agent") and deriving it means a
+# NEW counter agent is covered the day it is written rather than the day
+# someone remembers to add it to a list. That is the opposite trade from
+# TEST_WRITING_AGENTS above, and for the opposite reason: there the prose
+# signal was unreliable, here it is the agent's own self-description.
+#
+# What this does NOT cover, per the pattern: egress inside a user's project,
+# which loom does not run in, and output-rendered paths like a markdown
+# image URL, which no tool allowlist can see.
+echo "--- Counter Agent Egress (read-only means no way out) ---"
+if ! command -v python3 >/dev/null 2>&1; then
+  warn "python3 unavailable — cannot check counter agent tools"
+else
+  egress_report=$(python3 - "$SHARED_DIR" <<'PYEOF'
+import os, re, sys
+
+agents_dir = os.path.join(sys.argv[1], "agents")
+WRITE_TOOLS = {"Write", "Edit", "MultiEdit"}
+EGRESS_TOOLS = {"Bash", "WebFetch", "WebSearch"}
+
+found = 0
+for name in sorted(os.listdir(agents_dir)):
+    if not name.endswith(".md") or name == "CHANGELOG.md":
+        continue
+    text = open(os.path.join(agents_dir, name), encoding="utf-8").read()
+    if not re.search(r"read-only counter\b", text, re.I):
+        continue
+    declared = re.search(r"^tools:\s*(.+)$", text, re.M)
+    if not declared:
+        print("FAIL:%s declares itself a counter agent but has no tools line" % name[:-3])
+        continue
+
+    found += 1
+    tools = {tool.strip() for tool in declared.group(1).split(",")}
+    agent = name[:-3]
+    problems = []
+    if tools & WRITE_TOOLS:
+        problems.append("can write (%s)" % ", ".join(sorted(tools & WRITE_TOOLS)))
+    if tools & EGRESS_TOOLS:
+        problems.append("has a way out (%s)" % ", ".join(sorted(tools & EGRESS_TOOLS)))
+
+    if problems:
+        print("FAIL:%s is a read-only counter agent but %s — it audits what it must not alter, "
+              "and reads the whole corpus" % (agent, " and ".join(problems)))
+    else:
+        print("PASS:%s declares no write and no egress tool" % agent)
+
+# A derived set shrinks silently when the phrase it derives from drifts, and
+# a check covering fewer agents than it did yesterday reports nothing at all.
+# This caught its own first version: the regex required "read-only counter
+# agent", and memory-auditor says "Read-only counter to the memory-engineer
+# skill" — so it was quietly excluded while the section printed all PASS.
+EXPECTED_AT_LEAST = 13
+if found < EXPECTED_AT_LEAST:
+    print("FAIL:only %d agents matched the read-only-counter phrase, expected at least %d — "
+          "the phrase has drifted and this check now covers less than it did; widen the match "
+          "or lower the floor deliberately" % (found, EXPECTED_AT_LEAST))
+PYEOF
+  )
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    case "$line" in
+      PASS:*) pass "${line#PASS:}" ;;
+      *)      fail "${line#FAIL:}" ;;
+    esac
+  done <<< "$egress_report"
+fi
+echo ""
+
 # --- 8. Knowledge Item frontmatter valid ------------------------------------
 echo "--- Knowledge Item Frontmatter (name, tags, domain, created) ---"
 for ki_dir in "$SHARED_DIR/knowledge" "$REPO_DIR/.claude/knowledge"; do
