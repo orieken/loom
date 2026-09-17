@@ -1,9 +1,9 @@
 # TODO: alignment-audit findings, lined up against the next-items handoff
 
 **Compiled**: 2026-09-16 against `main` @ `555bb93` — `health-check` 321 passed / 0 failed / 8 warned.
-**Current**: `A1`–`A8` shipped. `health-check` **350 passed / 0 failed**, same 8 warnings ·
+**Current**: `A1`–`A8` and `C1` shipped. `health-check` **350 passed / 0 failed**, same 8 warnings ·
 `test-agents` 281 / 0 · `go test ./...` ok · `golangci-lint` 0 issues · `ci-check.sh` green.
-Framework v3.3.14. Remaining: `A9`, `A10`, and the two conflicts.
+Framework v3.3.14. Remaining: `A9` (egress), `A10` (quarantine expiry), `C2`, `P10`.
 
 Two inputs, merged into one sequence:
 
@@ -63,12 +63,18 @@ reader would trip on, and three of them are in one file.
 > this file originally planned — fixing the prose to "six" while the constant still held five would
 > only have moved the contradiction.
 >
-> **Four of the eight items were wrong as written**, and checking the premise first is what caught
+> **Five of the nine items were wrong as written**, and checking the premise first is what caught
 > each: `A5`'s fix would have written the note into a gitignored file; `A6` undercounted the agents
 > and inverted the diagnosis; `A7`'s "only when tests changed" variant is not available to a pure
-> `Validate()`; `A8`'s first mutant proved the Go compiler rather than the test. The audit was right
-> about *where* to look every time and wrong about the fix roughly half the time — which is the
-> handoff's own finding from the previous stream, reproduced.
+> `Validate()`; `A8`'s first mutant proved the Go compiler rather than the test; `C1`'s count was 49,
+> not 68, and included the rule's own text as a match. The audit was right about *where* to look
+> every time and wrong about the fix roughly half the time — the handoff's own finding from the
+> previous stream, reproduced.
+>
+> **Two checks written in this stream were vacuous on the first attempt and passed** (`C1`'s AST
+> matcher missed `interface{}` entirely; `A7`'s contract edit silently deleted an existing check,
+> 281 → 280 with zero failures). Both were caught only by deliberately breaking them or diffing the
+> check list. Prove red, every time — a green new check is not evidence of anything.
 
 ### Tier 0 — text corrections, no code (one commit, ~15 min total)
 
@@ -230,16 +236,30 @@ reader would trip on, and three of them are in one file.
 
 ### Not scheduled — resolve, then decide
 
-- [ ] **`C1` — `go-conventions.md` bans `any`/`interface{}`; Loom's own Go uses them 68 times.**
-      Across 15 non-test files: `provider/mock/typed_scripts.go` (10), `orchestrator/executor.go` (4),
-      `orchestrator/approval_binding.go` (4), `policy/decode.go`, `telemetry/tool.go`, …
-      These are JSON payload maps, jsonschema plumbing, OTel attribute values, and the typed-provider
-      dispatch table — places Go offers no alternative. The TypeScript rule has an escape hatch
-      (`unknown` + Zod narrowing); the Go rule has none.
-      **The audit's read: the code is right and the rule is over-absolute.** A rule violated 68 times
-      knowingly is worse than no rule — it teaches that rules in this repo are aspirational.
-      **Decision**: bound the rule (marshalling boundaries, reflection plumbing, provider dispatch),
-      or accept and record the violation. Human call; the audit does not resolve it.
+- [x] **`C1` — the `any`/`interface{}` rule is bounded to what it can honestly forbid.** — `91777a0`
+      **The count was wrong: 49, not 68.** The original grep matched English prose — error strings,
+      the policy YAML key named `any`, and, best of all, the embedded TypeScript rule text in
+      `generated_rules.go:32` ("never use raw any types"). Excluding comments and string literals
+      leaves 49 genuine type-position uses.
+      **Every one was verified, and none is the defect the rule targets**: JSON Schema literals (24),
+      marshal/reflect helpers (8), heterogeneous dispatch over state kinds (9), MCP wire argument
+      maps (5), variadic `slog` pass-through (3). The two most telling — `StageSchema.subject` exists
+      to *feed* a fitness function (L2.25), and the logger mirrors `slog`'s own `...any` signature.
+      **Resolution**: the rule now forbids what it means (standing in for a type you have not worked
+      out), permits four named boundaries, and draws the line that matters — never for a domain type,
+      a struct field holding domain data, or a return the caller must type-assert. Mirrors guardrail
+      #4's TypeScript clause, which already permits `unknown` + narrowing.
+      **Constraint that turned out not to apply**: `go-conventions.md` is an **on-demand stack
+      module** (`levels.yaml:79`), not part of the core-rules bundle, so the 206-byte ceiling was
+      never in play.
+      **Fitness function** (gate #7 granted): `internal/state/untyped_test.go` asserts the one clause
+      judgement cannot soften — an untyped value must not travel inward. Two pinned reflection
+      subjects.
+      **The first version of that test was vacuous and passed.** It matched only `*ast.Ident`, so it
+      saw `any` but not `interface{}` — the older spelling, the one actually in `schema.go`, and the
+      one that made the pins dead code. Proved red four ways after the rewrite, including un-pinning
+      `StageSchema` to confirm the pin is live. **Second near-vacuous check in this stream** (see
+      `A7`); both were caught only by deliberately breaking them.
 
 - [ ] **`C2` — tool scoping is only half Loom's to enforce.** The curriculum says scope a tool to
       values, not languages. Loom does not define `Bash` — it consumes a host platform's fixed tool
