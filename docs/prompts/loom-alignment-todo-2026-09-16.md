@@ -64,13 +64,14 @@ reader would trip on, and three of them are in one file.
 > this file originally planned — fixing the prose to "six" while the constant still held five would
 > only have moved the contradiction.
 >
-> **Five of the nine items were wrong as written**, and checking the premise first is what caught
+> **Six of the eleven items were wrong as written**, and checking the premise first is what caught
 > each: `A5`'s fix would have written the note into a gitignored file; `A6` undercounted the agents
 > and inverted the diagnosis; `A7`'s "only when tests changed" variant is not available to a pure
 > `Validate()`; `A8`'s first mutant proved the Go compiler rather than the test; `C1`'s count was 49,
-> not 68, and included the rule's own text as a match. The audit was right about *where* to look
-> every time and wrong about the fix roughly half the time — the handoff's own finding from the
-> previous stream, reproduced.
+> not 68, and included the rule's own text as a match; `A10` proposed a health-check section or a
+> hook entry, and the answer was neither — the job belongs in the project whose tests are
+> quarantined. The audit was right about *where* to look **every time** and wrong about the fix
+> roughly half the time — the handoff's own finding from the previous stream, reproduced.
 >
 > **Three checks written in this stream passed while testing less than they claimed**: `C1`'s AST
 > matcher missed `interface{}` entirely, the spelling actually in the code; `A9`'s `7f` regex
