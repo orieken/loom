@@ -182,14 +182,25 @@ reader would trip on, and three of them are in one file.
       one is exactly what this audit exists to catch.
       **Files**: `internal/state/review_state.go`, `internal/state/review_state_test.go`
 
-- [ ] **`A8` — no layer-direction test for Loom's own code.** *(proposed L3.52 · S)*
+- [x] **`A8` — inner layers import only inward.** — `8613861` *(L3.52 · S)*
       Direction currently holds — verified with `go list -deps`: `internal/state` imports no internal
       package; `internal/orchestrator` reaches only `state` and `policy`. But only the **OTel slice**
       is asserted (`internal/telemetry/boundary_test.go`). Nothing would catch `internal/state`
       growing an import of `internal/orchestrator` tomorrow.
-      **Fix**: generalize `boundary_test.go`'s transitive `go list` pattern into a guardrail-#1 test.
-      ~20 lines; the machinery is already there and already exemplary.
-      **Gate**: **#7** if wired into CI.
+      **Shipped** as `internal/orchestrator/layers_test.go`, generalizing `boundary_test.go`'s
+      transitive `go list` pattern. Gate #7 requested and granted.
+      Pins each inner package to the **complete** set it may reach: `state`, `policy`, `worktree`
+      reach nothing; `orchestrator` reaches `state` and `policy` only. Adapters are deliberately not
+      pinned — they legitimately import inward and each other.
+      **Equality, not a ceiling**: an extra entry is a violation, a missing one means the pin is
+      stale and no longer describes the code. Both directions fail.
+      **Proved red three ways**, each restored: `state` -> `worktree`; a stale pin claiming
+      `orchestrator` reaches `internal/memory`; and — the one that justifies the test existing —
+      `policy` -> `worktree`, where `orchestrator` fails **transitively** without itself changing.
+      **Scope, honestly**: the Go compiler already rejects any inversion that closes an import cycle
+      (my first mutant, `state` -> `telemetry`, was caught by the compiler, not by this test). What
+      it cannot catch is an inner layer importing a leaf-shaped adapter, or reaching one through a
+      helper. That is the gap this covers.
 
 - [ ] **`A9` — egress is not distinguished from data privilege.** *(proposed L3.53 · M)*
       `grep -ri "egress|allowlist|exfiltrat" shared/ docs/` returns nothing substantive. Loom has
