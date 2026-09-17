@@ -39,7 +39,9 @@ Findings write to: docs/audits/exemplar-audit-YYYY-MM-DD.md
 
 Cron expression: `0 9 1 * *`
 Action: invoke `exemplar-auditor` agent
-Declared in: `shared/hooks/scheduled-monthly.yaml` (disabled by default, like every entry there)
+Declared in: `shared/hooks/scheduled-monthly.yaml`. **loom ships no runner for these** — that file
+declares intent for a scheduler you supply, and `enabled:` is that runner's flag, not loom's. See
+`shared/hooks/README.md`: nothing dispatches hooks today; the executor is roadmap L3.10.
 
 Worth knowing why this one exists: exemplars are deliberately not gated (roadmap L3.46), so nothing
 stops an agent editing one, and this audit is the only thing that notices a degraded exemplar. The

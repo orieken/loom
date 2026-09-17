@@ -1,9 +1,13 @@
 version: "1.0"
 
 # Hook: on-retrospective-written
-# Triggers the learning-engine skill whenever a feature retrospective is written to docs/features/.
-# This is an opt-in AOS Phase 3 hook. Copy to .claude/hooks/ and set enabled: true to activate.
-# Default: disabled. Teams that don't enable this hook see zero behavior change from v3.1.
+# Declares that learning-engine should run whenever a feature retrospective is written to
+# docs/features/. Opt-in AOS Phase 3 hook.
+#
+# `enabled: true` does NOT activate this on its own. loom ships no hook dispatcher — see
+# shared/hooks/README.md: "Nothing dispatches hooks today; the executor for them is roadmap
+# L3.10." This file declares the intent for a runner you supply. Teams that wire nothing see
+# zero behavior change, which is also what teams that only flip `enabled` see.
 
 hooks:
   - id: "learning-engine-on-retrospective"

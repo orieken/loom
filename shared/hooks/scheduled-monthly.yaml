@@ -1,10 +1,20 @@
 version: "1.0"
 
 # Hook: scheduled-monthly
-# Opt-in monthly schedule for maintenance skills. Copy to .claude/hooks/ and configure a cron
-# runner (e.g., GitHub Actions schedule, CronCreate, or the /schedule skill) to invoke this.
-# Default: all targets disabled. Enable individually per project need.
-# AOS Phase 3 (v3.2).
+# Opt-in monthly schedule for maintenance skills. AOS Phase 3 (v3.2).
+#
+# READ THIS BEFORE TRUSTING `enabled:`. loom ships NO runner for these. Nothing in the framework
+# reads this file and invokes anything — see shared/hooks/README.md: "Nothing dispatches hooks
+# today; the executor for them is roadmap L3.10." install.sh seeds this into .claude/hooks/ as a
+# starting point, and that is the whole of loom's involvement.
+#
+# So `enabled: false` does not mean loom has these switched off. It means nothing is switched on
+# anywhere, and setting `enabled: true` on its own changes nothing. These entries are a
+# DECLARATION for a runner you supply — a GitHub Actions schedule, a cron job, the /schedule
+# skill — which reads this file and calls the named skill or agent itself.
+#
+# Written plainly because the previous wording ("Enable individually per project need") read as
+# though a switch existed.
 
 hooks:
   - id: "forgetting-engine-monthly"

@@ -75,6 +75,50 @@ Then make the expiry real — a scheduled job that fails the build when a quaran
 Without that, everything above is a naming convention, and the quarantine list becomes a graveyard
 nobody can explain two years later.
 
+### That job is yours to build, and loom does not ship it
+
+Stated plainly because the sentence above reads like an instruction the framework carries out.
+
+A quarantine lives in the test file of the project whose suite is quarantined. `health-check.sh`
+runs against the framework repository; `loom health` verifies an *installation* — manifest, version,
+paths, symlinks, agent counts. Neither reads your test files, so neither can see an expiry, let
+alone enforce one. And `shared/hooks/scheduled-monthly.yaml` declares schedules for a runner you
+supply; loom dispatches no hooks (see that file's header, and `shared/hooks/README.md`).
+
+So this is **judgment-only in loom, and enforceable in your project**. The job is roughly twenty
+lines. A starting point that fails the build the day an expiry passes:
+
+```bash
+#!/usr/bin/env bash
+# Fail when any quarantine has passed its expiry. Run on a schedule, not only on PRs —
+# an expiry passes on a calendar date, not when someone opens a pull request.
+set -euo pipefail
+
+today=$(date -u +%Y-%m-%d)
+expired=0
+
+# Adjust the pattern to your annotation. Matches `expiry: "2026-11-01"` or `expiry: 2026-11-01`.
+while IFS=: read -r file line _; do
+  date_found=$(sed -n "${line}p" "$file" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' | head -1)
+  [[ -z "$date_found" ]] && continue
+  if [[ "$date_found" < "$today" ]]; then
+    echo "EXPIRED  $file:$line — quarantine expired $date_found"
+    expired=1
+  fi
+done < <(grep -rn --include='*test*' -E 'expiry:\s*"?[0-9]{4}-[0-9]{2}-[0-9]{2}' . || true)
+
+if [[ "$expired" -eq 1 ]]; then
+  echo
+  echo "A quarantine past its expiry is a deleted test with extra steps."
+  echo "Fix it, escalate it, retire it deliberately (gate #9), or extend the expiry with a reason."
+  exit 1
+fi
+```
+
+Two properties worth keeping if you rewrite it. **Run it on a schedule, not only on pull requests** —
+an expiry passes on a date, and a repository with no PRs that week would never notice. And **make
+the failure name the file and the date**, so the fix is obvious without reading the job.
+
 ## Related
 
 - `shared/rules/test-repair-contract.md` — what an agent may and may not change repairing a test
