@@ -5,7 +5,25 @@ ALWAYS follow Clean Architecture layers: Entities → Use Cases → Adapters →
 NEVER let domain entities import adapter or framework packages.
 ALWAYS define interfaces in the use-case layer, implement in adapters.
 ALWAYS use structured logging with low-cardinality message strings.
-NEVER use `any` or `interface{}` — use typed interfaces.
+NEVER use `any` or `interface{}` to stand in for a type you have not worked out — that is the defect
+this rule exists to stop, and it is the Go spelling of the raw `any` that
+`architecture-guardrails.md` #4 forbids in TypeScript. Go has no `unknown`, so the discipline is
+carried by *where* the value is allowed to live rather than by a second keyword: narrow at the
+boundary, and never let it travel inward.
+
+Permitted only where Go's type system genuinely cannot express the thing, and only at these
+boundaries:
+- **JSON and wire boundaries** — decoding untrusted input, or building a JSON document such as a
+  JSON Schema or an MCP argument map. Narrow into a typed struct at the first opportunity.
+- **Reflection subjects** — a value handed to a reflector for schema generation or marshalling.
+- **Variadic pass-through** to a standard-library API whose own signature is `...any` (`slog`,
+  `fmt`). Matching the stdlib is not a violation.
+- **Heterogeneous dispatch** where the alternative is a sum type Go does not have. Name the reason
+  in a comment.
+
+NEVER for a domain type, a struct field holding domain data, or a return the caller must
+type-assert before it can act on it. If a reader has to guess what is inside, the rule is broken
+regardless of which boundary it sits near.
 ALWAYS handle errors explicitly — no silent swallows.
 ALWAYS set explicit timeouts on network calls.
 NEVER use raw SQL without parameterized queries.
