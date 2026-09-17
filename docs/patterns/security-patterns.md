@@ -104,6 +104,45 @@ allowlist-versus-discovering-the-path-afterwards, and only one of those is recov
 asserted by `TestCounterAgentsDeclareNoWriteOrEgress`. Everything else in this pattern is judgment, and
 is marked as such rather than implied to be checked.
 
+## Narrow Tools, and the Vocabulary You Do Not Own
+
+**Context**: a tool is a permission, and an agent will exercise it for whoever controls its input.
+The strongest control is not detecting misuse but deleting the possibility: a narrow tool removes an
+attack class, where a broad one leaves you monitoring for it forever.
+
+The test is whether a parameter accepts a **language** rather than a **value**. `sql`, `command`,
+`path`, `url`, `template`, `regex` are languages — anything expressible in them is reachable. The
+fix is almost always enumeration: not `run_query(sql)` but `get_user(id)`, `list_orders(customer_id)`.
+
+**Structure**: the tools a system defines and the tools it *consumes* are different problems, and
+conflating them produces advice nobody can act on.
+
+| | Tools you define | Tools you consume |
+|---|---|---|
+| Control | Narrow the parameter to a value | Choose which components hold the tool |
+| Example here | loom's seven MCP tools — `search_ki(domain, tags)`, `analyze_complexity(projectPath)`. None takes a language; none causes an outbound effect | `Bash`, from the host platform's fixed agent vocabulary. It takes a command — the language — and loom cannot narrow it |
+
+**This framework sits on both sides.** Its own MCP tools are narrow by construction, and a test pins
+what each declares safe to record (`safe_arguments_test.go`). Its *agents* run on a host platform
+whose tool vocabulary loom does not define: `Bash` is a language parameter, it is the whole egress
+surface (see the previous pattern), and no amount of framework design makes it narrower.
+
+So on the consumed side the only available control is **who holds it**, which is why that question
+got the attention: `Bash` was removed from the five agents with no execution need, kept for the two
+that name one, and read-only counter agents are asserted to hold neither a write nor an egress tool.
+That is a real control and a smaller one than narrowing the tool would have been. Saying so is more
+useful than pretending the stronger control was available.
+
+**Trade-offs**: choosing components rather than narrowing parameters scales badly — every new agent
+is a new decision, and the decision is invisible unless something checks it. That is the cost of
+building on a vocabulary you do not own, and it is worth paying attention to rather than papering
+over.
+
+PRECONDITION: an agent holds a language-parameter tool only where its prompt names a use for it.
+ENFORCED-BY: judgment-only — `7f` asserts the narrower property for read-only counter agents, and
+whether a producer's named use justifies `Bash` is a reading of its prompt that no check can make.
+The set is small and reviewed; that is the control, and it is weaker than a narrow tool would be.
+
 ## Paved Road / Golden Path
 
 **Context**: When a security flaw is found (e.g. custom crypto, manual auth checks), the fix isn't a

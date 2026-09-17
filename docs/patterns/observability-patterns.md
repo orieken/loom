@@ -71,6 +71,47 @@ entities or use cases — see `clean-architecture-layers.md`'s Framework Layer s
 This pattern is about *what* to instrument; that guardrail is about *where* the instrumenting code is
 allowed to live.
 
+## Attribution and Closure
+
+**Context**: "Could not reproduce" is not a closure state. It is a description of one attempt, and
+closing on it converts a defect into a rumour — the next person to hit it starts from nothing,
+because the first investigation recorded nothing.
+
+The framework already records enough to settle most of these, and that is the point: the question is
+not whether the failure reproduces on demand, but whether the run that failed can be *distinguished*
+from the run that did not.
+
+| Question | What answers it |
+|---|---|
+| Did the pipeline take a different path? | The run's shape — stages in start order, loop outcomes, provider-call count (`internal/orchestrator/shape.go`) |
+| Was a stage skipped, and why? | The route recorded in run state, with a reason per stage |
+| Did a loop end differently? | `loom.loop.<id>.terminated_by` — converged, or hit its bound |
+| Did a different model answer? | `gen_ai.response.model`, recorded from what actually served |
+| Was the output corrected by a human afterwards? | `loom memory corrections`, with the diff |
+| How many rounds, how long, what cost? | `loom memory runs` / `retries` — measured by the executor, not estimated by a model |
+| Which trace was this? | `telemetry.TraceIDs` on the active span |
+
+**Structure**: three norms, in descending order of how often they matter.
+
+- **A report without a run or trace reference gets one question, not a triage debate.** "Which run?"
+  is cheaper than four people speculating, and the answer usually ends the discussion.
+- **When the evidence genuinely does not exist, that is the finding.** File the instrumentation gap
+  as the outcome. An investigation that ends "we could not tell, and here is the attribute that
+  would have told us" has produced something; one that ends "could not reproduce" has not.
+- **Say what was ruled out.** A diagnosis names the layer *and* what the other evidence eliminates.
+  Without that it is a report, not a diagnosis — and the next person repeats the elimination.
+
+**Trade-offs**: this costs time at the moment someone wants to close a ticket and move on, which is
+exactly when it is least welcome. The trade is paid back the second time the same failure appears,
+and it only pays back if the evidence was recorded the first time.
+
+PRECONDITION: an investigation that cannot be resolved records the gap that would have resolved it.
+ENFORCED-BY: judgment-only — this is a closure norm for humans triaging a failure, and loom sees
+neither the bug tracker where a ticket is closed nor the conversation where "let us call it flaky"
+is said. The evidence side is enforced (the shape baseline, the telemetry boundary tests); the
+discipline of using it is not, and claiming otherwise would be the decorative rule this framework's
+own audit exists to catch.
+
 ## No PII or Secrets in Telemetry
 
 **Context**: Traces, logs, and metrics must never contain cleartext passwords, tokens, or PII (unmasked
