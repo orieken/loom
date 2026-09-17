@@ -1,9 +1,9 @@
 # TODO: alignment-audit findings, lined up against the next-items handoff
 
 **Compiled**: 2026-09-16 against `main` @ `555bb93` — `health-check` 321 passed / 0 failed / 8 warned.
-**Current**: `A1`–`A9` and `C1` shipped. `health-check` **350 passed / 0 failed**, same 8 warnings ·
-`test-agents` 281 / 0 · `go test ./...` ok · `golangci-lint` 0 issues · `ci-check.sh` green.
-Framework v3.3.14. `health-check` is now **363 passed / 0 failed**.
+**Current**: `A1`–`A9` and `C1` shipped. `health-check` **363 passed / 0 failed** (from 321), same 8
+warnings · `test-agents` 281 / 0 · `go test ./...` ok · `golangci-lint` 0 issues · `ci-check.sh` green.
+Framework v3.3.14.
 Remaining: `A10` (quarantine expiry — decide the `scheduled-monthly.yaml` question first), `C2`, `P10`.
 
 Two inputs, merged into one sequence:
@@ -72,10 +72,15 @@ reader would trip on, and three of them are in one file.
 > every time and wrong about the fix roughly half the time — the handoff's own finding from the
 > previous stream, reproduced.
 >
-> **Two checks written in this stream were vacuous on the first attempt and passed** (`C1`'s AST
-> matcher missed `interface{}` entirely; `A7`'s contract edit silently deleted an existing check,
-> 281 → 280 with zero failures). Both were caught only by deliberately breaking them or diffing the
-> check list. Prove red, every time — a green new check is not evidence of anything.
+> **Three checks written in this stream passed while testing less than they claimed**: `C1`'s AST
+> matcher missed `interface{}` entirely, the spelling actually in the code; `A9`'s `7f` regex
+> excluded `memory-auditor` and reported all PASS over 12 of 13 agents; and `A7`'s contract edit
+> silently *deleted* an existing check, 281 → 280 with zero failures. Each was caught only by
+> deliberately breaking it or diffing the check list — never by reading it.
+>
+> **Prove red, every time.** A green new check is not evidence of anything. Where a set is derived
+> from prose, pin a coverage floor so shrinking it fails loudly (`7f`); where a check is added near
+> an existing one, diff the check list before and after.
 
 ### Tier 0 — text corrections, no code (one commit, ~15 min total)
 
