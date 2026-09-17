@@ -1,8 +1,9 @@
 # TODO: alignment-audit findings, lined up against the next-items handoff
 
 **Compiled**: 2026-09-16 against `main` @ `555bb93` — `health-check` 321 passed / 0 failed / 8 warned.
-**Current**: `A1`–`A4` shipped (`2859f59`, `f7aaf29`); `health-check` now **330 passed / 0 failed**,
-same 8 warnings. Framework v3.3.14 · `go test ./...` ok · `golangci-lint` 0 issues.
+**Current**: `A1`–`A8` shipped. `health-check` **350 passed / 0 failed**, same 8 warnings ·
+`test-agents` 281 / 0 · `go test ./...` ok · `golangci-lint` 0 issues · `ci-check.sh` green.
+Framework v3.3.14. Remaining: `A9`, `A10`, and the two conflicts.
 
 Two inputs, merged into one sequence:
 
@@ -58,10 +59,16 @@ candidate list, so **look at `A6` before costing `L3.36`**.
 Trivial corrections first, deliberately: they are cheap, they remove the contradictions a later
 reader would trip on, and three of them are in one file.
 
-> **Status 2026-09-16**: `A1`–`A4` shipped on `fix/gate-nine-reconciliation` as `2859f59` and
-> `f7aaf29`. `A1`+`A2`+`A3` landed as **one** commit, not the three this file originally planned —
-> fixing the prose to "six" while the constant still held five would only have moved the
-> contradiction. Everything from `A5` down is untouched.
+> **Status 2026-09-16**: `A1`–`A8` shipped. `A1`+`A2`+`A3` landed as **one** commit, not the three
+> this file originally planned — fixing the prose to "six" while the constant still held five would
+> only have moved the contradiction.
+>
+> **Four of the eight items were wrong as written**, and checking the premise first is what caught
+> each: `A5`'s fix would have written the note into a gitignored file; `A6` undercounted the agents
+> and inverted the diagnosis; `A7`'s "only when tests changed" variant is not available to a pure
+> `Validate()`; `A8`'s first mutant proved the Go compiler rather than the test. The audit was right
+> about *where* to look every time and wrong about the fix roughly half the time — which is the
+> handoff's own finding from the previous stream, reproduced.
 
 ### Tier 0 — text corrections, no code (one commit, ~15 min total)
 
