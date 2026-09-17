@@ -1,9 +1,10 @@
 # TODO: alignment-audit findings, lined up against the next-items handoff
 
 **Compiled**: 2026-09-16 against `main` @ `555bb93` — `health-check` 321 passed / 0 failed / 8 warned.
-**Current**: `A1`–`A8` and `C1` shipped. `health-check` **350 passed / 0 failed**, same 8 warnings ·
+**Current**: `A1`–`A9` and `C1` shipped. `health-check` **350 passed / 0 failed**, same 8 warnings ·
 `test-agents` 281 / 0 · `go test ./...` ok · `golangci-lint` 0 issues · `ci-check.sh` green.
-Framework v3.3.14. Remaining: `A9` (egress), `A10` (quarantine expiry), `C2`, `P10`.
+Framework v3.3.14. `health-check` is now **363 passed / 0 failed**.
+Remaining: `A10` (quarantine expiry — decide the `scheduled-monthly.yaml` question first), `C2`, `P10`.
 
 Two inputs, merged into one sequence:
 
@@ -59,7 +60,7 @@ candidate list, so **look at `A6` before costing `L3.36`**.
 Trivial corrections first, deliberately: they are cheap, they remove the contradictions a later
 reader would trip on, and three of them are in one file.
 
-> **Status 2026-09-16**: `A1`–`A8` shipped. `A1`+`A2`+`A3` landed as **one** commit, not the three
+> **Status 2026-09-17**: `A1`–`A9` and `C1` shipped. `A1`+`A2`+`A3` landed as **one** commit, not the three
 > this file originally planned — fixing the prose to "six" while the constant still held five would
 > only have moved the contradiction.
 >
@@ -215,15 +216,28 @@ reader would trip on, and three of them are in one file.
       it cannot catch is an inner layer importing a leaf-shaped adapter, or reaching one through a
       helper. That is the gap this covers.
 
-- [ ] **`A9` — egress is not distinguished from data privilege.** *(proposed L3.53 · M)*
-      `grep -ri "egress|allowlist|exfiltrat" shared/ docs/` returns nothing substantive. Loom has
-      least privilege on **data** only. `WebFetch`, `WebSearch` and `Bash` are unbounded egress with
-      no allowlist concept anywhere in the framework. This is Level 4's central lesson and the
-      largest single gap the audit found.
-      **Fix**: an egress section in `docs/patterns/security-patterns.md` + a STRIDE-**I** line in
-      `shared/agents/security-reviewer.md`. If no fitness function is possible, say so with a reason
-      per guardrail #7 — do not ship it unenforced and unflagged.
-      **Related**: overlaps `A6`, since `Bash` is the same channel.
+- [x] **`A9` — least privilege on egress is a separate question.** — `79abb17` *(L3.53 · M)*
+      **Premise sharper than recorded**: no agent declares `WebFetch` or `WebSearch`, so the whole
+      egress surface is `Bash` (18 agents). And `security-patterns.md`'s Least Privilege section
+      already grouped `Write`/`Edit`/`Bash` as one "can cause damage" axis — that grouping *is* the
+      conflation: right about damage, silent about disclosure.
+      **Shipped**: a **Least Privilege on Egress** pattern separating the two axes, naming the trap
+      the data axis lacks — egress does not require a tool that looks like egress; a rendered
+      markdown image URL fetches for whoever controls it with no network call in the code.
+      `security-reviewer` 2.0.0 -> 2.1.0: STRIDE-I asks twice, what can be read and what can carry it
+      out.
+      **Fitness function** (gate #7 granted): health-check `7f` — a read-only counter agent declares
+      neither a write nor an egress tool. 13 agents, derived from their own self-description.
+      **The check caught its own first version.** The regex required "read-only counter agent";
+      `memory-auditor` says "Read-only counter to the memory-engineer skill", so it was **silently
+      excluded while the section printed all PASS** — 12 covered, reported as success. It now carries
+      a coverage floor, and shrinking the derived set fails loudly. Proved red three ways, the third
+      being that narrowing the phrase back to the buggy version now fails.
+      **`check-agent-versions-ci.sh` also earned its keep here**: it caught a version bump with no
+      CHANGELOG row before the commit was pushed.
+      **Scope, in the pattern rather than implied**: loom cannot police egress inside a project it
+      does not run in, and no tool allowlist sees an output-rendered path. The rest is marked
+      judgment.
 
 - [ ] **`A10` — quarantine expiry is not made real.** *(proposed L3.54 · M)*
       `shared/knowledge/flake-triage-taxonomy.md:74` names the missing piece itself: *"a scheduled
