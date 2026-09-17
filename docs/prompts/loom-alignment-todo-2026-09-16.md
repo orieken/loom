@@ -4,7 +4,8 @@
 **Current**: `A1`–`A10` and `C1` shipped. `health-check` **363 passed / 0 failed** (from 321), same 8
 warnings · `test-agents` 281 / 0 · `go test ./...` ok · `golangci-lint` 0 issues · `ci-check.sh` green.
 Framework v3.3.14.
-Remaining: `C2` and `P10` — both small, both likely judgment-only.
+**Part 1 is complete.** Every item shipped. What remains is the Training-side backlog in
+`Feeds back into Training` below — five practices where Loom is ahead of the curriculum.
 
 Two inputs, merged into one sequence:
 
@@ -60,7 +61,7 @@ candidate list, so **look at `A6` before costing `L3.36`**.
 Trivial corrections first, deliberately: they are cheap, they remove the contradictions a later
 reader would trip on, and three of them are in one file.
 
-> **Status 2026-09-17**: `A1`–`A10` and `C1` shipped. `A1`+`A2`+`A3` landed as **one** commit, not the three
+> **Status 2026-09-17**: complete. `A1`–`A10`, `C1`, `C2` and `P10` all shipped. `A1`+`A2`+`A3` landed as **one** commit, not the three
 > this file originally planned — fixing the prose to "six" while the constant still held five would
 > only have moved the contradiction.
 >
@@ -290,12 +291,12 @@ reader would trip on, and three of them are in one file.
       `StageSchema` to confirm the pin is live. **Second near-vacuous check in this stream** (see
       `A7`); both were caught only by deliberately breaking them.
 
-- [ ] **`C2` — tool scoping is only half Loom's to enforce.** The curriculum says scope a tool to
+- [x] **`C2` — tool scoping is two problems, and only one is Loom's.** — `20c5260` The curriculum says scope a tool to
       values, not languages. Loom does not define `Bash` — it consumes a host platform's fixed tool
       vocabulary. The actionable half is `A6`; the rest is a limitation worth stating in the
       curriculum rather than a Loom defect.
 
-- [ ] **`P10` — "unreproducible is not a closure state" has no Loom counterpart.** The *evidence*
+- [x] **`P10` — "could not reproduce" is not a closure state.** — `20c5260` The *evidence*
       exists and is good (`shape.go`, `timeline.go`, `loom memory runs/retries/corrections`). The
       *discipline* does not. Either add a short Attribution & Closure section to
       `observability-patterns.md`, or decide it is judgment-only and say why.
@@ -348,19 +349,27 @@ the warning: `L3.38`–`L3.46` were all verified in code for this audit and all 
 
 ### Loose threads (carried forward verbatim, with status)
 
-- [ ] `check-agent-versions-ci.sh` has never run on a real PR — `pull_request`-only, everything since
-      has gone to `main`. **`A5` and `A6` both touch agents**, so the first of them to go through a PR
-      is the natural place to find out.
+- [ ] `check-agent-versions-ci.sh` has **still** never run on a real PR — `pull_request`-only, and
+      everything after PR #1 went straight to `main`. **But it earned its keep locally**: on `A9` it
+      caught a `security-reviewer` version bump with no CHANGELOG row, before the commit was pushed.
+      The logic works; only the PR trigger is unexercised. `A5`, `A6`, `A7` and `A9` all touched
+      agents and none went through a PR, so this needs a deliberate PR to close, not another
+      agent-touching change.
 - [ ] Mutation testing needs its mutants checked — a mutant that fails to apply reads exactly like an
       uncovered line. If `backfill-unit-tests` step 6 is ever automated, the non-empty-diff guard must
       come with it.
 - [ ] Comments that overclaim their enforcer. PRECONDITION/ENFORCED-BY catches marked cases only.
-      **`A2` is an instance of this class** — a comment asserting a count the code no longer matched.
+      **Three instances found this stream**: `A2` (a comment asserting a gate count the code no longer
+      matched), and both hook headers, which described an `enabled:` switch that does not exist. The
+      pattern is prose describing a mechanism rather than the mechanism — and the marked-comment
+      convention catches none of it, because none of them was marked.
 - [ ] Two standing `health-check` warnings: doc-audit now **42 days** old; `CODEMAP.md` stale. Both
       one command (`documentation-auditor`; `bash scripts/generate-codemap.sh`).
-- [ ] Exemplar audits scheduled but disabled — `exemplar-auditor-monthly` is `enabled: false`, like
-      every entry in `shared/hooks/scheduled-monthly.yaml`. **`A10` would add a sixth**; decide whether
-      that file is a real mechanism or a parking lot before adding to it.
+- [x] Exemplar audits scheduled but disabled — **settled by `A10`, and the framing was wrong.** It is
+      not that the entries are switched off; **loom dispatches no hooks at all** (`shared/hooks/README.md`:
+      "the executor for them is roadmap L3.10"). `enabled:` is a flag for a runner the project supplies,
+      and both hook headers now say so. So `exemplar-auditor-monthly` will not run whatever its value —
+      the open item is a **hook dispatcher (L3.10)**, not a config flag.
 
 ---
 
