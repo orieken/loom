@@ -1,10 +1,10 @@
 # TODO: alignment-audit findings, lined up against the next-items handoff
 
 **Compiled**: 2026-09-16 against `main` @ `555bb93` — `health-check` 321 passed / 0 failed / 8 warned.
-**Current**: `A1`–`A9` and `C1` shipped. `health-check` **363 passed / 0 failed** (from 321), same 8
+**Current**: `A1`–`A10` and `C1` shipped. `health-check` **363 passed / 0 failed** (from 321), same 8
 warnings · `test-agents` 281 / 0 · `go test ./...` ok · `golangci-lint` 0 issues · `ci-check.sh` green.
 Framework v3.3.14.
-Remaining: `A10` (quarantine expiry — decide the `scheduled-monthly.yaml` question first), `C2`, `P10`.
+Remaining: `C2` and `P10` — both small, both likely judgment-only.
 
 Two inputs, merged into one sequence:
 
@@ -60,7 +60,7 @@ candidate list, so **look at `A6` before costing `L3.36`**.
 Trivial corrections first, deliberately: they are cheap, they remove the contradictions a later
 reader would trip on, and three of them are in one file.
 
-> **Status 2026-09-17**: `A1`–`A9` and `C1` shipped. `A1`+`A2`+`A3` landed as **one** commit, not the three
+> **Status 2026-09-17**: `A1`–`A10` and `C1` shipped. `A1`+`A2`+`A3` landed as **one** commit, not the three
 > this file originally planned — fixing the prose to "six" while the constant still held five would
 > only have moved the contradiction.
 >
@@ -244,14 +244,23 @@ reader would trip on, and three of them are in one file.
       does not run in, and no tool allowlist sees an output-rendered path. The rest is marked
       judgment.
 
-- [ ] **`A10` — quarantine expiry is not made real.** *(proposed L3.54 · M)*
-      `shared/knowledge/flake-triage-taxonomy.md:74` names the missing piece itself: *"a scheduled
-      job that fails the build when a quarantine passes its date. Without that, everything above is a
-      naming convention."* Gate #9 is prose-only — no executor barrier — so the discipline rests
-      entirely on the agent proposing rather than applying.
-      **Fix**: a `health-check.sh` section (or a `scheduled-monthly.yaml` entry, which would land
-      `disabled: false`-by-default questions — see loose thread 5) that fails on a passed expiry.
-      **Gate**: **#7**.
+- [x] **`A10` — the quarantine-expiry job is yours, and loom says so.** — `f089936` *(L3.54 · M)*
+      **The `scheduled-monthly.yaml` question, settled.** Nothing in loom dispatches hooks —
+      `shared/hooks/README.md` has always said so ("the executor for them is roadmap L3.10"), but
+      both hook files contradicted it: "Enable individually per project need" and "set
+      `enabled: true` to activate". There is no switch. `install.sh` seeds them into
+      `.claude/hooks/` and that is the whole of loom's involvement. Both headers now say plainly
+      that `enabled:` is the project's runner's flag, not loom's.
+      **So A10 is guidance, not a fourth disabled entry.** A quarantine lives in the test file of
+      the project whose suite is quarantined. `health-check.sh` runs against this repository;
+      `loom health` verifies an *installation* — manifest, version, paths, symlinks, agent counts.
+      Neither reads a user's tests, so neither can see an expiry. Another entry no runner reads
+      would restate the problem.
+      **Shipped**: the KI now says the job is the project's to build, why loom cannot, and carries a
+      copyable ~20-line one that fails naming file, line and expiry date.
+      **Verified by running it**, not parsing it: an expired quarantine, one dated 2027, and a clean
+      file. It flagged exactly the expired one and exited 1, then exited 0 once removed.
+      **Judgment-only, with the reason stated in the KI** rather than implied.
 
 ### Not scheduled — resolve, then decide
 
