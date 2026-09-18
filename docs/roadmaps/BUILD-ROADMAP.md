@@ -1,7 +1,7 @@
 # `loom` Build Roadmap — L2 → L4
 
-**Status**: active build plan · **Framework version**: v3.3.14 @ `59efe14` · **Compiled**: 2026-08-29
-· **Status markers last reconciled**: 2026-08-31
+**Status**: active build plan · **Framework version**: v3.3.14 · **Compiled**: 2026-08-29
+· **Status markers last reconciled**: 2026-09-18
 
 > **Reading the Problem statements.** Each item's "Problem" paragraph describes the state of the
 > repository *when this roadmap was compiled*, in present tense. Items that have since shipped carry
@@ -9,6 +9,12 @@
 > below it is deliberately preserved as the historical motivation, not as a current claim.
 >
 > Absence of a SHIPPED line means only that no one has reconciled it, not that the work is unbuilt.
+>
+> **Reconciled 2026-09-18**: the ten **Curriculum Alignment** items (L3.47–L3.56) were appended after
+> shipping, each with its commit and what verifying its premise changed. That workstream's own header
+> records the part worth carrying forward: six of eleven items were wrong as written, and three checks
+> written during the work passed while testing less than they claimed. This reconciliation covers that
+> stream only — items above it carry whatever status they last had.
 
 > **First real end-to-end run: 2026-09-06.** Every item above M0.4 had been verified against
 > `--provider mock` until then. One run with `--provider claude` — five stages, seven minutes,
@@ -27,7 +33,7 @@ This is the single authoritative roadmap. It merges and supersedes:
 | [`maturity-todo-2026-08-29.md`](maturity-todo-2026-08-29.md) | 41 | Fully absorbed, re-sequenced into milestones with dependencies and acceptance criteria. |
 | [`architectural-audit-2026-08-29.md`](architectural-audit-2026-08-29.md) | H1–H11 | Retained as the evidence document. Not superseded — read it for the *why*; read this for the *what next*. |
 
-**45 items across 5 milestones**, plus the appended **PLATFORM — Distribution & Adoption**
+**45 items across 5 milestones** as compiled, plus the appended **PLATFORM — Distribution & Adoption**
 workstream (D.1–D.5, appended 2026-08-29 from the distribution-strategy discussion — see
 `docs/prompts/epic-75-distribution-adoption.md` for the executable handoff prompts). Every path
 cited was verified to resolve on 2026-08-29.
@@ -552,7 +558,12 @@ And an unanswerable condition resolves to **unknown**, never true.
    YAML example above fails to parse.
 
 ### L2.19 — Honour a policy decision at a gate
-**Workstream**: KERNEL · **Effort**: S · **Blocked by**: L2.16 (shipped) · **Blocks**: none · *(raised 2026-09-02)*
+**Workstream**: KERNEL · **Effort**: S · **Blocked by**: L2.16 (shipped), L3.47 (shipped) · **Blocks**: none · *(raised 2026-09-02)*
+
+> **Read L3.47 before starting.** This item's safety argument is that an always-human gate "cannot be
+> targeted at all". Until 2026-09-16 that was true by accident: gate #9 had no `GateID`, so a policy
+> naming it was rejected as `unknown gate` rather than as always-human. L3.47 made the classification
+> real and held by two tests. The precondition now exists; it did not when this item was written.
 
 1. **Problem**: L2.16 evaluates policies and records what they decided, then halts for a human
    anyway. The feature people actually want from policies — a gate that proceeds without a
@@ -2295,6 +2306,16 @@ explicitly.
 ### L3.36 — Nothing re-reviews what the post-review stages write
 **Workstream**: KERNEL · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-08, split from L3.30)*
 
+> **The mechanism question is answered; the policy question is what remains** (L3.50, 2026-09-16).
+> This item asked how `accessibility-engineer` — "declares write tools? **no**" — changed production
+> source. It was *instructed* to ("Fix violations directly whenever possible"), `Bash` was the only
+> channel it had, and that channel is invisible to anything reading the `tools` field. Its tools now
+> declare `Write` and `Edit`, so the divergence is at least visible.
+>
+> What is left is the decision, and L3.50 deliberately did not make it: **should a post-review stage
+> modify a tree `code-reviewer` already approved?** Stripping those agents' write channel there would
+> have decided this by the back door. The three candidates below are unchanged.
+
 1. **Problem**: `code-reviewer` returned `APPROVED` against a **312-insertion** tree in run 4. The
    tree that ended the run was **343**. Three stages modified it afterwards:
 
@@ -2974,6 +2995,205 @@ silent one, and an unexplained noisy signal gets muted.
 7. **Done when**: either a stage that edits an exemplar halts the run at a gate, or the contract
    records the decision not to gate and why — with the change-frequency evidence either way.
 
+
+---
+
+## Workstream: OBSERVE — Curriculum Alignment
+
+Ten items raised 2026-09-15 from a **two-way alignment audit** of loom against the Zero to Agent
+SDET curriculum: every major principle checked against what loom actually *enforces*, not what it
+documents. The audit and its running record live in
+[`docs/prompts/loom-alignment-todo-2026-09-16.md`](../prompts/loom-alignment-todo-2026-09-16.md).
+
+Two findings about the audit itself are worth more than any single item. **Six of the eleven items
+were wrong as written** — right about where to look every time, wrong about the fix roughly half the
+time — so each entry below records what verifying the premise changed. And **three checks written
+during the work passed while testing less than they claimed**, each caught only by deliberately
+breaking it. Prove red; a green new check is evidence of nothing.
+
+All ten shipped between 2026-09-16 and 2026-09-18. `health-check` went 321 → 365 passing, 0 failing.
+
+### L3.47 — Gate #9 is always human in code, not only in prose
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: **L2.19** · *(raised 2026-09-15)*
+
+**SHIPPED** 2026-09-16 — `2859f59`. `GateTestRemoval` and an `alwaysHuman()` entry in
+`internal/policy/gate.go`, plus the stale "eight gates" comment and `approval-gates.md`'s
+self-contradicting "those five gates" (its own table marked six).
+
+**Why it blocked L2.19**: that item rests its safety argument on always-human gates being
+unreachable. Gate #9 was unreachable only *by accident* — it had no `GateID`, so a policy naming it
+was rejected as **`unknown gate`**, the message a typo gets. The hazard was the repair: that message
+invites whoever reconciles the two lists to add gate #9 to `eligible()`, and L2.19 is the item that
+would then consume it. A test removal auto-approved by policy is the one-way door gate #9 exists to
+hold.
+
+**Verified**: removing the `alwaysHuman()` entry made both tests fail with the `unknown gate`
+message — the finding verbatim. `TestRemovingTestCoverageIsRejectedAsAlwaysHumanNotAsUnknown`
+asserts the rejection is *not* `unknown gate`, which is the distinction that matters.
+
+### L3.48 — Assert the approval-gate rule and the code agree
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: L3.47 · **Blocks**: none · *(raised 2026-09-15)*
+
+**SHIPPED** 2026-09-16 — `f7aaf29`, `health-check.sh` section `7d`. This is the check whose absence
+let L3.47's drift happen in silence. Parses every `### N.` gate and its Policy-eligible line from
+the rule, then cross-checks against `gate.go`.
+
+**The gate-number → `GateID` map is pinned, not parsed**: only three gates carry a `Policy gate ID:`
+line, and adding one to the other six costs ~180 bytes of a core rule with 206 left. Same trade as
+`TEST_WRITING_AGENTS` above it.
+
+**Verified** by four mutants, each restored. **New failure mode worth knowing**: adding a tenth gate
+to `approval-gates.md` now fails the build until it is pinned — deliberate, but a new way for a rule
+edit to break CI.
+
+### L3.49 — A characterization net says what it does not cover
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-15)*
+
+**SHIPPED** 2026-09-16 — `e4862ba`, `unit-tester` 1.5.0 → 1.6.0. Step 8 requires a scope note in
+characterization mode: records-behavior-as-of date, an explicit `NOT COVERED` list, and the three
+behavior-carrying lines.
+
+**The item's own fix was wrong.** It proposed a `## Not Covered` section in the report — but
+`.claude/feature-workspace/` is gitignored, so a note written only there dies with the workspace and
+the net ships to the repository recording nothing. It goes in the **test file**.
+
+**Second defect the audit missed**: step 8 already required naming three behavior-carrying lines
+while the output template had **no section for them** — an orphaned instruction. They now live in
+the scope note, which is also what `backfill-unit-tests` step 6 mutates.
+
+**Enforcement**: judgment-only with a reason — `health-check` cannot see test files in the projects
+this agent writes for.
+
+### L3.50 — `tools` describes what an agent can actually do
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-15)*
+
+**SHIPPED** 2026-09-16 — `b6823f3` (seven agents to 2.0.0) and `0255eb7` (`health-check` section
+`7e`).
+
+**The diagnosis was backwards in the audit.** It read as over-permission — "read-only reviewers hold
+`Bash`". The opposite is true: **all seven are required to produce a markdown artifact and none
+declared `Write`**, so `Bash` was the undeclared write channel the markdown pipeline runs on.
+Dropping it would have broken the pipeline. Three go further and are instructed to modify source
+with tools they do not hold. Both reviewers have carried exactly `Read, Glob, Grep, Bash` since
+their first commit — `Write` was never removed, it was never there.
+
+**This closes L3.36's mechanism question** — see that item.
+
+`Write` declared on all seven, `Edit` on the three told to fix source (removing their write channel
+would have decided L3.36 by the back door), `Bash` dropped from the five with no execution use.
+**No prompt behavior changed.** The contract, pattern doc and schema stopped claiming `tools`
+"enforces capability boundaries", which was false for all seven.
+
+### L3.51 — A review must answer whether its tests would fail
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-15)*
+
+**SHIPPED** 2026-09-16 — `634b4ba`, `code-reviewer` 2.0.0 → 2.1.0.
+
+`review-contract.md` always listed `## Test Design Review` as required and `validate-artifact`
+checks the heading — but `ReviewState.TestDesignReview` was `omitempty` and absent from `Validate()`,
+**and an empty list renders as the word "None"** (`render.go:110-118`). So a run under the executor
+could emit a report that satisfied the markdown contract and answered nothing: the vacuous-assertion
+shape L3.41 exists to reject, arriving one level up.
+
+**The conditional variant was checked and dropped**: requiring it only when the diff touched tests
+is not available to a pure `Validate()` on `ReviewState`, and `FilesModified` is agent self-reported
+rather than measured. Required unconditionally, which is what the contract already said.
+
+### L3.52 — Inner layers import only inward
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-15)*
+
+**SHIPPED** 2026-09-17 — `8613861`, `internal/orchestrator/layers_test.go`. Guardrail #1's fitness
+function, generalizing `boundary_test.go`'s transitive `go list` pattern. `state`, `policy`,
+`worktree` reach nothing; `orchestrator` reaches `state` and `policy` only. Adapters deliberately
+unpinned.
+
+**Equality, not a ceiling** — a stale pin fails too, which is how a guardrail stops becoming
+decoration.
+
+**Honest scope**: the Go compiler already rejects any inversion that closes an import cycle (the
+first mutant proved the compiler, not the test). What it cannot catch is an inner layer importing a
+leaf-shaped adapter, or reaching one through a helper — the transitive mutant is what justifies the
+test existing.
+
+### L3.53 — Least privilege on egress is a separate question
+**Workstream**: OBSERVE · **Effort**: M · **Blocked by**: L3.50 · **Blocks**: none · *(raised 2026-09-15)*
+
+**SHIPPED** 2026-09-17 — `79abb17`, `security-reviewer` 2.0.0 → 2.1.0, `health-check` section `7f`.
+
+Least privilege on *data* is not least privilege on *egress*, and the framework only had the first.
+`security-patterns.md` grouped `Write`/`Edit`/`Bash` as one "can cause damage" axis — right about
+damage, silent about disclosure. The new pattern names the trap the data axis lacks: **egress does
+not require a tool that looks like egress.** A rendered markdown image URL fetches for whoever
+controls it, with no network call in the code.
+
+**Verified**: no agent declares `WebFetch` or `WebSearch`, so the entire egress surface is `Bash` —
+both axes at once.
+
+**`7f` caught its own first version.** The regex required "read-only counter agent"; `memory-auditor`
+says "Read-only counter to the memory-engineer skill", so it was silently excluded while the section
+printed **all PASS over 12 of 13 agents**. It now carries a coverage floor, and shrinking the derived
+set fails loudly.
+
+### L3.54 — The quarantine-expiry job is the project's, and loom says so
+**Workstream**: OBSERVE · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-15)*
+
+**SHIPPED** 2026-09-17 — `f089936`.
+
+**The item proposed a `health-check` section or a `scheduled-monthly.yaml` entry; the answer was
+neither.** A quarantine lives in the test file of the project whose suite is quarantined.
+`health-check.sh` runs against this repository; `loom health` verifies an *installation*. Neither
+reads a user's tests, so neither can see an expiry.
+
+**It also settled what `scheduled-monthly.yaml` is.** `shared/hooks/README.md` always said nothing
+dispatches hooks — the executor is **L3.10** — but both hook files contradicted it ("Enable
+individually per project need", "set `enabled: true` to activate"). There is no switch. Both headers
+now say `enabled:` is the project's runner's flag, not loom's.
+
+`flake-triage-taxonomy.md` now says the job is the project's to build, why loom cannot, and ships a
+copyable ~20-line one. **Verified by running it** against an expired quarantine, one dated 2027, and
+a clean file: it flagged exactly the expired one and exited 1, then exited 0 once removed.
+
+### L3.55 — Bound the `any`/`interface{}` rule to what it can honestly forbid
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-15)*
+
+**SHIPPED** 2026-09-17 — `91777a0`, `internal/state/untyped_test.go`.
+
+`go-conventions.md` said "NEVER use `any` or `interface{}`" while loom's own Go used them 49 times.
+A rule violated that often knowingly teaches that rules here are decorative.
+
+**The audit's count of 68 was wrong.** It matched English prose — error strings, the policy YAML key
+named `any`, and the embedded TypeScript rule text in `generated_rules.go:32` ("never use raw any
+types"). The rule's own words counted as a violation of itself.
+
+**None of the 49 is the defect the rule targets**: JSON Schema literals (24), marshal/reflect helpers
+(8), heterogeneous dispatch (9), MCP wire maps (5), variadic `slog` (3). `StageSchema.subject` exists
+to *feed* a fitness function (L2.25); the logger mirrors `slog`'s own signature.
+
+The rule now permits four named boundaries and forbids the thing it means. The fitness function
+asserts only the clause judgement cannot soften: **an untyped value must not travel inward.**
+
+**Its first version was vacuous and passed** — it matched only `*ast.Ident`, so it saw `any` but not
+`interface{}`, the spelling actually in the code, which made both pinned exceptions dead code.
+
+### L3.56 — Name the two disciplines loom relies on but cannot check
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: L3.50, L3.53 · **Blocks**: none · *(raised 2026-09-15)*
+
+**SHIPPED** 2026-09-18 — `20c5260`. Both judgment-only, marked with a reason.
+
+**"Could not reproduce" is not a closure state.** It describes one attempt, and closing on it turns a
+defect into a rumour. The evidence to settle most of these already existed and was never pointed at
+the question: the run's shape, the route with per-stage skip reasons, loop termination,
+`gen_ai.response.model`, `loom memory runs/retries/corrections`, trace IDs.
+`observability-patterns.md` now tabulates which surface answers which question, then states three
+norms — a report without a run reference gets one question rather than a triage debate; when the
+evidence is genuinely absent the instrumentation gap *is* the finding; and a diagnosis says what it
+ruled out.
+
+**Tool scoping is two problems.** For tools you define, narrow the parameter to a value — loom's
+seven MCP tools take no language and cause no outbound effect. For tools you consume, you only
+choose who holds them: `Bash` comes from the host platform's vocabulary and loom cannot narrow it.
+So the control there is which agents hold it (L3.50, L3.53). That is a real control and a **weaker**
+one than a narrow tool, and `security-patterns.md` says so rather than implying otherwise.
 
 ---
 
