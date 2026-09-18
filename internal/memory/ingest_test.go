@@ -8,6 +8,7 @@ import (
 
 	"github.com/orieken/loom/internal/memory"
 	"github.com/orieken/loom/internal/orchestrator"
+	"github.com/orieken/loom/internal/state"
 )
 
 // fixtureRun builds a halted run with two stages, a correction, a policy
@@ -216,6 +217,65 @@ func TestArchiveRecordsCopiesBothFiles(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(archive, "user-auth", name)); err != nil {
 			t.Errorf("%s was not archived: %v", name, err)
 		}
+	}
+}
+
+// The typed stage documents are where the facts live. run-state.json says a
+// stage completed and which KIND it produced; the document holds the review
+// verdict, security findings, test results and changed paths — everything a
+// policy reads. Archiving without them made every finished run unanalysable
+// for those questions, which is what the L2.19 experiment found: four
+// sourceable facts, all UNKNOWN, because the documents were gone.
+func TestArchiveKeepsTheTypedStageDocuments(t *testing.T) {
+	workspace, archive := t.TempDir(), t.TempDir()
+	runState, events := fixtureRun()
+	writeWorkspace(t, workspace, runState, events)
+	writeTypedState(t, workspace)
+
+	if err := memory.ArchiveRecords(workspace, filepath.Join(archive, "user-auth")); err != nil {
+		t.Fatalf("ArchiveRecords: %v", err)
+	}
+
+	archived := filepath.Join(archive, "user-auth", state.TypedStateDir)
+	for _, name := range []string{"code-reviewer.json", "qa-engineer.json"} {
+		if _, err := os.Stat(filepath.Join(archived, name)); err != nil {
+			t.Errorf("typed state %s was not archived: %v", name, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(archived, "notes.txt")); err == nil {
+		t.Error("notes.txt was archived; only .json stage documents should be")
+	}
+}
+
+// writeTypedState lays down two stage documents and one file that is not
+// one, so the test covers both what must be copied and what must not.
+func writeTypedState(t *testing.T, workspace string) {
+	t.Helper()
+	dir := filepath.Join(workspace, state.TypedStateDir)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("create typed state dir: %v", err)
+	}
+	files := map[string]string{
+		"code-reviewer.json": `{"schemaVersion":10}`,
+		"qa-engineer.json":   `{"schemaVersion":10}`,
+		"notes.txt":          "scratch",
+	}
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+}
+
+// Most runs predate typed state, and a run whose stages all produced
+// markdown has none. That is ordinary, not a failure.
+func TestArchiveToleratesNoTypedState(t *testing.T) {
+	workspace, archive := t.TempDir(), t.TempDir()
+	runState, events := fixtureRun()
+	writeWorkspace(t, workspace, runState, events)
+
+	if err := memory.ArchiveRecords(workspace, archive); err != nil {
+		t.Errorf("ArchiveRecords failed with no typed state present: %v", err)
 	}
 }
 

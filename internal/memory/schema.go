@@ -131,9 +131,10 @@ CREATE INDEX IF NOT EXISTS idx_corrections_agent ON corrections(agent);
 // SchemaVersion is bumped whenever the tables change shape.
 //
 // A mismatch rebuilds the store from scratch rather than migrating it. That
-// is only safe because the store is a PROJECTION: run-state.json and
-// run-events.jsonl are archived in git, and `loom memory ingest` rebuilds
-// everything from them. Migrations are for records; this is a cache.
+// is only safe because the store is a PROJECTION: run-state.json,
+// run-events.jsonl and the typed stage documents under state/ are archived
+// in git, and `loom memory ingest` rebuilds everything from them. Migrations
+// are for records; this is a cache.
 const SchemaVersion = 2
 
 const versionTable = `CREATE TABLE IF NOT EXISTS schema_meta (version INTEGER NOT NULL)`

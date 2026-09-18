@@ -35,9 +35,9 @@ had to correct.
 
 The store lives at .claude/memory/episodes.db and is populated automatically
 at the end of every "loom run". It is a projection of records that ARE
-committed — run-state.json and run-events.jsonl are archived into
-docs/features/<name>/ — so deleting it loses nothing that "loom memory
-ingest" cannot rebuild.`,
+committed — run-state.json, run-events.jsonl and the typed stage documents
+under state/ are archived into docs/features/<name>/ — so deleting it loses
+nothing that "loom memory ingest" cannot rebuild.`,
 	Args: cobra.NoArgs,
 }
 

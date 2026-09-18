@@ -164,8 +164,11 @@ Add `--json` to any query for machine-readable output.
 - **It collects nothing new.** Stage timings, loop rounds, gate halts, human corrections, token
   counts and routing reasons were already recorded per run; they just died with the feature
   workspace. This keeps them.
-- **The store is a projection, not the record.** `run-state.json` and `run-events.jsonl` are
-  archived into `docs/features/<name>/` beside the artifacts they describe, so the history is in git.
+- **The store is a projection, not the record.** `run-state.json`, `run-events.jsonl` and the typed
+  stage documents under `state/` are archived into `docs/features/<name>/` beside the artifacts they
+  describe, so the history is in git. The typed documents matter beyond replay: they hold the review
+  verdict, security findings, test results and changed paths a policy reads, and a run archived
+  without them cannot answer those questions afterwards.
   `.claude/memory/` is gitignored, and `loom memory ingest` rebuilds it from the archive — deleting
   the database loses nothing.
 - **Project-local, always.** Nothing is aggregated across projects and nothing is uploaded.
