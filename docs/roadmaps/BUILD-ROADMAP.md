@@ -560,10 +560,30 @@ And an unanswerable condition resolves to **unknown**, never true.
 ### L2.19 — Honour a policy decision at a gate
 **Workstream**: KERNEL · **Effort**: S · **Blocked by**: L2.16 (shipped), L3.47 (shipped) · **Blocks**: none · *(raised 2026-09-02)*
 
-> **Read L3.47 before starting.** This item's safety argument is that an always-human gate "cannot be
-> targeted at all". Until 2026-09-16 that was true by accident: gate #9 had no `GateID`, so a policy
-> naming it was rejected as `unknown gate` rather than as always-human. L3.47 made the classification
-> real and held by two tests. The precondition now exists; it did not when this item was written.
+> **Reachable, not ready — and still blocked.** *(corrected 2026-09-18)*
+>
+> L3.47 cleared one precondition: this item's safety argument is that an always-human gate "cannot
+> be targeted at all", and until 2026-09-16 that held only by accident — gate #9 had no `GateID`, so
+> a policy naming it was rejected as `unknown gate` rather than as always-human. That classification
+> is now real and held by two tests.
+>
+> **A note added here on 2026-09-18 read that as "unblocked". It was wrong**, and this corrects it.
+> The stop condition below — *do not build until real runs show the evaluator deciding what a human
+> would* — is untouched by L3.47 and remains unmet.
+>
+> An experiment on 2026-09-18 tried to satisfy it cheaply, by dry-running a candidate policy against
+> a recorded run. It could not:
+> [`docs/audits/l219-policy-dry-run-2026-09-18.md`](../audits/l219-policy-dry-run-2026-09-18.md).
+> No policy has ever been written in this repo, the only surviving run-state has `policyDecisions:
+> ABSENT`, and **all four supposedly-sourced facts resolved UNKNOWN** — because the evaluator reads
+> the typed stage documents under `<workspace>/state/`, which run archives do not retain. The facts
+> existed during the run and were discarded when it was archived.
+>
+> So the evidence cannot be reconstructed from the nine recorded runs; it has to be gathered
+> forward. Prerequisites, in order: **(1)** retain typed stage state in run archives — without it no
+> future run is analysable either; **(2)** write real policies and let L2.16 record decisions with
+> `honoured: false` across several runs; **(3)** L2.20, or accept that policies are limited to the
+> four sourced facts and say so in the schema.
 
 1. **Problem**: L2.16 evaluates policies and records what they decided, then halts for a human
    anyway. The feature people actually want from policies — a gate that proceeds without a
