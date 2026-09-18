@@ -580,10 +580,13 @@ And an unanswerable condition resolves to **unknown**, never true.
 > existed during the run and were discarded when it was archived.
 >
 > So the evidence cannot be reconstructed from the nine recorded runs; it has to be gathered
-> forward. Prerequisites, in order: **(1)** retain typed stage state in run archives — without it no
-> future run is analysable either; **(2)** write real policies and let L2.16 record decisions with
-> `honoured: false` across several runs; **(3)** L2.20, or accept that policies are limited to the
-> four sourced facts and say so in the schema.
+> forward. Prerequisites, in order: **(1) ~~retain typed stage state in run archives~~ — DONE,
+> L3.57 (`7c5183e`)**, so runs from here are analysable; **(2)** write real policies and let L2.16 record
+> decisions with `honoured: false` across several runs; **(3)** L2.20, or accept that policies are
+> limited to the four sourced facts and say so in the schema.
+>
+> Note what (1) does *not* do: the nine already-recorded runs stay unanalysable, because their
+> documents were discarded. The corpus starts empty and fills from the next run onward.
 
 1. **Problem**: L2.16 evaluates policies and records what they decided, then halts for a human
    anyway. The feature people actually want from policies — a gate that proceeds without a
@@ -3020,7 +3023,7 @@ silent one, and an unexplained noisy signal gets muted.
 
 ## Workstream: OBSERVE — Curriculum Alignment
 
-Ten items raised 2026-09-15 from a **two-way alignment audit** of loom against the Zero to Agent
+Eleven items: ten raised 2026-09-15 from a **two-way alignment audit** of loom against the Zero to Agent
 SDET curriculum: every major principle checked against what loom actually *enforces*, not what it
 documents. The audit and its running record live in
 [`docs/prompts/loom-alignment-todo-2026-09-16.md`](../prompts/loom-alignment-todo-2026-09-16.md).
@@ -3031,7 +3034,10 @@ time — so each entry below records what verifying the premise changed. And **t
 during the work passed while testing less than they claimed**, each caught only by deliberately
 breaking it. Prove red; a green new check is evidence of nothing.
 
-All ten shipped between 2026-09-16 and 2026-09-18. `health-check` went 321 → 365 passing, 0 failing.
+All eleven shipped between 2026-09-16 and 2026-09-18. `health-check` went 321 → 367 passing, 0
+failing. **L3.57 was not in the audit** — it was found by trying to satisfy L2.19's stop condition
+and discovering the evidence had been discarded at archive time, which is the kind of finding only
+an experiment produces.
 
 ### L3.47 — Gate #9 is always human in code, not only in prose
 **Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: **L2.19** · *(raised 2026-09-15)*
@@ -3214,6 +3220,27 @@ seven MCP tools take no language and cause no outbound effect. For tools you con
 choose who holds them: `Bash` comes from the host platform's vocabulary and loom cannot narrow it.
 So the control there is which agents hold it (L3.50, L3.53). That is a real control and a **weaker**
 one than a narrow tool, and `security-patterns.md` says so rather than implying otherwise.
+
+### L3.57 — Archive the typed stage documents with the run
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: **L2.19** · *(raised 2026-09-18)*
+
+**SHIPPED** 2026-09-18 — `7c5183e`, `internal/memory/workspace.go`.
+
+`ArchiveRecords` copied `run-state.json` and `run-events.jsonl`. Those record that a stage completed
+and which *kind* of document it produced; the document holds the review verdict, the security
+findings, the test results and the changed paths — everything `gateContext` reads. So every finished
+run was unanalysable for exactly the questions its records exist to answer.
+
+**Found by the L2.19 experiment**, which is the only reason it surfaced: four sourceable policy facts
+resolved UNKNOWN against a recorded run. `completedStageOfKind` succeeded and `ReadFile` failed, and
+an absent fact is indistinguishable from one that never existed. See
+[`docs/audits/l219-policy-dry-run-2026-09-18.md`](../audits/l219-policy-dry-run-2026-09-18.md).
+
+**Verified end to end**: a mock delivery through the first gate archives `state/analyst.json`,
+`state/context-engineer.json` and `state/router.json` beside the two files. Before, neither.
+
+**This is prerequisite 1 of 3 for L2.19** and does nothing for the nine runs already recorded —
+their documents are gone. Evidence starts accumulating from the next run.
 
 ---
 
