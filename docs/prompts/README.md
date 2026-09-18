@@ -19,6 +19,7 @@ For tasks that require a human (not a fireable agent prompt), see [../human-task
 | File | Scope | Estimated size |
 |---|---|---|
 | [loom-next-items-2026-09-15.md](loom-next-items-2026-09-15.md) | Handoff after L3.38–L3.46 shipped. Verified repo state, the credible unblocked items, the working method that produced that stream, this repo's verification discipline, and five loose threads. Includes the trap that ~49 items *look* open because older milestones predate the SHIPPED convention | Medium — pick one item per session |
+| [loom-alignment-todo-2026-09-16.md](loom-alignment-todo-2026-09-16.md) | Running record for the two-way alignment audit against the Zero to Agent SDET curriculum, shipped as L3.47–L3.56. Each item records what verifying its premise changed — six of eleven were wrong as written — plus the two places the audit and the next-items handoff intersect (L2.19's precondition, L3.36's mechanism). Read it before trusting an audit item's proposed fix | Small — reference, not a work queue |
 
 
 ### Documentation cleanup (from docs/TODO.md audit — 2026-08-15)
