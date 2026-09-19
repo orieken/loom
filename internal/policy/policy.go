@@ -121,7 +121,45 @@ func (p Policy) validate() error {
 	if p.Condition.IsEmpty() {
 		return fmt.Errorf("policy %q has an empty condition — it would fire on every gate it watches", p.Name)
 	}
+	if err := p.validateSelfReportedFields(); err != nil {
+		return err
+	}
 	return p.validateAction()
+}
+
+// selfReported names every fact the reviewed party supplies about itself.
+// Each entry is a field a policy may READ but must not use to OPEN a gate.
+var selfReported = map[Field]string{
+	FieldReviewBehaviorChange: "the code-reviewer's own assertion that nothing behavioural changed",
+}
+
+// validateSelfReportedFields refuses a self-reported fact in a policy that
+// can open a gate.
+//
+// codeReviewer.verdict is also self-reported and is deliberately NOT here:
+// the verdict IS the review's output, the thing a gate exists to act on,
+// and forbidding it would leave nothing to write a policy about.
+// behaviorChange is different in kind — it is the reviewer grading the
+// significance of its own work, and an auto-approve policy reading it lets
+// a mistaken or compromised reviewer approve itself by asserting the change
+// was trivial. Restricting it costs one direction of expressiveness and
+// removes that path.
+//
+// Checked at LOAD, so someone who writes it finds out before a run rather
+// than from a decision that silently never fires.
+func (p Policy) validateSelfReportedFields() error {
+	if p.Action.Type != ActionAutoApprove {
+		return nil
+	}
+	for _, field := range p.Condition.Fields() {
+		if why, restricted := selfReported[field]; restricted {
+			return fmt.Errorf("policy %q is auto-approve and tests %q, which is %s — "+
+				"a self-reported fact may not open a gate; use it in a require-human, "+
+				"auto-reject or escalate policy instead (shared/policies/policy-schema.md)",
+				p.Name, field, why)
+		}
+	}
+	return nil
 }
 
 func (p Policy) validateGates() error {

@@ -17,10 +17,15 @@ func fullContext() policy.GateContext {
 	}
 }
 
+// conditionFrom builds a require-human policy, not an auto-approve one.
+// These tests are about how a condition RESOLVES, and auto-approve refuses
+// self-reported fields at load (see validateSelfReportedFields) — which
+// would make every case using codeReviewer.behaviorChange a parse failure
+// rather than the evaluation it is testing.
 func conditionFrom(t *testing.T, body string) policy.Condition {
 	t.Helper()
 	raw := "name: t\nversion: \"1.0\"\nmatcher:\n  gate: git-commit\ncondition:\n" + body +
-		"action:\n  type: auto-approve\n  reason: r\n"
+		"action:\n  type: require-human\n  reason: r\n"
 	parsed, err := policy.Parse("t.policy.yaml", []byte(raw))
 	if err != nil {
 		t.Fatalf("parse: %v", err)

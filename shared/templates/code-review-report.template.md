@@ -22,6 +22,8 @@ that these headings survive intact. Preserve every heading exactly.
 ## Design Narrative
 [2-3 sentence plain-English description of what the code is doing architecturally]
 
+Behaviour change: [yes | no | cannot tell]
+
 ## Design Score
 - **Clarity** [1-5]: Does the code reveal its intent without comments?
 - **Cohesion** [1-5]: Does each class/module do one well-defined thing?

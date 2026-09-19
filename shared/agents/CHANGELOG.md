@@ -16,6 +16,26 @@ Semantic-ish, not strict SemVer:
 When you bump an agent's `version:` frontmatter field, add a row under a new dated heading here in the same
 commit — the pre-commit hook checks for exactly this.
 
+## 2026-09-18 — the reviewer says whether behaviour changed, and it cannot approve itself
+
+| Agent | Version | Change |
+|---|---|---|
+| code-reviewer | 2.1.0 -> 2.2.0 | Minor: new step 7 answers one question about the diff as a whole — does it change *what the system does*, or only *how it is written*? Recorded under `## Design Review` as `Behaviour change: yes \| no \| cannot tell`. `cannot tell` is encouraged for a large or unfamiliar diff and is treated as unknown, never as "no" |
+
+Sources `codeReviewer.behaviorChange`, one of the two policy condition fields L2.20 kept. The
+typed side is `ReviewState.BehaviorChange *bool` — a pointer because "the reviewer did not say"
+and "the reviewer said no" are different facts a policy must tell apart.
+
+**A policy may read it only to require more human attention, never to approve.** It is the
+reviewer grading the significance of its own work, so an `auto-approve` policy naming it now
+**fails to load**, including when it is nested under `not:` or `any:`. Reading it in a
+`require-human`, `auto-reject` or `escalate` policy is permitted — the worst case there is a
+human looking at something that did not need it.
+
+Note the asymmetry with `codeReviewer.verdict`, which is equally self-reported and stays
+unrestricted: the verdict IS the review's output, the thing a gate exists to act on. This is a
+different kind of claim.
+
 ## 2026-09-17 — least privilege on egress is a separate question
 
 | Agent | Version | Change |

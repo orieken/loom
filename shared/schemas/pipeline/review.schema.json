@@ -79,6 +79,10 @@
       "type": "array",
       "description": "Whether the developer's self-review matched reality"
     },
+    "behaviorChange": {
+      "type": "boolean",
+      "description": "Does this diff change what the system does"
+    },
     "findings": {
       "items": {
         "properties": {

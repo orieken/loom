@@ -1,0 +1,30 @@
+name: require-human-on-behaviour-change
+version: "1.0"
+description: >
+  Always ask a human before committing when the code-reviewer reports that the diff changes
+  what the system does, rather than only how it is written. Targets Gate 2 (Creating a Git
+  Commit).
+
+  This is the ONLY direction `codeReviewer.behaviorChange` may be used. It is a self-report by
+  the agent whose judgement a policy would be deciding whether to trust, so an auto-approve
+  policy naming it fails to load: a mistaken or compromised reviewer must not be able to
+  approve itself by calling its change trivial. Reading it to require MORE human attention
+  carries no such risk — the worst case is a human looking at something that did not need it.
+
+  Note the asymmetry with `codeReviewer.verdict`, which is equally self-reported and is
+  permitted anywhere. The verdict IS the review's output, the thing a gate exists to act on.
+  behaviorChange is the reviewer grading the significance of its own work, which is a
+  different kind of claim.
+enabled: true
+
+matcher:
+  gate: git-commit
+
+condition:
+  codeReviewer.behaviorChange: true
+
+action:
+  type: require-human
+  reason: >
+    The review reported a behavioural change. Whatever else the policy set says, a human
+    sees this one.

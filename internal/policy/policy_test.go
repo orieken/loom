@@ -125,6 +125,71 @@ func TestRemovingTestCoverageIsRejectedAsAlwaysHumanNotAsUnknown(t *testing.T) {
 	}
 }
 
+// A self-reported fact may not open a gate. codeReviewer.behaviorChange is
+// the reviewer grading the significance of its own work, and an
+// auto-approve policy reading it lets a mistaken or compromised reviewer
+// approve itself by calling the change trivial.
+func TestASelfReportedFactCannotOpenAGate(t *testing.T) {
+	_, err := policy.Parse("t.policy.yaml", []byte(policyWithBehaviorChange("auto-approve")))
+	if err == nil {
+		t.Fatal("an auto-approve policy testing codeReviewer.behaviorChange loaded")
+	}
+	for _, want := range []string{"self-reported", "behaviorChange", "require-human"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("rejection does not mention %q: %v", want, err)
+		}
+	}
+}
+
+// The restriction is on opening a gate, not on the field. Every action that
+// cannot open one may read it.
+func TestASelfReportedFactMayCloseAGate(t *testing.T) {
+	for _, action := range []string{"require-human", "auto-reject", "escalate"} {
+		t.Run(action, func(t *testing.T) {
+			if _, err := policy.Parse("t.policy.yaml", []byte(policyWithBehaviorChange(action))); err != nil {
+				t.Errorf("a %s policy testing codeReviewer.behaviorChange was rejected: %v", action, err)
+			}
+		})
+	}
+}
+
+// Nesting must not evade the rule: a restricted field under `not:` or
+// `any:` is still being tested.
+func TestANestedSelfReportedFactIsStillCaught(t *testing.T) {
+	nested := `name: sneaky
+version: "1.0"
+matcher:
+  gate: git-commit
+condition:
+  not:
+    any:
+      - codeReviewer.behaviorChange: true
+action:
+  type: auto-approve
+  reason: r
+`
+	if _, err := policy.Parse("t.policy.yaml", []byte(nested)); err == nil {
+		t.Error("a nested codeReviewer.behaviorChange slipped past the auto-approve restriction")
+	}
+}
+
+func policyWithBehaviorChange(action string) string {
+	escalate := ""
+	if action == "escalate" {
+		escalate = "  escalateTo: someone\n"
+	}
+	return `name: t
+version: "1.0"
+matcher:
+  gate: git-commit
+condition:
+  codeReviewer.behaviorChange: false
+action:
+  type: ` + action + `
+  reason: r
+` + escalate
+}
+
 func policyTargeting(gate string) string {
 	return `name: sneaky
 version: "1.0"

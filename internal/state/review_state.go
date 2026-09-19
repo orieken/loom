@@ -84,6 +84,16 @@ type ReviewState struct {
 	// nothing, because an empty list renders as the word "None".
 	TestDesignReview []string `json:"testDesignReview" jsonschema:"required,description=Per test added or modified: would it fail if the behavior its name claims were broken? YES/NO/UNCERTAIN. Say so explicitly when the diff changes no tests"`
 	SelfReviewCheck  []string `json:"selfReviewCheck,omitempty" jsonschema:"description=Whether the developer's self-review matched reality"`
+	// BehaviorChange is the reviewer's answer to whether this diff changes
+	// what the system does, as opposed to how it is written. A pointer
+	// because "the reviewer did not say" and "the reviewer said no" are
+	// different facts, and a policy must be able to tell them apart.
+	//
+	// It is a SELF-REPORT by the agent whose judgement a policy would be
+	// deciding whether to trust, so `policy-schema.md` permits it only in a
+	// policy that cannot open a gate. A compromised or mistaken reviewer
+	// asserting "nothing changed" must not thereby approve itself.
+	BehaviorChange *bool `json:"behaviorChange,omitempty" jsonschema:"description=Does this diff change what the system does, rather than how it is written? Omit when you cannot tell"`
 
 	Findings  []Finding `json:"findings,omitempty"`
 	Retrieval Retrieval `json:"retrieval,omitempty"`

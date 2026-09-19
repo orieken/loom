@@ -68,6 +68,12 @@ func (e *Executor) addReviewFacts(runState *RunState, context *policy.GateContex
 	}
 	verdict := string(review.Verdict)
 	context.ReviewVerdict = &verdict
+	// Copied rather than aliased: the decoded document is short-lived and a
+	// pointer into it would outlive what it describes.
+	if review.BehaviorChange != nil {
+		changed := *review.BehaviorChange
+		context.ReviewBehaviorChange = &changed
+	}
 }
 
 func (e *Executor) addSecurityFacts(runState *RunState, context *policy.GateContext) {

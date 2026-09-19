@@ -22,6 +22,8 @@ func evaluateCheck(check Check, context GateContext) Outcome {
 		return numberOutcome(check, context.SecurityCriticals)
 	case FieldTestsPass:
 		return boolOutcome(check, context.TestsPass)
+	case FieldReviewBehaviorChange:
+		return boolOutcome(check, context.ReviewBehaviorChange)
 	case FieldFilePaths:
 		return pathsOutcome(check, context)
 	default:

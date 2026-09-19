@@ -116,6 +116,23 @@ func (c Condition) IsEmpty() bool {
 	return len(c.Checks) == 0 && len(c.Any) == 0 && c.Not == nil
 }
 
+// Fields returns every field the condition tests, at any depth. Load-time
+// rules about which facts a policy may use need the whole tree: a
+// restricted field nested under `not:` or `any:` is still being tested.
+func (c Condition) Fields() []Field {
+	fields := make([]Field, 0, len(c.Checks))
+	for _, check := range c.Checks {
+		fields = append(fields, check.Field)
+	}
+	for _, nested := range c.Any {
+		fields = append(fields, nested.Fields()...)
+	}
+	if c.Not != nil {
+		fields = append(fields, c.Not.Fields()...)
+	}
+	return fields
+}
+
 // validateCheck confirms a field accepts an operator and that the operand
 // is the right kind.
 func validateCheck(field Field, operator Operator, kind valueKind) error {

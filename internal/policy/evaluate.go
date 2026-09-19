@@ -32,6 +32,10 @@ type GateContext struct {
 	SecurityCriticals *int
 	// TestsPass is true when the QA report records zero failures.
 	TestsPass *bool
+	// ReviewBehaviorChange is the reviewer's self-report on whether the
+	// diff changes behaviour. Usable only by a policy that cannot open a
+	// gate — see CheckFieldUsage.
+	ReviewBehaviorChange *bool
 	// ChangedPaths is every file the implementation created or modified.
 	// Nil means no implementation state; empty means it changed nothing.
 	ChangedPaths []string
