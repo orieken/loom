@@ -421,6 +421,11 @@ func (e *Executor) executeStage(ctx context.Context, stage Stage, plan Plan, inp
 		return e.persistFailure(ctx, state, stageFailure{stage: stage, err: invokeErr, usage: output.Usage})
 	}
 	e.notePostureViolation(state, stage, before, output)
+	// Order matters: a stage is judged against the review that preceded it,
+	// so the edit check runs before this stage can itself become the review
+	// boundary.
+	e.notePostReviewEdit(state, stage, before)
+	e.noteReviewApproved(state, stage, e.treeDigest())
 	return e.persistCompletion(state, stage, plan, input, output)
 }
 

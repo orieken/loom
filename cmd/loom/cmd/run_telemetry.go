@@ -31,13 +31,22 @@ func reportRunUsage(cmd *cobra.Command, store *orchestrator.StateStore) {
 	if err != nil || state == nil {
 		return
 	}
+	reportUsageTotals(cmd, state)
+	// Outside the usage check on purpose. A run with nothing to bill still
+	// ships a tree someone has to trust, and these warnings were reachable
+	// only when the provider happened to report tokens — which is never,
+	// under the mock.
+	reportPostureViolations(cmd, state)
+	reportPostReviewEdits(cmd, state)
+}
+
+func reportUsageTotals(cmd *cobra.Command, state *orchestrator.RunState) {
 	total := state.TotalUsage()
 	if total == (orchestrator.Usage{}) {
 		return
 	}
 	cmd.Printf("Usage: %d in / %d out tokens (%d cache read, %d cache write) — $%.4f\n",
 		total.InputTokens, total.OutputTokens, total.CacheReadTokens, total.CacheCreationTokens, total.CostUSD)
-	reportPostureViolations(cmd, state)
 }
 
 // reportPostureErrorOnce warns that the tree cannot be fingerprinted, one
@@ -67,6 +76,24 @@ func reportPostureViolations(cmd *cobra.Command, state *orchestrator.RunState) {
 	}
 	cmd.PrintErrf("warning: %s changed the working tree without declaring a tool that writes files — "+
 		"review those edits, nothing else did\n", strings.Join(violations, ", "))
+}
+
+// reportPostReviewEdits names any stage that changed the tree after the
+// review approved it (roadmap L3.36). "Review sees what ships" is a
+// property the pipeline sells; in run 4 the reviewer approved 312
+// insertions and 343 shipped, and nothing said so.
+//
+// A warning, not a failure. The stages implicated are usually entitled to
+// write — sre-engineer's instrumentation in run 4 was correct and the suite
+// passed — so the defect this closes is that a human could not tell, not
+// that the edits were wrong.
+func reportPostReviewEdits(cmd *cobra.Command, state *orchestrator.RunState) {
+	edited := state.PostReviewEdits()
+	if len(edited) == 0 {
+		return
+	}
+	cmd.PrintErrf("warning: %s changed the working tree after code-reviewer approved it — "+
+		"the review did not see what shipped\n", strings.Join(edited, ", "))
 }
 
 // startTelemetry opens a tracing session for this run and returns the

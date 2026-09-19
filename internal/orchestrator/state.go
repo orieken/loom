@@ -64,6 +64,11 @@ type StageRecord struct {
 	// fatal: run 4's accessibility-engineer did this and its edits were
 	// correct — the defect is that nothing noticed, not that it happened.
 	PostureViolation string `json:"postureViolation,omitempty"`
+	// EditedAfterReview marks a stage that changed the working tree after
+	// the review had approved it (roadmap L3.36). Recorded, not prevented:
+	// a post-review stage may be entitled to write, and the defect is that
+	// the divergence was invisible rather than that it happened.
+	EditedAfterReview bool `json:"editedAfterReview,omitempty"`
 	// Iteration counts the rounds a looping stage has run (roadmap L2.17).
 	// Zero and one both mean a first pass; Sequence is unaffected, because
 	// a re-run is the same step of the run, not a new one.
@@ -112,9 +117,14 @@ type RunState struct {
 	// measured later describes whatever the tree holds then, and a dry-run
 	// against a finished run would silently disagree with what the live
 	// gate actually saw.
-	DiffLines map[string]int         `json:"diffLines,omitempty"`
-	Stages    map[string]StageRecord `json:"stages"`
-	Approvals map[string]Approval    `json:"approvals"`
+	DiffLines map[string]int `json:"diffLines,omitempty"`
+	// ReviewedDigest fingerprints the tree as the review left it. Anything
+	// changing afterwards is what the approval did not cover. Empty when no
+	// reviewing stage has completed, which is why an empty PostReviewEdits
+	// list is ambiguous without it.
+	ReviewedDigest string                 `json:"reviewedDigest,omitempty"`
+	Stages         map[string]StageRecord `json:"stages"`
+	Approvals      map[string]Approval    `json:"approvals"`
 	// Baselines records what a human was last shown at each gate (roadmap
 	// L4.5), keyed by gate name. Retained so a later edit can be described
 	// rather than merely detected — a digest says that something changed
