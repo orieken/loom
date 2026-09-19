@@ -580,10 +580,11 @@ And an unanswerable condition resolves to **unknown**, never true.
 > existed during the run and were discarded when it was archived.
 >
 > So the evidence cannot be reconstructed from the nine recorded runs; it has to be gathered
-> forward. Prerequisites, in order: **(1) ~~retain typed stage state in run archives~~ — DONE,
-> L3.57 (`7c5183e`)**, so runs from here are analysable; **(2)** write real policies and let L2.16 record
-> decisions with `honoured: false` across several runs; **(3)** L2.20, or accept that policies are
-> limited to the four sourced facts and say so in the schema.
+> forward. Prerequisites: **(1) ~~retain typed stage state in run archives~~ — DONE, L3.57
+> (`7c5183e`)**; **(3) ~~L2.20~~ — DONE**, the vocabulary is now honest and six fields resolve.
+> What remains is **(2)**: write real policies and let L2.16 record decisions with
+> `honoured: false` across several runs. That is the evidence this item's stop condition asks for,
+> and nothing but real runs produces it.
 >
 > Note what (1) does *not* do: the nine already-recorded runs stay unanalysable, because their
 > documents were discarded. The corpus starts empty and fills from the next run onward.
@@ -605,6 +606,31 @@ entire reason L2.16 stopped short, and the records it writes are how the questio
 
 ### L2.20 — Source the condition facts nothing measures
 **Workstream**: KERNEL · **Effort**: M · **Blocked by**: L2.16 (shipped) · **Blocks**: none · *(raised 2026-09-02)*
+
+**SHIPPED** 2026-09-18 — `73e78a3`, `70da3df`, `%s`. The done-when is met: every field the
+vocabulary declares either resolves from run state or is gone.
+
+**Three removed rather than sourced.** `diffType` declared an OPEN set (`docs-only`,
+`test-additions`, …) — with no defined list of values it could not be implemented or tested, and
+`filePaths.allMatch` already expresses it precisely. `dryRunPass` and `fitnessFunction.allPass`
+need CI results the executor never sees. A policy naming a removed field now fails to load.
+
+**Two sourced.** `codeReviewer.behaviorChange` (code-reviewer 2.2.0) is a self-report, so an
+`auto-approve` policy naming it **fails to load** — including nested under `not:`/`any:`. It may
+be read by `require-human`, `auto-reject` and `escalate`, where the worst case is a human looking
+at something that did not need it. `codeReviewer.verdict` stays unrestricted deliberately: the
+verdict IS the review's output, not the reviewer grading its own significance.
+
+`diffLines` is measured against the commit the run started from, and **recorded at the gate**
+rather than recomputed — `PolicyContextFor` promises a dry-run and a live evaluation cannot
+disagree about what was visible. The first attempt read git live and left every dry-run blind.
+
+**The specified baseline could not be built.** Diffing against the starting tree *digest* is
+impossible: `Digest()` is a SHA-256 of `git diff HEAD` plus status, a one-way hash. The starting
+*commit* is the reachable equivalent and covers committed and uncommitted work in one number.
+
+**What this does not do.** L2.20 makes the vocabulary honest; it does not make policies useful.
+L2.19 still needs real runs recording decisions — see its entry.
 
 1. **Problem**: `policy-schema.md` declares nine condition fields; four have a source in run state.
    `diffLines`, `diffType`, `dryRunPass`, `fitnessFunction.allPass` and
