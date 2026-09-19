@@ -2355,6 +2355,24 @@ explicitly.
 ### L3.36 — Nothing re-reviews what the post-review stages write
 **Workstream**: KERNEL · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-08, split from L3.30)*
 
+**SHIPPED** 2026-09-18 — `%s`. The done-when is met: a run whose tree changed after
+`code-reviewer` approved now says so, as a run-end warning and on the stage record.
+
+**Candidate 1 of the three, chosen deliberately.** It records the divergence and does not prevent
+it — re-reviewing the delta and moving the review later both exceed this item's own done-when and
+are a larger, separate decision. The restraint is the point: `sre-engineer` did nothing wrong in
+run 4, and the defect is that a human could not tell.
+
+**L3.50 made this urgent rather than moot.** The posture check exempts stages that declare a write
+tool — correctly, because it asks a different question. It caught run 4 only because
+`accessibility-engineer`'s declaration was *wrong*; making the declaration honest removed the
+incidental catch, and every post-review stage now declares `Write`, so that check no longer notices
+this case at all. Detection now lives in a check that knows about the review boundary.
+
+The boundary anchors on the reviewing stage's typed **kind**, not its ID, so renaming or
+duplicating that stage still anchors. Both run-end warnings also moved out from behind the usage
+early-return, which had made them reachable only when the provider reported tokens.
+
 > **The mechanism question is answered; the policy question is what remains** (L3.50, 2026-09-16).
 > This item asked how `accessibility-engineer` — "declares write tools? **no**" — changed production
 > source. It was *instructed* to ("Fix violations directly whenever possible"), `Bash` was the only
