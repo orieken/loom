@@ -27,6 +27,16 @@ type WorkTree interface {
 	// slash-separated. It is how a claim to have modified a file is checked
 	// against whether the file actually changed (roadmap L2.24).
 	ChangedPaths() ([]string, error)
+	// HeadRef is the commit the run starts from, recorded once so a gate
+	// can ask what this run changed rather than what is merely uncommitted.
+	// Empty is valid: a repository with no commits has nothing to measure
+	// from, and the fact is then simply absent.
+	HeadRef() (string, error)
+	// DiffLinesSince counts lines added and removed since a commit,
+	// including files the run created — an untracked file is not in a
+	// diff, so counting only tracked changes would report zero for a run
+	// that added a package.
+	DiffLinesSince(ref string) (int, error)
 }
 
 // WithWorkTree enables posture checking against a repository.

@@ -20,6 +20,8 @@ func evaluateCheck(check Check, context GateContext) Outcome {
 		return textOutcome(check, context.ReviewVerdict)
 	case FieldSecurityCriticals:
 		return numberOutcome(check, context.SecurityCriticals)
+	case FieldDiffLines:
+		return numberOutcome(check, context.DiffLines)
 	case FieldTestsPass:
 		return boolOutcome(check, context.TestsPass)
 	case FieldReviewBehaviorChange:

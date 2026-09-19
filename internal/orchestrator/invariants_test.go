@@ -129,6 +129,53 @@ func TestPolicyContextForReadsTheSameFactsAsALiveGate(t *testing.T) {
 	}
 }
 
+// The diff fact is measured against the commit the run STARTED from, not
+// against HEAD. A run that commits mid-flight moves HEAD, and "since HEAD"
+// would then report only the remainder — under-counting exactly when a
+// policy is deciding on diff size.
+func TestPolicyContextMeasuresTheDiffFromTheRunStart(t *testing.T) {
+	executor, _, store, input := newHarness(t, map[string]mock.Script{
+		"analyst":     {ArtifactContent: "# analysis"},
+		"architect":   {ArtifactContent: "# architecture"},
+		"implementer": {ArtifactContent: "# implementation"},
+	})
+	tree := &changingTree{digests: []string{"d"}, head: "abc123", diffLines: 42}
+	_ = runUntilGate(t, executor.WithWorkTree(tree), gatedPlan(), input)
+
+	runState := mustLoad(t, store)
+	if runState.StartCommit != "abc123" {
+		t.Errorf("StartCommit = %q, want the HEAD captured at run start", runState.StartCommit)
+	}
+
+	context := orchestrator.PolicyContextFor(store, runState, policy.GateID("confirm-design"))
+	if context.DiffLines == nil {
+		t.Fatal("diff lines absent at a gate the run reached with a work tree present")
+	}
+	if *context.DiffLines != 42 {
+		t.Errorf("diff lines = %d, want 42", *context.DiffLines)
+	}
+}
+
+// Without a starting commit there is nothing to measure from, so the fact
+// is absent and a policy check on it resolves to UNKNOWN. A repository with
+// no commits is an ordinary state, not a reason to report zero — zero would
+// read as "this run changed nothing", which is a different claim.
+func TestDiffIsAbsentWithoutAStartCommit(t *testing.T) {
+	executor, _, store, input := newHarness(t, map[string]mock.Script{
+		"analyst":     {ArtifactContent: "# analysis"},
+		"architect":   {ArtifactContent: "# architecture"},
+		"implementer": {ArtifactContent: "# implementation"},
+	})
+	tree := &changingTree{digests: []string{"d"}, head: "", diffLines: 99}
+	_ = runUntilGate(t, executor.WithWorkTree(tree), gatedPlan(), input)
+
+	runState := mustLoad(t, store)
+	context := orchestrator.PolicyContextFor(store, runState, policy.GateID("confirm-design"))
+	if context.DiffLines != nil {
+		t.Errorf("diff lines = %d, want absent with no start commit", *context.DiffLines)
+	}
+}
+
 // The context reports only what state actually holds. A stage still waiting
 // at its gate has settled nothing, so its verdict must be absent rather than
 // guessed — an absent fact resolves a policy check to UNKNOWN, and a guessed

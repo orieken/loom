@@ -95,14 +95,26 @@ type StageRecord struct {
 
 // RunState is the executor-owned durable state for one feature delivery run.
 type RunState struct {
-	SchemaVersion int                    `json:"schemaVersion"`
-	PlanName      string                 `json:"planName"`
-	CreatedBy     Creator                `json:"createdBy"`
-	FeatureName   string                 `json:"featureName,omitempty"`
-	SpecPath      string                 `json:"specPath,omitempty"`
-	StartedAt     time.Time              `json:"startedAt"`
-	Stages        map[string]StageRecord `json:"stages"`
-	Approvals     map[string]Approval    `json:"approvals"`
+	SchemaVersion int       `json:"schemaVersion"`
+	PlanName      string    `json:"planName"`
+	CreatedBy     Creator   `json:"createdBy"`
+	FeatureName   string    `json:"featureName,omitempty"`
+	SpecPath      string    `json:"specPath,omitempty"`
+	StartedAt     time.Time `json:"startedAt"`
+	// StartCommit is the commit the tree was at when this run began. A
+	// gate measures the run's diff against it, so the number covers work
+	// the run committed mid-flight as well as what is still uncommitted.
+	// Empty when there is no work tree or the repository has no commits,
+	// and the diff fact is then absent rather than guessed.
+	StartCommit string `json:"startCommit,omitempty"`
+	// DiffLines is how many lines the run had changed when it reached each
+	// gate, keyed by gate name. Recorded rather than recomputed: a number
+	// measured later describes whatever the tree holds then, and a dry-run
+	// against a finished run would silently disagree with what the live
+	// gate actually saw.
+	DiffLines map[string]int         `json:"diffLines,omitempty"`
+	Stages    map[string]StageRecord `json:"stages"`
+	Approvals map[string]Approval    `json:"approvals"`
 	// Baselines records what a human was last shown at each gate (roadmap
 	// L4.5), keyed by gate name. Retained so a later edit can be described
 	// rather than merely detected — a digest says that something changed

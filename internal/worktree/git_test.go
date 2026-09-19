@@ -108,3 +108,82 @@ func TestGitDigestWorksInARepositoryWithNoCommits(t *testing.T) {
 		t.Error("the digest did not notice a new file in a repository with no commits")
 	}
 }
+
+// A gate asks what the RUN changed, so the count spans both tracked edits
+// and files the run created. Counting only `git diff` would report zero for
+// a run that added a package, because an untracked file is not in a diff.
+func TestDiffLinesSinceCountsTrackedAndUntracked(t *testing.T) {
+	dir := t.TempDir()
+	initRepo(t, dir)
+	writeFile(t, filepath.Join(dir, "tracked.txt"), "line1\nline2\nline3\n")
+	commitAll(t, dir)
+
+	git := worktree.New(dir)
+	base, err := git.HeadRef()
+	if err != nil || base == "" {
+		t.Fatalf("HeadRef = %q, %v", base, err)
+	}
+
+	// 1 line changed (1 removed + 1 added) and 1 appended = 3 tracked.
+	writeFile(t, filepath.Join(dir, "tracked.txt"), "line1\nCHANGED\nline3\nline4\n")
+	// 2 lines in a file git has never seen.
+	writeFile(t, filepath.Join(dir, "untracked.txt"), "new1\nnew2\n")
+
+	lines, err := git.DiffLinesSince(base)
+	if err != nil {
+		t.Fatalf("DiffLinesSince: %v", err)
+	}
+	if lines != 5 {
+		t.Errorf("DiffLinesSince = %d, want 5 (3 tracked + 2 untracked)", lines)
+	}
+}
+
+// A file ending in a newline holds as many lines as it has newlines. Adding
+// one for the final line over-counted every well-formed text file, which a
+// real repository caught and the arithmetic on paper did not.
+func TestUntrackedLineCountHandlesTheTrailingNewline(t *testing.T) {
+	cases := []struct {
+		name    string
+		content string
+		want    int
+	}{
+		{"terminated", "a\nb\n", 2},
+		{"unterminated", "a\nb", 2},
+		{"single terminated", "a\n", 1},
+		{"single unterminated", "a", 1},
+		{"empty", "", 0},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			dir := t.TempDir()
+			initRepo(t, dir)
+			writeFile(t, filepath.Join(dir, "seed.txt"), "seed\n")
+			commitAll(t, dir)
+			git := worktree.New(dir)
+			base, _ := git.HeadRef()
+
+			writeFile(t, filepath.Join(dir, "new.txt"), testCase.content)
+			lines, err := git.DiffLinesSince(base)
+			if err != nil {
+				t.Fatalf("DiffLinesSince: %v", err)
+			}
+			if lines != testCase.want {
+				t.Errorf("DiffLinesSince = %d, want %d for %q", lines, testCase.want, testCase.content)
+			}
+		})
+	}
+}
+
+// No commits means nothing to measure from. That is an ordinary state for a
+// freshly initialised project, and the fact is absent rather than an error.
+func TestHeadRefIsEmptyWithoutCommits(t *testing.T) {
+	dir := t.TempDir()
+	initRepo(t, dir)
+	ref, err := worktree.New(dir).HeadRef()
+	if err != nil {
+		t.Fatalf("HeadRef errored in a repo with no commits: %v", err)
+	}
+	if ref != "" {
+		t.Errorf("HeadRef = %q, want empty", ref)
+	}
+}

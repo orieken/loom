@@ -36,6 +36,10 @@ type GateContext struct {
 	// diff changes behaviour. Usable only by a policy that cannot open a
 	// gate — see CheckFieldUsage.
 	ReviewBehaviorChange *bool
+	// DiffLines is lines added and removed since the run's starting
+	// commit, counting files the run created. Nil when there is no work
+	// tree, no starting commit, or git would not answer.
+	DiffLines *int
 	// ChangedPaths is every file the implementation created or modified.
 	// Nil means no implementation state; empty means it changed nothing.
 	ChangedPaths []string

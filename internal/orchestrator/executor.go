@@ -200,6 +200,25 @@ func (e *Executor) advance(ctx context.Context, stage Stage, plan Plan, input St
 	return e.runStage(ctx, stage, plan, input, state)
 }
 
+// startCommit records where the tree was when the run began. Recorded once
+// at run start rather than read at the gate: by then the run has moved the
+// tree, and "since HEAD" would measure only what had not been committed
+// yet — under-reporting exactly when a policy is deciding.
+//
+// A failure is not one: no work tree, no commits, or a git that will not
+// answer all mean the diff fact is absent, and absent resolves to unknown.
+func (e *Executor) startCommit() string {
+	if e.workTree == nil {
+		return ""
+	}
+	ref, err := e.workTree.HeadRef()
+	if err != nil {
+		e.reportPostureError(err)
+		return ""
+	}
+	return ref
+}
+
 func (e *Executor) prepareState(plan Plan, input StageInput) (*RunState, error) {
 	if err := plan.Validate(); err != nil {
 		return nil, err
@@ -209,7 +228,9 @@ func (e *Executor) prepareState(plan Plan, input StageInput) (*RunState, error) 
 		return nil, err
 	}
 	if state == nil {
-		return newRunFor(plan, input), nil
+		fresh := newRunFor(plan, input)
+		fresh.StartCommit = e.startCommit()
+		return fresh, nil
 	}
 	if err := state.CheckCreatedBy(CreatedByExecutor); err != nil {
 		return nil, err
@@ -296,6 +317,16 @@ func (e *Executor) checkGate(stage Stage, state *RunState) error {
 	if stage.Gate == "" {
 		return nil
 	}
+	// Measure what the run has changed by the time it reaches this gate,
+	// and RECORD it rather than leave it to be recomputed. PolicyContextFor
+	// promises a dry-run and a live evaluation cannot disagree about what
+	// was visible; a number recomputed later measures whatever the tree
+	// holds then, not what this gate saw. Same lesson as L3.57.
+	//
+	// Before the approval check, not after: an already-approved gate is
+	// still a point the run passed through, and a dry-run asking about it
+	// should get the number rather than silence.
+	e.recordDiffLines(state, stage.Gate)
 	if state.IsGateApproved(stage.Gate) {
 		invalidated, err := e.enforceApprovalBinding(state, stage)
 		if err != nil {

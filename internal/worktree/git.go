@@ -15,10 +15,14 @@
 package worktree
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -58,6 +62,109 @@ func (g *Git) trackedDiff() ([]byte, error) {
 		return nil, nil
 	}
 	return g.run("diff", "HEAD")
+}
+
+// HeadRef is the commit a run starts from, recorded so a gate can later
+// ask what the run changed. Empty with no error in a repository with no
+// commits: there is nothing to measure from, and that is an ordinary state
+// for a freshly initialised project rather than a failure.
+func (g *Git) HeadRef() (string, error) {
+	output, err := g.run("rev-parse", "--verify", "HEAD")
+	if err != nil {
+		return "", nil
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
+// DiffLinesSince counts lines added and removed since a commit, across
+// both tracked changes and new files.
+//
+// `git diff` alone would miss every file the run created, because an
+// untracked file is not in the diff — a run that added three new packages
+// would report zero. Counting them separately is the difference between
+// measuring the change and measuring the part of it git happened to be
+// tracking already.
+func (g *Git) DiffLinesSince(ref string) (int, error) {
+	if ref == "" {
+		return 0, fmt.Errorf("no base commit to measure from")
+	}
+	tracked, err := g.trackedDiffLines(ref)
+	if err != nil {
+		return 0, err
+	}
+	untracked, err := g.untrackedLines()
+	if err != nil {
+		return 0, err
+	}
+	return tracked + untracked, nil
+}
+
+// trackedDiffLines sums the added and removed columns of `git diff
+// --numstat`. A binary file reports "-" in both columns and contributes
+// nothing, which is correct: its line count is not a meaningful number.
+func (g *Git) trackedDiffLines(ref string) (int, error) {
+	output, err := g.run("diff", "--numstat", ref)
+	if err != nil {
+		return 0, err
+	}
+	total := 0
+	for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
+		if line == "" {
+			continue
+		}
+		total += numstatLines(line)
+	}
+	return total, nil
+}
+
+// numstatLines reads the added and removed counts from one numstat row.
+func numstatLines(row string) int {
+	fields := strings.Fields(row)
+	if len(fields) < 2 {
+		return 0
+	}
+	total := 0
+	for _, field := range fields[:2] {
+		if count, err := strconv.Atoi(field); err == nil {
+			total += count
+		}
+	}
+	return total
+}
+
+// untrackedLines counts every line in every file git is not yet tracking.
+func (g *Git) untrackedLines() (int, error) {
+	output, err := g.run("ls-files", "--others", "--exclude-standard")
+	if err != nil {
+		return 0, err
+	}
+	total := 0
+	for _, name := range strings.Split(strings.TrimSpace(string(output)), "\n") {
+		if name == "" {
+			continue
+		}
+		total += countLines(filepath.Join(g.root, name))
+	}
+	return total, nil
+}
+
+// countLines treats an unreadable file as zero. A file that vanished
+// between listing and reading is a race, not a reason to fail a gate.
+//
+// The trailing newline is why this is not just a count of '\n' plus one.
+// A well-formed text file ends with one, so "line1\nline2\n" holds two
+// lines and contains two newlines; adding one over-counted every such
+// file. Only a file whose last line is unterminated needs the extra.
+func countLines(path string) int {
+	content, err := os.ReadFile(path)
+	if err != nil || len(content) == 0 {
+		return 0
+	}
+	lines := bytes.Count(content, []byte{'\n'})
+	if content[len(content)-1] != '\n' {
+		lines++
+	}
+	return lines
 }
 
 func (g *Git) run(args ...string) ([]byte, error) {

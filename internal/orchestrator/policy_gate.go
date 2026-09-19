@@ -58,7 +58,44 @@ func (e *Executor) gateContext(runState *RunState, stage Stage) policy.GateConte
 	e.addSecurityFacts(runState, &context)
 	e.addQAFacts(runState, &context)
 	e.addPathFacts(runState, &context)
+	e.addDiffFacts(runState, &context)
 	return context
+}
+
+// addDiffFacts measures what this run changed, against the commit the run
+// started from rather than against HEAD. A run that committed mid-flight
+// has moved HEAD, so "since HEAD" would report only the remainder.
+//
+// Every failure path leaves the fact absent, which resolves to unknown. A
+// gate deciding on a diff size it could not measure is the one outcome
+// worth ruling out.
+func (e *Executor) addDiffFacts(runState *RunState, context *policy.GateContext) {
+	lines, measured := runState.DiffLines[string(context.Gate)]
+	if !measured {
+		return
+	}
+	context.DiffLines = &lines
+}
+
+// recordDiffLines measures what the run has changed since it began and
+// stores it against this gate.
+//
+// Every failure leaves nothing recorded, and an unrecorded fact resolves to
+// unknown. Zero is not the fallback: zero means "this run changed nothing",
+// which is a claim, and a gate must not decide on one nobody made.
+func (e *Executor) recordDiffLines(runState *RunState, gate string) {
+	if gate == "" || e.workTree == nil || runState.StartCommit == "" {
+		return
+	}
+	lines, err := e.workTree.DiffLinesSince(runState.StartCommit)
+	if err != nil {
+		e.reportPostureError(err)
+		return
+	}
+	if runState.DiffLines == nil {
+		runState.DiffLines = map[string]int{}
+	}
+	runState.DiffLines[gate] = lines
 }
 
 func (e *Executor) addReviewFacts(runState *RunState, context *policy.GateContext) {

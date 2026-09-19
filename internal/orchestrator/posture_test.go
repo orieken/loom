@@ -16,6 +16,21 @@ type changingTree struct {
 	changed []string
 	calls   int
 	err     error
+	// head and diffLines serve the diff facts a gate reads. Zero values
+	// mean "no starting commit", which leaves the fact absent — the state
+	// every test that does not care about diffs wants.
+	head      string
+	diffLines int
+	diffErr   error
+}
+
+func (t *changingTree) HeadRef() (string, error) { return t.head, nil }
+
+func (t *changingTree) DiffLinesSince(string) (int, error) {
+	if t.diffErr != nil {
+		return 0, t.diffErr
+	}
+	return t.diffLines, nil
 }
 
 func (t *changingTree) Digest() (string, error) {
