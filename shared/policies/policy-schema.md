@@ -65,20 +65,40 @@ A condition is a YAML map of key-value checks. All checks must pass for the cond
 
 This is a **catalogue of available checks, not a single condition** — a real condition uses a
 subset, and each field may appear at most once in a mapping. (This block previously listed
-`diffType` and `filePaths` twice each, which is invalid YAML; no parser had ever read this file.
-It is now valid and is loaded as a fixture by `internal/policy`'s tests.)
+`diffType` and `filePaths` twice each, which is invalid YAML; no parser had ever read this file.)
+
+**Nothing loads this document.** An earlier version of this paragraph claimed it "is loaded as a
+fixture by `internal/policy`'s tests" — it is not, and was not. The examples under
+`shared/policies/examples/` *are* load-tested (`TestShippedExamplesAllLoad`), so those are the ones
+to trust when the two disagree. Keeping this file correct is manual.
 
 | Field | Operators | Value | Meaning |
 |---|---|---|---|
-| `diffLines` | `lessThan`, `equals` | number | diff size in lines |
-| `diffType` | `equals` | string | `docs-only`, `test-additions`, … |
+| `diffLines` | `lessThan`, `equals` | number | lines changed since the run started |
 | `testsPass` | bare boolean, `equals` | bool | all configured tests pass |
-| `dryRunPass` | bare boolean, `equals` | bool | CI dry-run validation passed |
 | `filePaths` | `allMatch`, `noneMatch`, `anyMatch` | glob | every / no / any changed file matches |
 | `codeReviewer.verdict` | `equals` | string | the review verdict, e.g. `APPROVED` |
-| `codeReviewer.behaviorChange` | bare boolean, `equals` | bool | the review reported a behaviour change |
+| `codeReviewer.behaviorChange` | bare boolean, `equals` | bool | the review reported a behaviour change — **`require-human` only** |
 | `securityReviewer.criticals` | `equals`, `lessThan` | number | count of critical findings |
-| `fitnessFunction.allPass` | bare boolean, `equals` | bool | all fitness functions pass |
+
+Every field here resolves from run state. A field may still answer **unknown** for a given run,
+when the stage that produces it has not run or its document is missing — that is the honest answer
+and never becomes a guess.
+
+### Three fields were removed (L2.20)
+
+A vocabulary should not describe questions nothing can answer. These resolved to unknown for every
+run, which is correct and useless, and three of the five shipped examples could never evaluate
+because of them.
+
+| Removed | Why | What to use instead |
+|---|---|---|
+| `diffType` | Declared an **open** set (`docs-only`, `test-additions`, …). With no defined list of values it could not be implemented or tested | `filePaths` with `allMatch` — more precise, and it works today |
+| `dryRunPass` | Needs a CI dry-run result. The executor runs stages, not CI | Nothing yet. Reinstating it means building CI reporting into run state first |
+| `fitnessFunction.allPass` | Same — fitness functions run in CI, and nothing reports back | Nothing yet, same prerequisite |
+
+A policy naming a removed field **fails to load**, rather than being ignored: someone who writes
+one should find out before a run, not never.
 
 ```yaml
 condition:
@@ -154,8 +174,8 @@ matcher:
   gate: git-commit
 
 condition:
-  diffType:
-    equals: "docs-only"
+  filePaths:
+    allMatch: "{docs/**,**/*.md,**/*.mdx}"
   testsPass: true
   diffLines:
     lessThan: 500

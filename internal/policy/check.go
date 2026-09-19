@@ -2,14 +2,15 @@ package policy
 
 // Resolving a single check against the context.
 //
-// Five of the nine declared fields have no source in run state today —
-// diffLines, diffType, dryRunPass, fitnessFunction.allPass, and
-// codeReviewer.behaviorChange. They resolve to UNKNOWN by falling through
-// to the default, which is deliberate: the vocabulary describes what a
-// policy may ask, and the executor answers what it can see. Sourcing the
-// rest is its own roadmap item, because "shell to git for a diff size"
-// carries questions (diff against what?) that do not belong in an
-// evaluator.
+// Every field the vocabulary declares now has a source (L2.20). The three
+// that never could — diffType, dryRunPass and fitnessFunction.allPass —
+// were removed rather than left resolving to UNKNOWN for every run, which
+// is correct and useless. See condition.go for why each went.
+//
+// A field can still resolve to UNKNOWN: the fact is sourceable in general
+// but absent for THIS run, because the stage that produces it has not run
+// or its document is missing. That is the honest answer and never becomes
+// a guess.
 
 import "path/filepath"
 

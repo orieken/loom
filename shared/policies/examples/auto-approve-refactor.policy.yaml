@@ -1,8 +1,18 @@
 name: auto-approve-refactor
 version: "1.0"
 description: >
-  Auto-approve git commits that are pure refactors: code-reviewer returned APPROVED,
-  no behavior change detected, all fitness functions pass, diff stays under 200 LOC.
+  Auto-approve git commits that look like a contained refactor: code-reviewer returned
+  APPROVED, tests pass, the diff stays under 200 lines, and no security or auth path is
+  touched. Targets Gate 2 (Creating a Git Commit).
+
+  Two conditions were removed in L2.20. `fitnessFunction.allPass` needed CI results the
+  executor never sees. `codeReviewer.behaviorChange` is sourced now, but a self-reported
+  "no behaviour changed" may not be used to OPEN a gate — see policy-schema.md — so it
+  cannot appear in an auto-approve policy and a policy naming it here fails to load.
+
+  Read what remains honestly: this says the review approved a small, contained change. It
+  does NOT establish that behaviour was preserved, which is what the name suggests and what
+  the removed fields were reaching for.
 enabled: true
 
 matcher:
@@ -11,9 +21,7 @@ matcher:
 condition:
   codeReviewer.verdict:
     equals: "APPROVED"
-  codeReviewer.behaviorChange:
-    equals: false
-  fitnessFunction.allPass: true
+  testsPass: true
   diffLines:
     lessThan: 200
   not:
@@ -26,5 +34,5 @@ condition:
 action:
   type: auto-approve
   reason: >
-    Code-reviewer approved with no behavior change, all fitness functions pass,
-    diff is under 200 LOC and touches no security/auth paths — safe to auto-commit.
+    Review approved, tests pass, the diff is under 200 lines, and it touches no security
+    or auth paths.

@@ -43,19 +43,21 @@ func TestEvaluateChecks(t *testing.T) {
 		{"none match", "  filePaths:\n    noneMatch: \"**/security/**\"\n", policy.OutcomeTrue},
 		{"any match finds none", "  filePaths:\n    anyMatch: \"**/auth/**\"\n", policy.OutcomeFalse},
 		{"all match fails on one", "  filePaths:\n    allMatch: \"docs/api/**\"\n", policy.OutcomeFalse},
-		// Five declared fields have no source in run state.
-		{"diff size is unknown", "  diffLines:\n    lessThan: 500\n", policy.OutcomeUnknown},
-		{"diff type is unknown", "  diffType:\n    equals: \"docs-only\"\n", policy.OutcomeUnknown},
-		{"dry-run status is unknown", "  dryRunPass: true\n", policy.OutcomeUnknown},
-		{"fitness results are unknown", "  fitnessFunction.allPass: true\n", policy.OutcomeUnknown},
-		{"behaviour change is unknown", "  codeReviewer.behaviorChange: false\n", policy.OutcomeUnknown},
-		// Composition.
-		{"AND of true and unknown is unknown", "  testsPass: true\n  dryRunPass: true\n", policy.OutcomeUnknown},
-		{"AND short-circuits on false", "  codeReviewer.verdict:\n    equals: \"NOPE\"\n  dryRunPass: true\n", policy.OutcomeFalse},
-		{"OR wins on one true", "  any:\n    - testsPass: true\n    - dryRunPass: true\n", policy.OutcomeTrue},
-		{"OR of false and unknown is unknown", "  any:\n    - testsPass: false\n    - dryRunPass: true\n", policy.OutcomeUnknown},
+		// A sourceable field is still UNKNOWN when this run lacks the fact —
+		// the producing stage has not run, or its document is missing. That
+		// is different from a field nothing can ever answer, which is why
+		// diffType, dryRunPass and fitnessFunction.allPass were removed
+		// from the vocabulary rather than left resolving here (L2.20).
+		{"diff size is unknown when absent", "  diffLines:\n    lessThan: 500\n", policy.OutcomeUnknown},
+		{"behaviour change is unknown when absent", "  codeReviewer.behaviorChange: false\n", policy.OutcomeUnknown},
+		// Composition. `codeReviewer.behaviorChange` stands in for an absent
+		// boolean fact; fullContext() deliberately does not set it.
+		{"AND of true and unknown is unknown", "  testsPass: true\n  codeReviewer.behaviorChange: true\n", policy.OutcomeUnknown},
+		{"AND short-circuits on false", "  codeReviewer.verdict:\n    equals: \"NOPE\"\n  codeReviewer.behaviorChange: true\n", policy.OutcomeFalse},
+		{"OR wins on one true", "  any:\n    - testsPass: true\n    - codeReviewer.behaviorChange: true\n", policy.OutcomeTrue},
+		{"OR of false and unknown is unknown", "  any:\n    - testsPass: false\n    - codeReviewer.behaviorChange: true\n", policy.OutcomeUnknown},
 		{"NOT inverts", "  not:\n    testsPass: false\n", policy.OutcomeTrue},
-		{"NOT leaves unknown alone", "  not:\n    dryRunPass: true\n", policy.OutcomeUnknown},
+		{"NOT leaves unknown alone", "  not:\n    codeReviewer.behaviorChange: true\n", policy.OutcomeUnknown},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {

@@ -1,24 +1,29 @@
 name: auto-approve-test-additions
 version: "1.0"
 description: >
-  Auto-approve fitness function wiring when the wired function is a new test:
-  dry-run passes, all changed paths match test directories, and zero security findings exist.
-  Targets Gate 7 (Wiring a New Fitness Function).
+  Auto-approve fitness function wiring when the wired function is a new test: every changed
+  path is under a test directory, the review approved, and no critical security findings
+  exist. Targets Gate 7 (Wiring a New Fitness Function).
+
+  Previously also required `dryRunPass` and `fitnessFunction.allPass`. Both needed CI results
+  the executor never sees and were removed in L2.20, so this policy could never evaluate.
+  What remains is weaker and true: it cannot confirm the new check passes in CI, only that
+  the change is confined to test paths and was reviewed.
 enabled: true
 
 matcher:
   gate: fitness-function-wiring
 
 condition:
-  dryRunPass: true
   filePaths:
     allMatch: "{tests,test,spec,specs,__tests__}/**"
+  codeReviewer.verdict:
+    equals: "APPROVED"
   securityReviewer.criticals:
     equals: 0
-  fitnessFunction.allPass: true
 
 action:
   type: auto-approve
   reason: >
-    Fitness function is a new test (all changed paths in test directories),
-    CI dry-run passed, zero security criticals — safe to wire without human review.
+    Every changed path is a test directory, the review approved, and there are zero
+    critical security findings.

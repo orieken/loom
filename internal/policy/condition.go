@@ -12,16 +12,27 @@ import (
 type Field string
 
 // The fields policy-schema.md declares.
+//
+// Three declared fields were removed in L2.20 — `diffType`, `dryRunPass`
+// and `fitnessFunction.allPass`. A vocabulary should not describe questions
+// nothing can answer: they resolved to UNKNOWN for every run, which is
+// correct and useless, and three of the five shipped examples could never
+// evaluate because of them.
+//
+//   - `diffType` declared an OPEN set ("docs-only, test-additions, …").
+//     There is no answer to "what are the valid values", so it could not be
+//     implemented or tested. `filePaths` with `allMatch` already expresses
+//     the same intent precisely, and does so today.
+//   - `dryRunPass` and `fitnessFunction.allPass` need CI results. The
+//     executor runs stages, not CI, and nothing reports back into run
+//     state. Reinstating them means building that path first.
 const (
 	FieldDiffLines            Field = "diffLines"
-	FieldDiffType             Field = "diffType"
 	FieldTestsPass            Field = "testsPass"
-	FieldDryRunPass           Field = "dryRunPass"
 	FieldFilePaths            Field = "filePaths"
 	FieldReviewVerdict        Field = "codeReviewer.verdict"
 	FieldReviewBehaviorChange Field = "codeReviewer.behaviorChange"
 	FieldSecurityCriticals    Field = "securityReviewer.criticals"
-	FieldFitnessAllPass       Field = "fitnessFunction.allPass"
 )
 
 // Operator names how a field is compared.
@@ -60,14 +71,11 @@ func fieldRules() map[Field]fieldRule {
 	globs := map[Operator]valueKind{OpAllMatch: kindText, OpNoneMatch: kindText, OpAnyMatch: kindText}
 	return map[Field]fieldRule{
 		FieldDiffLines:            {operators: map[Operator]valueKind{OpLessThan: kindNumber, OpEquals: kindNumber}},
-		FieldDiffType:             {operators: map[Operator]valueKind{OpEquals: kindText}},
 		FieldTestsPass:            {operators: map[Operator]valueKind{OpIsTrue: kindBool, OpEquals: kindBool}},
-		FieldDryRunPass:           {operators: map[Operator]valueKind{OpIsTrue: kindBool, OpEquals: kindBool}},
 		FieldFilePaths:            {operators: globs},
 		FieldReviewVerdict:        {operators: map[Operator]valueKind{OpEquals: kindText}},
 		FieldReviewBehaviorChange: {operators: map[Operator]valueKind{OpIsTrue: kindBool, OpEquals: kindBool}},
 		FieldSecurityCriticals:    {operators: map[Operator]valueKind{OpEquals: kindNumber, OpLessThan: kindNumber}},
-		FieldFitnessAllPass:       {operators: map[Operator]valueKind{OpIsTrue: kindBool, OpEquals: kindBool}},
 	}
 }
 
