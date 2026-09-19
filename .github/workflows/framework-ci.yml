@@ -47,8 +47,14 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4 — same pin as loom-release.yml
-      - name: Install PyYAML (health-check shells out to check-parity.sh, which needs it)
-        run: python3 -m pip install --quiet pyyaml
+      # Both, and the set must match scripts/ci-check.sh's apt install or that
+      # script stops being a parity check. pyyaml: health-check shells out to
+      # check-parity.sh's .roomodes validation. jsonschema: health-check's own
+      # frontmatter validation against the committed schemas, which is opt-in
+      # and SKIPS WITH A WARNING when the import is missing — so its absence
+      # showed up as three checks quietly not running, never as a failure.
+      - name: Install PyYAML and jsonschema (health-check needs both)
+        run: python3 -m pip install --quiet pyyaml jsonschema
       - name: Run health-check.sh
         run: bash scripts/health-check.sh --verbose
 

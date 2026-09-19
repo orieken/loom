@@ -45,11 +45,15 @@ run_check() {
   local cmd="$2"
 
   echo "--- $label ---"
-  # python3-yaml matches the GitHub runner image, which ships PyYAML preinstalled — check-parity.sh's
-  # .roomodes validation needs it, and a bare python3 here would diverge from what CI actually runs.
+  # These must match what the workflow installs, or this script stops being a
+  # parity check and becomes a different one. python3-yaml covers
+  # check-parity.sh's .roomodes validation; python3-jsonschema covers
+  # health-check.sh's frontmatter validation, which is opt-in and skips with a
+  # warning when the import is missing — so an absent package here shows up as
+  # three checks quietly not running rather than as a failure.
   if docker run --rm -v "$REPO_DIR:/repo:ro" -w /repo "$IMAGE" bash -c "
     apt-get update -qq >/dev/null 2>&1
-    apt-get install -y -qq python3 python3-yaml >/dev/null 2>&1
+    apt-get install -y -qq python3 python3-yaml python3-jsonschema >/dev/null 2>&1
     $cmd
   "; then
     echo "  PASS  $label"

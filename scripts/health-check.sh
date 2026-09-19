@@ -851,8 +851,12 @@ else
   AGENT_SCHEMA="$SCHEMA_DIR/agent-frontmatter.schema.json"
   if [[ -f "$AGENT_SCHEMA" ]]; then
     agent_files=$(find "$SHARED_DIR/agents" -maxdepth 1 -name "*.md" ! -name "CHANGELOG.md" | sort)
-    schema_output=$(python3 "$SCHEMA_VALIDATOR" "$AGENT_SCHEMA" $agent_files 2>&1)
-    schema_exit=$?
+    # `|| schema_exit=$?` is load-bearing: under `set -e` a failing command
+    # substitution in an assignment aborts the script, so the fail branch
+    # below was unreachable and a schema violation killed health-check
+    # mid-section with no message and no summary.
+    schema_exit=0
+    schema_output=$(python3 "$SCHEMA_VALIDATOR" "$AGENT_SCHEMA" $agent_files 2>&1) || schema_exit=$?
     if [[ $schema_exit -eq 0 ]]; then
       pass "agent frontmatter — all files valid against $AGENT_SCHEMA"
     else
@@ -867,8 +871,8 @@ else
   SKILL_SCHEMA="$SCHEMA_DIR/skill-frontmatter.schema.json"
   if [[ -f "$SKILL_SCHEMA" ]]; then
     skill_files=$(find "$SHARED_DIR/skills" -maxdepth 2 -name "SKILL.md" | sort)
-    schema_output=$(python3 "$SCHEMA_VALIDATOR" "$SKILL_SCHEMA" $skill_files 2>&1)
-    schema_exit=$?
+    schema_exit=0
+    schema_output=$(python3 "$SCHEMA_VALIDATOR" "$SKILL_SCHEMA" $skill_files 2>&1) || schema_exit=$?
     if [[ $schema_exit -eq 0 ]]; then
       pass "skill frontmatter — all files valid against $SKILL_SCHEMA"
     else
@@ -891,8 +895,8 @@ else
       [[ -n "$found" ]] && ki_files="$ki_files $found"
     done
     if [[ -n "$ki_files" ]]; then
-      schema_output=$(python3 "$SCHEMA_VALIDATOR" "$KI_SCHEMA" $ki_files 2>&1)
-      schema_exit=$?
+      schema_exit=0
+      schema_output=$(python3 "$SCHEMA_VALIDATOR" "$KI_SCHEMA" $ki_files 2>&1) || schema_exit=$?
       if [[ $schema_exit -eq 0 ]]; then
         pass "knowledge item frontmatter — all files valid against $KI_SCHEMA"
       else
