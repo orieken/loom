@@ -62,10 +62,27 @@ coverage/characterization work with no accompanying feature delivery.
    crashed run would leave behind as mutated source. If the project is not a git repository, copy the
    scope to a temp directory instead — never mutate in place.
 
-   **Confirm each mutant actually landed before trusting its result.** In the worktree,
-   `git diff --quiet` must report a change; an empty diff means the edit did not apply and the test
-   run that follows proves nothing. This is not hypothetical — a mutation whose anchor did not match
-   has twice produced a passing test that read exactly like "the net does not cover this line".
+   **A mutant must apply AND still build before its result means anything.** Two different
+   failures, and only one of them looks like a failure.
+
+   - **It did not apply.** In the worktree, `git diff --quiet` must report a change. An empty diff
+     means the edit did not match and the run that follows proves nothing. A mutation whose anchor
+     missed produces a passing test that reads exactly like "the net does not cover this line".
+   - **It applied and broke the build.** This is the dangerous one, because it fails in the
+     *reassuring* direction. A compile error makes the test command exit non-zero, and a non-zero
+     exit is what "the mutant was caught" looks like — so the check reports the net as strong when
+     nothing exercised it at all. Run the project's build after mutating and **before** running the
+     tests (`go build ./...`, `tsc --noEmit`, `cargo check`, `mvn -q compile`). If it fails, the
+     mutant is invalid: revert it and pick another line.
+
+     Two ways this happens, both observed rather than imagined:
+     - the mutation removes the last use of a variable or import, which some languages reject
+       outright — in Go, deleting a call can turn any mutant into a build error
+     - the mutation introduces a cycle or type error the compiler refuses, so the compiler is what
+       rejected the change and the test was never consulted
+
+   Neither failure announces itself. "The tests failed" only means the net caught something once
+   you know the mutant landed and the project still compiled.
    **A mutant that never landed and an uncovered line are indistinguishable from the test output
    alone.** The diff is what separates them.
 

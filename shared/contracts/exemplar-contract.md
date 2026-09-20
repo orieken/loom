@@ -89,12 +89,16 @@ An exemplar that meets any of these is not an exemplar, whatever the manifest sa
    `code-reviewer`'s Test Evidence criterion and `backfill-unit-tests` step 6, applied to the one
    test that propagates.
 
-   Follow step 6's discipline exactly here, because a false clear on an exemplar propagates: **confirm
-   the mutant landed** (a non-empty diff) before believing a survival, and mutate something the
-   assertion depends on rather than whatever is easiest to edit. A mutant that never applied, and one
-   that applied but changed no behaviour, both read exactly like "this test cannot fail" — which is
-   the finding this disqualifier exists to make, so it is the one place a false positive is most
-   expensive.
+   Follow step 6's discipline exactly here, because a false clear on an exemplar propagates:
+   **confirm the mutant landed and still builds** before believing any result, and mutate something
+   the assertion depends on rather than whatever is easiest to edit.
+
+   Three ways to be misled, and they point in opposite directions. A mutant that never applied, and
+   one that applied but changed no behaviour, both read like "this test cannot fail" — the finding
+   this disqualifier exists to make, so a false positive here is expensive. A mutant that broke the
+   build reads like the opposite: the test command exits non-zero, which looks like the exemplar
+   caught it, and the disqualifier is silently cleared. Step 6 has the full statement; do not
+   restate a subset of it here.
 3. **It lacks its issue/AC annotation**, which `testing-conventions.md` requires of every test. An
    exemplar violating the convention it is supposed to demonstrate is the worst case in the set.
 4. **Cyclomatic complexity ≥ 7** in the test body (`analyze-complexity`). A test a reader cannot
