@@ -212,32 +212,97 @@ echo ""
 # prompt overhead on every request. Warn when a file exceeds ~5,000 tokens
 # (20 KB at 4 chars/token). Fix: scripts/generate-configs.sh --stack <stacks>
 echo "--- Token Footprint Budget (static baseline overhead) ---"
-TOKEN_BUDGET_BYTES=20480  # 20 KB ≈ 5,000 tokens
-token_files_checked=0
-for config_file in \
-  "$REPO_DIR/AGENTS.md" \
-  "$REPO_DIR/.cursorrules" \
-  "$REPO_DIR/.windsurfrules" \
-  "$REPO_DIR/.openai.md" \
-  "$REPO_DIR/.junie/guidelines.md" \
-  "$REPO_DIR/.roomodes"; do
-  [[ -f "$config_file" ]] || continue
-  rel="${config_file#"$REPO_DIR/"}"
-  file_bytes=$(wc -c < "$config_file" | tr -d ' ')
-  approx_tokens=$((file_bytes / 4))
-  ((token_files_checked++)) || true
-  if [[ "$file_bytes" -gt "$TOKEN_BUDGET_BYTES" ]]; then
-    warn "$rel — ~${approx_tokens} tokens (${file_bytes} bytes) exceeds 5k budget; run: scripts/generate-configs.sh --stack <stacks>"
-  else
-    pass "$rel — ~${approx_tokens} tokens (${file_bytes} bytes)"
-  fi
-done
-if [[ "$token_files_checked" -eq 0 ]]; then
-  pass "no generated platform configs present — token budget check skipped"
+# What a generated monolithic config costs, split into the part a project can
+# scope away and the part it cannot.
+#
+# The previous version compared total size against a flat 20,480 bytes and told
+# every reader to run `generate-configs.sh --stack <stacks>`. Both halves were
+# wrong, and had been since the check was written:
+#
+#   - 20,480 is BELOW the core rules these files must contain. The core-rules
+#     bundle alone is ~30,800 bytes, with its own deliberate 31,000 ceiling in
+#     shared/levels.yaml. The budget was unreachable for anyone, and it fired on
+#     all six configs on every run — six permanent warnings in a channel people
+#     are meant to read.
+#   - `--stack` cannot clear it. Stack modules are ~40KB of AGENTS.md's ~90KB,
+#     so a config scoped to one stack still lands near 55KB. The remediation
+#     sent readers to do work that leaves the warning standing.
+#
+# The floor is now DERIVED from what a scoped generation unavoidably contains:
+# the always-included rules plus the agent roster. Stack modules are reported
+# separately, because they are the part --stack actually removes.
+ALWAYS_RULES=(approval-gates architecture-guardrails design-principles
+              memory-trust-boundary test-repair-contract testing-conventions)
+# Mirrors collect_rules()'s stack-scoped branch in generate-configs.sh. The two
+# lists must match: this one describes what that one always emits, so a rule
+# added there and not here shows up as unexplained weight.
+if ! command -v python3 >/dev/null 2>&1; then
+  warn "python3 unavailable — cannot compute the token footprint"
+else
+  budget_report=$(python3 - "$REPO_DIR" "${ALWAYS_RULES[@]}" <<'BUDGETPY'
+import os, sys
+
+repo, always = sys.argv[1], sys.argv[2:]
+
+def size(path):
+    try:
+        return os.path.getsize(path)
+    except OSError:
+        return 0
+
+rules_dir = os.path.join(repo, "shared", "rules")
+always_bytes = sum(size(os.path.join(rules_dir, name + ".md")) for name in always)
+
+# Stack modules: every *-conventions.md that is not an always-included rule.
+# These are exactly what --stack removes.
+stack_bytes = 0
+for name in sorted(os.listdir(rules_dir)):
+    if name.endswith("-conventions.md") and name[:-3] not in always:
+        stack_bytes += size(os.path.join(rules_dir, name))
+
+agents_dir = os.path.join(repo, "shared", "agents")
+agent_files = [f for f in os.listdir(agents_dir) if f.endswith(".md") and f != "CHANGELOG.md"]
+# One roster line per agent, with headroom. Derived from the measured roster
+# (~352 bytes/agent over 40 agents) so it scales as agents are added.
+roster_bytes = len(agent_files) * 400
+# .roomodes embeds each agent's FULL persona instead of a roster line, because
+# Roo Code's format requires it — so its floor is the personas themselves.
+persona_bytes = sum(size(os.path.join(agents_dir, f)) for f in agent_files)
+
+checked = 0
+for rel in ["AGENTS.md", ".cursorrules", ".windsurfrules", ".openai.md",
+            ".junie/guidelines.md", ".roomodes"]:
+    total = size(os.path.join(repo, rel))
+    if total == 0:
+        continue
+    checked += 1
+    floor = always_bytes + (persona_bytes if rel == ".roomodes" else roster_bytes)
+    baseline = total - stack_bytes
+    if baseline <= floor:
+        print("PASS:%s — ~%d tokens (%d bytes), of which %d is stack modules "
+              "that --stack removes" % (rel, total // 4, total, stack_bytes))
+    else:
+        print("WARN:%s — ~%d tokens (%d bytes): %d beyond the floor of %d "
+              "(always-included rules + agent roster). --stack removes at most "
+              "%d and will not clear this"
+              % (rel, total // 4, total, baseline - floor, floor, stack_bytes))
+
+if checked == 0:
+    print("PASS:no generated platform configs present — token budget check skipped")
+BUDGETPY
+  )
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    case "$line" in
+      PASS:*) pass "${line#PASS:}" ;;
+      WARN:*) warn "${line#WARN:}" ;;
+      *)      fail "${line#FAIL:}" ;;
+    esac
+  done <<< "$budget_report"
 fi
+
 echo ""
 
-# --- 5. Domain dictionary orphaned terms (best-effort) ----------------------
 echo "--- Domain Dictionary Orphaned Terms (best-effort) ---"
 DICT="$REPO_DIR/DOMAIN_DICTIONARY.md"
 if [[ -f "$DICT" ]]; then
