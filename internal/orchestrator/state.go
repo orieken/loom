@@ -100,12 +100,19 @@ type StageRecord struct {
 
 // RunState is the executor-owned durable state for one feature delivery run.
 type RunState struct {
-	SchemaVersion int       `json:"schemaVersion"`
-	PlanName      string    `json:"planName"`
-	CreatedBy     Creator   `json:"createdBy"`
-	FeatureName   string    `json:"featureName,omitempty"`
-	SpecPath      string    `json:"specPath,omitempty"`
-	StartedAt     time.Time `json:"startedAt"`
+	SchemaVersion int     `json:"schemaVersion"`
+	PlanName      string  `json:"planName"`
+	CreatedBy     Creator `json:"createdBy"`
+	FeatureName   string  `json:"featureName,omitempty"`
+	SpecPath      string  `json:"specPath,omitempty"`
+	// Provider is which stage provider this run was started with. A run is
+	// mock or it is not, and half of each is meaningless — so this belongs
+	// to the run's identity rather than to one invocation (roadmap L3.17).
+	// Recorded at creation and adopted on resume: the printed resume
+	// command carried no --provider, so following it silently moved a free
+	// mock run onto the real binary mid-flight, and billed for it.
+	Provider  string    `json:"provider,omitempty"`
+	StartedAt time.Time `json:"startedAt"`
 	// StartCommit is the commit the tree was at when this run began. A
 	// gate measures the run's diff against it, so the number covers work
 	// the run committed mid-flight as well as what is still uncommitted.

@@ -102,8 +102,24 @@ func askApproval(out io.Writer, in io.Reader, waiting *orchestrator.WaitingAppro
 func haltForApproval(cmd *cobra.Command, waiting *orchestrator.WaitingApprovalError, err error) error {
 	cmd.PrintErrf("Halted at gate %q before stage %q — approval required.%s\n",
 		waiting.Gate, waiting.Stage, routedOutNote(waiting))
-	cmd.PrintErrf("Approve and continue with: loom run --spec %s --resume --approve %s\n", runArgs.spec, waiting.Gate)
+	cmd.PrintErrf("Approve and continue with: loom run --spec %s%s --resume --approve %s\n",
+		runArgs.spec, providerFlagFor(runArgs.provider), waiting.Gate)
 	return err
+}
+
+// providerFlagFor spells out --provider when the run is not on the default,
+// so the printed command reproduces the run rather than the default.
+//
+// This line is why L3.17 existed: the command omitted the flag entirely, so
+// following it moved a mock run onto the real binary and billed for it. The
+// resume path now adopts the recorded provider even without the flag, which
+// makes this belt as well as braces — but a command someone may paste
+// elsewhere should say what it runs.
+func providerFlagFor(name string) string {
+	if name == "" || name == defaultProvider {
+		return ""
+	}
+	return " --provider " + name
 }
 
 // routedOutNote says so when the gate guards a stage this run already

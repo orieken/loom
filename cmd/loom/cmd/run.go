@@ -59,12 +59,16 @@ every run; set OTEL_EXPORTER_OTLP_ENDPOINT to also export over OTLP/HTTP, or
 	RunE: runRun,
 }
 
+// defaultProvider is what `loom run` uses when nothing says otherwise, and
+// the value a printed resume command may omit.
+const defaultProvider = "claude"
+
 func init() {
 	rootCmd.AddCommand(runCmd)
 	runCmd.Flags().StringVar(&runArgs.spec, "spec", "", "feature spec markdown file (required)")
 	runCmd.Flags().BoolVar(&runArgs.resume, "resume", false, "continue an interrupted run from its checkpoint")
 	runCmd.Flags().StringVar(&runArgs.approve, "approve", "", "approve the gate the run is waiting on (requires --resume)")
-	runCmd.Flags().StringVar(&runArgs.provider, "provider", "claude", "stage provider: claude or mock")
+	runCmd.Flags().StringVar(&runArgs.provider, "provider", defaultProvider, "stage provider: claude or mock")
 	runCmd.Flags().StringVar(&runArgs.plan, "plan", orchestrator.DefaultDeliverFeaturePlanName, "pipeline plan to execute")
 	runCmd.Flags().StringVar(&runArgs.mockHangStage, "mock-hang-stage", "", "mock provider only: stage ID that hangs until interrupted (testing)")
 	_ = runCmd.Flags().MarkHidden("mock-hang-stage")
@@ -100,26 +104,48 @@ func runRun(cmd *cobra.Command, _ []string) error {
 	if err := checkResumeState(store, runArgs.resume); err != nil {
 		return err
 	}
-	provider, err := selectProvider(plan, runArgs.provider, runArgs.mockHangStage)
+	provider, providerName, err := providerForRun(cmd, plan, store)
 	if err != nil {
 		return err
 	}
-	return executeRun(cmd, runSetup{plan: plan, provider: provider, store: store, input: input, policies: policies})
+	return executeRun(cmd, runSetup{plan: plan, provider: provider, providerName: providerName,
+		store: store, input: input, policies: policies})
+}
+
+// providerForRun resolves which provider this run uses and builds it,
+// returning the name alongside so the executor can record it and a printed
+// resume command can reproduce it (roadmap L3.17).
+func providerForRun(cmd *cobra.Command, plan orchestrator.Plan,
+	store *orchestrator.StateStore) (orchestrator.Provider, string, error) {
+	name, err := resolveProvider(cmd, store)
+	if err != nil {
+		return nil, "", err
+	}
+	// From here the flag holds the run's provider rather than this
+	// invocation's default, so anything printing a resume command
+	// reproduces the run instead of the default.
+	runArgs.provider = name
+	provider, err := selectProvider(plan, name, runArgs.mockHangStage)
+	if err != nil {
+		return nil, "", err
+	}
+	return provider, name, nil
 }
 
 // runSetup is what a run needs to start, gathered rather than passed as six
 // positional arguments.
 type runSetup struct {
-	plan     orchestrator.Plan
-	provider orchestrator.Provider
-	store    *orchestrator.StateStore
-	input    orchestrator.StageInput
-	policies []policy.Policy
+	plan         orchestrator.Plan
+	provider     orchestrator.Provider
+	providerName string
+	store        *orchestrator.StateStore
+	input        orchestrator.StageInput
+	policies     []policy.Policy
 }
 
 func executeRun(cmd *cobra.Command, setup runSetup) error {
 	plan, provider, store, input := setup.plan, setup.provider, setup.store, setup.input
-	executor := orchestrator.NewExecutor(provider, store)
+	executor := orchestrator.NewExecutor(provider, store).WithProviderName(setup.providerName)
 	// Fingerprint the repository around each stage so one that edits source
 	// it never declared it would edit is noticed (roadmap L3.30).
 	executor.WithWorkTree(worktree.New(input.ProjectRoot))
@@ -249,6 +275,39 @@ func prepareRunWorkspace(specPath string) (string, orchestrator.StageInput, erro
 
 // checkResumeState enforces the resume contract: --resume requires existing
 // state, and a fresh run refuses to start over existing state.
+// resolveProvider decides which provider this invocation uses, preferring
+// what the run was STARTED with over the flag's default (roadmap L3.17).
+//
+// A run is mock or it is not. `--provider` is a flag on one invocation, and
+// the resume command the executor prints carries none — so following that
+// command moved a free mock run onto the real binary mid-flight and billed
+// $1.69 for it, implementing the mock analysis's placeholder feature before
+// a typed invariant stopped it. The tool suggested the command that did it.
+//
+// An explicit `--provider` that contradicts the recording is refused rather
+// than honoured: half a run against each provider is not a thing anyone
+// meant to ask for, and silently picking one of them is how this went
+// unnoticed the first time.
+func resolveProvider(cmd *cobra.Command, store *orchestrator.StateStore) (string, error) {
+	state, err := store.Load()
+	if err != nil || state == nil || state.Provider == "" {
+		// No run yet, unreadable, or state written before providers were
+		// recorded. The flag is all there is.
+		return runArgs.provider, nil
+	}
+	if !cmd.Flags().Changed("provider") {
+		return state.Provider, nil
+	}
+	if runArgs.provider != state.Provider {
+		return "", fmt.Errorf(
+			"this run was started with --provider %s and you passed --provider %s; "+
+				"a run is one provider or the other, so resume without --provider to continue as %s, "+
+				"or delete %s to start over",
+			state.Provider, runArgs.provider, state.Provider, store.Path())
+	}
+	return state.Provider, nil
+}
+
 func checkResumeState(store *orchestrator.StateStore, resume bool) error {
 	state, err := store.Load()
 	if err != nil {

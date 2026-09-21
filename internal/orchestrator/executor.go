@@ -24,7 +24,12 @@ type Executor struct {
 	// workTree fingerprints the repository so a stage that edits source it
 	// never declared it would edit is noticed (roadmap L3.30). Nil disables
 	// the check.
-	workTree       WorkTree
+	workTree WorkTree
+	// providerName is what the provider is CALLED, recorded into run state
+	// so a resume can adopt it. The Provider interface deliberately does
+	// not expose a name — it is a behaviour, not a label — so the caller
+	// that chose it supplies the label (roadmap L3.17).
+	providerName   string
 	onPostureError func(error)
 	onClaimWarning func(error)
 	// onBaselineError reports a failure to retain what a human was shown at
@@ -40,6 +45,15 @@ type Executor struct {
 }
 
 // NewExecutor wires a provider and a state store into an executor.
+// WithProviderName records which provider this run uses, so a resume can
+// adopt it rather than falling back to the flag default. Unset means the
+// run records nothing and a resume cannot check — which is the behaviour
+// that billed real money on a mock run.
+func (e *Executor) WithProviderName(name string) *Executor {
+	e.providerName = name
+	return e
+}
+
 func NewExecutor(provider Provider, store *StateStore) *Executor {
 	return &Executor{
 		provider: provider,
@@ -230,6 +244,7 @@ func (e *Executor) prepareState(plan Plan, input StageInput) (*RunState, error) 
 	if state == nil {
 		fresh := newRunFor(plan, input)
 		fresh.StartCommit = e.startCommit()
+		fresh.Provider = e.providerName
 		return fresh, nil
 	}
 	if err := state.CheckCreatedBy(CreatedByExecutor); err != nil {
