@@ -1570,6 +1570,20 @@ literals, so every mock run passes and the mismatch is invisible.
 ### L3.17 — Carry the run's provider across resume
 **Workstream**: KERNEL · **Effort**: S · **Blocked by**: L2.15 (shipped) · **Blocks**: none · *(raised 2026-09-06, from the second real end-to-end run)*
 
+**SHIPPED** 2026-09-21 — `fb9b54a`. `RunState.Provider` records the provider at creation, resume adopts
+it, and a contradicting `--provider` is refused naming both values. The printed resume command
+spells out a non-default provider as well, so a command pasted elsewhere still reproduces the run.
+
+**Verified against the exact failure**, not a proxy: a mock run resumed with **no `--provider` at
+all** — the command that billed $1.69 — now stays mock and completes the `developer` stage, where
+before it invoked the real binary and failed. State written before this records no provider and
+still resumes on the flag.
+
+**Independently reconfirmed the day before it shipped**, while trying to produce L2.19 evidence: a
+mock run resumed with the printed command failed at `developer` with `agent exited with error`,
+which is this defect wearing a confusing error message. The item's description needed no
+correction — it already said "silently switches".
+
 1. **Problem**: `--provider` is a flag on the invocation, not a property of the run, and
    `run-state.json` does not record it. `loom run --spec X --provider mock` halts at
    `confirm-design`; the resume command the executor **itself prints** is
