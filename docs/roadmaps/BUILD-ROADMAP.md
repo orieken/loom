@@ -1830,6 +1830,21 @@ ones the evidence supports, and L3.24 adds a third: not asking the stage at all.
 ### L3.20 — Papercuts from the second real run
 **Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-06)*
 
+**SHIPPED** 2026-09-21 — `5ee57c6`. The done-when asked that each be fixed or explicitly declined.
+Four fixed; **#3 was already resolved by L3.32** (`c0ca216`, 2026-09-08) and is declined rather
+than fixed twice — that item decided deliberately, on evidence from run 4, that a gate on a
+routed-out stage still halts, and fixed the two narrower defects underneath. Re-fixing it here
+would have reversed a decision made on evidence.
+
+Two are worth noting beyond the fix. **#1** destroyed diagnostic information rather than merely
+omitting it: the cause was in a buffer the function already held, and the empty `stderr:` suffix
+read as "the process said nothing" when it had said plenty. **#5** was a convention asserted by a
+generated artifact and implemented by nothing — the tech writer's own report cited a directory
+that held two files.
+
+Verified on a mock run for a feature deliberately named differently from the mock payload:
+`route.md` reads `health-endpoint`, and the archive holds all nine artifacts where it held none.
+
 Five small defects, each individually trivial, grouped so none is lost.
 
 1. **A failing CLI reports nothing.** The architect's first failure was
