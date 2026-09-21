@@ -1,0 +1,46 @@
+name: evidence-clean-ship
+version: "1.0"
+description: >
+  This repository's own policy, and it exists to be WRONG in public if it is wrong.
+
+  Roadmap L2.19 will not be built until recorded decisions show the evaluator deciding what a
+  human would. Nothing can show that while no policy exists: L2.16 evaluates the policies a
+  project has, and this project had none, so every run recorded an empty set and the evidence
+  could never accumulate. This is the first one.
+
+  It is deliberately an AUTO-APPROVE. A require-human policy proves little — if it fires, a human
+  was going to be asked anyway. An auto-approve records the claim that matters: "I would have let
+  this through." Every run then produces a comparison against what the human actually did, and
+  agreement or disagreement is the evidence L2.19 is waiting for.
+
+  Nothing is skipped. `loom run` halts at every gate regardless, and every record carries
+  `honoured: false` — that is L2.16's deliberate design, so the first run to skip a barrier is not
+  also the first evidence the evaluator is correct. Read the records with
+  `loom run --spec <file> --dry-run-policies`, or in run-state.json under policyDecisions.
+
+  Watches confirm-ship because that is the only gate where every sourced fact is available:
+  confirm-design precedes the developer and sees nothing, and confirm-security precedes
+  qa-engineer so testsPass is not yet known (shared/policies/README.md).
+enabled: true
+
+matcher:
+  gate: confirm-ship
+
+condition:
+  codeReviewer.verdict:
+    equals: "APPROVED"
+  securityReviewer.criticals:
+    equals: 0
+  testsPass: true
+  not:
+    any:
+      - filePaths:
+          anyMatch: "**/security/**"
+      - filePaths:
+          anyMatch: "**/auth/**"
+
+action:
+  type: auto-approve
+  reason: >
+    Review approved, zero critical security findings, tests green, and nothing under a security or
+    auth path. Recorded as what a policy would have decided; the human still decides.
