@@ -34,6 +34,14 @@ func computeRoute(plan Plan, input StageInput) (StageOutput, error) {
 		return StageOutput{}, err
 	}
 	route := state.RouteFor(*analysis, routableStagesOf(plan))
+	// The route describes THIS RUN, so it is titled from the run's feature
+	// rather than the analyst's payload (roadmap L3.20, papercut 2). Under
+	// the mock the analysis says `mock-feature`, and a route document for
+	// `health-endpoint` was headed "Delivery Route: mock-feature" — a
+	// document naming a feature the run is not about.
+	if feature := FeatureNameFromSpec(input.SpecPath); feature != "" {
+		route.Feature = feature
+	}
 	payload, err := json.Marshal(route)
 	if err != nil {
 		return StageOutput{}, fmt.Errorf("encode route: %w", err)

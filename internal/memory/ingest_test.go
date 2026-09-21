@@ -289,3 +289,46 @@ func TestArchiveToleratesAMissingTimeline(t *testing.T) {
 		t.Errorf("ArchiveRecords failed with no timeline present: %v", err)
 	}
 }
+
+// docs/features/<name>/ is the documented home for a run's artifacts, and
+// the convention was load-bearing before it was implemented: a tech-writer
+// report asserted the record was "already captured by the pipeline
+// artifacts persisted under docs/features/<name>/" while that directory
+// held only run-state.json and run-events.jsonl (roadmap L3.20, papercut 5).
+func TestArchiveKeepsTheMarkdownArtifacts(t *testing.T) {
+	workspace, archive := t.TempDir(), t.TempDir()
+	runState, events := fixtureRun()
+	writeWorkspace(t, workspace, runState, events)
+	for _, name := range []string{"analysis.md", "code-review-report.md"} {
+		if err := os.WriteFile(filepath.Join(workspace, name), []byte("# "+name), 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+
+	if err := memory.ArchiveRecords(workspace, filepath.Join(archive, "user-auth")); err != nil {
+		t.Fatalf("ArchiveRecords: %v", err)
+	}
+	for _, name := range []string{"analysis.md", "code-review-report.md"} {
+		if _, err := os.Stat(filepath.Join(archive, "user-auth", name)); err != nil {
+			t.Errorf("artifact %s was not archived: %v", name, err)
+		}
+	}
+}
+
+// traces.jsonl is telemetry, not an artifact. An archive that accumulates
+// everything stops being a record of what the run produced.
+func TestArchiveLeavesNonArtifactsBehind(t *testing.T) {
+	workspace, archive := t.TempDir(), t.TempDir()
+	runState, events := fixtureRun()
+	writeWorkspace(t, workspace, runState, events)
+	if err := os.WriteFile(filepath.Join(workspace, "traces.jsonl"), []byte("{}"), 0o644); err != nil {
+		t.Fatalf("write traces: %v", err)
+	}
+
+	if err := memory.ArchiveRecords(workspace, filepath.Join(archive, "user-auth")); err != nil {
+		t.Fatalf("ArchiveRecords: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(archive, "user-auth", "traces.jsonl")); err == nil {
+		t.Error("traces.jsonl was archived; only .md artifacts and the records belong there")
+	}
+}

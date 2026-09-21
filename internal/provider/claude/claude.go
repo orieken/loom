@@ -170,8 +170,8 @@ func (p *Provider) finish(ctx context.Context, waitErr error, stage orchestrator
 		waitErr = nil
 	}
 	if waitErr != nil {
-		return orchestrator.StageOutput{}, fmt.Errorf("stage %q agent exited with error: %w — stderr: %s",
-			stage.ID, waitErr, truncate(stderr.String(), 2000))
+		return orchestrator.StageOutput{}, fmt.Errorf("stage %q agent exited with error: %w%s",
+			stage.ID, waitErr, failureDetail(stdout, stderr))
 	}
 	result, err := parseEnvelope(stdout.Bytes())
 	if err != nil {
@@ -182,6 +182,53 @@ func (p *Provider) finish(ctx context.Context, waitErr error, stage orchestrator
 }
 
 // outputFor turns the envelope's result text into the stage's artifact: a
+// failureDetail says what the process actually reported, from whichever
+// stream it used (roadmap L3.20, papercut 1).
+//
+// Under `--output-format json` the CLI writes its own errors to STDOUT, so
+// reporting only stderr produced `exit status 1 — stderr: ` with nothing
+// after it. The architect's first failure was a usage limit, and the run
+// record could not say so: the diagnosis was sitting in the buffer this
+// function now reads.
+func failureDetail(stdout, stderr *bytes.Buffer) string {
+	detail := ""
+	if out := strings.TrimSpace(stdout.String()); out != "" {
+		detail += " — stdout: " + truncate(out, 2000)
+	}
+	if errOut := strings.TrimSpace(stderr.String()); errOut != "" {
+		detail += " — stderr: " + truncate(errOut, 2000)
+	}
+	if detail == "" {
+		return " — the process wrote nothing to stdout or stderr"
+	}
+	return detail
+}
+
+// unfenceArtifact strips a code fence wrapping an ENTIRE markdown artifact
+// (roadmap L3.20, papercut 4). An untyped stage writes the model's output
+// verbatim, and a model that fences its whole answer as a formatting habit
+// leaves ```` ```markdown ```` in the persisted file.
+//
+// Only a fence around the whole document is removed. A fence *inside* an
+// artifact is content — a code sample in the tech writer's output is the
+// obvious case — so anything after the closing fence means this is not a
+// wrapper and the text is returned untouched.
+func unfenceArtifact(text string) string {
+	trimmed := strings.TrimSpace(text)
+	if !strings.HasPrefix(trimmed, "```") {
+		return text
+	}
+	_, rest, found := strings.Cut(trimmed, "\n")
+	if !found {
+		return text
+	}
+	body, after, closed := strings.Cut(rest, "\n```")
+	if !closed || strings.TrimSpace(after) != "" {
+		return text
+	}
+	return body + "\n"
+}
+
 // validated JSON payload for a typed stage, a markdown file for the rest.
 // Usage rides along either way — it is a property of the invocation, not of
 // what the invocation happened to produce.
@@ -194,7 +241,7 @@ func (p *Provider) outputFor(stage orchestrator.Stage, input orchestrator.StageI
 		return orchestrator.StageOutput{Payload: payload, Usage: result.usage()}, nil
 	}
 	artifactPath := filepath.Join(input.WorkspaceDir, stage.ID+".md")
-	if err := os.WriteFile(artifactPath, []byte(result.Result), 0o644); err != nil {
+	if err := os.WriteFile(artifactPath, []byte(unfenceArtifact(result.Result)), 0o644); err != nil {
 		return orchestrator.StageOutput{Usage: result.usage()}, fmt.Errorf("stage %q: write artifact: %w", stage.ID, err)
 	}
 	return orchestrator.StageOutput{ArtifactPath: artifactPath, Usage: result.usage()}, nil

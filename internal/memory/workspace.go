@@ -61,7 +61,41 @@ func ArchiveRecords(workspaceDir, archiveDir string) error {
 			return err
 		}
 	}
-	return archiveTypedState(workspaceDir, archiveDir)
+	if err := archiveTypedState(workspaceDir, archiveDir); err != nil {
+		return err
+	}
+	return archiveArtifacts(workspaceDir, archiveDir)
+}
+
+// archiveArtifacts copies the markdown a run produced — the analysis, the
+// review, the QA report and the rest (roadmap L3.20, papercut 5).
+//
+// `docs/features/<name>/` is the documented home for these, and the
+// convention was load-bearing before it was implemented: the tech-writer's
+// own report asserted the record "is already captured by the pipeline
+// artifacts persisted under docs/features/<name>/" while that directory
+// held only run-state.json and run-events.jsonl. Every artifact stayed in
+// the workspace, which is temporary and gets cleaned.
+//
+// Top level only, and .md only. The typed documents under state/ are
+// archiveTypedState's job, and traces.jsonl is telemetry rather than an
+// artifact — a directory that accumulates everything stops being a record
+// of what the run produced.
+func archiveArtifacts(workspaceDir, archiveDir string) error {
+	entries, err := os.ReadDir(workspaceDir)
+	if err != nil {
+		return fmt.Errorf("read workspace %s: %w", workspaceDir, err)
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".md") {
+			continue
+		}
+		if err := copyIfPresent(filepath.Join(workspaceDir, name), filepath.Join(archiveDir, name)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // archiveTypedState copies the typed stage documents the run produced.
