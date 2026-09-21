@@ -48,33 +48,74 @@ The declarative policy format is documented in `shared/policies/policy-schema.md
 
 ## Examples
 
-`shared/policies/examples/` contains three reference policies demonstrating common patterns:
-- `auto-approve-refactor.policy.yaml` — Tier A auto-proceed on pure-refactor commits
-- `auto-approve-doc-changes.policy.yaml` — auto-proceed when diff is docs-only
-- `auto-approve-test-additions.policy.yaml` — auto-proceed when adding new tests
+`shared/policies/examples/` contains six reference policies demonstrating common patterns:
+- `auto-approve-refactor.policy.yaml` — auto-proceed on a small, reviewed, contained commit
+- `auto-approve-doc-changes.policy.yaml` — auto-proceed when every changed file is documentation
+- `auto-approve-test-additions.policy.yaml` — auto-proceed when every changed path is a test
+- `require-human-on-critical-findings.policy.yaml` — force human on a critical security finding
 - `require-human-review-security.policy.yaml` — inversion: force human regardless of other policies
+- `require-human-on-behaviour-change.policy.yaml` — force human when the review reports behaviour changed
+
+The count and this list are checked by nothing; `TestShippedExamplesAllLoad` asserts the files
+parse, not that they are described here. It said "three" while listing four and shipping six.
 
 ---
 
 ## Which examples evaluate today
 
-`internal/policy` answers a condition from the run's own state, and only four of the nine declared
-condition fields have a source there: `codeReviewer.verdict`, `securityReviewer.criticals`,
-`testsPass`, and `filePaths`. The other five — `diffLines`, `diffType`, `dryRunPass`,
-`fitnessFunction.allPass`, `codeReviewer.behaviorChange` — are not measured by anything yet, so a
-check against them resolves to **unknown**, which never satisfies a condition.
+All of them, as of roadmap **L2.20**. `internal/policy` answers a condition from the run's own
+state, and every field the vocabulary still declares has a source there: `codeReviewer.verdict`,
+`securityReviewer.criticals`, `testsPass`, `filePaths`, `diffLines`, and
+`codeReviewer.behaviorChange`.
 
-| Example | Evaluates today? |
-|---|---|
-| `require-human-on-critical-findings` | **Yes** — every field it tests has a source |
-| `require-human-review-security` | **Yes** — tests `filePaths` only |
-| `auto-approve-doc-changes` | No — needs `diffType` and `diffLines` |
-| `auto-approve-refactor` | No — needs `diffLines` and `fitnessFunction.allPass` |
-| `auto-approve-test-additions` | No — needs `dryRunPass` and `fitnessFunction.allPass` |
+The three fields that never had one — `diffType`, `dryRunPass`, `fitnessFunction.allPass` — were
+removed rather than left resolving to unknown on every run. A policy naming one now **fails to
+load**. See `policy-schema.md` for why each went and what to use instead.
 
-The three that do not evaluate are kept deliberately: they document what the schema is meant to
-express, and they become live the moment the facts they need are sourced (roadmap **L2.20**). A
-decision naming the field it could not see is more useful than one that silently reports no match.
+A field can still answer **unknown** for a particular run, which is different: the fact is
+sourceable in general but absent here, because the stage that produces it has not run yet. That is
+the honest answer and never becomes a guess — see the next section, which is mostly about this.
+
+---
+
+## Which gate to watch, and what it can see
+
+**This decides whether your policy ever runs at all.** Two separate traps, and the examples
+directory contains victims of the first.
+
+### `loom run` halts at four gates, and only those
+
+| Gate | Guards | Evaluated by `loom run`? |
+|---|---|---|
+| `confirm-design` | `developer` | **Yes** |
+| `confirm-security` | `qa-engineer` | **Yes** |
+| `confirm-ship` | `devops-engineer` | **Yes** |
+| `confirm-unresolved-review` | `code-reviewer` loop bound | **Yes** |
+| `git-commit`, `out-of-boundary-write`, `fitness-function-wiring` | — | **No** — prose gates in `approval-gates.md` that the executor does not run |
+
+A policy watching one of the last three is valid, loads fine, and is **never evaluated under
+`loom run`** — the executor never reaches that barrier, so no decision is recorded and nothing
+accumulates. Four of the six shipped examples are in this position. They are not wrong; they
+target the markdown pipeline's gates, which the executor does not yet run (`approval-gates.md`,
+"Honest scope").
+
+### Facts arrive progressively, so an early gate sees less
+
+A gate that precedes a stage cannot see that stage's output. Measured on a real run:
+
+| At | Available | Not yet |
+|---|---|---|
+| `confirm-design` | nothing — it precedes `developer` | verdict, criticals, paths, diffLines, testsPass |
+| `confirm-security` | verdict, criticals, changed paths, diffLines | `testsPass` — it guards `qa-engineer` |
+| `confirm-ship` | everything above, plus `testsPass` | — |
+
+So a policy testing `codeReviewer.verdict` at `confirm-design` resolves to unknown on **every**
+run, forever. That is correct behaviour and a useless policy. `require-human-on-critical-findings`
+watches both `confirm-design` and `confirm-security` deliberately: unknown at the first, decided at
+the second.
+
+**If you are writing a policy to accumulate the evidence roadmap L2.19 needs, watch
+`confirm-security` or `confirm-ship`.** Those are the gates where a decision means something.
 
 Run `loom run --spec <file> --dry-run-policies` against a finished run to see this for yourself.
 

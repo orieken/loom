@@ -586,6 +586,19 @@ And an unanswerable condition resolves to **unknown**, never true.
 > `honoured: false` across several runs. That is the evidence this item's stop condition asks for,
 > and nothing but real runs produces it.
 >
+> **The recording path itself is verified** (2026-09-21). A mock run carrying
+> `require-human-on-critical-findings` through all three gates recorded two decisions: UNKNOWN at
+> `confirm-design` naming the three facts it could not see, and **FALSE at `confirm-security` with
+> every fact known** — the evaluator deciding on real state, recorded with `honoured: false`. So
+> the plumbing is not what is missing; judgement data is. A mock's facts are scripted, so a mock
+> run cannot show the evaluator agreeing with a human, which is the thing the stop condition asks
+> about.
+>
+> Two traps found while doing it, now documented in `shared/policies/README.md`: **four of the six
+> shipped examples watch gates `loom run` never halts at**, so following them accumulates nothing;
+> and a policy at `confirm-design` can never see review, security or QA facts, because that gate
+> precedes those stages. Watch `confirm-security` or `confirm-ship`.
+>
 > Note what (1) does *not* do: the nine already-recorded runs stay unanalysable, because their
 > documents were discarded. The corpus starts empty and fills from the next run onward.
 
