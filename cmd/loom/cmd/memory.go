@@ -66,6 +66,20 @@ var memoryRetriesCmd = &cobra.Command{
 	RunE:  runMemoryRetries,
 }
 
+var memoryAgentsCmd = &cobra.Command{
+	Use:   "agents",
+	Short: "Per-agent measured metrics: attempts, failures, corrections, latency",
+	Long: `Counts what each agent's stages actually did, from records rather than from
+reading their markdown (roadmap L3.13).
+
+This is the figures half of "agent-scorecard". That skill scored four
+metrics a model derived from prose it was also interpreting; these are
+counted, and a quantity that was not measured is reported absent rather
+than as zero.`,
+	Args: cobra.NoArgs,
+	RunE: runMemoryAgents,
+}
+
 var memoryPoliciesCmd = &cobra.Command{
 	Use:   "policies",
 	Short: "Show every recorded policy decision, and what the human did at that gate",
@@ -92,8 +106,8 @@ var memoryCorrectionsCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(memoryCmd)
-	memoryCmd.AddCommand(memoryIngestCmd, memoryRunsCmd, memoryRetriesCmd, memoryCorrectionsCmd, memoryPoliciesCmd)
-	for _, command := range []*cobra.Command{memoryRunsCmd, memoryRetriesCmd, memoryCorrectionsCmd, memoryPoliciesCmd} {
+	memoryCmd.AddCommand(memoryIngestCmd, memoryRunsCmd, memoryRetriesCmd, memoryCorrectionsCmd, memoryPoliciesCmd, memoryAgentsCmd)
+	for _, command := range []*cobra.Command{memoryRunsCmd, memoryRetriesCmd, memoryCorrectionsCmd, memoryPoliciesCmd, memoryAgentsCmd} {
 		command.Flags().BoolVar(&memoryArgs.asJSON, "json", false, "emit JSON instead of a table")
 	}
 	memoryIngestCmd.Flags().StringVar(&memoryArgs.dir, "dir", "",

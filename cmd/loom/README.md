@@ -156,6 +156,7 @@ completed, halted at a gate, interrupted, or failed (roadmap L3.5). Query it wit
 loom memory runs                       # every recorded run: state, tokens, cost, corrections
 loom memory retries --agent code-reviewer --more-than 2
 loom memory corrections                # which agents a human had to correct most
+loom memory agents                     # per-agent attempts, failures, corrections, latency, cost
 loom memory policies                   # every policy decision, beside what the human did
 loom memory ingest                     # rebuild the store from docs/features/
 ```

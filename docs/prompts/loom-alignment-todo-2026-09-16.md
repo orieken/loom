@@ -344,7 +344,7 @@ the warning: `L3.38`–`L3.46` were all verified in code for this audit and all 
 | **L2.19** | Honour a policy decision at a gate | S | **Still blocked**, and the "unblocked" note was itself corrected in the roadmap on 2026-09-18. Prerequisites (1) and (3) are done; (2) needs real runs. The corpus is now readable — `loom memory policies`, 2026-09-21 — so the stop condition can be judged from data, but only running answers it |
 | ~~L3.24~~ | Two UI-only stages non-skippable | M | **Shipped** 2026-09-07 (`ef81c76`) — the bundle-availability half stays ADR-007's |
 | ~~**L3.36**~~ | Nothing re-reviews post-review stages | M | **Shipped** 2026-09-18 (`757fa54`) as candidate 1 — records the divergence, does not prevent it |
-| L3.13 | Derive agent quality metrics from execution | M | — |
+| ~~L3.13~~ | Derive agent quality metrics from execution | M | **Shipped** 2026-09-21 — `loom memory agents`; five measured metrics, and code-reviewer's first-pass acceptance moved from judged to measured |
 | L3.19 | Cut the per-stage prompt tax | L | branch `measure/l3-19c-growth` may have context |
 
 ### Loose threads (carried forward verbatim, with status)

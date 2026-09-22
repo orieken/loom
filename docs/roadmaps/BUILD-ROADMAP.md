@@ -2589,6 +2589,33 @@ conflates those produces a confident wrong number.
    `shared/skills/pipeline-retrospective/SKILL.md`, `docs/agent-metrics/`
 4. **Done when**: the scorecard contains at least three metrics no LLM computed.
 
+**SHIPPED** 2026-09-21. `loom memory agents` counts per agent: attempts, retries, failures, human
+corrections, p50/p95 latency and cost, with a `--json` form the skill consumes. `agent-scorecard`
+now has two tables that must not be merged — **Measured**, counted from records, and **Judged**, a
+model reading artifacts — and the done-when is met five times over rather than three.
+
+**One judged metric became measured rather than being kept twice.** `code-reviewer`'s first-pass
+acceptance rate was a model reading `changesRequestedCount` out of `pipeline-trace.json`. Every
+stage in a loop's span carries the same iteration count (`internal/orchestrator/loop.go`, `reenter`),
+so a `code-reviewer` stage with `iterations > 1` is a round the loop went again — the same fact,
+counted. It moved to the measured table and was removed from the judged one; keeping both would
+have invited a scorecard reporting two figures for one property.
+
+**Most of the work is about the numbers that were never taken.** A stage that never finished has no
+duration, and averaging it as 0 makes the agent furthest from finishing look fastest. An agent with
+no stages has no failure rate, and 0% would read as perfect. A provider reporting nothing is not a
+provider reporting zero. Each is a nullable field, an em dash in the table, and a test; the skill is
+told to report an absent value as absent and never to reconstruct a measured metric by reading
+markdown when the store is unavailable, because a derived figure in a measured column claims a
+provenance it does not have.
+
+**Percentiles are nearest-rank, not interpolated.** With the sample counts a real corpus holds, an
+interpolated p95 invents a duration no stage ever took, and the number exists to be compared against
+stages that really ran.
+
+Eleven tests. What this does not do: it adds no new collection. Every figure was already in the
+store and unqueried per agent.
+
 ---
 
 ## Workstream: OBSERVE — Test Evidence & Trace Fidelity

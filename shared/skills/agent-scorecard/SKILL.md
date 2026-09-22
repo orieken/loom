@@ -1,6 +1,6 @@
 ---
 name: agent-scorecard
-description: Scores each pipeline agent against a defined quality metric using artifacts from recent deliveries in docs/features/, compares against the previous month's scorecard to flag improving/degrading agents, and persists the result to docs/agent-metrics/scorecard-YYYY-MM.md.
+description: Scores each pipeline agent on measured metrics counted by `loom memory agents` (attempts, failures, human corrections, latency, cost) plus judged metrics read from artifacts in docs/features/, compares against the previous month's scorecard to flag improving/degrading agents, and persists the result to docs/agent-metrics/scorecard-YYYY-MM.md.
 triggers:
   keywords: ["agent-scorecard", "score agents", "agent metrics", "agent performance"]
   intentPatterns: ["Score the agents", "How are the agents performing", "Generate this month's scorecard", "/agent-scorecard *"]
@@ -19,13 +19,38 @@ use for cross-delivery timing/iteration trends without a quality judgment attach
 *how long/how many retries*, this skill says *was the output actually good*).
 
 ## Metric Definitions
-These are the only four scored metrics. Don't invent new ones without updating this list first — an
-undocumented metric can't be tracked for a trend.
+
+Two kinds, and the difference is the point (roadmap L3.13). **Measured** metrics are counted from
+records by `loom memory agents`; a model reads the number, it does not derive it. **Judged** metrics
+are a model reading artifacts, which is legitimate for questions no counter can answer and is the
+weaker evidence of the two. Never present them as the same thing — label every score with its kind.
+
+Don't invent new metrics without updating these tables first: an undocumented metric can't be
+tracked for a trend.
+
+### Measured — from `loom memory agents --json`
+
+Every agent that ran gets these. They need no artifact-reading and are available for any delivery
+that ran under `loom run`.
+
+| Metric | Field | Underperforming Floor | What it does NOT mean |
+|---|---|---|---|
+| Retry rate | `retried` / `stages` | > 40% | Not a quality verdict on its own — the review loop sending a stage back IS the pipeline working |
+| First-pass acceptance (`code-reviewer`) | `1 - (retried / stages)` on the `code-reviewer` row | < 50% | Every stage in a loop's span carries the same iteration count (`internal/orchestrator/loop.go`, `reenter`), so a `code-reviewer` stage with `iterations > 1` is a round the loop went again — the same fact `changesRequestedCount > 0` recorded, counted instead of read |
+| Failure rate | `failed` / `stages` | > 10% | A stage that failed on an invalid payload is a contract problem, not necessarily a bad agent |
+| Human-correction rate | `corrections` / `stages` | > 30% | A correction was **recorded, not adopted** (roadmap L4.5) — evidence the output needed fixing, NOT that anything shipped fixed |
+| Latency p50 / p95 | `durationP50Ms`, `durationP95Ms` | judgment-only | Nearest-rank over stages that **finished**. Absent (`null`) means none did — never read it as fast |
+| Cost / tokens | `costUsd`, `tokens` | judgment-only | Valid only when `costReported` is true. `costReported: false` means the provider reported **nothing**, which is not zero — never average it in |
+
+**Report an absent value as absent.** A `null` percentile and a 0ms percentile are different facts,
+and so are "never failed" and "never ran". The guardrail below about `n/a` versus `0%` applies to
+every field here.
+
+### Judged — a model reading artifacts
 
 | Agent | Metric | Computed From | Underperforming Floor |
 |---|---|---|---|
 | `security-reviewer` | True positive rate (proxy) | `security-report.md`: fraction of CRITICAL/HIGH findings with a non-"Recommendation only" `Fix applied` line, adjusted down for any finding a later `retrospective.md` explicitly disputes as a false alarm | < 80% |
-| `code-reviewer` | First-pass acceptance rate | `pipeline-trace.json`: fraction of deliveries where `changesRequestedCount == 0` | < 50% |
 | `analyst` | Completeness score | `analysis.md` vs. `shared/contracts/analysis-contract.md`: fraction of required sections present **and** containing real content (not leftover `[...]` template placeholders) | < 90% |
 | `architect` | Fitness function coverage | `architecture-notes.md`: fraction of `## Structural Decisions` entries with a concrete `**Fitness Function**` + `**Enforcement**` line, vs. entries explicitly flagged `judgment-only` | < 70% |
 
@@ -35,22 +60,28 @@ Treat this metric as directional, not exact, until that dispute-tracking mechani
 item — see `docs/features/context-engineering-framework/TODO.md`, Epic 15).
 
 ## Context To Load First
-0. **Prefer measured data where it exists.** Run `loom memory corrections --json` and
-   `loom memory retries --json` (roadmap L3.5). For deliveries that ran under `loom run`, these give
-   two of the scores below from records rather than from reading markdown: how often a human had to
-   correct an agent's output, and how often a stage needed more than one attempt. Provider-reported
-   cost is in `loom memory runs --json`. Fall back to the files below when the binary is absent or
-   the store is empty, and **label every score with the source it came from**.
+0. **Start with the measured metrics. They are not optional and not a fallback.**
 
-   Two things not to misread. A correction was *recorded, not adopted* (roadmap L4.5) — it is
-   evidence an agent's output needed fixing, not that anything shipped fixed. And a run reporting
-   zero cost reported **nothing**, which is not the same as costing nothing; do not average a
-   missing figure in as a zero.
+   ```bash
+   loom memory agents --json
+   ```
+
+   One row per agent with every field in the measured table above, counted from run records. The
+   command prints the same figures as a table, with its caveats, if you want to read it directly.
+
+   `loom memory corrections --json` and `loom memory retries --json` remain for the narrower
+   questions they answer — which agents a human corrected most, and which individual stages went
+   round more than N times.
+
+   **When the store is empty or the binary is absent**, say so in the scorecard's Methodology
+   section and score only the judged metrics. Do not reconstruct the measured ones by reading
+   markdown: that is the substitution this item removed, and a derived figure presented in a
+   measured column is worse than a missing one.
 
 1. `docs/features/*/delivery-summary.md` — determine which features fall in the scoring period
-2. `docs/features/*/pipeline-trace.json` — for code-reviewer's `changesRequestedCount` and per-agent
-   `estimatedCostUsd` (present only when the runtime surfaced token counts; `null` otherwise).
-   Model-written estimates — prefer step 0 for any delivery that ran under the executor
+2. `docs/features/*/pipeline-trace.json` — model-written estimates, and now only for deliveries that
+   did NOT run under the executor. `changesRequestedCount` and `estimatedCostUsd` both have measured
+   counterparts in step 0; prefer those whenever the store has the run
 3. `docs/features/*/security-report.md`, `analysis.md`, `architecture-notes.md` — per-agent artifacts
 4. `docs/features/*/retrospective.md` (if present) — for disputed-finding signals
 5. `shared/contracts/analysis-contract.md` — required section list for the analyst completeness score
@@ -76,12 +107,26 @@ item — see `docs/features/context-engineering-framework/TODO.md`, Epic 15).
 - Period: [start date] to [end date]
 - Note: [if scope was widened due to <3 features this month]
 
-## Metrics
+## Measured Metrics
+> Counted by `loom memory agents` from run records. No model derived these.
+
+| Agent | Stages | Retry rate | Failure rate | Correction rate | p50 | p95 | Status |
+|---|---|---|---|---|---|---|---|
+| [agent] | [N] | [X%] | [X%] | [X%] | [Ns] / — | [Ns] / — | OK/UNDERPERFORMING |
+
+- Corrections were **recorded, not adopted** — evidence an agent's output needed fixing, not that
+  anything shipped fixed.
+- An em dash is a value that was never measured, not a zero. Report it as such; do not fill it in.
+- [Omit the cost columns, or state `costReported: false`, when no run reported usage — unmeasured,
+  not free.]
+
+## Judged Metrics
+> A model reading artifacts. Weaker evidence than the table above; kept for the questions no counter
+> answers.
 
 | Agent | Metric | Score | Prior Month | Trend | Status |
 |---|---|---|---|---|---|
 | security-reviewer | True positive rate (proxy) | [X%] | [Y%] / n/a | IMPROVING/STABLE/DEGRADING/n/a | OK/UNDERPERFORMING |
-| code-reviewer | First-pass acceptance rate | [X%] | [Y%] / n/a | ... | ... |
 | analyst | Completeness score | [X%] | [Y%] / n/a | ... | ... |
 | architect | Fitness function coverage | [X%] | [Y%] / n/a | ... | ... |
 
@@ -91,16 +136,20 @@ item — see `docs/features/context-engineering-framework/TODO.md`, Epic 15).
 — or "None this period"
 
 ## Cost Summary (when data available)
-| Agent | Avg Cost (USD) | Total Cost (USD) |
+| Agent | Total Cost (USD) | Tokens |
 |---|---|---|
-| analyst | $[N] | $[N] |
+| analyst | $[N] | [N] |
 | ... | ... | ... |
 
-> Populated only when `estimatedCostUsd` is non-null in `pipeline-trace.json` for at least one feature
-> this period. Omit this section entirely when all traces have null cost data. Not a scored metric —
-> shown as informational context. For trend analysis across periods, see `pipeline-retrospective`.
+> Populated from `loom memory agents --json`, and only for agents whose `costReported` is true.
+> Omit the section entirely when no agent reported usage — a table of zeroes asserts the pipeline
+> was free, which is a different claim from having no figures. Not a scored metric. For trend
+> analysis across periods, see `pipeline-retrospective`.
 
 ## Methodology & Known Limitations
+- Measured metrics: counted by `loom memory agents` over [N] ingested runs. Judged metrics: a model
+  reading artifacts from [N] features.
+- [Say so if the store was empty or `loom` was absent, and that only judged metrics were scored.]
 - [Restate the security-reviewer proxy caveat if it's scored this period]
 - [Any other scope caveats, e.g. widened window]
 
@@ -114,12 +163,18 @@ item — see `docs/features/context-engineering-framework/TODO.md`, Epic 15).
   (architect and security-reviewer are conditional; a period with no architecturally-flagged features
   should not show architect as "failing").
 - **Never** fabricate a prior-month comparison if no prior scorecard exists — say "n/a, first scorecard".
+- **Never** compute a measured metric by reading markdown when the store is unavailable. Report it
+  missing and say why. A derived figure in a measured column claims a provenance it does not have,
+  which is the defect roadmap L3.13 exists to remove.
+- **Never** present a judged metric as measured, or merge the two tables. The distinction is the
+  reader's only way to know how much weight a number carries.
 - **Never** silently change a metric's definition or floor between runs — if you believe a metric needs to
   change, say so explicitly and note it breaks trend continuity with prior scorecards.
 - This is a read-only analysis — it does not modify any agent prompt, contract, or artifact.
 
 ## Standalone Mode
-Pure local file reads and aggregation. No external calls.
+Local file reads and aggregation, plus `loom memory agents` when the binary is present. No external
+calls. Without `loom`, the judged metrics still score and the measured ones are reported missing.
 
 ---
 *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
