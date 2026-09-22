@@ -249,3 +249,37 @@ func TestEveryWriteCapableAgentInThePlanGetsAWritableContract(t *testing.T) {
 		}
 	}
 }
+
+// TestAnUnparseableResponseIsKeptWhole is the half of roadmap L2.26 the
+// run-4 audit recorded as only partly done. The error quotes the first 800
+// characters, which made it readable and made it lossy: in that run the
+// quote cut off before `knownGaps`. The quote is fine; losing the rest is
+// not.
+func TestAnUnparseableResponseIsKeptWhole(t *testing.T) {
+	dir := t.TempDir()
+	stage := orchestrator.Stage{ID: "security-reviewer", Agent: "security-reviewer", StateKind: string(state.KindSecurity)}
+	input := orchestrator.StageInput{WorkspaceDir: dir}
+	response := "I was unable to produce the state document.\n" +
+		strings.Repeat("reasoning about the threat model. ", 100) +
+		"knownGaps: the tail nobody could read"
+
+	_, err := (&Provider{}).outputFor(stage, input, &envelope{Result: response})
+	if err == nil {
+		t.Fatal("outputFor accepted a response that is not a state document")
+	}
+
+	kept := filepath.Join(dir, state.TypedStateDir, "security-reviewer.rejected.txt")
+	if !strings.Contains(err.Error(), kept) {
+		t.Errorf("error does not name where the response was kept:\n%v", err)
+	}
+	body, readErr := os.ReadFile(kept)
+	if readErr != nil {
+		t.Fatalf("response was not kept: %v", readErr)
+	}
+	if string(body) != response {
+		t.Errorf("kept response is %d bytes, want the whole %d", len(body), len(response))
+	}
+	if !strings.Contains(string(body), "knownGaps") {
+		t.Error("the tail was lost — the run-4 'partial' finding, unfixed")
+	}
+}

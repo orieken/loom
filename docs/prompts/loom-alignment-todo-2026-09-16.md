@@ -336,7 +336,7 @@ the warning: `L3.38`–`L3.46` were all verified in code for this audit and all 
 | ID | What | Effort | Audit note |
 |---|---|---|---|
 | L3.16 | `run.started` fires once per invocation | S | — |
-| L2.26 | Keep the payload a stage was rejected for | S | — |
+| ~~L2.26~~ | Keep the payload a stage was rejected for | S | **Shipped** 2026-09-21 — both rejection sites, including the provider-side truncation run 4 called *partial* |
 | ~~L3.17~~ | Carry the run's provider across resume | S | **Shipped** 2026-09-21 (`fb9b54a`) |
 | ~~L3.18~~ | Route on what the analysis says | S | **Shipped** 2026-09-07 (`ef81c76`) |
 | ~~L3.20~~ | Papercuts from the second real run | S | **Shipped** 2026-09-21 (`5ee57c6`) — four fixed, one declined |

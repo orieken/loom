@@ -1567,6 +1567,35 @@ literals, so every mock run passes and the mismatch is invisible.
 4. **Done when**: every stage failure caused by an invalid payload leaves that payload on disk, and
    the error names where.
 
+**SHIPPED** 2026-09-21. The done-when is met at both places a payload is rejected, which is one more
+than the item counted.
+
+**Two rejection sites, not one.** The executor rejects a payload that parsed as JSON and failed the
+schema (`persistTypedOutput`); the provider rejects a response that was not a state document at all
+(`extractJSON`). The item named only the first. The second is where the run-4 audit's **partial**
+verdict came from: the response was echoed into the error and cut at 800 characters, so the tail —
+`knownGaps`, in that run — was lost. Both now write the evidence whole:
+`state/<stage>.rejected.json` for a payload, `state/<stage>.rejected.txt` for a response, each named
+in the error. The 800-character quote stays, because an error a person reads at a terminal should
+still say what came back.
+
+**Kept byte-for-byte, deliberately.** A rejected payload is written exactly as the agent produced it
+rather than re-encoded, so `jq` reads it when the failure was a schema violation rather than a syntax
+error — and so that what is on disk is what the agent said, not what the executor made of it.
+
+**Two things fell out of building it.** A stage that failed, was fixed and re-ran would otherwise
+leave evidence of a run that no longer happened, so a successful persist clears the stage's rejected
+files — evidence of the wrong attempt is worse than none. And `archiveTypedState` copies `.json`
+documents on the stated ground that the archive holds only what a reader decodes; a rejected payload
+is by definition one that does not, so it is excluded and stays in the workspace, where whoever is
+diagnosing the failure is.
+
+Six tests, each confirmed to fail against the previous behaviour before being kept — including one
+that reproduces the run-4 truncation exactly, cutting off before `knownGaps`.
+
+**What this does not do.** It does not retry, repair, or re-prompt. L2.18's bounded contract-retry is
+still unbuilt; this only supplies the input it needs, which was the other half of why the item existed.
+
 ### L3.17 — Carry the run's provider across resume
 **Workstream**: KERNEL · **Effort**: S · **Blocked by**: L2.15 (shipped) · **Blocks**: none · *(raised 2026-09-06, from the second real end-to-end run)*
 

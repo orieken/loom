@@ -77,15 +77,32 @@ func withUpstream(existing map[string][]byte, upstream string, projected []byte)
 // stage's artifact. An invalid payload fails the stage loudly: no repair
 // prompt, no retry — those are L3.x, and a silent repair would hide the
 // modelling failures this epic exists to surface.
+//
+// Loudly, but not un-diagnosably. Every rejection below happens with the
+// payload in hand, so the payload is kept and the error says where
+// (roadmap L2.26) — a stage that failed on an invented field is a two-line
+// diff to find once the document is readable, and unanswerable without it.
 func (e *Executor) persistTypedOutput(stage Stage, input StageInput, output StageOutput) (string, error) {
 	if len(output.Payload) == 0 {
 		return "", fmt.Errorf("stage %q is typed but returned no state payload", stage.ID)
 	}
-	decoded, err := state.Decode(state.Kind(stage.StateKind), output.Payload)
+	path, err := e.validateAndWrite(stage, input, output.Payload)
+	if err != nil {
+		return "", keepingPayload(stage, input, output.Payload, err)
+	}
+	state.ClearRejected(input.WorkspaceDir, stage.ID)
+	return path, nil
+}
+
+// validateAndWrite is persistTypedOutput's happy path, separated so that
+// every way it can fail shares one evidence-keeping wrapper rather than
+// each returning past it.
+func (e *Executor) validateAndWrite(stage Stage, input StageInput, raw []byte) (string, error) {
+	decoded, err := state.Decode(state.Kind(stage.StateKind), raw)
 	if err != nil {
 		return "", fmt.Errorf("stage %q returned invalid state: %w", stage.ID, err)
 	}
-	payload, err := measureTypedOutput(decoded, input, output.Payload)
+	payload, err := measureTypedOutput(decoded, input, raw)
 	if err != nil {
 		return "", fmt.Errorf("stage %q: %w", stage.ID, err)
 	}
@@ -97,6 +114,19 @@ func (e *Executor) persistTypedOutput(stage Stage, input StageInput, output Stag
 		return "", err
 	}
 	return path, renderView(stage, input, payload)
+}
+
+// keepingPayload writes the rejected payload beside the document it failed
+// to become and names it in the error.
+//
+// A failure to keep it never replaces the rejection: the schema error is
+// what the operator needs and a disk problem on top of it is a footnote.
+func keepingPayload(stage Stage, input StageInput, payload []byte, cause error) error {
+	kept, err := state.KeepRejectedState(input.WorkspaceDir, stage.ID, payload)
+	if err != nil {
+		return fmt.Errorf("%w (the payload could not be kept: %v)", cause, err)
+	}
+	return fmt.Errorf("%w — the rejected payload is at %s", cause, kept)
 }
 
 // measureTypedOutput replaces the numbers a state document must not be

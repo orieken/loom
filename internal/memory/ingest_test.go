@@ -247,6 +247,34 @@ func TestArchiveKeepsTheTypedStageDocuments(t *testing.T) {
 	}
 }
 
+// A rejected payload (roadmap L2.26) is the one .json in that directory that
+// is not a stage document — it is there precisely because it failed to
+// decode. Archiving it would put something in the archive that no reader
+// decodes, which is the property the copy predicate exists to hold. It stays
+// in the workspace, where whoever is diagnosing the failure is.
+func TestArchiveSkipsARejectedPayload(t *testing.T) {
+	workspace, archive := t.TempDir(), t.TempDir()
+	runState, events := fixtureRun()
+	writeWorkspace(t, workspace, runState, events)
+	writeTypedState(t, workspace)
+	rejected := filepath.Join(workspace, state.TypedStateDir, "architect.rejected.json")
+	if err := os.WriteFile(rejected, []byte(`{"developerHandoffNotesNote":"oops"}`), 0o644); err != nil {
+		t.Fatalf("write rejected payload: %v", err)
+	}
+
+	if err := memory.ArchiveRecords(workspace, filepath.Join(archive, "user-auth")); err != nil {
+		t.Fatalf("ArchiveRecords: %v", err)
+	}
+
+	archived := filepath.Join(archive, "user-auth", state.TypedStateDir, "architect.rejected.json")
+	if _, err := os.Stat(archived); err == nil {
+		t.Error("a rejected payload was archived among the decodable stage documents")
+	}
+	if _, err := os.Stat(rejected); err != nil {
+		t.Errorf("the rejected payload left the workspace, where it is the evidence: %v", err)
+	}
+}
+
 // writeTypedState lays down two stage documents and one file that is not
 // one, so the test covers both what must be copied and what must not.
 func writeTypedState(t *testing.T, workspace string) {

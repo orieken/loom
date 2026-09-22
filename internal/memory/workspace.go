@@ -139,10 +139,15 @@ func archiveTypedState(workspaceDir, archiveDir string) error {
 // copyStageDocuments copies the .json stage documents and nothing else. A
 // directory or a stray file beside them is not a stage document, and
 // copying it would put something in the archive that no reader decodes.
+//
+// `<stage>.rejected.json` is excluded for exactly that reason: it is the
+// payload a stage was rejected for (roadmap L2.26), so it is by definition
+// a document that does not decode. It stays in the workspace, where the
+// person diagnosing the failure is.
 func copyStageDocuments(entries []os.DirEntry, sourceDir, targetDir string) error {
 	for _, entry := range entries {
 		name := entry.Name()
-		if entry.IsDir() || !strings.HasSuffix(name, ".json") {
+		if entry.IsDir() || !strings.HasSuffix(name, ".json") || state.IsRejectedArtifact(name) {
 			continue
 		}
 		if err := copyIfPresent(filepath.Join(sourceDir, name), filepath.Join(targetDir, name)); err != nil {

@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/orieken/loom/internal/orchestrator"
+	"github.com/orieken/loom/internal/state"
 	"github.com/orieken/loom/internal/telemetry"
 )
 
@@ -236,7 +237,7 @@ func (p *Provider) outputFor(stage orchestrator.Stage, input orchestrator.StageI
 	if stage.StateKind != "" {
 		payload, err := extractJSON([]byte(result.Result))
 		if err != nil {
-			return orchestrator.StageOutput{Usage: result.usage()}, fmt.Errorf("stage %q: %w", stage.ID, err)
+			return orchestrator.StageOutput{Usage: result.usage()}, keepingResponse(stage, input, result.Result, err)
 		}
 		return orchestrator.StageOutput{Payload: payload, Usage: result.usage()}, nil
 	}
@@ -245,6 +246,23 @@ func (p *Provider) outputFor(stage orchestrator.Stage, input orchestrator.StageI
 		return orchestrator.StageOutput{Usage: result.usage()}, fmt.Errorf("stage %q: write artifact: %w", stage.ID, err)
 	}
 	return orchestrator.StageOutput{ArtifactPath: artifactPath, Usage: result.usage()}, nil
+}
+
+// keepingResponse writes an unparseable response whole and names it in the
+// error (roadmap L2.26).
+//
+// The error already quotes the first 800 characters, which is what makes it
+// readable at a terminal and also what made it insufficient: the run-4 audit
+// recorded this case as only partly fixed because the quote cut off before
+// `knownGaps`, and the tail of a response that failed to parse is as often
+// the interesting part as the head. The quote stays; the whole response now
+// sits on disk behind it.
+func keepingResponse(stage orchestrator.Stage, input orchestrator.StageInput, response string, cause error) error {
+	kept, err := state.KeepRejectedResponse(input.WorkspaceDir, stage.ID, []byte(response))
+	if err != nil {
+		return fmt.Errorf("stage %q: %w (the response could not be kept: %v)", stage.ID, cause, err)
+	}
+	return fmt.Errorf("stage %q: %w — the full response is at %s", stage.ID, cause, kept)
 }
 
 func truncate(s string, limit int) string {
