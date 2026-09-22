@@ -328,7 +328,7 @@ Recorded so a later session does not mistake a deliberate decision for a gap.
 
 Unchanged in substance; only the ordering below reflects the audit.
 
-**First (the handoff's own recommendation, still right):** reconcile the SHIPPED markers. ~49 items
+**First (the handoff's own recommendation, still right):** reconcile the SHIPPED markers. **Six of the eleven rows below were stale and are struck through as of 2026-09-21** — L3.17, L3.18, L3.20, L3.24, L3.25 and L3.36 were all already shipped in the roadmap while this table read `—`. The remaining five are real. ~49 items
 `grep` as open and that number is wrong. Cheap, and every later session benefits. The audit re-confirms
 the warning: `L3.38`–`L3.46` were all verified in code for this audit and all genuinely shipped, but
 `A1`–`A3` show the converse hazard: a *rule* shipping does not mean its *code counterpart* did.
@@ -337,13 +337,13 @@ the warning: `L3.38`–`L3.46` were all verified in code for this audit and all 
 |---|---|---|---|
 | L3.16 | `run.started` fires once per invocation | S | — |
 | L2.26 | Keep the payload a stage was rejected for | S | — |
-| L3.17 | Carry the run's provider across resume | S | — |
-| L3.18 | Route on what the analysis says | S | — |
-| L3.20 | Papercuts from the second real run | S | — |
-| L3.25 | `context-engineer` budget ~7x under | S | — |
+| ~~L3.17~~ | Carry the run's provider across resume | S | **Shipped** 2026-09-21 (`fb9b54a`) |
+| ~~L3.18~~ | Route on what the analysis says | S | **Shipped** 2026-09-07 (`ef81c76`) |
+| ~~L3.20~~ | Papercuts from the second real run | S | **Shipped** 2026-09-21 (`5ee57c6`) — four fixed, one declined |
+| ~~L3.25~~ | `context-engineer` budget ~7x under | S | **Shipped** 2026-09-07 (`bf302c8`) — the executor measures it (`context_state.go` `Measure`, called from `typed.go:114`); the table above was stale, not the roadmap |
 | **L2.19** | Honour a policy decision at a gate | S | **Unblocked** by `A3` (`2859f59`) — was not, before |
-| L3.24 | Two UI-only stages non-skippable | M | — |
-| **L3.36** | Nothing re-reviews post-review stages | M | **Mechanism found** by `A6` (`b6823f3`): instructed to fix + `Bash`. Only the policy question remains |
+| ~~L3.24~~ | Two UI-only stages non-skippable | M | **Shipped** 2026-09-07 (`ef81c76`) — the bundle-availability half stays ADR-007's |
+| ~~**L3.36**~~ | Nothing re-reviews post-review stages | M | **Shipped** 2026-09-18 (`757fa54`) as candidate 1 — records the divergence, does not prevent it |
 | L3.13 | Derive agent quality metrics from execution | M | — |
 | L3.19 | Cut the per-stage prompt tax | L | branch `measure/l3-19c-growth` may have context |
 

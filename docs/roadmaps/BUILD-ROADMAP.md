@@ -620,7 +620,7 @@ entire reason L2.16 stopped short, and the records it writes are how the questio
 ### L2.20 — Source the condition facts nothing measures
 **Workstream**: KERNEL · **Effort**: M · **Blocked by**: L2.16 (shipped) · **Blocks**: none · *(raised 2026-09-02)*
 
-**SHIPPED** 2026-09-18 — `73e78a3`, `70da3df`, `%s`. The done-when is met: every field the
+**SHIPPED** 2026-09-18 — `73e78a3`, `70da3df`, `e710f6f`. The done-when is met: every field the
 vocabulary declares either resolves from run state or is gone.
 
 **Three removed rather than sourced.** `diffType` declared an OPEN set (`docs-only`,
@@ -2397,7 +2397,7 @@ explicitly.
 ### L3.36 — Nothing re-reviews what the post-review stages write
 **Workstream**: KERNEL · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-08, split from L3.30)*
 
-**SHIPPED** 2026-09-18 — `%s`. The done-when is met: a run whose tree changed after
+**SHIPPED** 2026-09-18 — `757fa54`. The done-when is met: a run whose tree changed after
 `code-reviewer` approved now says so, as a run-end warning and on the stage record.
 
 **Candidate 1 of the three, chosen deliberately.** It records the divergence and does not prevent

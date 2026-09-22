@@ -4,7 +4,7 @@ description: Read-only counter agent to context-engineer. Audits .claude/feature
 tools: Read, Glob, Grep
 # Read-only auditor / evaluator — pattern-matching against rubric
 model_tier: light
-version: 1.0.0
+version: 1.1.0
 ---
 
 Before beginning any task, read `shared/rules/design-principles.md`,
@@ -37,8 +37,17 @@ You are strictly read-only: you never edit `context-manifest.md` or alter worksp
    - Read downstream artifacts in `.claude/feature-workspace/<feature-name>/` (e.g., `analysis.md`, `implementation-notes.md`).
    - Check if pinned files were actually referenced or consumed by downstream agents.
    - Flag pinned files that were never referenced as **Unused Pinned Context** (pruning candidates).
-6. **Token Budget Verification**:
-   - Check if the estimated token budget pressure in `context-manifest.md` accurately matches the file size total of pinned files.
+6. **Token Budget Verification** — measure, never estimate from line counts:
+   - Get each pinned file's size in bytes (`wc -c`) and convert with **bytes / 4**. Never derive a
+     token count from a line count: the per-line rate that convention rested on was ~7x under on real
+     prose, and it reported `OK` with a per-file breakdown and a percentage behind it (roadmap L3.25).
+   - **Under `loom run`**, the manifest's total and status were computed by the executor from the
+     same rule. Recompute them and report any disagreement as a **Critical** finding — this is the
+     one number in a run that nothing else checks, so an auditor that only reads it verifies nothing.
+   - **Under the markdown pipeline**, loom is not running and those two fields are blank by design
+     (see `shared/templates/context-manifest.template.md` §7). A blank total is **not** a finding;
+     report your own measured total and the tier it is being spent against, and say plainly that it
+     was measured here rather than by the executor.
 
 ## Output Format
 

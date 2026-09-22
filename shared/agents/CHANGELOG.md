@@ -16,6 +16,18 @@ Semantic-ish, not strict SemVer:
 When you bump an agent's `version:` frontmatter field, add a row under a new dated heading here in the same
 commit — the pre-commit hook checks for exactly this.
 
+## 2026-09-21 — the context auditor measures the budget instead of reading it
+
+| Agent | Version | Change |
+|---|---|---|
+| context-auditor | 1.0.0 -> 1.1.0 | Minor: step 6 now says how to verify the token budget rather than that it should be verified. Measure from bytes (`wc -c`, bytes / 4), never from line counts. Under `loom run`, recompute the executor's total and report disagreement as Critical; under the markdown pipeline, the total and status fields are blank by design, so a blank is not a finding — measure and report your own, and say it was measured here |
+
+L3.25 moved the budget arithmetic into the executor and removed the ~7x-under per-line heuristic
+from `context-engineer` and the manifest template. It did not update the auditor that reads the
+result. Under `loom run` that left the one number nothing else checks being "verified" by reading
+it back; under the markdown pipeline it left an auditor looking for a field the template now tells
+the author to leave blank — with the removed heuristic as the nearest thing to hand.
+
 ## 2026-09-18 — the reviewer says whether behaviour changed, and it cannot approve itself
 
 | Agent | Version | Change |
