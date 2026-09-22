@@ -156,6 +156,7 @@ completed, halted at a gate, interrupted, or failed (roadmap L3.5). Query it wit
 loom memory runs                       # every recorded run: state, tokens, cost, corrections
 loom memory retries --agent code-reviewer --more-than 2
 loom memory corrections                # which agents a human had to correct most
+loom memory policies                   # every policy decision, beside what the human did
 loom memory ingest                     # rebuild the store from docs/features/
 ```
 
@@ -190,9 +191,13 @@ asked — the run halts at every gate exactly as it did before, and the record s
 happened. That is deliberate: the first run to skip a barrier should not also be the first evidence
 the evaluator decides what a human would. Honouring a decision is roadmap L2.19.
 
-- **`UNKNOWN` is not a failure.** Five of the nine condition fields a policy may test have no source
-  in run state yet, so a policy asking about them cannot be answered. The decision names which fact
-  it could not see, which is more useful than a bare "no match". Sourcing the rest is roadmap L2.20.
+- **`UNKNOWN` is not a failure.** A policy asking about a fact the run cannot answer resolves to
+  unknown, never to true, and the decision names which fact it could not see — more useful than a
+  bare "no match". Since L2.20 every field the vocabulary declares resolves from run state: three
+  that never could (`diffType`, `dryRunPass`, `fitnessFunction.allPass`) were removed rather than
+  left in, and a policy naming one now fails to load. Unknown still happens — most often at
+  `confirm-design`, which precedes the review, security and QA stages whose facts a policy asks
+  about.
 - **Some gates cannot be governed at all.** Shipping, migrations, contract-phase drops, external API
   mutations and deploys are always human — that list is compiled in, and a policy naming one fails
   to load rather than being ignored.
@@ -202,7 +207,19 @@ the evaluator decides what a human would. Honouring a decision is roadmap L2.19.
   entirely.
 
 Decisions are also on the timeline as `policy.evaluated` and in `run-state.json`, so they survive
-the terminal scrollback.
+the terminal scrollback — and `loom memory policies` reads them back across every recorded run,
+beside the approval the human gave at the same gate:
+
+```
+FEATURE                GATE               EFFECT         AGREEMENT  POLICIES
+user-auth              confirm-security   auto-approve   agreed     auto-approve-refactor=TRUE …
+```
+
+That corpus is what L2.19's stop condition is a judgement about, so it is worth knowing what it
+does *not* establish. "Agreed" means a policy asked to auto-approve and a human then approved the
+same gate — the human could see the decision, so it is concurrence rather than an independent
+second opinion. And `honoured` stays 0 until L2.19 ships; a non-zero figure there means something
+skipped a barrier, which is a defect and not progress.
 
 ## Editing an artifact at a gate
 

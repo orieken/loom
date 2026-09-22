@@ -70,3 +70,13 @@ func eventDetail(event orchestrator.Event) string {
 	}
 	return strings.Join(kept, " | ")
 }
+
+// joined flattens a string slice for storage. Empty becomes NULL rather
+// than "": a decision with no conflict and one with an unrecorded conflict
+// are different facts, and "" would merge them.
+func joined(values []string) sql.NullString {
+	if len(values) == 0 {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: strings.Join(values, ","), Valid: true}
+}

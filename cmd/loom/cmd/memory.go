@@ -66,6 +66,23 @@ var memoryRetriesCmd = &cobra.Command{
 	RunE:  runMemoryRetries,
 }
 
+var memoryPoliciesCmd = &cobra.Command{
+	Use:   "policies",
+	Short: "Show every recorded policy decision, and what the human did at that gate",
+	Long: `Reads the corpus roadmap L2.19 is waiting on.
+
+L2.16 evaluates the policies watching a gate and records what they decided,
+then halts for a human anyway. L2.19 — honouring an auto-approve decision —
+is deliberately not built until real runs show the evaluator deciding what a
+human would. This command is how that question gets looked at: it lists each
+decision beside the approval that followed it, and marks policies that could
+not see a fact they needed.
+
+It honours nothing and changes nothing.`,
+	Args: cobra.NoArgs,
+	RunE: runMemoryPolicies,
+}
+
 var memoryCorrectionsCmd = &cobra.Command{
 	Use:   "corrections",
 	Short: "Rank agents by how often a human corrected their output",
@@ -75,8 +92,8 @@ var memoryCorrectionsCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(memoryCmd)
-	memoryCmd.AddCommand(memoryIngestCmd, memoryRunsCmd, memoryRetriesCmd, memoryCorrectionsCmd)
-	for _, command := range []*cobra.Command{memoryRunsCmd, memoryRetriesCmd, memoryCorrectionsCmd} {
+	memoryCmd.AddCommand(memoryIngestCmd, memoryRunsCmd, memoryRetriesCmd, memoryCorrectionsCmd, memoryPoliciesCmd)
+	for _, command := range []*cobra.Command{memoryRunsCmd, memoryRetriesCmd, memoryCorrectionsCmd, memoryPoliciesCmd} {
 		command.Flags().BoolVar(&memoryArgs.asJSON, "json", false, "emit JSON instead of a table")
 	}
 	memoryIngestCmd.Flags().StringVar(&memoryArgs.dir, "dir", "",
@@ -86,6 +103,7 @@ func init() {
 	memoryRetriesCmd.Flags().IntVar(&memoryArgs.moreThan, "more-than", 2,
 		"report stages whose iteration count exceeds this")
 	memoryRunsCmd.Flags().IntVar(&memoryArgs.limit, "limit", 20, "how many runs to list")
+	memoryPoliciesCmd.Flags().IntVar(&memoryArgs.limit, "limit", 100, "how many decisions to list")
 }
 
 // openStore opens the project-local store. A missing store is not an error

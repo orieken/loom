@@ -119,8 +119,43 @@ CREATE TABLE IF NOT EXISTS policy_decisions (
 	gate     TEXT NOT NULL,
 	effect   TEXT NOT NULL,
 	honoured INTEGER NOT NULL DEFAULT 0,
+	conflict TEXT,
 	at       TEXT,
 	PRIMARY KEY (run_id, seq)
+);
+
+-- One row per policy within a decision (roadmap L2.19's evidence).
+--
+-- The decision's effect alone cannot answer the question L2.19 is waiting
+-- on. "UNKNOWN" is two different findings: a policy that looked and could
+-- not decide, and one that was blind to the facts it needed. Only the missing column
+-- tells them apart, and it was being dropped at ingest.
+CREATE TABLE IF NOT EXISTS policy_outcomes (
+	run_id  TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
+	seq     INTEGER NOT NULL,
+	idx     INTEGER NOT NULL,
+	name    TEXT NOT NULL,
+	action  TEXT NOT NULL,
+	outcome TEXT NOT NULL,
+	missing TEXT,
+	source  TEXT,
+	PRIMARY KEY (run_id, seq, idx)
+);
+
+-- What the human actually did at each gate.
+--
+-- This is the other half of the comparison. A policy decision on its own
+-- says what the evaluator would have done; L2.19 asks whether that matches
+-- what a human did, and until this table existed the store held no record
+-- of the human side at all.
+CREATE TABLE IF NOT EXISTS gate_approvals (
+	run_id      TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
+	gate        TEXT NOT NULL,
+	method      TEXT,
+	approver    TEXT,
+	approved_at TEXT,
+	invalidated INTEGER NOT NULL DEFAULT 0,
+	PRIMARY KEY (run_id, gate)
 );
 
 CREATE INDEX IF NOT EXISTS idx_stages_agent ON stages(agent);
@@ -135,13 +170,15 @@ CREATE INDEX IF NOT EXISTS idx_corrections_agent ON corrections(agent);
 // run-events.jsonl and the typed stage documents under state/ are archived
 // in git, and `loom memory ingest` rebuilds everything from them. Migrations
 // are for records; this is a cache.
-const SchemaVersion = 2
+const SchemaVersion = 3
 
 const versionTable = `CREATE TABLE IF NOT EXISTS schema_meta (version INTEGER NOT NULL)`
 
 // dropAll is applied when the version does not match. Order matters only in
 // that children go before parents.
 const dropAll = `
+DROP TABLE IF EXISTS policy_outcomes;
+DROP TABLE IF EXISTS gate_approvals;
 DROP TABLE IF EXISTS policy_decisions;
 DROP TABLE IF EXISTS corrections;
 DROP TABLE IF EXISTS events;

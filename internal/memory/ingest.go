@@ -77,7 +77,10 @@ func writeRun(tx *sql.Tx, run Run, state *orchestrator.RunState, events []orches
 	if err := insertCorrections(tx, run.ID, state); err != nil {
 		return err
 	}
-	return insertPolicyDecisions(tx, run.ID, state)
+	if err := insertPolicyDecisions(tx, run.ID, state); err != nil {
+		return err
+	}
+	return insertGateApprovals(tx, run.ID, state)
 }
 
 // clearRun removes a previous ingest. The child tables cascade, which is
@@ -166,12 +169,46 @@ func insertCorrections(tx *sql.Tx, runID string, state *orchestrator.RunState) e
 
 func insertPolicyDecisions(tx *sql.Tx, runID string, state *orchestrator.RunState) error {
 	for index, decision := range state.PolicyDecisions {
-		_, err := tx.Exec(`INSERT INTO policy_decisions (run_id, seq, gate, effect, honoured, at)
-			VALUES (?, ?, ?, ?, ?, ?)`,
+		_, err := tx.Exec(`INSERT INTO policy_decisions (run_id, seq, gate, effect, honoured, conflict, at)
+			VALUES (?, ?, ?, ?, ?, ?, ?)`,
 			runID, index, decision.Gate, decision.Effect, boolean(decision.Honoured),
-			timestamp(decision.At))
+			joined(decision.Conflict), timestamp(decision.At))
 		if err != nil {
 			return fmt.Errorf("insert policy decision %d: %w", index, err)
+		}
+		if err := insertPolicyOutcomes(tx, runID, index, decision); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// insertPolicyOutcomes keeps each policy's own result, including the fields
+// it could not see. The decision's effect alone cannot distinguish a policy
+// that looked and did not match from one that was blind (roadmap L2.19).
+func insertPolicyOutcomes(tx *sql.Tx, runID string, seq int, decision orchestrator.PolicyRecord) error {
+	for index, outcome := range decision.Policies {
+		_, err := tx.Exec(`INSERT INTO policy_outcomes (run_id, seq, idx, name, action, outcome, missing, source)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			runID, seq, index, outcome.Name, outcome.Action, outcome.Outcome,
+			joined(outcome.Missing), outcome.Source)
+		if err != nil {
+			return fmt.Errorf("insert policy outcome %d of decision %d: %w", index, seq, err)
+		}
+	}
+	return nil
+}
+
+// insertGateApprovals records what the human did at each gate — the half of
+// the comparison L2.19 is waiting on that the store did not hold.
+func insertGateApprovals(tx *sql.Tx, runID string, state *orchestrator.RunState) error {
+	for gate, approval := range state.Approvals {
+		_, err := tx.Exec(`INSERT INTO gate_approvals (run_id, gate, method, approver, approved_at, invalidated)
+			VALUES (?, ?, ?, ?, ?, ?)`,
+			runID, gate, string(approval.Method), approval.Approver,
+			timestamp(approval.ApprovedAt), boolean(!approval.IsValid()))
+		if err != nil {
+			return fmt.Errorf("insert approval for gate %q: %w", gate, err)
 		}
 	}
 	return nil

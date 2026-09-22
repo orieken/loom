@@ -601,6 +601,23 @@ And an unanswerable condition resolves to **unknown**, never true.
 >
 > Note what (1) does *not* do: the nine already-recorded runs stay unanalysable, because their
 > documents were discarded. The corpus starts empty and fills from the next run onward.
+>
+> **The corpus is now readable** (2026-09-21, `loom memory policies`). Prerequisite (2) was
+> "let L2.16 record decisions across several runs" — and the evidence it names was **write-only**:
+> decisions went into `policy_decisions` at ingest and nothing read them back, so the stop condition
+> could only be judged by hand-reading archives. Worse, the ingest was lossy in the one dimension the
+> judgement needs. It kept `gate, effect, honoured, at` and dropped each policy's own outcome and the
+> facts it could not see, so a blind UNKNOWN and a considered UNKNOWN were indistinguishable in the
+> store. And it recorded nothing about **what the human did at the same gate**, which is the other
+> half of any comparison.
+>
+> Fixed: `policy_outcomes` and `gate_approvals` (schema v3, a rebuildable projection), and a query
+> that reads each decision beside the approval that followed it. The command states its own limits —
+> "agreed" is concurrence rather than an independent second opinion, because the human could see the
+> decision, and `honoured` is expected to be 0 until this item ships.
+>
+> **The stop condition is unchanged and still unmet.** Nothing here honours a gate. This makes the
+> question checkable from data instead of from memory; it does not answer it, and only real runs can.
 
 1. **Problem**: L2.16 evaluates policies and records what they decided, then halts for a human
    anyway. The feature people actually want from policies — a gate that proceeds without a
