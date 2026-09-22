@@ -1869,12 +1869,27 @@ Confound recorded: SHARED produced 47% more output from identical prompts, so th
 figure is indicative and only the 1.93x prefix-unit ratio is defensible.
 
 **So one-session-per-run is a bad trade** — stage isolation, bounded context and per-stage failure
-containment, for under 2x on one term of a bill that output tokens dominate. **And a direct-API
-provider gets better**: its stages are separate conversations sharing only a cached prefix, so they
-pay no accumulation penalty and stay near the 8.1x per-stage figure. Revised ranking: **(1)
-direct-API provider with explicit `cache_control`** (overlaps L4.8, now the only structural option
-worth the work), (2) trim `.claude/rules/`, (3) reduce stage count — L3.24's lever, since output
-dominates — (4) install less.
+containment, for under 2x on the prefix term. **And a direct-API provider gets better**: its stages
+are separate conversations sharing only a cached prefix, so they pay no accumulation penalty and
+stay near the 8.1x per-stage figure. Revised ranking: **(1) direct-API provider with explicit
+`cache_control`** (overlaps L4.8, now the only structural option worth the work), (2) trim
+`.claude/rules/`, (3) reduce stage count — L3.24's lever, since a stage that does not run pays
+neither prefix nor output — (4) install less.
+
+**Corrected 2026-09-22 — this paragraph twice said output dominates the bill, and in the
+architecture that ships it does not.** That framing came from the growth audit's own summary line and
+was wrong for the COLD arm, which is what production runs. At the 5x output weight every Claude model
+bills at, COLD's cache creation alone is **485,678** input-equivalents against output's **282,655**,
+and the whole prefix term is **1.90x** output. Output would need to bill at 8.6x to overtake creation
+and 9.5x to overtake the prefix, so the finding does not turn on the model. Output dominates only in
+the SHARED arm — that is, only *after* a fix has already removed most of the prefix.
+
+The ranking is unchanged, and the reasoning behind item (3) was repaired rather than kept: cutting a
+stage wins because it removes that stage's prefix *and* its output, not because output was the bigger
+term. What does change is the case for item (1): the prefix is roughly two-thirds of billable units
+today, so the term a direct-API provider reaches is the larger half of the bill rather than the
+smaller. Detail and the cost-column caveat: §3 of
+[`loom-prefix-growth-2026-09-10.md`](../audits/loom-prefix-growth-2026-09-10.md).
 
 ~~Four options are costed in the audit. **Recommended: selective merging** — share a session only
 among stages where isolation is not load-bearing — **plus trimming `.claude/rules/`** (7,707 tokens,

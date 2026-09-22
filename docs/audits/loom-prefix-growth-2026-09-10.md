@@ -36,7 +36,31 @@ Two arms, same twelve prompts:
 ¹ input-equivalents, creation x1.25 + read x0.1.
 
 **The saving is 1.93x on the prefix term, not 5.5x.** Measured end-to-end cost is 1.40x, and output
-tokens — which sharing does nothing about — are the largest single line item in both arms.
+tokens — which sharing does nothing about — are the largest single line item ~~in both arms~~ **in
+the SHARED arm**.
+
+> **Corrected 2026-09-22.** "In both arms" was wrong, and wrong about the arm that matters: COLD is
+> the architecture in production. Applying the 5x output weight every Claude model bills at (Sonnet
+> $3/$15, Haiku 4.5 $1/$5) to the table above:
+>
+> | Arm | cache creation (x1.25) | cache read (x0.1) | output (x5) | largest line item |
+> |---|---:|---:|---:|---|
+> | COLD | **485,678** | 52,050 | 282,655 | **cache creation** |
+> | SHARED | 164,958 | 114,141 | **416,575** | output |
+>
+> In COLD, cache creation alone exceeds output and the whole prefix term is **1.90x** it. Output
+> would have to bill at **8.6x** input to overtake creation and **9.5x** to overtake the prefix —
+> nearly twice the real rate — so this does not turn on which model was used.
+>
+> The sentence was load-bearing: it is the stated reason §6 ranks "reduce stage count" above the
+> structural fix, and it is how the roadmap summarises this whole audit. The ranking still holds —
+> cutting a stage removes its prefix *and* its output — but not for the reason given, and the case
+> for a direct-API provider is stronger than this line implied.
+>
+> **What does not reconcile**, recorded rather than buried: these units do not reproduce the measured
+> dollar figures at any published rate card (COLD's 820,382 input-equivalents against $1.1121 implies
+> ~$1.36/M, which matches no Claude model). The arms are internally consistent and their *ratio* is
+> unaffected, but the cost column should not be treated as rate-checked.
 
 ### Why the estimate was 3x too high
 
@@ -75,8 +99,10 @@ end-to-end figure should be treated as indicative. Neither is n>1.
 ## 6. What this changes
 
 **Option 1 — one session per run — is now clearly a bad trade.** It costs stage isolation, bounded
-context, and per-stage failure containment, and buys **under 2x on one term** of a bill that output
-tokens dominate. The 5.5x that made it tempting was an artifact of measuring with trivial replies.
+context, and per-stage failure containment, and buys **under 2x on the prefix term**. The 5.5x that
+made it tempting was an artifact of measuring with trivial replies. *(This sentence also read "of a
+bill that output tokens dominate" — corrected in §3. Output dominates in SHARED only; in COLD the
+prefix is 1.90x output. Option 1 remains a bad trade on the isolation cost alone.)*
 
 **Option 2 — a direct-API provider with explicit `cache_control` — gets *better*, not worse.** It
 was previously "keeps isolation, same saving, more work". The growth measurement changes the
@@ -91,8 +117,10 @@ API client can.
    isolation intact. Large, overlaps L4.8, and now the only structural option worth the work.
 2. **Trim `.claude/rules/`** — 7,707 tokens on every stage, loaded in full. Unchanged, still the
    cheapest real win.
-3. **Reduce stage count** — output tokens dominate the bill in both arms, so not asking a stage at
-   all (L3.24's lever) beats making the ask cheaper.
+3. **Reduce stage count** — a stage that does not run pays neither prefix nor output, so not asking
+   at all (L3.24's lever) beats making the ask cheaper. *(The reason originally given here — "output
+   tokens dominate the bill in both arms" — is corrected in §3: in COLD, cache creation is the
+   largest line item. The ranking survives; the reasoning did not.)*
 4. **Install less** — still a ~4.6% papercut.
 
 ## 7. What this does not establish
