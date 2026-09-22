@@ -35,8 +35,10 @@ landed:
 # would claim more than the test holds, which is the failure this convention
 # exists to stop.
 #
-# Observed 2026-09-15: 30,794 bytes (~7.7k tokens at 4 bytes/token). Treat it
-# as a reading, not a guarantee; raise the ceiling deliberately, not by drift.
+# Observed 2026-09-22: 22,672 bytes (~5.7k tokens at 4 bytes/token), for the
+# five paths in the core-rules bundle below — which is what the test sums, and
+# is NOT the six-rule always-set that generate-configs.sh emits. Treat it as a
+# reading, not a guarantee; raise the ceiling deliberately, not by drift.
 #
 # Raised 28,000 -> 31,000 on 2026-09-13 for guardrail #9 (telemetry records
 # properties, not payloads) and approval gate #9 (removing test coverage),
@@ -49,8 +51,22 @@ landed:
 # than a comfortable margin: the next addition should have to argue for
 # itself. And this bundle is loaded into every agent's session, so growth
 # here is paid on every invocation — trim before raising.
+#
+# Lowered 31,000 -> 23,500 on 2026-09-22 (roadmap L3.19), after trimming
+# rather than before. Two sections left the bundle for docs/patterns/ with no
+# constraint weakened and no word of the nine gates touched: the executor
+# internals in approval-gates.md (Go mechanics, --approve, exit code 3,
+# roadmap status) and six languages of syntax examples in the test annotation
+# convention. Neither is something an agent can act on, and both were paid on
+# every stage of every run.
+#
+# The ceiling came down with them ON PURPOSE. A trim that leaves the old
+# ceiling standing buys 8,300 bytes of room to drift back into, which is
+# exactly how the 5.5KB above went unnoticed — and this file already says
+# 26% headroom is enough room to hide in. ~830 bytes of margin keeps the
+# standing convention, so the saving is locked rather than lent.
 contextBudget:
-  coreRulesCeilingBytes: 31000
+  coreRulesCeilingBytes: 23500
 
 levels:
   - level: 1

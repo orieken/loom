@@ -58,6 +58,13 @@ structure, a concrete example, and the trade-offs each pattern brings, not just 
   Code Discipline, Pagination by Default, User Enumeration Prevention, Schema-First Contract. The
   `openapi` skill already enforces all of these per-endpoint; never written down as a standalone
   reference until now.
+- [gate-enforcement.md](gate-enforcement.md) — how the nine approval gates are actually held: which
+  three the executor refuses to start a stage without, which remain prompt discipline, what
+  invalidates an approval, and what a policy decision records while nothing is auto-approved. The
+  mechanism side of `shared/rules/approval-gates.md`, kept out of every stage's prompt (L3.19).
+- [test-annotation.md](test-annotation.md) — the per-language syntax for tying a test to its issue
+  and acceptance criterion, in six languages plus Gherkin, and the exemplar-test marking. The
+  mechanics side of `shared/rules/testing-conventions.md`'s convention.
 - [testing-pyramid.md](testing-pyramid.md) — the five test levels (Unit, Integration, API Contract,
 - [test-suite-health-metrics.md](test-suite-health-metrics.md) — the four numbers that detect a suite
   getting greener and blinder at once (flake rate, time to diagnose, escaped defects, wall-clock), and

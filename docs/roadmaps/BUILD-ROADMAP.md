@@ -1888,6 +1888,37 @@ agents and skills costing zero because the user's global `~/.claude` already hel
 the baseline was never bare. The corrected run installs the same surface under non-colliding names
 and reads the marginal cost.
 
+**LEVER 2 TAKEN 2026-09-22 — `.claude/rules/` trimmed, and the ceiling came down with it.** The
+core-rules bundle went **30,794 → 22,672 bytes**, ~2,030 tokens off every stage of every run
+(~30k per fifteen-stage run), and `coreRulesCeilingBytes` moved 31,000 → 23,500 so the room is not
+lent back.
+
+**Nothing was deleted and no constraint was weakened.** Two sections moved to `docs/patterns/`,
+following the split this repo already uses between `testing-conventions.md` and `testing-pyramid.md`:
+
+| Moved | From | Tokens | Why it is not a rule |
+|---|---|---:|---|
+| Executor Enforcement + Policy-Based Gate Type | `approval-gates.md` | ~1,591 | Go internals, `--approve`, exit code 3, roadmap status. **51% of the most expensive core rule**, and an agent cannot act on a line of it |
+| Test Annotation Convention mechanics | `testing-conventions.md` | ~1,054 | Six languages of syntax examples. A test is written in one language; twelve of fifteen stages write none |
+
+The nine gates are untouched — a test asserts all nine headings survive, and the moved text was
+verified present verbatim in its new home. Each rule keeps the normative statement and a pointer.
+
+**The saving is locked by the fitness function that already existed.** `TestCoreRulesBundleStaysUnderCeiling`
+enforces `shared/levels.yaml`, so lowering the ceiling in the same commit is what makes this a floor
+rather than a one-off. Leaving 31,000 standing would have bought 8,300 bytes to drift back into —
+which is precisely how the 5.5KB of drift that file records went unnoticed.
+
+**One thing caught while doing it**, worth naming because it is the same defect as the drift above.
+The first ceiling was set against 27,090 bytes — the **six**-rule always-set `generate-configs.sh`
+emits — while the test sums the **five** paths in the `core-rules` bundle, 22,672. Two legitimate
+lists, one wrong number in a comment. Corrected, and the comment now says which set it measures.
+
+**What this does not do: it does not meet the done-when.** Trimming lowers the constant; it does not
+break the linear scaling with stage count. That still needs lever (1), the direct-API provider with
+explicit `cache_control`, which overlaps L4.8 and remains a design decision. Levers (3) and (4) are
+unchanged.
+
 **Therefore**: `aider-repo-map` and `repomix-codebase-packing` should **not** be built. They optimize
 source-discovery cost, which this measurement shows is near zero, and they would add a per-run
 indexing pass to a system whose spend is ~90% prompt-prefix re-caching. The two levers named in

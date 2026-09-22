@@ -16,6 +16,19 @@ Semantic-ish, not strict SemVer:
 When you bump an agent's `version:` frontmatter field, add a row under a new dated heading here in the same
 commit — the pre-commit hook checks for exactly this.
 
+## 2026-09-22 — the annotation syntax moved out of every stage's prompt
+
+| Agent | Version | Change |
+|---|---|---|
+| qa-engineer | 1.6.0 -> 1.6.1 | Patch: the Test Annotation Convention reference now also names `docs/patterns/test-annotation.md`, where the per-language syntax went |
+| unit-tester | 1.6.0 -> 1.6.1 | Patch: same reference change |
+| test-driven-developer | 1.5.0 -> 1.5.1 | Patch: same reference change |
+
+No behaviour change: the convention, the annotation each test carries, and the rule that requires it
+are all unaltered. `shared/rules/testing-conventions.md` keeps the rule and loses six languages'
+worth of syntax examples to `docs/patterns/`, because a rule file is auto-loaded into every stage's
+prompt and a test is written in one language at a time (roadmap L3.19).
+
 ## 2026-09-21 — the context auditor measures the budget instead of reading it
 
 | Agent | Version | Change |

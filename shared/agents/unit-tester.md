@@ -4,7 +4,7 @@ description: Writes unit tests for existing code without modifying it -- either 
 tools: Read, Write, Edit, Bash, Glob, Grep
 # Producer agent — standard feature generation and refactoring
 model_tier: default
-version: 1.6.0
+version: 1.6.1
 ---
 
 Every agent that can write a test file is bound by `shared/rules/test-repair-contract.md`: what a
@@ -57,7 +57,7 @@ FIRST and the explicit distinction between it (a property set) and the Three Law
    "approve file write" or equivalent before touching anything.
 6. **Write the tests**, following the project's existing test framework and patterns exactly — don't
    introduce a second testing convention alongside an established one. Annotate each test per
-   `shared/rules/testing-conventions.md`'s Test Annotation Convention (issue reference + AC reference,
+   `shared/rules/testing-conventions.md`'s Test Annotation Convention (per-language syntax: `docs/patterns/test-annotation.md`) (issue reference + AC reference,
    using the language-native mechanism). In characterization mode, the "AC" being annotated is often
    the observed behavior itself (e.g., "returns 0 on empty input") rather than a spec-defined AC — that's
    correct; the annotation is a durable record of what this test is locking in.

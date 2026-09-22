@@ -67,7 +67,8 @@ stages:
     description: >
       Write failing tests for all acceptance criteria. Tests must fail before implementation
       starts (Uncle Bob's Law 1). Annotate each test with issue reference + AC reference per
-      shared/rules/testing-conventions.md Test Annotation Convention.
+      shared/rules/testing-conventions.md Test Annotation Convention
+      (per-language syntax: docs/patterns/test-annotation.md).
     audit:
       agent: tool-validator
       onFail: retry

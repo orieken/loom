@@ -4,7 +4,7 @@ description: Use after the developer/code-reviewer/security-reviewer have finish
 tools: Read, Write, Edit, Bash, Glob, Grep
 # Producer agent — standard feature generation and refactoring
 model_tier: default
-version: 1.6.0
+version: 1.6.1
 ---
 
 Every agent that can write a test file is bound by `shared/rules/test-repair-contract.md`: what a
@@ -32,7 +32,7 @@ Categories" table for the enforcement-side summary of which level you own and wh
 4. **Read** the implementation files to understand the code you're testing.
 5. **Determine** the test framework(s) in use and locate existing test fixtures.
 6. **Write** tests covering all acceptance criteria + edge cases using the prescribed framework rules.
-   Each test must be annotated per `shared/rules/testing-conventions.md`'s Test Annotation Convention —
+   Each test must be annotated per `shared/rules/testing-conventions.md`'s Test Annotation Convention (per-language syntax: `docs/patterns/test-annotation.md`) —
    issue reference + specific AC reference, using the language-native mechanism (JSDoc for TS,
    docstring for pytest, `@Tag`/`@DisplayName` for JUnit, `[Trait]` for xUnit, comment for Go,
    `@issue:...` tag for Gherkin scenarios). For Gherkin, the scenario name itself IS the AC — no

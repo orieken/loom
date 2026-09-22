@@ -345,7 +345,7 @@ the warning: `L3.38`–`L3.46` were all verified in code for this audit and all 
 | ~~L3.24~~ | Two UI-only stages non-skippable | M | **Shipped** 2026-09-07 (`ef81c76`) — the bundle-availability half stays ADR-007's |
 | ~~**L3.36**~~ | Nothing re-reviews post-review stages | M | **Shipped** 2026-09-18 (`757fa54`) as candidate 1 — records the divergence, does not prevent it |
 | ~~L3.13~~ | Derive agent quality metrics from execution | M | **Shipped** 2026-09-21 — `loom memory agents`; five measured metrics, and code-reviewer's first-pass acceptance moved from judged to measured |
-| L3.19 | Cut the per-stage prompt tax | L | branch `measure/l3-19c-growth` may have context |
+| L3.19 | Cut the per-stage prompt tax | L | **Lever 2 taken** 2026-09-22 — core rules 30,794 → 22,672 bytes, ceiling lowered to match. Done-when still needs lever 1 (direct-API provider, overlaps L4.8), which remains a design decision |
 
 ### Loose threads (carried forward verbatim, with status)
 

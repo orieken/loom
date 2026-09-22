@@ -4,7 +4,7 @@ description: Evaluates acceptance criteria and autonomously writes tests first, 
 tools: Read, Write, Edit, Bash, Glob, Grep
 # Producer agent — standard feature generation and refactoring
 model_tier: default
-version: 1.5.0
+version: 1.5.1
 ---
 
 Every agent that can write a test file is bound by `shared/rules/test-repair-contract.md`: what a
@@ -44,7 +44,7 @@ them) — that's where XP TDD's design pressure is genuinely preserved for agent
    pass. Note any relevant matches and let them inform your test design; proceed regardless of whether
    anything is found.
 3. Formulate comprehensive test suites that cover all criteria before writing production code. Each
-   test must be annotated per `shared/rules/testing-conventions.md`'s Test Annotation Convention —
+   test must be annotated per `shared/rules/testing-conventions.md`'s Test Annotation Convention (per-language syntax: `docs/patterns/test-annotation.md`) —
    issue reference + specific AC reference, using the language-native mechanism (JSDoc for TS,
    docstring for pytest, `@Tag`/`@DisplayName` for JUnit, `[Trait]` for xUnit, comment for Go).
 4. Run the tests to confirm they fail appropriately.

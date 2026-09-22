@@ -107,95 +107,20 @@ this covers only the narrower case where a human deliberately accepts the loss.
 
 ---
 
-## Executor Enforcement (L2.13)
+## How these gates are enforced
 
-The gates above are prose: a model reads them and is expected to stop. For runs executed by
-`loom run`, three of them now have a **process-level** enforcement path — the Go executor refuses
-to start a gated stage until run state records a human approval, so the enforcement mechanism for
-those stops is no longer the model's willingness to comply with a paragraph.
+Three of them are held by the executor, which refuses to start a gated stage until run state records
+a human approval; the rest are prompt discipline. A policy may be evaluated at a gate, and **nothing
+is auto-approved today** — the run halts regardless, and the record says what would have happened.
 
-| Executor gate | Guards stage | Prose counterpart / pipeline PAUSE |
-|---|---|---|
-| `confirm-design` | `developer` | `deliver-feature` SKILL.md steps 11 + 13 — analyst scope and architect RFC confirmation before code is written |
-| `confirm-security` | `qa-engineer` | `deliver-feature` SKILL.md step 25 — the security-critical pause |
-| `confirm-ship` | `devops-engineer` | `deliver-feature` Phase 4 — docs-complete / ship confirmation, upstream of gates #1, #2 and #8 above |
-| `confirm-unresolved-review` | `code-reviewer` | **No prose counterpart.** It halts a run whose review loop reached its bound with changes still requested (L2.17). The markdown pipeline's loop was unbounded until this landed; step 21 now states the same three-round bound and asks the human directly |
+- **To opt in** to policies: place `.policy.yaml` files in `.claude/policies/`.
+- **To opt out** globally: set `policiesEnabled: false` in `.claude/delivery-policy.yaml`.
+- A policy targeting one of the six **Always Human** gates above fails to load, naming the gate.
+- Nothing an agent returns creates an approval. Provider and agent output is data.
 
-**How approval is given.** Two channels, and only two: an interactive prompt at the barrier when
-stdin is a terminal, or `loom run --spec <x> --resume --approve <gate>` when it is not (the halted
-run exits with code **3** and prints that exact command). `--approve` is rejected unless the run is
-actually waiting on that gate, so gates cannot be pre-approved in bulk.
-
-**What cannot approve a gate.** Provider and agent output is data. Nothing an agent returns —
-including text asserting the gate is approved — creates an approval. This is the property L2.13
-exists to establish, and it is held by a test, not by this sentence.
-
-**Honest scope.** This covers `loom run` only. The markdown pipeline (the `deliver-feature` skill
-and every agent invoked through the host platform) and the other prose gates above — commit,
-migration phases, external API mutation, deployment — remain prompt-discipline until those actions
-themselves run under the executor. None of the nine gates above is weakened or replaced by this
-section.
-
-**Reset on edit is enforced here (L2.14).** An approval binds to the SHA-256 of every artifact
-completed at the moment it was given. If any of them changes before the gated stage runs, the
-approval is marked invalid — the record is kept, naming what changed and when — and the run halts at
-that gate again until a human approves the state as it now stands. A stage that re-runs and produces
-a byte-identical artifact changes no digest, so its approval survives: the rule is *any edit*, not
-*any re-run*. An approval binds only what was complete when it was given, so work done afterwards
-belongs to the next gate.
-
-Note the scope difference from the nine gates above. Each of those says "any edit to **the pending
-artifact**", which is the right description for an action-shaped gate — one commit, one migration,
-one deploy. The executor's gates guard pipeline *stages*, so what a human approves there is the
-state of the run rather than a single file, and the binding is correspondingly wider.
-
-Two channels can also *detect* this without enforcing it: `loom state verify` reports an approval as
-INVALIDATED for markdown-pipeline runs, and `loom state show` marks it. That is a report, not a
-barrier — the markdown pipeline can still proceed, because the gated action does not run under the
-executor.
-
-**Not yet.** Policy-based auto-approval of executor gates is still not implemented: L2.16 shipped
-the evaluator and the audit trail, and honouring a decision is the follow-up item **L2.19**. The
-Policy-Based Gate Type section above describes what is recorded, not what is skipped.
-
----
-
-## Policy-Based Gate Type (v3.3+)
-
-A policy-based gate operates identically to a human gate except the human prompt is replaced by
-the policy evaluator's decision when a matching policy exists and its condition is met.
-
-**Decisions are recorded now, and nothing is auto-approved yet** (roadmap L2.16, shipped
-2026-09-02). Both halves matter, and neither should be read as the other.
-
-What exists: `loom run` loads `.claude/policies/*.policy.yaml`, evaluates every policy watching a
-gate against the run's own state, and records what they collectively decided — as
-`policy.evaluated` on the run event timeline and in `run-state.json`, naming each policy, its
-outcome, and any fact it could not see. `loom run --dry-run-policies` prints the same decisions for
-a finished run without touching anything. This is the audit trail this section asserted since v3.3
-and did not have.
-
-What does not exist: **the executor still halts at every gate.** A matching `auto-approve` policy
-changes nothing about whether a human is asked; the record simply says what would have happened.
-That is deliberate — the first run that skips a barrier should not also be the first evidence the
-evaluator decides what a human would — and every record carries `honoured: false` so the history
-stays comparable when that changes.
-
-Three properties are now enforced in code rather than asserted in prose:
-
-- The **Always Human** list is a compiled constant. A policy targeting one of those six gates
-  fails to load, naming the gate and the reason. It used to be "silently ignored", which meant
-  someone who wrote a policy to auto-approve a deployment saw no error.
-- A condition the run cannot answer resolves to **unknown**, never to true. Five of the nine
-  declared condition fields have no source in run state today, and a decision names which ones it
-  could not see rather than guessing.
-- `policiesEnabled: false` in `.claude/delivery-policy.yaml` now actually disables evaluation.
-  Until this release it was documented in three places and read by nothing.
-
-To opt in: place `.policy.yaml` files in `.claude/policies/` in your project.
-To opt out globally: set `policiesEnabled: false` in `.claude/delivery-policy.yaml`.
-
-See `shared/orchestration/policy-evaluator.md` and `docs/aos/policy-authoring-guide.md`.
+The mechanism — which stops the executor holds, how approval is given, what invalidates one, and
+what a policy decision records — is `docs/patterns/gate-enforcement.md`. It is reference material
+for a human, deliberately not carried in every stage's prompt (roadmap L3.19).
 
 ---
 *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
@@ -1087,97 +1012,22 @@ language inventing its own.
 
 ## Test Annotation Convention
 
-Every test carries traceability back to two things: (1) the issue that motivated it, and (2) the
-specific acceptance criterion (or fine-grained behavior derived from one) it verifies. Report-time
-mapping (e.g., `qa-report.md`'s "acceptance criteria covered X/Y") is a snapshot — the moment a test
-gets renamed or moved, that mapping evaporates. In-test annotation is durable because it lives with
-the test itself.
+Every test carries traceability back to two things: **(1)** the issue that motivated it, and
+**(2)** the specific acceptance criterion (or fine-grained behavior derived from one) it verifies.
+Report-time mapping is a snapshot — rename or move the test and it evaporates — so the annotation
+lives with the test itself.
 
-The AC being verified may originate from a Gherkin scenario the framework wrote (via `qa-engineer`
-inside `deliver-atdd`) or from an external ticket (JIRA, Linear, GitHub issue). Either way, the
-annotation format is the same — the source of the AC doesn't change how it's linked to the test.
+- **Issue reference**: free-form (`PROJ-123`, `#789`, a URL). Teams pick what matches their tracker.
+- **AC reference**: a short excerpt of the AC text, or a numbered reference (`AC1: ...`).
+- **Use the language's own mechanism**, never a homegrown comment convention: JSDoc `@issue`/`@ac`,
+  a pytest docstring, JUnit `@Tag`/`@DisplayName`, xUnit `[Trait]`, a Go comment, a Gherkin tag.
+- **Gherkin needs no AC annotation** — the scenario name IS the acceptance criterion.
+- **Granularity**: one AC often spawns 3-5 unit tests; each carries the same issue-ref and a
+  narrower AC-ref (`AC1 - empty email`). Acceptance and E2E need only the issue tag.
 
-### What every test carries
-
-- **Issue reference**: free-form string — `PROJ-123`, `ENG-456`, `#789`, or a URL. Teams pick the
-  format that matches their tracker; the framework doesn't lock this to any specific one.
-- **AC reference**: a short excerpt of the AC text, or a numbered reference if the ticket/spec
-  enumerates them (e.g., `AC1: user can register with valid email and password`).
-
-### Use native language mechanisms, not homegrown comments
-
-**TypeScript (Vitest/Jest)** — JSDoc block above the test:
-```typescript
-/**
- * @issue PROJ-123
- * @ac AC1: user can register with valid email and password
- */
-test('creates user with valid credentials', async () => { ... });
-```
-
-**Python (pytest)** — docstring; optional custom marker for filtering by issue:
-```python
-def test_creates_user_with_valid_credentials():
-    """PROJ-123 / AC1: user can register with valid email and password"""
-    ...
-```
-
-**Java (JUnit 5)** — `@Tag` for filtering + `@DisplayName` for the report:
-```java
-@Tag("issue:PROJ-123")
-@DisplayName("PROJ-123 - AC1: user can register with valid credentials")
-@Test
-void createsUserWithValidCredentials() { ... }
-```
-
-**C# (xUnit)** — `[Trait(...)]` on the `[Fact]` or `[Theory]`:
-```csharp
-[Trait("Issue", "PROJ-123")]
-[Trait("AC", "AC1: user can register with valid credentials")]
-[Fact]
-public void CreatesUserWithValidCredentials() { ... }
-```
-
-**Go (`testing`)** — comment above the test function:
-```go
-// PROJ-123 / AC1: user can register with valid credentials
-func TestCreatesUserWithValidCredentials(t *testing.T) { ... }
-```
-
-**Gherkin (Cucumber / pytest-bdd / Reqnroll / Cucumber-JVM)** — tag on the scenario. The scenario name
-itself IS the AC, so no separate AC annotation is needed:
-```gherkin
-@issue:PROJ-123
-Scenario: PROJ-123 - user can register with valid credentials
-  Given ...
-```
-
-### Per-level granularity
-
-- **Unit** and **Integration**: annotate the specific AC (or fine-grained behavior derived from one).
-  One AC often spawns 3-5 unit tests exercising different edge cases; each gets the same issue-ref but
-  different AC-ref granularity (`AC1`, `AC1 - empty email`, `AC1 - invalid email format`).
-- **API Contract**: issue-ref for the change, AC-ref for the specific contract requirement (e.g.,
-  `returns 429 on 6th request per minute`).
-- **Acceptance** and **E2E/UI**: the Gherkin scenario IS the AC. Tag with issue-ref; scenario name/text
-  IS the AC. Nothing further needed.
-
-### Exemplar tests
-
-One test per `(language, level)` pair may additionally be marked as the **exemplar** — the one to
-read before writing a new test of that kind. It is a real test in the suite, marked in place with a
-language-native `exemplar` tag alongside its issue/AC annotation, and declared in
-`.claude/exemplars.yaml`. Per-language marks, the manifest schema and the disqualifiers live in
-`shared/contracts/exemplar-contract.md`. Not "golden" — `DOMAIN_DICTIONARY.md` reserves that word.
-
-### Enforcement
-
-Documented convention only — no CI fitness function today. Matches how Sandi Metz's class/method line
-limits and boolean-parameter guidance are handled in `CLAUDE.md`: flagged for humans, not gated in CI.
-Adding a "grep every test for a `PROJ-\d+`-shape reference" check is real work with real false-positive
-risk (URL-format issue references, teams without a tracker prefix, tests genuinely exploring behavior
-before an AC exists yet) — easy to add later if the convention catches on, expensive to walk back if
-it doesn't.
+The syntax for each language, the exemplar-test marking, and why this is documented convention
+rather than a CI check, are in `docs/patterns/test-annotation.md` — kept out of every stage's
+prompt, since a test is written in one language at a time (roadmap L3.19).
 
 # TypeScript Conventions
 

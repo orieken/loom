@@ -743,8 +743,17 @@ customModes:
          - Read downstream artifacts in `.claude/feature-workspace/<feature-name>/` (e.g., `analysis.md`, `implementation-notes.md`).
          - Check if pinned files were actually referenced or consumed by downstream agents.
          - Flag pinned files that were never referenced as **Unused Pinned Context** (pruning candidates).
-      6. **Token Budget Verification**:
-         - Check if the estimated token budget pressure in `context-manifest.md` accurately matches the file size total of pinned files.
+      6. **Token Budget Verification** — measure, never estimate from line counts:
+         - Get each pinned file's size in bytes (`wc -c`) and convert with **bytes / 4**. Never derive a
+           token count from a line count: the per-line rate that convention rested on was ~7x under on real
+           prose, and it reported `OK` with a per-file breakdown and a percentage behind it (roadmap L3.25).
+         - **Under `loom run`**, the manifest's total and status were computed by the executor from the
+           same rule. Recompute them and report any disagreement as a **Critical** finding — this is the
+           one number in a run that nothing else checks, so an auditor that only reads it verifies nothing.
+         - **Under the markdown pipeline**, loom is not running and those two fields are blank by design
+           (see `shared/templates/context-manifest.template.md` §7). A blank total is **not** a finding;
+           report your own measured total and the tier it is being spent against, and say plainly that it
+           was measured here rather than by the executor.
       
       ## Output Format
       
@@ -2336,7 +2345,7 @@ customModes:
       4. **Read** the implementation files to understand the code you're testing.
       5. **Determine** the test framework(s) in use and locate existing test fixtures.
       6. **Write** tests covering all acceptance criteria + edge cases using the prescribed framework rules.
-         Each test must be annotated per `shared/rules/testing-conventions.md`'s Test Annotation Convention —
+         Each test must be annotated per `shared/rules/testing-conventions.md`'s Test Annotation Convention (per-language syntax: `docs/patterns/test-annotation.md`) —
          issue reference + specific AC reference, using the language-native mechanism (JSDoc for TS,
          docstring for pytest, `@Tag`/`@DisplayName` for JUnit, `[Trait]` for xUnit, comment for Go,
          `@issue:...` tag for Gherkin scenarios). For Gherkin, the scenario name itself IS the AC — no
@@ -3471,7 +3480,7 @@ customModes:
          pass. Note any relevant matches and let them inform your test design; proceed regardless of whether
          anything is found.
       3. Formulate comprehensive test suites that cover all criteria before writing production code. Each
-         test must be annotated per `shared/rules/testing-conventions.md`'s Test Annotation Convention —
+         test must be annotated per `shared/rules/testing-conventions.md`'s Test Annotation Convention (per-language syntax: `docs/patterns/test-annotation.md`) —
          issue reference + specific AC reference, using the language-native mechanism (JSDoc for TS,
          docstring for pytest, `@Tag`/`@DisplayName` for JUnit, `[Trait]` for xUnit, comment for Go).
       4. Run the tests to confirm they fail appropriately.
@@ -3656,7 +3665,7 @@ customModes:
          "approve file write" or equivalent before touching anything.
       6. **Write the tests**, following the project's existing test framework and patterns exactly — don't
          introduce a second testing convention alongside an established one. Annotate each test per
-         `shared/rules/testing-conventions.md`'s Test Annotation Convention (issue reference + AC reference,
+         `shared/rules/testing-conventions.md`'s Test Annotation Convention (per-language syntax: `docs/patterns/test-annotation.md`) (issue reference + AC reference,
          using the language-native mechanism). In characterization mode, the "AC" being annotated is often
          the observed behavior itself (e.g., "returns 0 on empty input") rather than a spec-defined AC — that's
          correct; the annotation is a durable record of what this test is locking in.
