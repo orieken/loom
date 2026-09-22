@@ -123,11 +123,11 @@ func (e *Executor) OnLoopRound(report func(LoopRound)) {
 // persists a clean INTERRUPTED checkpoint for the in-flight stage before
 // returning, so a later Run resumes by re-running that stage.
 func (e *Executor) Run(ctx context.Context, plan Plan, input StageInput) error {
-	state, err := e.prepareState(plan, input)
+	state, entry, err := e.prepareState(plan, input)
 	if err != nil {
 		return err
 	}
-	if err := e.emit(Event{Kind: EventRunStarted}); err != nil {
+	if err := e.emit(Event{Kind: entry}); err != nil {
 		return err
 	}
 	// Detect corrections before anything else touches the workspace. For an
@@ -233,27 +233,35 @@ func (e *Executor) startCommit() string {
 	return ref
 }
 
-func (e *Executor) prepareState(plan Plan, input StageInput) (*RunState, error) {
+// prepareState loads or creates the run's state, and says which event this
+// invocation is: a fresh run started here, or a continuation of one already
+// on disk (roadmap L3.16). The distinction is only knowable here — by the
+// time Run has the state, a fresh run and a resumed one look alike.
+func (e *Executor) prepareState(plan Plan, input StageInput) (*RunState, EventKind, error) {
 	if err := plan.Validate(); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	state, err := e.store.Load()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if state == nil {
 		fresh := newRunFor(plan, input)
 		fresh.StartCommit = e.startCommit()
 		fresh.Provider = e.providerName
-		return fresh, nil
+		return fresh, EventRunStarted, nil
 	}
 	if err := state.CheckCreatedBy(CreatedByExecutor); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if err := checkStateBelongsToRun(state, plan, input, e.store.Path()); err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return e.verifyResumedState(state)
+	resumed, err := e.verifyResumedState(state)
+	if err != nil {
+		return nil, "", err
+	}
+	return resumed, EventRunResumed, nil
 }
 
 func (e *Executor) emitStale(state *RunState, stale []StaleStage) error {

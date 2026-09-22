@@ -48,7 +48,8 @@ func eventDocs() []EventDoc {
 
 func runAndStageDocs() []EventDoc {
 	return []EventDoc{
-		{EventRunStarted, "A run began or resumed.", nil, "M0.4"},
+		{EventRunStarted, "A run began. Emitted once per run, not once per invocation.", nil, "M0.4"},
+		{EventRunResumed, "An invocation continued a run already on disk — after a gate, an interrupt, or a failure.", nil, "L3.16"},
 		{EventRunCompleted, "Every stage of the plan settled.", nil, "M0.4"},
 		{EventStageStarted, "A stage began executing.", []string{"stage", "sequence"}, "M0.4"},
 		{EventStageCompleted, "A stage finished and its artifact was digested.", []string{"stage", "sequence"}, "M0.4"},

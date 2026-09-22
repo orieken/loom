@@ -1345,6 +1345,27 @@ confidently-executed one. Four agents produced good artifacts about a codebase t
 through `--approve`, and neither shape surfaced this. It took a human answering `y` at three
 consecutive gates.
 
+**SHIPPED** 2026-09-21. `prepareState` now returns which event this invocation is — it is the only
+place that can tell, since by the time `Run` holds the state a fresh run and a resumed one look
+alike — and `Run` emits that. `run.resumed` is in the vocabulary, so L3.9's fitness function
+regenerated the schema and the types table, and failed the build until it was run.
+
+**The test the item said nobody had.** `driveThroughGates` answers three consecutive gates without
+a human, which is the shape that surfaced the defect and that no test had. Against the previous
+behaviour it records `run.started` four times and `run.resumed` never, and the ordering test prints
+the first real run's timeline verbatim: `… gate.approved run.started …`.
+
+**The episodic half was already true, and its test is a guard rather than a fix.** Run identity is
+feature plus `StartedAt`, which is set once at creation and survives every checkpoint, so the store
+reported one run before this change as well. The test passes against the old behaviour and is kept
+because what it guards — a resume not resetting `StartedAt` — is the thing that would turn one run
+into four rows, and nothing else asserted it.
+
+**One stale thing fixed rather than extended.** `cmd/loom/README.md` carried a hand-written list of
+recorded kinds, nine behind the generated table three paragraphs below it. Adding `run.resumed` to
+that list would have made it ten-for-ten wrong in a new way, so it now points at the generated file
+instead.
+
 ### L2.22 — Give the writing stages permission to write
 **Workstream**: TOOLS · **Effort**: S · **Blocked by**: none · **Blocks**: L2.24 · *(raised 2026-09-06, from the second real end-to-end run)*
 

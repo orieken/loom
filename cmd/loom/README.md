@@ -353,10 +353,17 @@ loom state timeline --spec docs/features/user-auth/spec.md
 #  4s  stage.completed      analyst
 #  4s  gate.waiting         developer confirm-design
 # 2m1s gate.approved        confirm-design tty
+# 2m1s run.resumed
 ```
 
-Recorded kinds: `run.started`, `run.completed`, `stage.started`, `stage.completed`,
-`stage.failed`, `stage.interrupted`, `stage.stale`, `gate.waiting`, `gate.approved`.
+`run.started` fires once per run and `run.resumed` once per continuation, so a run halted at
+three gates records one start and three resumes — "how long did this run take" has one answer
+(roadmap L3.16). Until that shipped, re-entering `Run` after each gate emitted a second
+`run.started`, and every consumer of the log had to know to ignore all but the first.
+
+The full list of recorded kinds is `shared/schemas/telemetry/run-event-types.md`, which is
+**generated** from the Go enum — this README deliberately does not restate it, because the
+hand-maintained copy that used to sit here had fallen nine kinds behind.
 
 - **Append-only.** The file is never rewritten or truncated; each event is one write. A
   process killed mid-write can leave a torn final line, which readers skip rather than

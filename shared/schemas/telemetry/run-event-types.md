@@ -21,7 +21,8 @@ emitter.
 | `policy.evaluated` | The policies watching a gate were evaluated; the run halts regardless. | `gate`, `reason`, `correction` | L2.16 |
 | `posture.violation` | A stage changed the working tree without declaring a tool that writes files. | `stage`, `reason` | L3.30 |
 | `run.completed` | Every stage of the plan settled. | — | M0.4 |
-| `run.started` | A run began or resumed. | — | M0.4 |
+| `run.resumed` | An invocation continued a run already on disk — after a gate, an interrupt, or a failure. | — | L3.16 |
+| `run.started` | A run began. Emitted once per run, not once per invocation. | — | M0.4 |
 | `stage.completed` | A stage finished and its artifact was digested. | `stage`, `sequence` | M0.4 |
 | `stage.failed` | A stage returned an error. | `stage`, `sequence`, `error` | M0.4 |
 | `stage.interrupted` | A stage was cancelled, leaving a resumable checkpoint. | `stage`, `sequence`, `error` | M0.4 |

@@ -18,6 +18,7 @@
         "policy.evaluated",
         "posture.violation",
         "run.completed",
+        "run.resumed",
         "run.started",
         "stage.completed",
         "stage.failed",

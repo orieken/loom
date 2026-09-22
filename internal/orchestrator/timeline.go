@@ -25,7 +25,14 @@ type EventKind string
 
 // The recorded transitions.
 const (
-	EventRunStarted       EventKind = "run.started"
+	EventRunStarted EventKind = "run.started"
+	// EventRunResumed records an invocation that continued a run already on
+	// disk, rather than beginning one (roadmap L3.16). The TTY approval path
+	// re-enters Run after every gate, so a run halted at three gates reaches
+	// the executor four times; recording all four as starts left "how long
+	// did this run take" with no unambiguous answer. How often a run is
+	// resumed is also a fact worth having in its own right.
+	EventRunResumed       EventKind = "run.resumed"
 	EventRunCompleted     EventKind = "run.completed"
 	EventStageStarted     EventKind = "stage.started"
 	EventStageCompleted   EventKind = "stage.completed"
