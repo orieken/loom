@@ -341,7 +341,7 @@ the warning: `L3.38`–`L3.46` were all verified in code for this audit and all 
 | ~~L3.18~~ | Route on what the analysis says | S | **Shipped** 2026-09-07 (`ef81c76`) |
 | ~~L3.20~~ | Papercuts from the second real run | S | **Shipped** 2026-09-21 (`5ee57c6`) — four fixed, one declined |
 | ~~L3.25~~ | `context-engineer` budget ~7x under | S | **Shipped** 2026-09-07 (`bf302c8`) — the executor measures it (`context_state.go` `Measure`, called from `typed.go:114`); the table above was stale, not the roadmap |
-| **L2.19** | Honour a policy decision at a gate | S | **Unblocked** by `A3` (`2859f59`) — was not, before |
+| **L2.19** | Honour a policy decision at a gate | S | **Still blocked**, and the "unblocked" note was itself corrected in the roadmap on 2026-09-18. Prerequisites (1) and (3) are done; (2) needs real runs. The corpus is now readable — `loom memory policies`, 2026-09-21 — so the stop condition can be judged from data, but only running answers it |
 | ~~L3.24~~ | Two UI-only stages non-skippable | M | **Shipped** 2026-09-07 (`ef81c76`) — the bundle-availability half stays ADR-007's |
 | ~~**L3.36**~~ | Nothing re-reviews post-review stages | M | **Shipped** 2026-09-18 (`757fa54`) as candidate 1 — records the divergence, does not prevent it |
 | L3.13 | Derive agent quality metrics from execution | M | — |
