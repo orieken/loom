@@ -1,7 +1,8 @@
-package main
+package gitdiff
 
 import (
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -15,7 +16,7 @@ func TestGitDiffReturnsZeroContextHunksForGoFilesOnly(t *testing.T) {
 	write(t, filepath.Join(repository, "a.go"), "package a\n\nfunc A() {}\n\nfunc B() {}\n")
 	write(t, filepath.Join(repository, "notes.md"), "changed\n")
 
-	reader, err := gitDiff("HEAD")
+	reader, err := Diff("HEAD")
 	if err != nil {
 		t.Fatalf("gitDiff: %v", err)
 	}
@@ -36,7 +37,7 @@ func TestGitDiffReportsAnUntrackedGoFileAsWhollyAdded(t *testing.T) {
 	write(t, filepath.Join(repository, "fresh.go"), "package a\n\nfunc Fresh() {}")
 	write(t, filepath.Join(repository, "fresh.md"), "not go\n")
 
-	reader, err := gitDiff("HEAD")
+	reader, err := Diff("HEAD")
 	if err != nil {
 		t.Fatalf("gitDiff: %v", err)
 	}
@@ -53,7 +54,7 @@ func TestGitDiffReportsAnUntrackedGoFileAsWhollyAdded(t *testing.T) {
 
 func TestGitDiffReportsAnUnknownBase(t *testing.T) {
 	newRepository(t)
-	if _, err := gitDiff("no-such-revision"); err == nil || !strings.Contains(err.Error(), "no-such-revision") {
+	if _, err := Diff("no-such-revision"); err == nil || !strings.Contains(err.Error(), "no-such-revision") {
 		t.Errorf("err = %v, want an error naming the base", err)
 	}
 }
@@ -77,6 +78,13 @@ func newRepository(t *testing.T) string {
 		}
 	}
 	return dir
+}
+
+func write(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatalf("write %s: %v", path, err)
+	}
 }
 
 func readAll(t *testing.T, reader io.Reader) string {

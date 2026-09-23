@@ -1,4 +1,8 @@
-package main
+// Package gitdiff reads the Go changes between a base commit and the working
+// tree as zero-context unified diff text — the input internal/diffcover parses.
+// It is the adapter over the git binary shared by cmd/diff-coverage and
+// cmd/diff-mutation.
+package gitdiff
 
 import (
 	"bufio"
@@ -16,13 +20,13 @@ import (
 // one would hang CI rather than fail it.
 const gitTimeout = 60 * time.Second
 
-// gitDiff is the production diffSource: zero-context, no colour, no external
+// Diff returns the Go changes from base to the working tree: zero-context, no colour, no external
 // diff driver, renames detected so a moved file contributes only its edits.
 //
 // `git diff <base>` does not show untracked files, so a new file not yet
 // added would be silently skipped — a vacuous pass locally that CI would
 // never see. Untracked Go files are appended as wholly added.
-func gitDiff(base string) (io.Reader, error) {
+func Diff(base string) (io.Reader, error) {
 	tracked, err := git("diff", "--unified=0", "--no-color", "--no-ext-diff", "--find-renames", base, "--", "*.go")
 	if err != nil {
 		return nil, fmt.Errorf("git diff %s: %w", base, err)

@@ -8,8 +8,12 @@
 // measured locally; in CI the working tree is the commit under test.
 package main
 
-import "os"
+import (
+	"os"
+
+	"github.com/orieken/loom/internal/gitdiff"
+)
 
 func main() {
-	os.Exit(run(os.Args[1:], os.Stdout, gitDiff))
+	os.Exit(run(os.Args[1:], os.Stdout, gitdiff.Diff))
 }

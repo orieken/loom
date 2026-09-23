@@ -54,10 +54,10 @@ type Measurement struct {
 func Measure(measurement Measurement) Report {
 	report := Report{}
 	for _, file := range sortedFiles(measurement.Changes) {
-		if !isProductionGo(file) {
+		if !IsProductionGo(file) {
 			continue
 		}
-		if isExcluded(measurement.Excluded, file) {
+		if IsExcluded(measurement.Excluded, file) {
 			report.Excluded = append(report.Excluded, file)
 			continue
 		}
@@ -101,7 +101,9 @@ func lineCoverage(line int, blocks []Block) (bool, bool) {
 	return executable, covered
 }
 
-func isExcluded(excluded map[string]bool, file string) bool {
+// IsExcluded reports whether file is named in excluded, directly or by a
+// directory entry ending in "/".
+func IsExcluded(excluded map[string]bool, file string) bool {
 	if excluded[file] {
 		return true
 	}
@@ -113,7 +115,9 @@ func isExcluded(excluded map[string]bool, file string) bool {
 	return false
 }
 
-func isProductionGo(file string) bool {
+// IsProductionGo reports whether file is Go source that ships: not a test,
+// not testdata.
+func IsProductionGo(file string) bool {
 	if path.Ext(file) != ".go" || strings.HasSuffix(file, "_test.go") {
 		return false
 	}

@@ -21,14 +21,6 @@ const (
 // defaultThreshold is ADR-008's bar for changed code.
 const defaultThreshold = 85.0
 
-// excluded is the explicit list of changed Go paths that are never measured.
-// Every entry needs a reason; the list is not a pattern that can quietly grow.
-var excluded = map[string]bool{
-	// A separate module with its own go.mod: this module's coverage profile
-	// can never contain its files. CI builds it in its own step.
-	"examples/embedding/": true,
-}
-
 // diffSource returns `git diff --unified=0` output from base to the working tree.
 type diffSource func(base string) (io.Reader, error)
 
@@ -90,7 +82,7 @@ func measure(parsed options, diff diffSource) (diffcover.Report, error) {
 		return diffcover.Report{}, err
 	}
 	return diffcover.Measure(diffcover.Measurement{
-		Profile: profile, Changes: changes, ModulePath: modulePath, Excluded: excluded,
+		Profile: profile, Changes: changes, ModulePath: modulePath, Excluded: diffcover.RepositoryExclusions,
 	}), nil
 }
 
