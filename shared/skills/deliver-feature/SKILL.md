@@ -60,7 +60,6 @@ directly at the root (not inside any `<feature-name>/` subdirectory). If found:
 2. Move all files from `.claude/feature-workspace/` into
    `.claude/feature-workspace/<feature>/` — rename in place; do not copy-then-delete.
 3. No event is logged for the migration. The `.claude/telemetry/events.jsonl` layer this step wrote to was retired in roadmap L3.9 — it had no verified emitter and no consumer. The migration itself is unchanged.
-   enabled).
 4. Continue from the migrated path. The migration is idempotent: if the named subdirectory
    already exists, skip silently.
 

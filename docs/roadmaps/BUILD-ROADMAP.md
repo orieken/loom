@@ -3779,6 +3779,32 @@ a subshell and the script printed DRIFT then exited 0. Only the red proof caught
 ### C.2 — Migrate the framework's own legacy workspace
 **Workstream**: KERNEL · **Effort**: S
 
+**PARTIAL** 2026-09-22 — the flat artifact is gone and its producers are fixed; the test half of
+the done-when cannot be met as written.
+
+- **Migrated.** The flat `analysis.md` (untracked; `.claude/feature-workspace/` is gitignored) moved
+  by hand into `blog-posts-05-06/`. It predates Epic 63 (2026-07-25 against 2026-08-02) and its work
+  had shipped. The skill's leftover `enabled).` fragment from L3.9 was removed.
+- **Producers fixed.** Thirteen `shared/` files read a pipeline artifact, or named the delivery
+  checkpoint, at the flat root, where nothing has written since Epic 63: `finops-engineer` and
+  `chaos-engineer` (both now 1.1.0), the `adr`, `analyze-complexity`, `openapi`,
+  `check-accessibility`, `validate-migrations` and `verify-dependencies` skills, the
+  `checkpointStore` default in `pipeline-schema.md`, `interface.md` and `feature-delivery-workflow.md`,
+  and `DOMAIN_DICTIONARY.md`'s *Context Manifest* and *Pipeline State* entries. Every one now names
+  `<feature-name>/`, as `resume-pipeline` already did. The first count of this was "seven"; the
+  grep behind it matched three filenames, and the real sweep found about fifty references.
+- **Deliberately left flat.** Ad-hoc *outputs* of standalone skills and non-pipeline agents
+  (`release-plan.md`, `proposed-ki.md`, `dependency-audit-report.md`, …) — Epic 63 records that these
+  use the root as a scratch area (`docs/aos/parallel-delivery-isolation-design.md:229`). The two
+  legacy-detection lines in `deliver-feature` are its recorded exceptions.
+- **Not met: the test.** The legacy migration is prose in `deliver-feature/SKILL.md`, not code, so
+  there is no branch to test.
+- **Still open, found while verifying:** (1) detection keys on a flat `pipeline-state.json`, so a
+  flat artifact without a state file — exactly what this workspace had — is invisible to the repair
+  path; (2) `TDDWorkflow` still checkpoints to a flat `tdd-state.json` (`tdd-workflow.md`,
+  `test-driven-developer.md`), which is the singleton problem Epic 63 fixed for delivery and never
+  scoped for TDD.
+
 1. **Problem**: `.claude/feature-workspace/analysis.md` sits flat at the root — the exact
    "legacy pre-Epic-63 singleton" state `deliver-feature` ships migration code to repair. The
    framework's own workspace has never been migrated by its own migration path.

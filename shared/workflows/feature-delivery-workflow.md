@@ -5,7 +5,7 @@ description: Full feature delivery pipeline — context-engineer → analyst →
 entry: deliver-feature
 resumable: true
 parallelStrategy: sequential-simulation
-checkpointStore: .claude/feature-workspace/pipeline-state.json
+checkpointStore: .claude/feature-workspace/<feature-name>/pipeline-state.json
 legacyFallback: deliver-feature
 ---
 
@@ -168,7 +168,7 @@ Checkpoints are written after every stage that has `checkpoint: true`. If the pi
 /orchestrate --workflow feature-delivery --spec <file> --resume
 ```
 
-The runtime reads `.claude/feature-workspace/pipeline-state.json` and skips already-completed stages.
+The runtime reads `.claude/feature-workspace/<feature-name>/pipeline-state.json` and skips already-completed stages.
 
 ## Audit-After-Producer Composition
 

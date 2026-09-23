@@ -13,7 +13,7 @@ Do NOT use when reviewing backend services, database migrations, or purely logic
 
 ## Context To Load First
 1. `ARCHITECTURE_RULES.md`
-2. `.claude/feature-workspace/implementation-notes.md` (if available)
+2. `.claude/feature-workspace/<feature-name>/implementation-notes.md` (if available)
 
 ## Process
 1. Identify the frontend UI files being modified.

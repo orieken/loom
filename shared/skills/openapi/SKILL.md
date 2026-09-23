@@ -13,7 +13,7 @@ When NOT to use: Internal method signatures, test helper APIs, or any interface 
 
 ## Context To Load First
 1. `DOMAIN_DICTIONARY.md`
-2. `.claude/feature-workspace/analysis.md`
+2. `.claude/feature-workspace/<feature-name>/analysis.md`
 
 ## Process
 1. "What resource does this endpoint operate on?"

@@ -19,7 +19,7 @@ description: Full feature delivery pipeline — analyst → architect → develo
 entry: deliver-feature
 resumable: true
 parallelStrategy: sequential-simulation
-checkpointStore: .claude/feature-workspace/pipeline-state.json
+checkpointStore: .claude/feature-workspace/<feature-name>/pipeline-state.json
 legacyFallback: deliver-feature
 stages:
   - id: context
@@ -106,7 +106,7 @@ stages:
 | `entry` | string | yes | — | Skill or agent name teams invoke directly (`/deliver-feature`, not `/orchestrate`) |
 | `resumable` | boolean | no | `true` | Whether checkpointed state allows resume on interruption |
 | `parallelStrategy` | enum | no | `sequential-simulation` | `fork` (real parallel) or `sequential-simulation` (LLM simulates; default) |
-| `checkpointStore` | path | no | `.claude/feature-workspace/pipeline-state.json` | Where to persist state |
+| `checkpointStore` | path | no | `.claude/feature-workspace/<feature-name>/pipeline-state.json` | Where to persist state |
 | `legacyFallback` | string | no | — | Skill to invoke on `--legacy` flag; mandatory for wrappers of existing skills |
 
 ### Stage Fields

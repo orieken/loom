@@ -14,7 +14,7 @@ When the user explicitly asks to document an architectural decision or asks to w
 1. All existing ADRs in `docs/adrs/` (for next number + tone)
 2. `ARCHITECTURE_RULES.md`
 3. `DOMAIN_DICTIONARY.md`
-4. `.claude/feature-workspace/architecture-notes.md` if it exists.
+4. `.claude/feature-workspace/<feature-name>/architecture-notes.md` if it exists.
 
 ## Process
 1. Determine next ADR number (scan `docs/adrs/` for existing files)

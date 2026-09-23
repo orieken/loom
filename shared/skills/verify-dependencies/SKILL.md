@@ -14,7 +14,7 @@ Do NOT use when modifying UI code or end-to-end testing frameworks.
 
 ## Context To Load First
 1. `ARCHITECTURE_RULES.md`
-2. `.claude/feature-workspace/architecture-notes.md` (if available)
+2. `.claude/feature-workspace/<feature-name>/architecture-notes.md` (if available)
 
 ## Process
 1. Determine the files or directories to check.

@@ -17,7 +17,7 @@ Do NOT use either mode on data files, documentation, or configuration files (JSO
 
 ## Context To Load First
 1. `ARCHITECTURE_RULES.md`
-2. `.claude/feature-workspace/implementation-notes.md` (if available, enforcement mode)
+2. `.claude/feature-workspace/<feature-name>/implementation-notes.md` (if available, enforcement mode)
 3. The target file(s) (on-demand mode)
 
 ## Modes

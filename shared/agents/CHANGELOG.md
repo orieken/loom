@@ -16,6 +16,19 @@ Semantic-ish, not strict SemVer:
 When you bump an agent's `version:` frontmatter field, add a row under a new dated heading here in the same
 commit — the pre-commit hook checks for exactly this.
 
+## 2026-09-22 — pipeline artifacts are read from the feature's workspace
+
+| Agent | Version | Change |
+|---|---|---|
+| finops-engineer | 1.0.1 -> 1.1.0 | Minor: step 2 reads `architecture-notes.md` and `implementation-notes.md` from `.claude/feature-workspace/<feature-name>/`, and asks for the feature name when it was not given one |
+| chaos-engineer | 1.0.1 -> 1.1.0 | Minor: step 2 reads `architecture-notes.md` from the same place, with the same instruction |
+
+Both agents read pipeline artifacts at the flat workspace root, where nothing has written them since
+Epic 63 moved every delivery into `<feature-name>/` (2026-08-02) — so both reads silently found
+nothing, or a stale pre-Epic-63 leftover. Their own report outputs stay at the root: Epic 63 records
+that non-pipeline agents use it as an ad-hoc scratch area (`docs/aos/parallel-delivery-isolation-design.md`).
+Roadmap C.2.
+
 ## 2026-09-22 — the annotation syntax moved out of every stage's prompt
 
 | Agent | Version | Change |

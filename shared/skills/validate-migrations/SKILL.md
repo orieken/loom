@@ -13,7 +13,7 @@ Do NOT use when reviewing application logic with no database structural alterati
 
 ## Context To Load First
 1. `ARCHITECTURE_RULES.md`
-2. `.claude/feature-workspace/data-engineering-notes.md` (if available)
+2. `.claude/feature-workspace/<feature-name>/data-engineering-notes.md` (if available)
 
 ## Process
 1. Identify database migration files.

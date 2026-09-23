@@ -30,7 +30,7 @@ stages:                          # ordered list of pipeline stages
 ```yaml
 resumable: true           # default true; false = pipeline must restart from scratch on interruption
 parallelStrategy: fork    # fork (spawn sub-agents) | sequential-simulation (default; LLM simulates parallel)
-checkpointStore: .claude/feature-workspace/pipeline-state.json  # where state is persisted
+checkpointStore: .claude/feature-workspace/<feature-name>/pipeline-state.json  # where state is persisted
 legacyFallback: <skill>   # if set, /orchestrate --legacy routes here instead of the workflow
 ```
 
