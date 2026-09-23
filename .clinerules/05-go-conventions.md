@@ -67,6 +67,11 @@ Follows the community-standard layout ([golang-standards/project-layout](https:/
   — note this is a **community-maintained** binding, not an official Microsoft one (unlike the
   JS/Python/.NET/Java bindings). Verify it's kept current with the Playwright version the rest of the
   stack uses before relying on it for anything beyond smoke coverage.
+- **Mutation testing** (ADR-008 clause 2): [`gremlins`](https://github.com/go-gremlins/gremlins) v0.6.0,
+  run on the changed lines only by loom's `cmd/diff-mutation`. Verified 2026-09-23 with three caveats
+  that each produced a false result: `--diff` does not scope; default timeouts count as kills; and a
+  package named unlike its directory (`package main`) is tested as the wrong package, so every mutant
+  reads LIVED. Run it through a wrapper that handles all three, or its numbers are not evidence.
 - **Performance testing**: k6. k6 scripts are always JavaScript regardless of the target service's
   language — "k6 for Go" means a Go service gets load-tested by the same k6 scripts as everything else,
   not a Go-specific k6 binding. See `shared/rules/testing-conventions.md` for the shared reporting

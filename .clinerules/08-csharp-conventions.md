@@ -38,6 +38,9 @@ project references, not just convention (see the Saturday-C# dependency graph: `
   — the established .NET auto-generation library for building test objects. Pair with
   [`AutoBogus`](https://github.com/nickdodd79/AutoBogus) to get `Bogus`-quality realistic fake values
   inside `AutoFixture`-generated objects, rather than AutoFixture's own less-realistic defaults.
+- **Mutation testing** (ADR-008 clause 2): Stryker.NET — a candidate, **not yet verified** against a
+  real project. Verify before relying on its score: a mutant that did not compile, or timed out,
+  must never be counted as killed.
 - **Performance testing**: k6, via this stack's own `Saturday.K6Exporter` (Playwright request
   logging → structured k6 script generation) and `Saturday.K6Redaction` (sanitizes tokens, auth headers,
   and passwords from exported scripts before they leave the machine).

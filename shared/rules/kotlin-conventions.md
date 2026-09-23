@@ -71,6 +71,9 @@ top-level declaration per file; filename matches the public declaration name.
 - **Factories**: hand-written `build*()` factory functions or `Builder` classes per domain type —
   same preference as Go conventions. [InstancioKotlin](https://www.instancio.org/kotlin/) is an
   option for large object graphs.
+- **Mutation testing** (ADR-008 clause 2): PIT (`pitest`), through its Gradle plugin — a candidate, **not yet verified** against a
+  real project. Verify before relying on its score: a mutant that did not compile, or timed out,
+  must never be counted as killed.
 - **Performance testing**: Android Macrobenchmark for app startup and scroll jank; k6 for any
   backend service the Android app calls.
 - **Reporting**: JUnit XML output via `junit-platform-reporting`; feed into CI reporting aggregator

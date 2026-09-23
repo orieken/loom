@@ -75,6 +75,9 @@ per file for large types. Small related types (newtypes, enums, errors) may shar
 - **Fake / synthetic data**: [`fake`](https://github.com/cksac/fake-rs) (`fake = { features = ["derive"] }`)
   — derive-based fake generation for domain structs; `Faker::fake()` for scalars. Closest Rust
   equivalent to `gofakeit` / `@faker-js/faker`.
+- **Mutation testing** (ADR-008 clause 2): `cargo-mutants` — a candidate, **not yet verified** against a
+  real project. Verify before relying on its score: a mutant that did not compile, or timed out,
+  must never be counted as killed.
 - **Performance testing**: k6 — same as every other language here. For micro-benchmarks,
   `cargo bench` with [`criterion`](https://github.com/bheisler/criterion.rs) — statistical
   regression detection, HTML reports.

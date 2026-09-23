@@ -195,10 +195,8 @@ jobs:
         # modifies, measured against the commit before it. Same policy as the
         # ratchet: it always reports, and gates only when the tests passed.
         #
-        # Base: the PR's base, or on a push the pre-push head — every commit in
-        # the push is measured, not just the last. If that commit is missing
-        # (a new branch, or history rewritten by a force push) it falls back to
-        # HEAD~1 and says so, rather than silently measuring nothing.
+        # Base: scripts/ci-diff-base.sh — the PR's base, or on a push the
+        # pre-push head, falling back to HEAD~1 out loud when that is missing.
         #
         # A changed Go file absent from coverage.out FAILS (UNMEASURED) — no
         # silent pass. The one exclusion is listed, with its reason, in
@@ -212,11 +210,7 @@ jobs:
             echo "NOT MEASURED: the test step produced no coverage profile"
             exit 0
           fi
-          base="${PR_BASE:-$PUSH_BEFORE}"
-          if [[ -z "$base" || "$base" =~ ^0+$ ]] || ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
-            echo "base '${base}' is not available (new branch or rewritten history) — measuring against HEAD~1"
-            base="HEAD~1"
-          fi
+          base="$(bash scripts/ci-diff-base.sh)"
           set +e
           go run ./cmd/diff-coverage --base "$base" --profile coverage.out
           status=$?
@@ -237,6 +231,38 @@ jobs:
         run: |
           cd examples/embedding
           go build ./...
+
+  mutation:
+    name: Changed-line mutation score (report-only — ADR-008, roadmap L3.59)
+    # Report-only: --floor defaults to 0, so a low score never fails this job;
+    # the floor is set later from the scores this job records, the way the
+    # coverage ratchet's was. A tool error (exit 2) does fail it, because a
+    # mutation run that did not happen must not read as one that passed.
+    #
+    # A separate job because each mutant re-runs its package's tests: minutes,
+    # not seconds, on a change inside a large package. gremlins is pinned; its
+    # own --diff flag does not scope in v0.6.0, so cmd/diff-mutation scopes the
+    # run itself (see internal/mutation).
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4 — same pin as loom-release.yml
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v5 — same pin as loom-release.yml
+        with:
+          go-version-file: go.mod
+      - name: Install gremlins (pinned)
+        run: go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0
+      - name: Mutation-test the changed lines
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          base="$(bash scripts/ci-diff-base.sh)"
+          go run ./cmd/diff-mutation --base "$base" --gremlins "$(go env GOPATH)/bin/gremlins"
 
   golangci-lint:
     name: golangci-lint (complexity gate — this IS the build gate)

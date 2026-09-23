@@ -219,6 +219,9 @@ project references, not just convention (see the Saturday-C# dependency graph: `
   — the established .NET auto-generation library for building test objects. Pair with
   [`AutoBogus`](https://github.com/nickdodd79/AutoBogus) to get `Bogus`-quality realistic fake values
   inside `AutoFixture`-generated objects, rather than AutoFixture's own less-realistic defaults.
+- **Mutation testing** (ADR-008 clause 2): Stryker.NET — a candidate, **not yet verified** against a
+  real project. Verify before relying on its score: a mutant that did not compile, or timed out,
+  must never be counted as killed.
 - **Performance testing**: k6, via this stack's own `Saturday.K6Exporter` (Playwright request
   logging → structured k6 script generation) and `Saturday.K6Redaction` (sanitizes tokens, auth headers,
   and passwords from exported scripts before they leave the machine).
@@ -349,6 +352,11 @@ Follows the community-standard layout ([golang-standards/project-layout](https:/
   — note this is a **community-maintained** binding, not an official Microsoft one (unlike the
   JS/Python/.NET/Java bindings). Verify it's kept current with the Playwright version the rest of the
   stack uses before relying on it for anything beyond smoke coverage.
+- **Mutation testing** (ADR-008 clause 2): [`gremlins`](https://github.com/go-gremlins/gremlins) v0.6.0,
+  run on the changed lines only by loom's `cmd/diff-mutation`. Verified 2026-09-23 with three caveats
+  that each produced a false result: `--diff` does not scope; default timeouts count as kills; and a
+  package named unlike its directory (`package main`) is tested as the wrong package, so every mutant
+  reads LIVED. Run it through a wrapper that handles all three, or its numbers are not evidence.
 - **Performance testing**: k6. k6 scripts are always JavaScript regardless of the target service's
   language — "k6 for Go" means a Go service gets load-tested by the same k6 scripts as everything else,
   not a Go-specific k6 binding. See `shared/rules/testing-conventions.md` for the shared reporting
@@ -466,6 +474,9 @@ or overrides these choices.
   [EasyRandom](https://github.com/j-easy/easy-random) (formerly `random-beans`) and the older `Podam`
   are still-used alternatives if a team is already invested in one of them, but Instancio is the
   current recommendation for new code.
+- **Mutation testing** (ADR-008 clause 2): PIT (`pitest`) — a candidate, **not yet verified** against a
+  real project. Verify before relying on its score: a mutant that did not compile, or timed out,
+  must never be counted as killed.
 - **Performance testing**: k6 — same as every other language here, k6 scripts stay JavaScript
   regardless of the target service's language.
 - **Reporting**: [Allure](https://allurereport.org/) — the most widely adopted cross-language test
@@ -546,6 +557,9 @@ top-level declaration per file; filename matches the public declaration name.
 - **Factories**: hand-written `build*()` factory functions or `Builder` classes per domain type —
   same preference as Go conventions. [InstancioKotlin](https://www.instancio.org/kotlin/) is an
   option for large object graphs.
+- **Mutation testing** (ADR-008 clause 2): PIT (`pitest`), through its Gradle plugin — a candidate, **not yet verified** against a
+  real project. Verify before relying on its score: a mutant that did not compile, or timed out,
+  must never be counted as killed.
 - **Performance testing**: Android Macrobenchmark for app startup and scroll jank; k6 for any
   backend service the Android app calls.
 - **Reporting**: JUnit XML output via `junit-platform-reporting`; feed into CI reporting aggregator
@@ -664,6 +678,9 @@ root, source under `src/<package_name>/`, tests under `tests/` mirroring the sou
   [`factory_boy`](https://factoryboy.readthedocs.io/) is the more established, widely-known Python
   factory library (the origin of the "factory" naming pattern `fishery`/`factory-go` are modeled after)
   and remains a reasonable choice for a non-Pydantic, sync-first codebase.
+- **Mutation testing** (ADR-008 clause 2): `mutmut` — a candidate, **not yet verified** against a
+  real project. Verify before relying on its score: a mutant that did not compile, or timed out,
+  must never be counted as killed.
 - **Performance testing**: k6, via this stack's own internal `saturday-k6-exporter` package (converts
   recorded Playwright requests into k6 scripts — the same pattern as the C# port's
   `Saturday.K6Exporter`), plus `saturday-k6-redaction` for stripping secrets (tokens, auth headers) from
@@ -756,6 +773,9 @@ per file for large types. Small related types (newtypes, enums, errors) may shar
 - **Fake / synthetic data**: [`fake`](https://github.com/cksac/fake-rs) (`fake = { features = ["derive"] }`)
   — derive-based fake generation for domain structs; `Faker::fake()` for scalars. Closest Rust
   equivalent to `gofakeit` / `@faker-js/faker`.
+- **Mutation testing** (ADR-008 clause 2): `cargo-mutants` — a candidate, **not yet verified** against a
+  real project. Verify before relying on its score: a mutant that did not compile, or timed out,
+  must never be counted as killed.
 - **Performance testing**: k6 — same as every other language here. For micro-benchmarks,
   `cargo bench` with [`criterion`](https://github.com/bheisler/criterion.rs) — statistical
   regression detection, HTML reports.
@@ -845,6 +865,9 @@ PascalCase for all Swift source files; one public type per file; filename matche
 - **Fake / synthetic data**: hand-built `Builder` structs or `static func make(...)` factory methods
   per domain type (the same builder pattern recommended in `go-conventions.md`). No faker library
   equivalent dominates the Swift ecosystem yet.
+- **Mutation testing** (ADR-008 clause 2): `muter` — a candidate, **not yet verified** against a
+  real project. Verify before relying on its score: a mutant that did not compile, or timed out,
+  must never be counted as killed.
 - **Performance testing**: XCTest's `measure {}` block for microbenchmarks; k6 for any backend
   service the iOS app calls.
 - **Reporting**: XCTest's built-in `.xcresult` bundle; convert to JUnit XML via
@@ -1063,6 +1086,9 @@ there yet: fake-data and factory libraries.
   (`Factory.define<User>(() => ({ name: faker.person.fullName(), ... }))`).
 - **E2E / API testing**: Playwright — official binding, already the framework default (see
   `testing-conventions.md`).
+- **Mutation testing** (ADR-008 clause 2): StrykerJS (`@stryker-mutator/core`) — a candidate, **not yet verified** against a
+  real project. Verify before relying on its score: a mutant that did not compile, or timed out,
+  must never be counted as killed.
 - **Performance testing**: k6 — native JS/TS test scripts, no binding needed.
 - **Reporting**: Cucumber JSON output feeding the Friday dashboard (see `testing-conventions.md`'s
   Reporting Pipeline section and `shared/rules/approval-gates.md` gate #1); Playwright's own HTML

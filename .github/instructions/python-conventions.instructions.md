@@ -37,6 +37,9 @@ root, source under `src/<package_name>/`, tests under `tests/` mirroring the sou
   [`factory_boy`](https://factoryboy.readthedocs.io/) is the more established, widely-known Python
   factory library (the origin of the "factory" naming pattern `fishery`/`factory-go` are modeled after)
   and remains a reasonable choice for a non-Pydantic, sync-first codebase.
+- **Mutation testing** (ADR-008 clause 2): `mutmut` — a candidate, **not yet verified** against a
+  real project. Verify before relying on its score: a mutant that did not compile, or timed out,
+  must never be counted as killed.
 - **Performance testing**: k6, via this stack's own internal `saturday-k6-exporter` package (converts
   recorded Playwright requests into k6 scripts — the same pattern as the C# port's
   `Saturday.K6Exporter`), plus `saturday-k6-redaction` for stripping secrets (tokens, auth headers) from

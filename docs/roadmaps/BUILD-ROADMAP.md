@@ -3352,6 +3352,68 @@ was skipped rather than rejected. Self-measured at 96.2% (255 of 265).
 ### L3.59 — Mutation-test the changed code
 **Workstream**: OBSERVE · **Effort**: L · **Blocked by**: none · **Blocks**: L3.61 · *(raised 2026-09-22, ADR-008)*
 
+**PARTIAL** 2026-09-23 — report-only mutation of changed lines ships; **the floor is not yet set**, because
+the done-when's third clause asks for it to come from measurements, and those are what the new CI job
+now records. `cmd/diff-mutation` (logic in `internal/mutation`, git adapter moved to `internal/gitdiff`)
+runs pinned `gremlins` v0.6.0 once per changed package with unchanged files excluded, keeps only mutants
+on changed lines, and prints the score and every LIVED, TIMED OUT, NOT VIABLE and NOT COVERED mutant.
+The *Changed-line mutation score* CI job runs it with `--floor 0`: a low score never fails the job, a
+tool error does. Base selection is shared with L3.58 through `scripts/ci-diff-base.sh`. Locally:
+`go run ./cmd/diff-mutation --base origin/main` (needs gremlins on PATH).
+
+**Done-when, clause by clause.** (1) *A test that executes but does not depend on a changed line leaves
+its mutant surviving* — proved with real gremlins in an isolated worktree: `Double` with a test that only
+checked `!= 0` left `double.go:5` ARITHMETIC_BASE **LIVED** at 0.0%; a test checking the value killed it
+at 100%. (2) *A mutant that does not apply is never killed* — NOT VIABLE sits outside the score and is
+listed; pinned by unit tests and by a mutant that files NOT VIABLE as KILLED, which is killed. A real
+NOT VIABLE was not provoked from gremlins. (3) *The floor is recorded with its measurements* — **open**.
+
+**A third gremlins defect, found by the tool measuring itself.** Its first self-run scored 51.4%, with all
+17 survivors in `cmd/diff-mutation` — and negating one of them by hand made `go test` fail. gremlins
+v0.6.0 finds the package to test by walking up for a directory named after the Go package; `package
+main` never matches, so it tests the module root, the mutated code's tests never run, and every mutant
+reads LIVED. Seven packages here are affected (four commands, `mcp-server`, `frameworkfs`, `mcpassets`,
+and the root `loom`). `Plan` reads each package clause and routes a mismatch to `--integration` with a
+150x timeout: 17 killed, 0 timed out, 108s. At 20x the same 16 all timed out — honest, since timeouts
+are never credited, but pessimistic. **The whole-module figure below is contaminated by this bug.**
+
+**Proved red.** Twelve mutants of the wrapper — timeouts credited, scope by file not line, unknown status
+accepted, unanchored exclusions, NOT VIABLE counted as killed, an exclusive floor, subpackages not
+excluded, directory dropped from paths, every report-open error read as "no mutants", default timeout
+coefficient, the changed file excluded, nothing-tested scoring 100 — plus a thirteenth disabling
+integration routing: all killed. **M9 first survived**: its test made the report path a directory, which
+`os.Open` accepts on Unix, so the failure came from JSON decoding; it now uses an unreadable file.
+
+**Not done from the original fix**: `backfill-unit-tests` step 6 still mutates by hand, and `run-tests`
+does not mention the runner — both can call `cmd/diff-mutation` once a floor exists.
+
+What the spike established, before any wrapper existed:
+
+- **`--diff` does not scope in v0.6.0.** Mutant counts were identical with and without it, against
+  every base tried — `HEAD`, two commits, `main`, `origin/main` — including `--diff HEAD` on a package
+  with no changes (52 mutants either way). Upstream has eight open issues and PRs on `--diff` path
+  matching and hunk handling (#278, #296, #297, #300–#302, #304, #305); none is released. A run meant
+  for three changed packages mutated the whole module: 2,089 mutants, **65 minutes**.
+- **Default timeouts manufacture kills.** On `internal/diffcover` with defaults, 39 of 41 mutants
+  TIMED OUT in under four seconds and the tool reported **100% efficacy** — timeouts are left out of
+  the score. With `--workers 1 --timeout-coefficient 20` the same run gave 34 killed, **4 lived**, 2
+  timed out: 89.5%. Timeouts can hide survivors, so they are never credited as kills.
+- **A package pattern is silently empty.** Passed `./...` instead of a directory, it printed "No
+  results to report" and exited 0.
+- **It never touched the working tree** — it mutates a temporary copy (`internal/engine/workdir`).
+  go-mutesting was rejected on this point: its default exec replaces the original file in place.
+- **The signal is real.** Survivors in `internal/diffcover` were genuine gaps — no test checks a line
+  on a block's last line; gremlins runs only the mutated package's tests, and the gap was hidden
+  earlier because the hand-mutation proof also ran `cmd/diff-coverage`'s tests. Whole module, for
+  reference: 1,111 killed, 280 lived, 168 timed out, 530 not covered; 79.9% efficacy — **not
+  trustworthy**: the package-name defect found later makes every mutant in a misnamed package read LIVED.
+
+**Consequence for the design:** diff scoping cannot come from gremlins. The wrapper runs gremlins
+on each changed package's directory, excludes that package's unchanged files with `--exclude-files`,
+and keeps only mutants on changed lines using `internal/diffcover`'s diff parser — the same scoping
+L3.58 already proves. It fails on "no results" when production Go changed, and reports TIMED OUT and
+NOT VIABLE separately from KILLED.
+
 1. **Problem**: Mutation proof exists only as a manual step in `backfill-unit-tests` (step 6), run by a
    model, for characterization nets. Nothing measures whether new tests can detect a fault in new code.
 2. **Architectural Fix**: Spike first — pick the Go tool by trying it on this module, not from a list.

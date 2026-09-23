@@ -31,6 +31,9 @@ there yet: fake-data and factory libraries.
   (`Factory.define<User>(() => ({ name: faker.person.fullName(), ... }))`).
 - **E2E / API testing**: Playwright — official binding, already the framework default (see
   `testing-conventions.md`).
+- **Mutation testing** (ADR-008 clause 2): StrykerJS (`@stryker-mutator/core`) — a candidate, **not yet verified** against a
+  real project. Verify before relying on its score: a mutant that did not compile, or timed out,
+  must never be counted as killed.
 - **Performance testing**: k6 — native JS/TS test scripts, no binding needed.
 - **Reporting**: Cucumber JSON output feeding the Friday dashboard (see `testing-conventions.md`'s
   Reporting Pipeline section and `shared/rules/approval-gates.md` gate #1); Playwright's own HTML

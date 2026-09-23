@@ -36,6 +36,9 @@ or overrides these choices.
   [EasyRandom](https://github.com/j-easy/easy-random) (formerly `random-beans`) and the older `Podam`
   are still-used alternatives if a team is already invested in one of them, but Instancio is the
   current recommendation for new code.
+- **Mutation testing** (ADR-008 clause 2): PIT (`pitest`) — a candidate, **not yet verified** against a
+  real project. Verify before relying on its score: a mutant that did not compile, or timed out,
+  must never be counted as killed.
 - **Performance testing**: k6 — same as every other language here, k6 scripts stay JavaScript
   regardless of the target service's language.
 - **Reporting**: [Allure](https://allurereport.org/) — the most widely adopted cross-language test

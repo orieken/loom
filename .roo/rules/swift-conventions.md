@@ -63,6 +63,9 @@ PascalCase for all Swift source files; one public type per file; filename matche
 - **Fake / synthetic data**: hand-built `Builder` structs or `static func make(...)` factory methods
   per domain type (the same builder pattern recommended in `go-conventions.md`). No faker library
   equivalent dominates the Swift ecosystem yet.
+- **Mutation testing** (ADR-008 clause 2): `muter` — a candidate, **not yet verified** against a
+  real project. Verify before relying on its score: a mutant that did not compile, or timed out,
+  must never be counted as killed.
 - **Performance testing**: XCTest's `measure {}` block for microbenchmarks; k6 for any backend
   service the iOS app calls.
 - **Reporting**: XCTest's built-in `.xcresult` bundle; convert to JUnit XML via
