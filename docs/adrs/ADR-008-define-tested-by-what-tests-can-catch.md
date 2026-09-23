@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted — amended 2026-09-22 (clause 3 narrowed; see **Amendment** at the end)
 
 ## Date
 
@@ -54,6 +54,7 @@ A change is **tested** when all three hold for the code it changes:
    starts report-only, is set from measurement, and ratchets upward the way the coverage floor does.
 3. **No test that cannot fail.** A test with no assertion, or whose only assertion is that no error
    occurred or a value is non-nil, is rejected mechanically, not left to review.
+   *(Narrowed by the amendment below: only the first half is mechanical.)*
 
 `code-reviewer`'s "would it fail?" judgement and `shared/rules/test-repair-contract.md` stay as they
 are — the human-readable layer over the mechanical one.
@@ -99,3 +100,24 @@ Three CI checks on the `loom` module, each proved red before it gates (roadmap i
 
 For consumer projects this is the shipped rule plus the tooling named per language; loom cannot run
 their CI, so for them it is enforced to the extent the project wires it (documented, not assumed).
+
+## Amendment — 2026-09-22
+
+Clause 3 claimed more than a mechanical check can deliver. Building it (roadmap L3.60) showed:
+
+- **Decidable, and shipped:** a test with **no path to a failure** — no `t.Error`/`t.Fatal`/`t.Fail`
+  reachable from its body, its subtests, or the helpers it hands its testing value to. Enforced by
+  `internal/testlint` over the whole module.
+- **Not decidable in plain Go, and dropped from the mechanical rule:** a test "whose only assertion is
+  that no error occurred". In Go's standard style the error check is frequently the assertion itself
+  — a failing `os.Stat(archived)` *is* "the file was not archived", a failing `json.Unmarshal` *is*
+  "the output does not parse". A survey flagged 22 tests in this module on that rule and every one
+  inspected was a real assertion. The decidable form — testify's `NoError`/`NotNil` as a test's only
+  assertions — stays valid guidance for projects that use testify; this repository does not.
+
+Where a test asserts something weak rather than nothing, clause 2 (mutation on the diff) is the check
+that catches it. Clause 3 now reads, for enforcement purposes: **no test without a path to a failure.**
+
+This is an amendment rather than a superseding ADR because the decision is unchanged — "tested" is
+defined by what tests can catch — and only the reach of one mechanical check is corrected, on the day
+the ADR was accepted and before anything depended on the dropped half.
