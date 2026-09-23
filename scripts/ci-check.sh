@@ -53,7 +53,10 @@ run_check() {
   # three checks quietly not running rather than as a failure.
   if docker run --rm -v "$REPO_DIR:/repo:ro" -w /repo "$IMAGE" bash -c "
     apt-get update -qq >/dev/null 2>&1
-    apt-get install -y -qq python3 python3-yaml python3-jsonschema >/dev/null 2>&1
+    apt-get install -y -qq python3 python3-yaml python3-jsonschema git >/dev/null 2>&1
+    # git: check-generated-drift.sh lists tracked files for its orphan pass. The runner's checkout
+    # has it; this image does not. safe.directory because the mount is owned by the host user.
+    git config --global --add safe.directory /repo
     $cmd
   "; then
     echo "  PASS  $label"
@@ -66,6 +69,7 @@ run_check() {
 }
 
 run_check "check-parity.sh" "bash scripts/check-parity.sh"
+run_check "check-generated-drift.sh" "bash scripts/check-generated-drift.sh"
 run_check "test-agents.sh" "bash scripts/test-agents.sh"
 run_check "health-check.sh --verbose" "bash scripts/health-check.sh --verbose"
 run_check "test-install.sh" "bash scripts/test-install.sh"

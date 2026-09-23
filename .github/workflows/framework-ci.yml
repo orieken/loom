@@ -24,6 +24,11 @@ jobs:
         run: python3 -m pip install --quiet pyyaml
       - name: Run check-parity.sh
         run: bash scripts/check-parity.sh
+      # Parity only checks that each generated file mentions the core concepts. This regenerates
+      # into a temp dir and compares bytes, so a hand-edit or an unregenerated shared/ change fails
+      # (roadmap C.1). Lives in this job because it guards the same files; it needs only python3.
+      - name: Run check-generated-drift.sh
+        run: bash scripts/check-generated-drift.sh
 
   test-agents:
     name: Agent golden-file tests

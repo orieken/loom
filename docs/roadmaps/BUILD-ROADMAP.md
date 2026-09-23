@@ -3752,6 +3752,18 @@ These have no dependencies and can be picked up by anyone at any time.
 ### C.1 — Stop committing 532 KB of generated prompt payload
 **Workstream**: PLATFORM · **Effort**: S · *(audit H11)*
 
+**SHIPPED** 2026-09-22 — `scripts/check-generated-drift.sh` regenerates every platform
+config into a temp directory and fails on a byte difference (DRIFT), a generated file that is not
+committed (MISSING), or a tracked file in a generator-owned directory the generator no longer emits
+(ORPHAN). Took the done-when's second branch: the root copies are read by `install.sh`,
+`test-install.sh`, `health-check.sh` and `check-parity.sh`, so untracking them is not an S. Proved red
+four ways — a hand-edit to `.windsurfrules` (the H11 case), a `shared/rules/` change left
+unregenerated, a missing file, an orphan — and green on `ubuntu:24.04`, byte-identical to macOS.
+**The first version was vacuous on DRIFT**: it piped into the checking function, so the count ran in
+a subshell and the script printed DRIFT then exited 0. Only the red proof caught it. Wired into the
+`check-parity` job of `framework-ci.yml` and into `ci-check.sh` (gate #7 granted). Sizes have grown since the audit: 82 KB each for the identical pair, 262 KB
+`.roomodes`.
+
 1. **Problem**: `.cursorrules` and `.windsurfrules` are byte-identical (`c662f42f…`, 76 KB each).
    `AGENTS.md` and `.openai.md` have drifted apart. `.roomodes` is 233 KB. That is ~20k tokens of
    static rules prepended to every request on those platforms before any agent does any work — a
