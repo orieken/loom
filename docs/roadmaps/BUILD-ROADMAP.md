@@ -3384,6 +3384,12 @@ coefficient, the changed file excluded, nothing-tested scoring 100 — plus a th
 integration routing: all killed. **M9 first survived**: its test made the report path a directory, which
 `os.Open` accepts on Unix, so the failure came from JSON decoding; it now uses an unreadable file.
 
+**Measurement log toward the floor** (append one row per CI run; set the floor once several exist):
+
+| Date | Commit(s) | Packages | Tested | Killed | Score | Run time |
+|---|---|---|---|---|---|---|
+| 2026-09-23 | `e2c0741..deb86b2` | 5 (two in integration mode) | 42 | 42 | 100.0% | ~3 min |
+
 **Not done from the original fix**: `backfill-unit-tests` step 6 still mutates by hand, and `run-tests`
 does not mention the runner — both can call `cmd/diff-mutation` once a floor exists.
 
