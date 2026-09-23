@@ -128,6 +128,10 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4 — same pin as loom-release.yml
+        with:
+          # Full history: the changed-line coverage step diffs against the
+          # commit before this push (or the PR base), which a depth-1 clone lacks.
+          fetch-depth: 0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v5 — same pin as loom-release.yml
         with:
           go-version-file: go.mod
@@ -185,6 +189,43 @@ jobs:
           fi
           awk -v t="$total" -v f="$COVERAGE_FLOOR" 'BEGIN { exit (t + 0 < f + 0) ? 1 : 0 }' \
             || { echo "FAIL: coverage ${total}% is below the ratchet floor ${COVERAGE_FLOOR}%"; exit 1; }
+      - name: Changed-line coverage (ADR-008, roadmap L3.58)
+        # The whole-module ratchet above is a one-way floor on legacy code.
+        # This holds NEW work to 85%: the lines this push (or PR) adds or
+        # modifies, measured against the commit before it. Same policy as the
+        # ratchet: it always reports, and gates only when the tests passed.
+        #
+        # Base: the PR's base, or on a push the pre-push head — every commit in
+        # the push is measured, not just the last. If that commit is missing
+        # (a new branch, or history rewritten by a force push) it falls back to
+        # HEAD~1 and says so, rather than silently measuring nothing.
+        #
+        # A changed Go file absent from coverage.out FAILS (UNMEASURED) — no
+        # silent pass. The one exclusion is listed, with its reason, in
+        # cmd/diff-coverage/run.go.
+        if: always()
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          if [[ ! -f coverage.out ]]; then
+            echo "NOT MEASURED: the test step produced no coverage profile"
+            exit 0
+          fi
+          base="${PR_BASE:-$PUSH_BEFORE}"
+          if [[ -z "$base" || "$base" =~ ^0+$ ]] || ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
+            echo "base '${base}' is not available (new branch or rewritten history) — measuring against HEAD~1"
+            base="HEAD~1"
+          fi
+          set +e
+          go run ./cmd/diff-coverage --base "$base" --profile coverage.out
+          status=$?
+          set -e
+          if [[ "${{ steps.gotest.outcome }}" != "success" ]]; then
+            echo "NOT GATED: tests failed, so coverage is not comparable to a clean run."
+            exit 0
+          fi
+          exit $status
       - name: Build the out-of-repo embedding example (D.2)
         # Independent of the test run: it compiles a separate module against the
         # public API. It was skipped for twelve days for no reason beyond step

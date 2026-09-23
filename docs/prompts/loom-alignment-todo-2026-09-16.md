@@ -379,6 +379,7 @@ the warning: `L3.38`–`L3.46` were all verified in code for this audit and all 
 
 ```bash
 go build ./... && go test ./... && golangci-lint run ./...   # the build gate IS golangci-lint
+go test ./... -coverprofile=coverage.out && go run ./cmd/diff-coverage --base origin/main   # changed lines >= 85% (L3.58)
 bash scripts/health-check.sh                                  # 0 failed, 8 pre-existing warnings
 bash scripts/generate-configs.sh && bash scripts/check-parity.sh   # after ANY shared/rules change
 bash scripts/ci-check.sh                                      # after scripts/ or shared/ changes (needs Docker)

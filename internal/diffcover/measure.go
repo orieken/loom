@@ -1,0 +1,130 @@
+package diffcover
+
+import (
+	"path"
+	"sort"
+	"strings"
+)
+
+// Line is one changed line, named by repository-relative path.
+type Line struct {
+	File string
+	Line int
+}
+
+// Report is the coverage of a change.
+type Report struct {
+	Executable int      // changed lines some coverage block spans
+	Covered    int      // of those, lines a test executed
+	Uncovered  []Line   // executable changed lines no test executed
+	Unmeasured []string // changed Go files the profile does not mention
+	Excluded   []string // changed Go files skipped by name, with no measurement
+}
+
+// Percent is Covered/Executable as a percentage. A change with no executable
+// lines is fully covered: there is nothing in it a test could have run.
+func (report Report) Percent() float64 {
+	if report.Executable == 0 {
+		return 100
+	}
+	return 100 * float64(report.Covered) / float64(report.Executable)
+}
+
+// Passes reports whether the change meets threshold and every changed file
+// was measured. An unmeasured file fails regardless of the percentage.
+func (report Report) Passes(threshold float64) bool {
+	return len(report.Unmeasured) == 0 && report.Percent() >= threshold
+}
+
+// Measurement is what Measure needs to judge a change.
+type Measurement struct {
+	Profile    Profile
+	Changes    Changes
+	ModulePath string // prefix of profile paths, e.g. github.com/orieken/loom
+	// Excluded names repository-relative paths skipped without measurement.
+	// An entry ending in "/" excludes that directory — for a nested module,
+	// whose files this module's profile can never contain.
+	Excluded map[string]bool
+}
+
+// Measure computes the coverage of every changed, measurable Go line.
+// Test files, testdata and non-Go files are not production code and are
+// ignored; anything else is either measured, explicitly excluded, or
+// reported as unmeasured.
+func Measure(measurement Measurement) Report {
+	report := Report{}
+	for _, file := range sortedFiles(measurement.Changes) {
+		if !isProductionGo(file) {
+			continue
+		}
+		if isExcluded(measurement.Excluded, file) {
+			report.Excluded = append(report.Excluded, file)
+			continue
+		}
+		blocks, measured := measurement.Profile[measurement.ModulePath+"/"+file]
+		if !measured {
+			report.Unmeasured = append(report.Unmeasured, file)
+			continue
+		}
+		report.addFile(file, measurement.Changes[file], blocks)
+	}
+	return report
+}
+
+func (report *Report) addFile(file string, lines []int, blocks []Block) {
+	for _, line := range lines {
+		executable, covered := lineCoverage(line, blocks)
+		if !executable {
+			continue
+		}
+		report.Executable++
+		if covered {
+			report.Covered++
+			continue
+		}
+		report.Uncovered = append(report.Uncovered, Line{File: file, Line: line})
+	}
+}
+
+// lineCoverage reports whether any block spans line, and whether any block
+// spanning it ran. Blocks sharing a boundary line are both consulted, so a
+// line is covered if either side of it executed.
+func lineCoverage(line int, blocks []Block) (bool, bool) {
+	executable, covered := false, false
+	for _, block := range blocks {
+		if line < block.StartLine || line > block.EndLine {
+			continue
+		}
+		executable = true
+		covered = covered || block.Covered
+	}
+	return executable, covered
+}
+
+func isExcluded(excluded map[string]bool, file string) bool {
+	if excluded[file] {
+		return true
+	}
+	for directory := path.Dir(file); directory != "." && directory != "/"; directory = path.Dir(directory) {
+		if excluded[directory+"/"] {
+			return true
+		}
+	}
+	return false
+}
+
+func isProductionGo(file string) bool {
+	if path.Ext(file) != ".go" || strings.HasSuffix(file, "_test.go") {
+		return false
+	}
+	return !strings.HasPrefix(file, "testdata/") && !strings.Contains(file, "/testdata/")
+}
+
+func sortedFiles(changes Changes) []string {
+	files := make([]string, 0, len(changes))
+	for file := range changes {
+		files = append(files, file)
+	}
+	sort.Strings(files)
+	return files
+}

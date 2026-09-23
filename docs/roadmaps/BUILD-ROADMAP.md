@@ -3297,6 +3297,40 @@ before it gates.
 ### L3.58 — Gate coverage on the changed code at 85%
 **Workstream**: OBSERVE · **Effort**: M · **Blocked by**: none · **Blocks**: L3.61 · *(raised 2026-09-22, ADR-008)*
 
+**SHIPPED** 2026-09-22 — `cmd/diff-coverage` (logic in `internal/diffcover`) measures the lines a
+change adds or modifies against the coverage profile and fails below 85%, naming every uncovered
+line. Wired as the *Changed-line coverage* step of the Go job in `framework-ci.yml`, after the
+whole-module ratchet, which is unchanged. Locally:
+`go test ./... -coverprofile=coverage.out && go run ./cmd/diff-coverage --base origin/main`.
+
+**Decisions made while building it:**
+- **Base is the pre-push head, not the previous commit** as the item said: `github.event.before`
+  covers every commit in a push. PRs use the PR base. A missing base (new branch, force push) falls
+  back to `HEAD~1` and says so. The Go job now checks out full history.
+- **An unmeasured file fails.** A changed production Go file absent from `coverage.out` is reported
+  `UNMEASURED` and fails whatever the percentage — Go 1.27 profiles every package, tested or not, so
+  absence means the file was not compiled into the run, and silence is not evidence.
+- **Untracked files are measured locally.** `git diff <base>` omits them, so a new, un-added file
+  would have passed a local run unmeasured; the adapter appends untracked Go files as wholly added.
+  Found by the tool's first self-measurement, which needed `git add -N` to see its own new files.
+- **Exclusions**: one, `examples/embedding/` (a separate module), in an explicit list in
+  `cmd/diff-coverage/run.go`. No file in the repo carries a `Code generated` header; the two named
+  `generated*.go` are hand-written and measured.
+- **The metric is an aggregate, by ADR-008's definition** — and that has a cost worth stating. An
+  untested function planted inside this item's own large, well-tested change was named line by line
+  as UNCOVERED, and the change still passed at 94.1%. Alone, the same function fails at 0.0%. A
+  small untested file can ride inside a big tested one. A per-file floor would close it and would
+  also fail one-line edits to thinly tested files. **Decided 2026-09-22: keep the aggregate**, as
+  ADR-008 defines it; the per-file gap is accepted, and the UNCOVERED list still names every line.
+
+**Proved red**: the planted untested function as the whole change fails (0.0%, six lines named) in an
+isolated worktree, and passes once a test is added. Ten mutants of the gate's logic — zero executions
+counted as covered, unmeasured files not failing, a deleted file keeping its path, an off-by-one block
+end, a directory exclusion matched as a name prefix, a count-less hunk read as empty, an empty change
+scoring zero, untracked files dropped, test files measured, an exclusive threshold — all applied,
+compiled and were killed. Its own tests caught one real gap first: a hunk line without a trailing space
+was skipped rather than rejected. Self-measured at 96.2% (255 of 265).
+
 1. **Problem**: The 85% rule is a whole-codebase number. Here it is a 66.3% ratchet described as
    aspirational; for an agent it is the easiest target to pad. New code is held to nothing specific.
 2. **Architectural Fix**: Measure the fraction of executable statements added or modified by the change
