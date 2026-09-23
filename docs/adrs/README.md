@@ -56,6 +56,8 @@ File names follow the pattern: `ADR-NNN-short-description.md` in kebab-case.
 | ADR-005 | Use explicit `.sh` install script paths          | Accepted | 2026-08-15 |
 | ADR-006 | Loom executes pipelines                         | Accepted | 2026-08-29 |
 | ADR-007 | UI test location and the evidence-bundle contract | Accepted | 2026-08-31 |
+| ADR-008 | Define "tested" by what the tests can catch, measured on the change | Accepted | 2026-09-22 |
+| ADR-009 | Retire the unit-level TDD ritual for agents; keep spec-derived acceptance tests | Accepted | 2026-09-22 |
 
 ---
 

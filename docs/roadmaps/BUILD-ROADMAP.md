@@ -3281,6 +3281,113 @@ silent one, and an unexplained noisy signal gets muted.
 
 ---
 
+## Workstream: OBSERVE — Test Value over Test Ritual
+
+Five items raised 2026-09-22 from a discussion of whether agent TDD earns its cost. Two ADRs carry
+the decisions, both Accepted 2026-09-22: **ADR-008** defines "tested" by what the tests can catch, measured on the change, and
+**ADR-009** retires the unit-level TDD ritual while keeping acceptance tests written from the spec.
+The order is load-bearing: **L3.58–L3.60 build the replacement checks before L3.61 removes anything**,
+so there is no window in which neither the ritual nor its replacement is in force.
+
+Two facts shaped these items. The `loom` module's coverage floor is 66.3%, so a whole-codebase 85%
+cannot gate here — the diff can. And this repository produced three checks in one week that passed
+while testing less than they claimed (C1, A7, the C.1 drift script); every item below is proved red
+before it gates.
+
+### L3.58 — Gate coverage on the changed code at 85%
+**Workstream**: OBSERVE · **Effort**: M · **Blocked by**: none · **Blocks**: L3.61 · *(raised 2026-09-22, ADR-008)*
+
+1. **Problem**: The 85% rule is a whole-codebase number. Here it is a 66.3% ratchet described as
+   aspirational; for an agent it is the easiest target to pad. New code is held to nothing specific.
+2. **Architectural Fix**: Measure the fraction of executable statements added or modified by the change
+   that the suite executes, against the merge base, and fail below 85%. Keep the existing whole-module
+   ratchet as a separate one-way floor. Generated files and `_test.go` are excluded by an explicit list,
+   not a pattern that can quietly grow. On a direct push to `main` the base is the previous commit,
+   stated in the step so nobody mistakes it for PR behaviour.
+3. **Target Files**: `.github/workflows/framework-ci.yml` (Go job), new `scripts/check-diff-coverage.sh`
+   (or a Go helper under `tools/`), `scripts/ci-check.sh`
+4. **Done when**: a change adding an untested exported function fails CI naming the uncovered
+   statements; the same change with a test passes; the whole-module ratchet still runs and is unchanged.
+
+### L3.59 — Mutation-test the changed code
+**Workstream**: OBSERVE · **Effort**: L · **Blocked by**: none · **Blocks**: L3.61 · *(raised 2026-09-22, ADR-008)*
+
+1. **Problem**: Mutation proof exists only as a manual step in `backfill-unit-tests` (step 6), run by a
+   model, for characterization nets. Nothing measures whether new tests can detect a fault in new code.
+2. **Architectural Fix**: Spike first — pick the Go tool by trying it on this module, not from a list.
+   Candidates: `gremlins` (go-gremlins), `go-mutesting`; confirm maintenance and diff-scoping before
+   adopting. Run it on the changed statements only. **Report-only** until a baseline exists across
+   several changes; then set the floor from the measurement and ratchet it like coverage. Mutants that
+   fail to apply or compile are listed separately and never counted as killed. Record the candidate tool
+   per language in each `*-conventions.md` (StrykerJS, Stryker.NET, mutmut, PIT for Java and Kotlin,
+   cargo-mutants, muter for Swift) as candidates to verify, not decisions.
+3. **Target Files**: `.github/workflows/framework-ci.yml`, new `scripts/check-diff-mutation.sh`,
+   `shared/rules/*-conventions.md`, `shared/skills/backfill-unit-tests/SKILL.md` (step 6 can call the
+   same runner), `shared/skills/run-tests/SKILL.md`
+4. **Done when**: a change whose new test executes but does not depend on a changed line reports that
+   line's mutant as surviving; a mutant that does not apply is reported as not applied, never as killed;
+   the floor is recorded with the measurements it came from.
+
+### L3.60 — Reject tests that cannot fail
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: L3.61 · *(raised 2026-09-22, ADR-008)*
+
+1. **Problem**: A test with no assertion — or whose only check is that an error is nil — passes
+   coverage and review alike. `code-reviewer`'s "would it fail?" catches it only when someone looks.
+2. **Architectural Fix**: An AST check over `_test.go` files, in the style of
+   `internal/state/untyped_test.go`: every `Test*` function must reach a failing call (`t.Error*`,
+   `t.Fatal*`, `testify` `assert`/`require`, or a helper that does). A test whose only assertions are
+   `NoError`/`NotNil` is flagged. Allowlist by name, with a reason, pinned by a test that forces the
+   justification to widen it — the same pattern as the safe-argument allowlist.
+3. **Target Files**: new `internal/testlint/` (or a `_test.go` fitness function at module root)
+4. **Done when**: a planted assertion-free test fails the check, a planted `NoError`-only test is
+   flagged, and the current suite passes with an allowlist whose every entry states why.
+
+### L3.61 — Retire the unit-level TDD ritual and `test-driven-developer`
+**Workstream**: PLATFORM · **Effort**: M · **Blocked by**: L3.58, L3.59 (report-only is enough), L3.60 · **Blocks**: none · *(raised 2026-09-22, ADR-009)*
+
+1. **Problem**: "ALWAYS practice TDD — Red-Green-Refactor" is a rule whose reason does not hold for an
+   agent that writes both sides, and the mechanisms contradict each other: `developer.md` says both
+   "write the failing test first" and "Do NOT write test files"; `TDDWorkflow` gives RED to
+   `unit-tester`, which does not follow the Three Laws, and audits it with `tool-validator`, which
+   audits skill files. Nothing fails today on a reference to a removed agent or workflow.
+2. **Architectural Fix**: (a) Add a check that fails on any reference to an agent, skill or workflow
+   that does not exist, proved red against a planted reference. (b) Replace the TDD rule in
+   `testing-conventions.md` and `CLAUDE.md` with ADR-008's definition of done; keep the Three Laws in
+   `testing-pyramid.md` as a technique. (c) `developer` owns its unit tests; remove the contradicting
+   line. (d) Remove `test-driven-developer` outright — no deprecation release, no alias (decided
+   2026-09-22) — with a CHANGELOG entry and release notes naming `developer` as the replacement. (e) Remove `tdd-workflow.md` and
+   its flat `tdd-state.json`, which also closes C.2's second finding. (f) `deliver-atdd` Phase 3 invokes
+   `developer`. (g) Regenerate configs; the drift check from C.1 fails until this is done.
+3. **Target Files**: `shared/rules/testing-conventions.md`, `CLAUDE.md`, `shared/agents/developer.md`,
+   `shared/agents/test-driven-developer.md`, `shared/workflows/tdd-workflow.md`,
+   `shared/skills/{deliver-atdd,orchestrate,bootstrap-project,backfill-unit-tests,run-tests}/SKILL.md`,
+   `shared/blueprints/*.md`, `shared/orchestration/*.md`, `docs/patterns/testing-pyramid.md`,
+   `cmd/loom/internal/platform/content.go`, generated configs, `shared/agents/CHANGELOG.md`
+4. **Done when**: the dangling-reference check is green with no exceptions added; no rule requires
+   Red-Green-Refactor; `developer.md` has one answer to who writes unit tests; the Training repo has a
+   backlog item to teach ADR-008's definition of done in place of agent TDD — the curriculum follows
+   the framework.
+
+### L3.62 — Keep acceptance authoring blind to the implementation
+**Workstream**: KERNEL · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-22, ADR-009)*
+
+1. **Problem**: The independence worth keeping is that acceptance tests come from the acceptance
+   criteria, not the code. `deliver-atdd` gets this by order — scenarios are written before
+   implementation. In `deliver-feature`, `qa-engineer` runs after `developer` and reads
+   `implementation-notes.md`, so its tests can describe what was built rather than what was asked for.
+   Unverified: which of `qa-engineer`'s current inputs under `loom run` include implementation artifacts.
+2. **Architectural Fix**: First establish the fact — list each stage input `qa-engineer` receives under
+   `loom run`. If the acceptance-scenario step can see implementation artifacts, split the step: author
+   scenarios from the `AnalysisState` projection (L2.10's `QAAcceptanceInput` already exists) before or
+   independently of the implementation, then automate them after. Under the markdown pipeline this is
+   judgment-only and says so.
+3. **Target Files**: `internal/state/projection.go`, `internal/orchestrator/` (plan and stage inputs),
+   `shared/agents/qa-engineer.md`, `shared/skills/deliver-feature/SKILL.md`
+4. **Done when**: a test asserts that the scenario-authoring stage's input contains no implementation
+   artifact, proved red by adding one.
+
+---
+
 ## Workstream: OBSERVE — Curriculum Alignment
 
 Eleven items: ten raised 2026-09-15 from a **two-way alignment audit** of loom against the Zero to Agent

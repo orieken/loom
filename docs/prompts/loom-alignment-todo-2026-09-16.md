@@ -405,3 +405,4 @@ work, and worth noting against the level so the curriculum stays honest about wh
 | 3 | The always-human list as a **compiled constant**, and silence is the wrong answer to a request that will never be honoured | 4 — Module 09 |
 | 4 | Approval binds to a **digest set**, not a file; an identical re-run survives, any edit invalidates, the record is kept | 4 — Module 09 |
 | 5 | Safe-argument allowlists pinned by a test that forces justification to widen | 3C — what never goes in a span |
+| 6 | **Replaces a curriculum practice, not just adds to it**: agent TDD is retired (ADR-009); teach ADR-008's definition of done — diff coverage, mutation on the diff, no test that cannot fail. Decided 2026-09-22 that the curriculum follows the framework | 2B / wherever agent TDD is taught |
