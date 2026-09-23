@@ -18,7 +18,10 @@ type Report struct {
 	Covered    int      // of those, lines a test executed
 	Uncovered  []Line   // executable changed lines no test executed
 	Unmeasured []string // changed Go files the profile does not mention
-	Excluded   []string // changed Go files skipped by name, with no measurement
+	// Statementless lists changed files absent from the profile because they
+	// hold no function body — declarations only, nothing a test could run.
+	Statementless []string
+	Excluded      []string // changed Go files skipped by name, with no measurement
 }
 
 // Percent is Covered/Executable as a percentage. A change with no executable
@@ -45,6 +48,10 @@ type Measurement struct {
 	// An entry ending in "/" excludes that directory — for a nested module,
 	// whose files this module's profile can never contain.
 	Excluded map[string]bool
+	// HasStatements reports whether a file holds anything coverage could
+	// instrument. A file absent from the profile fails as unmeasured unless
+	// this says it has no statements; nil, or any doubt, means it does.
+	HasStatements func(file string) bool
 }
 
 // Measure computes the coverage of every changed, measurable Go line.
@@ -63,12 +70,23 @@ func Measure(measurement Measurement) Report {
 		}
 		blocks, measured := measurement.Profile[measurement.ModulePath+"/"+file]
 		if !measured {
-			report.Unmeasured = append(report.Unmeasured, file)
+			report.addUnprofiled(file, measurement.HasStatements)
 			continue
 		}
 		report.addFile(file, measurement.Changes[file], blocks)
 	}
 	return report
+}
+
+// addUnprofiled files a changed file the profile never mentions. Go's
+// coverage profile has blocks only for statements inside function bodies, so
+// a declarations-only file is absent by construction, not unmeasured.
+func (report *Report) addUnprofiled(file string, hasStatements func(string) bool) {
+	if hasStatements != nil && !hasStatements(file) {
+		report.Statementless = append(report.Statementless, file)
+		return
+	}
+	report.Unmeasured = append(report.Unmeasured, file)
 }
 
 func (report *Report) addFile(file string, lines []int, blocks []Block) {

@@ -3310,6 +3310,12 @@ whole-module ratchet, which is unchanged. Locally:
 - **An unmeasured file fails.** A changed production Go file absent from `coverage.out` is reported
   `UNMEASURED` and fails whatever the percentage — Go 1.27 profiles every package, tested or not, so
   absence means the file was not compiled into the run, and silence is not evidence.
+  **Corrected 2026-09-23**: that inference was wrong for a file with no function body. Go's profile
+  has blocks only for statements inside functions, so a declarations-only file is absent by
+  construction — found when L3.59's one-`var` `exclusions.go` failed this gate as UNMEASURED. An
+  unprofiled file is now parsed: no function body or literal means `NO STATEMENTS` (listed, not
+  failed); anything else, or a file that cannot be parsed, stays UNMEASURED. Four mutants of the fix
+  — including "unreadable means no statements" — are killed.
 - **Untracked files are measured locally.** `git diff <base>` omits them, so a new, un-added file
   would have passed a local run unmeasured; the adapter appends untracked Go files as wholly added.
   Found by the tool's first self-measurement, which needed `git add -N` to see its own new files.

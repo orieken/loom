@@ -83,6 +83,7 @@ func measure(parsed options, diff diffSource) (diffcover.Report, error) {
 	}
 	return diffcover.Measure(diffcover.Measurement{
 		Profile: profile, Changes: changes, ModulePath: modulePath, Excluded: diffcover.RepositoryExclusions,
+		HasStatements: diffcover.FileHasStatements,
 	}), nil
 }
 
@@ -118,6 +119,9 @@ func printReport(out io.Writer, report diffcover.Report, threshold float64) {
 	}
 	for _, file := range report.Unmeasured {
 		fmt.Fprintf(out, "  UNMEASURED  %s — changed, but absent from the coverage profile\n", file)
+	}
+	for _, file := range report.Statementless {
+		fmt.Fprintf(out, "  NO STATEMENTS %s — declarations only; nothing a test could run\n", file)
 	}
 	for _, file := range report.Excluded {
 		fmt.Fprintf(out, "  EXCLUDED    %s\n", file)

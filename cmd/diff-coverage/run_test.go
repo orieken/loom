@@ -80,6 +80,18 @@ func TestAChangedFileMissingFromTheProfileFails(t *testing.T) {
 	}
 }
 
+func TestADeclarationsOnlyFileMissingFromTheProfilePasses(t *testing.T) {
+	project(t, "module example.com/m\n")
+	if err := os.MkdirAll("pkg", 0o750); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	write(t, "pkg/decls.go", "package pkg\n\nvar Limit = 3\n")
+	code, out := runWith(diffOf("+++ b/pkg/decls.go\n@@ -0,0 +1,3 @@\n"), "--base", "main")
+	if code != exitPass || !strings.Contains(out, "NO STATEMENTS pkg/decls.go") {
+		t.Errorf("exit %d, output:\n%s", code, out)
+	}
+}
+
 func TestTheNestedExampleModuleIsExcludedByName(t *testing.T) {
 	project(t, "module example.com/m\n")
 	code, out := runWith(diffOf("+++ b/examples/embedding/main.go\n@@ -1 +1,9 @@\n"), "--base", "main")
