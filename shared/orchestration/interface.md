@@ -48,7 +48,6 @@ legacyFallback: <skill>   # if set, /orchestrate --legacy routes here instead of
 | Workflow ID | File | Entry Skill/Agent |
 |---|---|---|
 | `feature-delivery` | `shared/workflows/feature-delivery-workflow.md` | `deliver-feature` |
-| `tdd` | `shared/workflows/tdd-workflow.md` | `test-driven-developer` |
 
 ## Custom Workflows
 

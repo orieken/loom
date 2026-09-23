@@ -16,6 +16,18 @@ Semantic-ish, not strict SemVer:
 When you bump an agent's `version:` frontmatter field, add a row under a new dated heading here in the same
 commit — the pre-commit hook checks for exactly this.
 
+## 2026-09-22 — the implementer owns its unit tests; `test-driven-developer` is removed (ADR-009)
+
+| Agent | Version | Change |
+|---|---|---|
+| test-driven-developer | 1.5.1 -> removed | Removed outright, no deprecation release (decided 2026-09-22). `developer` replaces it; `deliver-atdd` Phase 3 invokes `developer`. See `docs/MIGRATION.md` |
+| developer | 1.3.0 -> 1.4.0 | Minor: writes the unit tests for the code it changes, in either order, and proves each new test can fail. Replaces the Red-Green-Refactor section and removes "Do NOT write test files", which contradicted it |
+| unit-tester | 1.6.1 -> 1.6.2 | Patch: its "mirror image" sentence named the removed agent; it now contrasts with `developer` testing its own change |
+
+An agent that writes both the test and the code already knows the implementation, so the friction TDD
+depends on never occurs; the framework's own prompts conceded this. What is required now is ADR-008's
+result on the change, which three CI checks measure (L3.58–L3.60). Roadmap L3.61.
+
 ## 2026-09-22 — pipeline artifacts are read from the feature's workspace
 
 | Agent | Version | Change |

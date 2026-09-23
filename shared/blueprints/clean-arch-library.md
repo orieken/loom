@@ -91,7 +91,7 @@ Note: Go libraries put nothing under `internal/` unless it truly shouldn't be im
 
 | Level | Written by | Framework | What it tests here |
 |---|---|---|---|
-| Unit | `test-driven-developer` | Language default | Domain entities, use-cases with stubbed interfaces, factory behavior |
+| Unit | `developer` | Language default | Domain entities, use-cases with stubbed interfaces, factory behavior |
 
 Libraries have no other test levels. If you need integration or E2E, you're not writing a library — you're writing an application that happens to be reusable. Split it.
 

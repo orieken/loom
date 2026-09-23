@@ -26,10 +26,8 @@ substituted with a test double.
 - **Timely** — written just before (TDD) or immediately after (backfill/characterization) the
   production code they cover — never "we'll add tests later"
 
-**Written via**: `test-driven-developer` (greenfield — see The Three Laws below for the honest scope of
-when that discipline actually applies to agent-written code) or `unit-tester` (characterization mode for
-legacy code, or coverage backfill on existing trusted code — deliberately NOT TDD, since TDD is
-impossible when the code came first).
+**Written via**: `developer`, with the code it changes (ADR-009), or `unit-tester` (backfill /
+characterization of existing code).
 
 **Framework**: whatever the project's language convention specifies — Vitest for TypeScript, pytest for
 Python, JUnit 5 for Java, xUnit for C#, standard library `testing` for Go. See
@@ -44,7 +42,7 @@ to each other. Still fast enough to run frequently, but scope is wider than a si
 because it crosses too many boundaries or hits a real network/DB, that's a signal to either split it
 into narrower units or push it out to an E2E test — not a signal to relax FIRST.
 
-**Written via**: `qa-engineer` typically, or `test-driven-developer` when the integration itself IS the
+**Written via**: `qa-engineer` typically, or `developer` when the integration itself IS the
 feature (e.g., a new adapter wiring two services).
 
 ## API Contract Tests
@@ -102,35 +100,22 @@ acceptance level, is ATDD). Cited here so agents that practice it can point at o
 2. You may not write more of a unit test than is sufficient to fail. Not compiling counts as failing.
 3. You may not write more production code than is sufficient to pass the currently failing test.
 
-### When the discipline actually applies to agent-written code
+### Why the framework does not require it of agents (ADR-009)
 
 XP TDD's design benefit comes from **epistemic role separation and friction** — the person writing the
-failing test doesn't yet know how the implementer will solve it, and the implementer has to satisfy a
-constraint they didn't invent. That gap between "specifier" and "implementer" is where the design
-pressure lives.
+failing test doesn't yet know how the implementer will solve it. **An agent already knows.** It has a
+solution in context before the first `expect(...)` is written, so the test documents a decision already
+made rather than constraining one. Splitting the roles across two agents helps less than it looks: they
+share a model and an analysis, and so most of what the separation was meant to withhold.
 
-**When one agent writes both the test and the implementation, that gap collapses.** The LLM has a rough
-solution in context before the first `expect(...)` is written. The test doesn't constrain a design that
-hasn't been imagined yet — it documents a decision that's already implicit. Calling this "TDD" is
-technically accurate (tests are written first) but oversells the design benefit XP TDD is famous for.
+So the Three Laws are a **technique** here, not a rule. What *is* required is the result, measured on the
+change (ADR-008): changed lines at least 85% covered, no test without a path to a failure, and mutants on
+changed lines killed. Design pressure comes from mechanisms that do not depend on who wrote the test —
+cyclomatic complexity < 7 in CI, Sandi Metz's limits, SOLID, the `code-reviewer` pass.
 
-Two honest consequences:
-
-1. **`deliver-atdd` preserves the design pressure**. `qa-engineer` writes the scenarios and step
-   definitions; `test-driven-developer` implements against them. Real role separation — two different
-   agents, one owns the constraint, one satisfies it. Use this shape when design pressure matters.
-
-2. **`test-driven-developer` used standalone is not really doing XP TDD**. The test-first ordering is
-   preserved as a mechanical property, but the design pressure isn't. That's not a defect — for
-   single-agent work, **design pressure comes from other mechanisms**: cyclomatic complexity < 7 (a
-   real fitness function in this repo's CI), Sandi Metz's class/method line limits (documented in
-   `CLAUDE.md`), SOLID principles (`shared/rules/design-principles.md`), the `code-reviewer` agent's
-   pass, and the `refactor-to-pattern` skill. Those are doing the design work when a single agent is
-   coding. The tests are still valuable as executable specification and regression safety — just not as
-   the primary design lever.
-
-Neither shape is wrong. Both are legitimate patterns for different contexts. What's wrong is pretending
-the standalone case is producing the same benefit as the role-separated case.
+One independence is kept, for a different reason: **acceptance tests are written from the spec, before
+the implementation exists** (`deliver-atdd`). That catches "built the wrong thing", which tests derived
+from the finished code cannot. It is specification drift being caught, not TDD design pressure.
 
 ### `unit-tester` explicitly does NOT follow the Three Laws
 

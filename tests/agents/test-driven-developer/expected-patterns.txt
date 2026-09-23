@@ -1,7 +1,0 @@
-# Fuzzy patterns expected in test-driven-developer's output.
-
-409|Conflict
-EMAIL_ALREADY_REGISTERED
-Red.*Green|red.green|TDD|test.first
-domain.*layer|domain.check
-enumeration|timing.attack

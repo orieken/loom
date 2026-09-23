@@ -122,7 +122,7 @@ Reject any code that:
 
 | Level | Written by | Framework | What it tests here |
 |---|---|---|---|
-| Unit | `test-driven-developer` | Go: `testing` + table-driven / TS: Vitest | Tool execute logic with mocked adapters, workflow state transitions, persona template rendering |
+| Unit | `developer` | Go: `testing` + table-driven / TS: Vitest | Tool execute logic with mocked adapters, workflow state transitions, persona template rendering |
 | Integration | `qa-engineer` | Same as unit + test containers | Tool + adapter + real external service (staging or test container) |
 | API Contract | `qa-engineer` (or `api-test-generator` if the external API has an OpenAPI spec) | Sunday framework via `api` fixture | Schema conformance for every tool's input/output; external API client's contract with the upstream service |
 

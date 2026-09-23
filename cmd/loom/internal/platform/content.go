@@ -8,7 +8,7 @@ import (
 const craftsmanship = `## Craftsmanship Rules
 
 You must **strictly adhere** to the patterns defined in ARCHITECTURE_RULES.md (Clean Architecture, DDD, GoF patterns, and micro-rules).
-- **TDD/BDD First**: Drive design through testing. Feature code is incomplete without tests. Practice Red-Green-Refactor.
+- **Tests Are Proof**: Feature code is incomplete without tests that can fail. Changed lines >= 85% covered; test-first is a technique, not a rule (ADR-008, ADR-009).
 - **Kent Beck (Simple Design)**: 1) Passes tests, 2) Reveals intention, 3) No duplication, 4) Fewest elements.
 - **Martin Fowler (Refactoring)**: Use named refactoring operations instead of vague cleanups.
 - **Architectural Constraints & Fitness Functions**: Enforce cyclomatic complexity below 7 and functions below 30 LOC.

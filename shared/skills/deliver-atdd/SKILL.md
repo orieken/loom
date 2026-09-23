@@ -1,6 +1,6 @@
 ---
 name: deliver-atdd
-description: Runs an ATDD (Acceptance-Test-Driven Development) delivery loop -- qa-engineer writes scenarios, human reviews if configured, qa-engineer writes step definitions, human reviews if configured, test-driven-developer implements to green autonomously, qa-engineer runs the full suite, human reviews before ship. Which review gates are active is per-project config, so a team can phase them out as trust is earned rather than living with fixed ceremony forever.
+description: Runs an ATDD (Acceptance-Test-Driven Development) delivery loop -- qa-engineer writes scenarios, human reviews if configured, qa-engineer writes step definitions, human reviews if configured, developer implements to green autonomously, qa-engineer runs the full suite, human reviews before ship. Which review gates are active is per-project config, so a team can phase them out as trust is earned rather than living with fixed ceremony forever.
 triggers:
   keywords: ["deliver-atdd", "atdd delivery", "acceptance test driven", "atdd loop"]
   intentPatterns: ["/deliver-atdd *", "Deliver via ATDD *", "Run ATDD loop on *"]
@@ -13,13 +13,11 @@ approved before step definitions, step definitions approved before implementatio
 red-green loop to satisfy them) rather than `deliver-feature`'s 14-agent full-pipeline shape. Accepts a
 feature file already produced by `spec-writer` or hand-written to `features/TEMPLATE.md`.
 
-**Why this workflow specifically**: this is the shape where the Three Laws of TDD *actually* preserve
-their design-pressure benefit for agent-written code. `qa-engineer` writes the scenarios and step
-definitions; `test-driven-developer` implements against them. That role separation between "specifier"
-and "implementer" is what XP TDD depends on — see `docs/patterns/testing-pyramid.md`'s "When the
-discipline actually applies to agent-written code" section for the full framing. `test-driven-developer`
-used standalone (outside this workflow) is still valuable for spec/regression purposes but doesn't
-carry the same design pressure.
+**Why this workflow specifically**: the acceptance tests are written from the acceptance criteria
+before any implementation exists. `qa-engineer` writes the scenarios and step definitions; `developer`
+implements against them. That independence catches "built the wrong thing", which tests derived from
+the finished code cannot (ADR-009). It is not TDD design pressure — two agents sharing a model and an
+analysis share most of what that separation withheld; see `docs/patterns/testing-pyramid.md`.
 
 Do NOT use for features that need architectural review, security review, accessibility review, or the
 other conditional agents `deliver-feature` gates on — use `deliver-feature` instead; it's a superset in
@@ -118,12 +116,10 @@ a git commit, same as any other rule change in this repo.
     If `phased-out`: continue directly to Phase 3.
 
 ### Phase 3: Implementation loop (always autonomous)
-11. **Invoke test-driven-developer** with the feature spec + `scenarios.feature` as its acceptance
-    criteria. It runs its own inner red-green loop autonomously per its existing contract
-    (`shared/agents/test-driven-developer.md`, step 2 already includes the `search-ki` lookup added
-    in v1.1.0). Output: `.claude/feature-workspace/<feature-name>/tdd-report.md`.
-12. **No gate here.** The inner unit-test/dev loop is autonomous by design (see
-    `docs/AGENT_REFERENCE.md` entry #24) — reintroducing a gate here would defeat the whole reason to
+11. **Invoke developer** with the feature spec + `scenarios.feature` as its acceptance criteria. It
+    implements until the scenarios pass, writing the unit tests for the code it changes (ADR-008's
+    definition of done). Output: `.claude/feature-workspace/<feature-name>/implementation-notes.md`.
+12. **No gate here.** The implementation loop is autonomous by design — reintroducing a gate here would defeat the whole reason to
     use this workflow over `deliver-feature`, which already has an in-loop `code-reviewer`.
 
 ### Phase 4: Acceptance run
@@ -202,7 +198,7 @@ regression.
 | 0. Context Engineering | context-engineer | PASS | n/a (mandatory, non-skippable) |
 | 1. Scenario writing | qa-engineer | PASS | scenario-review: [active/phased-out] |
 | 2. Step definitions | qa-engineer | PASS | test-code-review: [active/phased-out] |
-| 3. Implementation | test-driven-developer | PASS | n/a (autonomous by design) |
+| 3. Implementation | developer | PASS | n/a (autonomous by design) |
 | 4. Acceptance run | qa-engineer | PASS | n/a |
 | 5. Ship | — | PENDING | ship-review: always active |
 
@@ -218,7 +214,7 @@ regression.
 ## Artifacts
 - docs/features/<feature-name>/scenarios.feature
 - docs/features/<feature-name>/test-code-report.md
-- docs/features/<feature-name>/tdd-report.md
+- docs/features/<feature-name>/implementation-notes.md
 - docs/features/<feature-name>/acceptance-report.md
 - docs/features/<feature-name>/delivery-summary.md
 ```

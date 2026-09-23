@@ -90,7 +90,7 @@ Reject any test that:
 
 | Level | Written by | Framework | What it tests here |
 |---|---|---|---|
-| Unit | `test-driven-developer` | Vitest | Matchers, resilience strategies, Zod schema logic, `BaseApiClient` composition |
+| Unit | `developer` | Vitest | Matchers, resilience strategies, Zod schema logic, `BaseApiClient` composition |
 | Integration | `qa-engineer` | Vitest | Client + adapter wiring, against test doubles or a Docker-composed dependency |
 | API Contract | `api-test-generator` (from OpenAPI) or `qa-engineer` | Playwright + Vitest via `api` fixture | Consumer-driven contract verification, endpoint schema conformance |
 
@@ -135,7 +135,7 @@ No acceptance or E2E-UI level — Sunday is API-only. Pair with `saturday` for f
 2. `architect` — validate `BaseApiClient` layering for the target API(s).
 3. `api-test-generator` — if an OpenAPI spec exists, generate the initial client + schema files.
 4. `qa-engineer` — write the integration and contract specs.
-5. `test-driven-developer` — implement any custom matchers or resilience extensions test-first.
+5. `developer` — implement any custom matchers or resilience extensions, with their unit tests.
 6. `code-reviewer` — enforce the Sunday pattern; reject direct `fetch` calls.
 7. `security-reviewer` — verify auth token handling, secret redaction.
 8. `sre-engineer` — validate OTel span cardinality.

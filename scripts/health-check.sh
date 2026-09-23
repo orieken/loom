@@ -388,7 +388,7 @@ echo "--- Test Repair Contract (agents that can write a test file) ---"
 CONTRACT_RULE="shared/rules/test-repair-contract.md"
 TEST_WRITING_AGENTS=(
   developer qa-engineer dx-engineer refactor-engineer
-  test-driven-developer unit-tester api-test-generator visual-qa-engineer
+  unit-tester api-test-generator visual-qa-engineer
 )
 if [[ -f "$SHARED_DIR/rules/test-repair-contract.md" ]]; then
   pass "$CONTRACT_RULE exists"

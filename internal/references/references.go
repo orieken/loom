@@ -6,7 +6,7 @@
 //   - a path — shared/agents/<name>.md, shared/skills/<name>/SKILL.md or
 //     shared/workflows/<name>.md — that no longer resolves, and
 //   - the bare name of something deliberately removed, listed in Rules.Retired.
-//     A path check alone cannot catch "invoke test-driven-developer": prose
+//     A path check alone cannot catch "invoke <removed-agent>": prose
 //     names agents far more often than it links them.
 //
 // Nothing failed on either before this package: a removed agent could stay
@@ -130,7 +130,7 @@ func retiredNames(file string, line int, text string, reasons map[string]string,
 }
 
 // retiredPatterns matches a name as a whole token: "developer" must not match
-// inside "test-driven-developer", nor "tdd" inside "tdd-state".
+// inside "senior-developer", nor "tdd" inside "tdd-state".
 func retiredPatterns(retired map[string]string) map[string]*regexp.Regexp {
 	patterns := map[string]*regexp.Regexp{}
 	for name := range retired {

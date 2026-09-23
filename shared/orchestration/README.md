@@ -17,7 +17,7 @@ Skills like `deliver-feature` continue to work identically without the runtime. 
 A team that:
 - does NOT invoke `/orchestrate`
 - does NOT set `orchestrationMode: "runtime"` in `.claude/delivery-policy.yaml`
-- does NOT adopt a `FeatureDeliveryWorkflow` or `TDDWorkflow` object
+- does NOT adopt a `FeatureDeliveryWorkflow` object
 
 …sees **zero behavior change from v3.1**. The runtime is pure addition.
 
@@ -25,9 +25,10 @@ A team that:
 
 See [`interface.md`](interface.md) for the Workflow registration contract.
 
-The two built-in Phase 3 workflows are:
+The built-in Phase 3 workflow is:
 - `FeatureDeliveryWorkflow` — wraps `deliver-feature` (see `shared/workflows/feature-delivery-workflow.md`)
-- `TDDWorkflow` — wraps `test-driven-developer` (see `shared/workflows/tdd-workflow.md`)
+
+A second, a Red-Green-Refactor loop, was retired with ADR-009 (2026-09-22).
 
 ## Declarative Pipelines
 
@@ -59,7 +60,6 @@ Skills and agents:
 
 Workflows (added by Ops 3.11-3.12):
 - `shared/workflows/feature-delivery-workflow.md`
-- `shared/workflows/tdd-workflow.md`
 
 ---
 *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) AOS Phase 3 Runtime layer. CC BY 4.0.*

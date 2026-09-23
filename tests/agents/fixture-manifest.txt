@@ -32,7 +32,6 @@ security-reviewer/expected-patterns.txt
 spec-writer/expected-patterns.txt
 sre-engineer/expected-patterns.txt
 tech-writer/expected-patterns.txt
-test-driven-developer/expected-patterns.txt
 tool-validator/expected-patterns.txt
 unit-tester/expected-patterns.txt
 visual-qa-engineer/expected-patterns.txt
@@ -53,7 +52,6 @@ context-engineer/actual-output.md
 spec-writer/actual-output.md
 product-owner/actual-output.md
 release-manager/actual-output.md
-test-driven-developer/actual-output.md
 unit-tester/actual-output.md
 agent-evaluator/actual-output.md
 context-auditor/actual-output.md

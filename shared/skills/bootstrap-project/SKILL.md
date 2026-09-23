@@ -69,8 +69,8 @@ Reason through each of these out loud in the response before producing artifacts
 - **2c. Dependency & integration map.** External systems the project touches, which need interface abstractions (per `architecture-guardrails.md` #1 and #5), which need OTel instrumentation (per #8 — adapter/interceptor layer only, never domain).
 
 - **2d. Testing pyramid coverage.** Cross-reference the blueprint's `testingLevels` against the user's project. Per `shared/rules/testing-conventions.md`, name the writing agent for each level:
-  - Unit → `test-driven-developer` (greenfield) or `unit-tester` (backfill)
-  - Integration → `qa-engineer` (or `test-driven-developer` when the integration IS the feature)
+  - Unit → `developer`, with the code (greenfield) or `unit-tester` (backfill)
+  - Integration → `qa-engineer` (or `developer` when the integration IS the feature)
   - API Contract → `api-test-generator` (from OpenAPI) or `qa-engineer` (hand-written)
   - Acceptance → `qa-engineer` inside `/deliver-atdd` or `/deliver-feature`
   - E2E / UI → `qa-engineer` following Saturday conventions

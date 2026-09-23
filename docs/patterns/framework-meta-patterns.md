@@ -45,12 +45,12 @@ ship. State + trace files written at every checkpoint.
 **When to use vs. skip**: The pattern shines for work with real specialist axes (design + review +
 security + QA + docs + deploy — five to seven distinct lenses) and real irreversibility (commits,
 migrations, deploys). Skip for single-axis work — a coverage backfill goes through
-`backfill-unit-tests` (2 stages, one auto-chained), not the full pipeline. `test-driven-developer`
-standalone is a legitimate single-agent alternative when the whole task fits one lens.
+`backfill-unit-tests` (2 stages, one auto-chained), not the full pipeline, and a small change a single
+`developer` pass can carry — with its own unit tests — needs no pipeline either.
 
 **Trade-offs**: The ceremony has a real fixed cost — every stage's contract file, every checkpoint,
 every artifact-handoff write. Worth it precisely when the work is complex enough to overflow a single
-agent's context or judgment. Not worth it for anything you'd hand to a solo `test-driven-developer` or
+agent's context or judgment. Not worth it for anything you'd hand to a solo `developer` or
 `review-pr` and get a good answer in one pass. `docs/features/context-engineering-framework/TODO.md`
 Epic 24 explicitly documents which agents run in the pipeline vs. standalone, and why the two
 mechanisms both exist rather than one subsuming the other.

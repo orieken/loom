@@ -2,7 +2,7 @@
 
 Every agent in this framework produces an output that *something* checks — another agent's review, a
 structural contract, a human approval gate, an aggregate metric measured after the fact, or (stated plainly
-where true) nothing yet. This doc makes that explicit for all 40 agents, one at a time, instead of leaving
+where true) nothing yet. This doc makes that explicit for all 39 agents, one at a time, instead of leaving
 it scattered implicitly across `deliver-feature/SKILL.md`, `shared/contracts/`, and each agent's own file.
 
 This is documentation of what already exists in v2 today — it does not introduce new agents or roles. Where
@@ -13,7 +13,7 @@ actually has running today.)
 
 ## How to read "Counterbalance"
 
-Five different *kinds* of check show up across these 40 agents, and they're not interchangeable:
+Five different *kinds* of check show up across these 39 agents, and they're not interchangeable:
 
 | Kind | What it catches | Example |
 |---|---|---|
@@ -278,38 +278,22 @@ API tests" on demand), there is none.
 **Gap**: Standalone invocations have no formal check on the generated tests' quality beyond a human reading
 the `api-test-report.md`.
 
-### 25. `test-driven-developer`
-**Role**: An autonomous, alternate red-green-refactor loop — explicitly authorized to iterate without asking
-for permission between steps, working directly from user-provided acceptance criteria rather than through
-`deliver-feature`.
-**Counterbalance**: The test suite itself (mechanical — tests pass or they don't). As of v1.1.0, also a
-`search-ki` lookup before test design and a `documentation-manager` recommendation (not auto-invoked) after
-a substantial session — see the 2026-07-13 CHANGELOG entry.
-**Gap — significant, and worth understanding clearly before choosing this over the full pipeline**: this
-agent deliberately bypasses every other counterbalance the normal pipeline has. No `code-reviewer` catches a
-SOLID violation, no `security-reviewer` catches a STRIDE-class vulnerability, no `accessibility-engineer`
-catches a semantic-HTML violation — none of that review happens unless a human separately runs it after the
-fact. This is a real, deliberate speed-for-safety tradeoff (autonomy without pausing), not an oversight — but
-it should be a conscious choice, not a default one, given how much of this framework's value elsewhere comes
-from exactly the reviews this agent skips. (This gap is about *review*, not *memory* — the memory-side gap,
-starting cold with no KI lookup and never routing learnings back afterward, was closed in v1.1.0.)
-
-### 26. `unit-tester`
-**Role**: The mirror image of `test-driven-developer` — writes unit tests for existing code without
+### 25. `unit-tester`
+**Role**: The mirror image of `developer` testing its own change — writes unit tests for existing code without
 modifying it, either to raise coverage on already-trusted code or to build a Michael Feathers-style
 characterization-test safety net before a legacy refactor or migration. Standalone, not gated behind
 `deliver-feature`.
-**Counterbalance**: Unlike `test-driven-developer`, this one isn't just a soft recommendation — the
+**Counterbalance**: This isn't just a soft recommendation — the
 `backfill-unit-tests` skill auto-chains a real `code-reviewer` pass against the new test files every time,
 because (unlike `documentation-manager`, where most sessions produce nothing worth promoting) a code-quality
 check on newly-written tests is cheap and useful every single time, not just sometimes.
-**Gap**: Still no `security-reviewer` or `accessibility-engineer` pass — same review-chain bypass
-`test-driven-developer` has, scoped down slightly since this agent only ever produces test files, never
+**Gap**: Still no `security-reviewer` or `accessibility-engineer` pass — a review-chain bypass,
+scoped down since this agent only ever produces test files, never
 production code. If a seam is genuinely required to make legacy code testable, that's explicitly *not*
 something this agent can do unilaterally — it's gated behind `approval-gates.md` gate #6, reported and
 held rather than performed.
 
-### 27. `refactor-engineer`
+### 26. `refactor-engineer`
 **Role**: Large-scale or multi-target structural refactoring — complexity violations flagged by
 `health-check.sh`, framework migrations, Boy Scout Rule debt from code-review, or an explicit modernization
 sprint. Invokes `context-engineer` as Step 0 to scope the bounded context and surface ADR constraints
@@ -333,7 +317,7 @@ Agents section above was finalized. It runs after `qa-engineer` in the `deliver-
 UI-touching features with heatmap or screenshot baseline data, and is documented here to preserve the
 existing numbering of agents 1–27.
 
-### 28. `visual-qa-engineer`
+### 27. `visual-qa-engineer`
 **Role**: Extends `qa-engineer`'s functional coverage into visual and interaction dimensions. Analyzes
 Saturday heatmaps (via `@orieken/saturday-ml-analyzer` on `heatmap-data/`) for cold spots on primary
 journey elements and Playwright screenshot baselines for pixel-level regressions. Produces
@@ -358,7 +342,7 @@ The following 11 read-only counter-auditor agents implement the opposing-force c
 never mutate files — each produces an audit findings report for a human or upstream agent to act on.
 (`memory-auditor`, the counter to `memory-engineer`, is documented at §22 under Standalone Agents above.)
 
-### 29. `context-auditor`
+### 28. `context-auditor`
 **Role**: Counter to `context-engineer`. Audits `.claude/feature-workspace/<feature-name>/context-manifest.md`
 after a delivery — checks for pinned files never read by downstream agents (context bloat), broken
 KI/ADR/source-file paths, and budget calculation inaccuracies.
@@ -369,7 +353,7 @@ was actually pinned — whether it helped or bloated downstream context windows.
 **Gap**: Can only audit post-delivery. Findings arrive too late to affect the current feature's context
 window — they are improvement data for the next delivery, not a live correction.
 
-### 30. `knowledge-auditor`
+### 29. `knowledge-auditor`
 **Role**: Counter to the `create-ki` skill. Audits newly authored Knowledge Items for frontmatter schema
 compliance (against `ki-frontmatter.schema.json`), semantic duplication against the existing KI corpus, and
 domain dictionary alignment.
@@ -379,7 +363,7 @@ agent flags candidates, humans decide.
 **Gap**: Two KIs encoding the same reusable pattern in different words can slip through. The agent catches
 structural overlap and keyword matches; purely conceptual duplicates require human review to confirm.
 
-### 31. `prompt-evaluator`
+### 30. `prompt-evaluator`
 **Role**: Counter to prompt authors (anyone editing `shared/agents/*.md` or `shared/skills/*/SKILL.md`).
 Audits for prompt-engineering hygiene — fabricated URLs in examples, hardcoded secrets, un-decoupled
 template examples that embed project-specific paths, and inconsistent voice across the agent's sections.
@@ -391,7 +375,7 @@ fully decoupled or free of fabricated URLs — detection requires reading compre
 `prompt-evaluator` finding is only as trustworthy as the run that produced it, which is not independently
 checked.
 
-### 32. `agent-evaluator`
+### 31. `agent-evaluator`
 **Role**: Promotes the `agent-eval` skill's golden-file evaluation logic into a dedicated agent persona.
 Runs evaluations against `shared/agents/` frontmatter contracts and prompt behavior expectations using
 fixture inputs from `tests/agents/<agent>/`, logging regression metrics to `shared/evaluation/`. Counter to
@@ -404,7 +388,7 @@ harness for batch sweeps.
 verdicts. Golden-file evals also only cover what fixture inputs exist; novel failure modes not covered by
 any current fixture will be missed.
 
-### 33. `rule-auditor`
+### 32. `rule-auditor`
 **Role**: Counter to rule authors (anyone editing `shared/rules/*.md`). Audits for internal consistency —
 contradictory constraints across files, dead path references (a rule cites a file that no longer exists on
 disk), and un-indexed rule files that would be invisible to agents loading only the indexed set.
@@ -415,7 +399,7 @@ contradict a hard constraint, surfacing the conflict for human resolution.
 in wording but resolve clearly in practice (e.g., "NEVER use X" and "use X only at the adapter layer").
 The agent flags apparent contradictions; humans resolve them.
 
-### 34. `pattern-reviewer`
+### 33. `pattern-reviewer`
 **Role**: Counter to pattern document authors (`docs/patterns/*.md`). Audits pattern docs for accuracy against
 the current codebase — stale code snippets (class or function names that were renamed or removed), broken
 file paths, and obsolete architectural references.
@@ -426,7 +410,7 @@ existence checks are fully deterministic.
 changed but kept its name won't be flagged by grep — the pattern doc could describe a no-longer-valid
 behavior using a still-valid class name.
 
-### 35. `tool-validator`
+### 34. `tool-validator`
 **Role**: Counter to skill authors (anyone editing `shared/skills/*/SKILL.md`). Audits skills for
 standalone-mode declaration, hidden MCP dependencies (a skill claims `Read`/`Glob`/`Grep` but its body
 pipes through an MCP tool not listed in `tools:`), frontmatter schema compliance, and valid parameter
@@ -438,7 +422,7 @@ the skill body compared against the declared `tools:` list.
 through pattern matching. No automated fitness function enforces that the declared `tools:` list is
 exhaustive.
 
-### 36. `documentation-auditor`
+### 35. `documentation-auditor`
 **Role**: Counter to `tech-writer` and prose documentation authors. Audits `README.md`,
 `docs/AGENT_REFERENCE.md`, and `docs/prompts/README.md` for staleness — stale counts, un-indexed agents,
 and deprecated skill references. Writes findings to `docs/audits/doc-audit-YYYY-MM-DD.md`.
@@ -450,7 +434,7 @@ doc-audit file is older than 14 days. Three automation paths: (a) on-change hook
 **Gap**: Catches presence vs. absence in reference docs, but not quality. An AGENT_REFERENCE entry that exists
 but is factually wrong about the agent's current behavior won't be caught by count or index checks alone.
 
-### 37. `retrieval-evaluator`
+### 36. `retrieval-evaluator`
 **Role**: Counter to retrieval skills and the RAG engine. Audits KI and ADR corpus retrievability using
 ADR-002 telemetry and `memory-registry.json` — flags zero-match queries as missing-KI or bad-metadata
 candidates, runs the approved regression set in `shared/evaluation/retrieval-regression.md`, and proposes
@@ -462,7 +446,7 @@ to retrieval quality). ADR-002 telemetry provides external signal, not just self
 to evaluate beyond the static regression set. It catches known past failure modes; novel retrieval gaps
 require real query volume to surface.
 
-### 38. `privacy-auditor`
+### 37. `privacy-auditor`
 **Role**: Counter to `security-reviewer` and developers. Audits pipeline artifacts in
 `.claude/feature-workspace/<feature-name>/` — *not source code* — for accidental PII in prompt examples,
 hardcoded tokens or passwords in implementation notes, and data boundary leaks (real data referenced in
@@ -474,7 +458,7 @@ credential contamination introduced during the delivery process — a different 
 PII can slip through. The agent detects obvious, un-obscured PII more reliably than deliberately or
 accidentally obfuscated forms.
 
-### 39. `model-tier-auditor`
+### 38. `model-tier-auditor`
 **Role**: Counter to agent authors. Scans `shared/agents/*.md` for missing `model_tier` frontmatter fields,
 invalid enum values (anything other than `light` / `default` / `heavy`), and tier assignments that mismatch
 the agent's operational profile — e.g., a read-only counter agent claiming `heavy` when `light` is clearly
@@ -487,7 +471,7 @@ tier — `model-tier-auditor` catches that drift before a harness run encounters
 counter agent claiming `heavy` tier), but boundary cases — when is `default` better served as `light`? —
 require understanding the agent's actual inference needs, not just its tool list.
 
-### 40. `exemplar-auditor`
+### 39. `exemplar-auditor`
 **Role**: Counter to the exemplar set a project declares in `.claude/exemplars.yaml`. Checks each entry
 against `shared/contracts/exemplar-contract.md` — the test still exists and runs, still carries its
 exemplar and issue/AC annotations, still has a confirmed digest, and still demonstrates what the manifest
@@ -507,7 +491,7 @@ rather than redundant.
 
 ## What this survey actually shows
 
-Reading all 40 agents together, three patterns stand out:
+Reading all 39 agents together, three patterns stand out:
 
 1. **The 14 pipeline agents are well-checked** — the fourteen the delivery plan invokes, per "What counts as
    a pipeline agent" above, which includes `visual-qa-engineer` and excludes the pre-pipeline `spec-writer`
@@ -523,9 +507,9 @@ Reading all 40 agents together, three patterns stand out:
    doc surfaces rather than settles.
 3. **`documentation-manager` vs. the memory-engineering skills was a real boundary problem, now resolved**
    (see its entry above — redesigned as the ad-hoc-session counterpart to `promote-memory`, same Candidate
-   Record contract, `GOTCHAS.md` retired in favor of KIs). `test-driven-developer`'s bypass of the whole
-   review chain is still a real, significant tradeoff, deliberately left as-is — worth a conscious choice
-   each time it's reached for, not a default one.
+   Record contract, `GOTCHAS.md` retired in favor of KIs). The standalone TDD agent's bypass of the whole
+   review chain was retired with the agent itself (ADR-009, 2026-09-22): `developer` now writes its own
+   unit tests inside pipelines that keep their reviews.
 
 ---
 *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*

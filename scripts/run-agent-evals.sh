@@ -100,7 +100,6 @@ contract_for_agent() {
     spec-writer)          echo "spec-contract.md" ;;
     product-owner)        echo "product-review-contract.md" ;;
     release-manager)      echo "release-plan-contract.md" ;;
-    test-driven-developer) echo "tdd-contract.md" ;;
     unit-tester)          echo "unit-test-contract.md" ;;
     refactor-engineer)    echo "refactoring-contract.md" ;;
     *)                    echo "" ;;

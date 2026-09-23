@@ -132,7 +132,7 @@ Same dependency direction rule as `clean-arch-service`: outer → inner only.
 
 | Level | Written by | Framework | What it tests here |
 |---|---|---|---|
-| Unit | `test-driven-developer` | Go `testing` table-driven / Vitest | Use-cases with mocked adapters, formatters, domain logic |
+| Unit | `developer` | Go `testing` table-driven / Vitest | Use-cases with mocked adapters, formatters, domain logic |
 | Integration | `qa-engineer` | Same as unit + testcontainers if needed | Adapters against real filesystem, real git, real registry |
 | E2E | `qa-engineer` | Go: invoke built binary via `os/exec`; TS: invoke via `child_process` | Full CLI runs, exit-code assertions, output-format assertions |
 

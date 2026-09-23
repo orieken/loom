@@ -116,7 +116,7 @@ The layer structure is identical across all five. The file extensions and idioms
 
 | Level | Written by | Framework | What it tests here |
 |---|---|---|---|
-| Unit | `test-driven-developer` | Vitest | Composables/hooks, adapters, domain, pure component render logic |
+| Unit | `developer` | Vitest | Composables/hooks, adapters, domain, pure component render logic |
 | Integration | `qa-engineer` | Vitest + Testing Library (Vue Testing Library / React Testing Library / etc.) | Component + composable + mocked adapter — full render trees with user interactions |
 | Acceptance | `qa-engineer` inside `/deliver-atdd` | Gherkin scenarios | Business-language scenarios that drive real browser interactions |
 | E2E / UI | `qa-engineer` following Saturday conventions | Cucumber.js + Playwright + Site-Centric pattern | Full user journeys against a real backend |

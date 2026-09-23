@@ -104,5 +104,4 @@ before the audit runs (no point auditing a malformed artifact).
 - `shared/orchestration/interface.md` — audit block schema in the Workflow contract
 - `shared/orchestration/pipeline-schema.md` — `audit.*` field reference
 - `shared/workflows/feature-delivery-workflow.md` — producer→auditor assignments in action
-- `shared/workflows/tdd-workflow.md` — producer→auditor assignments in the TDD loop
 - `docs/aos/governance-pairs.md` — all 15 governance pairs (the source of the mapping above)

@@ -162,7 +162,7 @@ Dependency direction: **outer → inner only.** Enforced by `architecture-guardr
 
 | Level | Written by | Framework | What it tests here |
 |---|---|---|---|
-| Unit | `test-driven-developer` | Language default (Vitest / Go `testing` / pytest / JUnit 5 / xUnit) | Use-cases with mocked adapters, domain entity invariants, factory logic |
+| Unit | `developer` | Language default (Vitest / Go `testing` / pytest / JUnit 5 / xUnit) | Use-cases with mocked adapters, domain entity invariants, factory logic |
 | Integration | `qa-engineer` | Same as unit + testcontainers | Adapter + real dependency (Postgres via testcontainers, Redis, etc.) |
 | API Contract | `qa-engineer` or `api-test-generator` | Sunday framework | HTTP/gRPC endpoint schema conformance |
 | E2E | `qa-engineer` | Saturday framework (if UI in front) or Sunday for API-only | Full request → DB → response paths |

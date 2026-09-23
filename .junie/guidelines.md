@@ -1001,8 +1001,8 @@ map.
 
 | Level | Written by | Framework | Speed budget | Principles |
 |---|---|---|---|---|
-| Unit | `test-driven-developer` (greenfield) or `unit-tester` (backfill/characterization) | project's language convention (Vitest/pytest/JUnit/xUnit/`testing`) | fractions of a second | FIRST |
-| Integration | `qa-engineer` (or `test-driven-developer` when the integration IS the feature) | same as unit | seconds, not minutes | FIRST |
+| Unit | `developer`, with the code it changes (ADR-009), or `unit-tester` (backfill/characterization) | project's language convention (Vitest/pytest/JUnit/xUnit/`testing`) | fractions of a second | FIRST |
+| Integration | `qa-engineer` (or `developer` when the integration IS the feature) | same as unit | seconds, not minutes | FIRST |
 | API Contract | `api-test-generator` (from OpenAPI) or `qa-engineer` (hand-written) | Sunday (`BaseApiClient` + `IHttpAdapter` + Fluent Matchers + Zod + Resilience Primitives) | seconds | Sunday's Declarative API Client Pattern |
 | Acceptance | `qa-engineer` inside `deliver-atdd` or `deliver-feature` | Gherkin (Cucumber.js / Reqnroll / pytest-bdd / Cucumber-JVM per language) | tens of seconds per scenario | scenario IS the AC, business language |
 | E2E / UI | `qa-engineer` following Saturday conventions | Saturday (Cucumber.js + Playwright, Site-Centric pattern) | minutes total for the suite | Saturday's Site-Centric Pattern |
@@ -1021,9 +1021,10 @@ ALWAYS validate schemas with Zod (`validateSchema()`).
 NEVER use custom retry loops — use `CircuitBreaker` or `ExponentialBackoffStrategy`.
 
 ## Test Quality
-CRITICAL: Test coverage MUST be >= 85%.
+CRITICAL: Lines a change adds or modifies MUST be >= 85% covered (ADR-008).
 CRITICAL: Cyclomatic complexity per function MUST be < 7.
-ALWAYS practice TDD/BDD — Red-Green-Refactor.
+ALWAYS prove a new test can fail: no test without a path to a failure; mutants on changed lines die.
+Test-first is a technique, not a rule (ADR-009) — write the test before or after, then show it fails.
 NEVER write feature code without tests.
 ALWAYS keep tests "moist," not fully dry — DRY the setup noise (via Flows, Factories, fixtures) but
 keep the critical assertion path visible in the test itself. A test verifying search results should
@@ -1148,7 +1149,6 @@ The following specialized personas are available. Invoke them by name when you n
 - **spec-writer**: Use to create or review any work item markdown before it enters the delivery pipeline — features, bugs, spikes, or chores. Interviews the user to build a complete spec, then runs a readiness critique against every downstream agent's needs before declaring the work item ready. Invoke with /spec-writer or ask Claude to "write a spec for [thing]" or "review this spec [file]".
 - **sre-engineer**: Use after the developer subagent has produced implementation-notes.md. Reviews the code specifically for Observability, Telemetry, Logging Cardinality, and Service Level Indicators (SLIs). Produces observability-report.md. MUST be invoked before the devops-engineer handles infrastructure.
 - **tech-writer**: Use after qa-engineer has produced qa-report.md. Updates all documentation for the implemented feature including README, API docs, ADRs, changelogs, and inline code docs. Produces docs-report.md. MUST be invoked after qa-engineer and before devops-engineer.
-- **test-driven-developer**: Evaluates acceptance criteria and autonomously writes tests first, then iterates on the implementation until the entire suite passes green. Generates feature documentation as a final step. In AOS Phase 3 (v3.2), also the entry point for TDDWorkflow when invoked via /orchestrate. External invocation contract unchanged.
 - **tool-validator**: Read-only counter agent to skill/tool authors. Audits shared/skills/*/SKILL.md for standalone-mode declaration, hidden MCP dependencies, frontmatter schema compliance, and valid parameter declarations. Never mutates skills — produces audit findings for human review.
 - **unit-tester**: Writes unit tests for existing code without modifying it -- either to raise coverage on working code or to build a characterization-test safety net around legacy code before a refactor or migration. Never touches source, not even to fix a bug it finds.
 - **visual-qa-engineer**: Use after qa-engineer has produced qa-report.md. Analyzes interaction heatmaps (via @orieken/saturday-ml-analyzer on heatmap-data/) and Playwright screenshot baselines for visual regression. Produces visual-qa-report.md. MUST be invoked on UI-touching features when heatmap instrumentation or Playwright visual snapshots are present.

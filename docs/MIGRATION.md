@@ -139,3 +139,21 @@ will be written.
 
 For update detection on pre-marker installs, use the filesystem forensic path documented in
 `docs/prompts/update-installed-framework.md` (the `done/` version covers this in detail).
+
+---
+
+# Removed: `test-driven-developer` and `TDDWorkflow` (2026-09-22, ADR-009)
+
+**Breaking**, and deliberately without a deprecation release: a release in between would have shipped
+the contradiction ADR-009 removes. If you invoke either by name, this is what to do instead.
+
+| Removed | Use instead |
+|---|---|
+| `test-driven-developer` agent | `developer` — it now writes the unit tests for the code it changes |
+| `/orchestrate --workflow tdd` (`shared/workflows/tdd-workflow.md`) | `/deliver-atdd` for acceptance-first delivery, or `developer` directly |
+| `.claude/feature-workspace/tdd-state.json` | nothing — safe to delete |
+
+**Why.** TDD's design benefit comes from a test writer who does not yet know the implementation, and an
+agent writing both always does. What the framework requires instead is the result, measured on the
+change (ADR-008): changed lines at least 85% covered, no test without a path to a failure, mutants on
+changed lines killed. Test-first remains a technique anyone may use; it is no longer a rule.

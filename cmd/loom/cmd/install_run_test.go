@@ -31,7 +31,7 @@ func TestExecuteInstallWritesManifestAndFilteredRules(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(target, ".claude/rules/python-conventions.md")); !os.IsNotExist(err) {
 		t.Fatalf("unexpected Python rule in Go-filtered install: %v", err)
 	}
-	if !strings.Contains(output.String(), "1 platforms, 40 agents, 69 skills, 6 rules installed") {
+	if !strings.Contains(output.String(), "1 platforms, 39 agents, 69 skills, 6 rules installed") {
 		t.Fatalf("unexpected summary: %s", output.String())
 	}
 }

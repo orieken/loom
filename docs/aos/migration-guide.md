@@ -192,7 +192,6 @@ automatic audit-after-producer behavior.
 ```
 
 ```
-/orchestrate --workflow tdd --spec features/my-feature.md
 ```
 
 `--legacy` flag routes to the pre-workflow skill directly if a regression is introduced:
@@ -203,14 +202,14 @@ automatic audit-after-producer behavior.
 See `shared/orchestration/README.md` for the runtime overview and `shared/orchestration/interface.md`
 for the Workflow plug-in contract.
 
-### FeatureDeliveryWorkflow and TDDWorkflow
+### FeatureDeliveryWorkflow
 
-Two built-in workflows are defined as part of Phase 3 (Ops 3.11-3.12):
+One built-in workflow is defined as part of Phase 3 (Op 3.11); a second, a Red-Green-Refactor loop
+(Op 3.12), was retired with ADR-009 on 2026-09-22:
 
 - `shared/workflows/feature-delivery-workflow.md` — wraps `deliver-feature`
-- `shared/workflows/tdd-workflow.md` — wraps `test-driven-developer`
 
-Both add the **audit-after-producer** composition pattern (Op 3.13): every stage that produces a
+It adds the **audit-after-producer** composition pattern (Op 3.13): every stage that produces a
 contract-bound artifact automatically invokes its corresponding counter agent before proceeding.
 This is enabled by default in the workflow but can be disabled per-project:
 
@@ -241,7 +240,6 @@ See `docs/aos/migration-plan.md` Phase 4 section for the planned scope.
 | Forgetting engine (manual) | `/forgetting-engine` | None |
 | Forgetting engine (monthly) | Configure cron + `.claude/hooks/scheduled-monthly.yaml` | `enabled: true` + cron |
 | Orchestration runtime | `/orchestrate --workflow feature-delivery --spec <file>` | None required |
-| Orchestration for TDD | `/orchestrate --workflow tdd --spec <file>` | None required |
 | Audit-after-producer | Automatic in workflow stages | Disable: `workflowAuditsEnabled: false` |
 | AOS layers seeded at install | `install.sh --full` | Once per project |
 

@@ -1,6 +1,6 @@
 ---
 name: orchestrate
-description: AOS Phase 3 runtime entry point. Loads a Workflow definition and executes its stages with checkpoint support, parallel branch handling, and automatic audit invocation. Teams that type /deliver-feature or /test-driven-developer continue to work identically — /orchestrate is the opt-in runtime path.
+description: AOS Phase 3 runtime entry point. Loads a Workflow definition and executes its stages with checkpoint support, parallel branch handling, and automatic audit invocation. Teams that type /deliver-feature continue to work identically — /orchestrate is the opt-in runtime path.
 triggers:
   keywords: ["orchestrate", "run workflow", "pipeline runtime"]
   intentPatterns: ["/orchestrate *", "run with orchestration", "orchestrate feature delivery"]

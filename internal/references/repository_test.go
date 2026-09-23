@@ -20,7 +20,14 @@ import (
 const repositoryRoot = "../.."
 
 // retired maps each removed agent, skill or workflow name to why it went.
-var retired = map[string]string{}
+var retired = map[string]string{
+	// ADR-009, roadmap L3.61: an agent writing both the test and the code has no
+	// test-writer/implementer friction to preserve; developer owns unit tests.
+	"test-driven-developer": "folded into developer (ADR-009); developer owns its unit tests",
+	"tdd-workflow":          "TDDWorkflow was retired with test-driven-developer (ADR-009)",
+	"TDDWorkflow":           "retired with test-driven-developer (ADR-009)",
+	"tdd-state.json":        "the retired TDDWorkflow's flat checkpoint (ADR-009, C.2)",
+}
 
 // placeholders are names used only as illustrations in example output.
 var placeholders = map[string]bool{
@@ -29,14 +36,17 @@ var placeholders = map[string]bool{
 
 // historical files record the past; each entry says why it is not rewritten.
 var historical = []string{
-	"*CHANGELOG.md",      // version history names what existed at the time
-	"docs/adrs/",         // decisions, including the ones that removed things
-	"docs/roadmaps/",     // plans and their shipped history
-	"docs/prompts/done/", // executed handoffs
-	"docs/aos/prompts/",  // executed AOS phase handoffs
-	"docs/blog-posts/",   // published writing
-	"docs/features/",     // archived deliveries
-	"docs/audits/",       // dated snapshots
+	"*CHANGELOG.md",              // version history names what existed at the time
+	"docs/adrs/",                 // decisions, including the ones that removed things
+	"docs/roadmaps/",             // plans and their shipped history
+	"docs/prompts/done/",         // executed handoffs
+	"docs/aos/prompts/",          // executed AOS phase handoffs
+	"docs/aos/migration-plan.md", // a completed plan, every operation checked off
+	"docs/prompts/README.md",     // index of handoffs; names what each executed one did
+	"docs/MIGRATION.md",          // records what each breaking change removed, by name
+	"docs/blog-posts/",           // published writing
+	"docs/features/",             // archived deliveries
+	"docs/audits/",               // dated snapshots
 	"docs/lessons-learned/",
 	"tests/agents/", // golden inputs and outputs, which cite fictional files
 	"*_test.go",     // test fixtures build fictional trees

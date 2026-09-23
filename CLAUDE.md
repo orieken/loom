@@ -8,7 +8,7 @@ These rules apply to every project, every language, every file.
 ## Non-Negotiable Rules
 
 - **Cyclomatic complexity < 7** on every function or method (the Cyclomatic Complexity Threshold, per `DOMAIN_DICTIONARY.md`) — no exceptions
-- **Unit test coverage ≥ 85%** for everything in `src/` and `lib/`
+- **Unit test coverage ≥ 85%** of the lines each change adds or modifies, and every test able to fail (ADR-008)
 - **Every external dependency** (DB, HTTP, filesystem, clock, queue) hides behind an interface
 - **Models and factories** are always separate files following the naming convention
 - **SOLID principles** apply at all times — one reason to change per class
@@ -54,8 +54,8 @@ If complexity is approaching 7, apply in order:
 
 - When modifying untested or legacy code, identify a seam and write characterization tests that capture
   the current behavior before changing it, even when that behavior is flawed.
-- Keep refactoring and behavior changes in separate commits. Complete the Red → Green → Refactor cycle
-  before moving to the next change.
+- Keep refactoring and behavior changes in separate commits, and finish each one — tests green, then
+  cleaned up — before moving to the next change.
 
 ---
 
@@ -112,7 +112,7 @@ Follow **Arrange / Act / Assert** in every test. One concept per test.
 Flag these immediately with explanation and a suggested fix:
 
 - Cyclomatic complexity >= 7
-- Test coverage below 85% in `src/` or `lib/`
+- Changed-line coverage below 85%, or a test that cannot fail
 - Boolean parameter on a public method (split into two functions)
 - File name not following `name.type.extension` convention
 - Direct instantiation of an infrastructure dependency inside a service or model

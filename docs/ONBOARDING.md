@@ -62,8 +62,6 @@ without a model computing its own checksums.
 - **`spec-writer`** — interviews you to build a feature spec, critiques its own readiness before the
   pipeline runs.
 - **`context-engineer`** — pre-flight context optimizer; runs before analyst on any non-trivial task.
-- **`test-driven-developer`** (`shared/agents/test-driven-developer.md`) — autonomous red-green-refactor
-  loop: writes tests first, then implements until green.
 - **`modernization-supervisor`** (`shared/agents/modernization-supervisor.md`) — coordinates parallel
   legacy-modernization workstreams (dependency updates, pattern refactors, coverage gaps).
 - **`documentation-manager`** — persistent agent that extracts long-lived architectural/debugging knowledge

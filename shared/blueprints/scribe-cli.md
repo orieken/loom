@@ -94,7 +94,7 @@ Reject any code that:
 
 | Level | Written by | Framework | What it tests here |
 |---|---|---|---|
-| Unit | `test-driven-developer` | Go `testing` table-driven + `testify` | `Post` validation, `Formatter` output, `Publisher` orchestration with mock adapters, dry-run semantics |
+| Unit | `developer` | Go `testing` table-driven + `testify` | `Post` validation, `Formatter` output, `Publisher` orchestration with mock adapters, dry-run semantics |
 | Integration | `qa-engineer` | Same as unit + testcontainers-go | Each adapter against a real service (S3: LocalStack; Bluesky: sandbox account; RSS: filesystem write + XML validation) |
 | E2E / UI | `qa-engineer` | Shell-based (e.g., `bats-core` or Go test invoking the built binary) | Full CLI runs: `scribe publish sample.md --dry-run --channel=rss,bluesky` and assert on the printed output + exit code |
 

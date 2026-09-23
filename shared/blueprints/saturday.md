@@ -94,7 +94,7 @@ Reject any PR that reintroduces the traditional POM (a "PageObject" class holdin
 
 | Level | Written by | Framework | What it tests here |
 |---|---|---|---|
-| Unit | `test-driven-developer` | Vitest | Filters, custom matchers, `BaseFlow` composition logic, `SiteManager` routing |
+| Unit | `developer` | Vitest | Filters, custom matchers, `BaseFlow` composition logic, `SiteManager` routing |
 | Acceptance | `qa-engineer` inside `/deliver-atdd` | Gherkin | The `.feature` files — scenario IS the acceptance criterion |
 | E2E / UI | `qa-engineer` following Saturday conventions | Cucumber.js + Playwright | Full user journeys, cross-app flows |
 
@@ -142,7 +142,7 @@ When `/adr` is invoked for ADR-000, pass this context:
 1. `analyst` — turn each seed scenario into an acceptance-criteria breakdown.
 2. `architect` — validate the layer boundaries for the target app(s) being tested.
 3. `qa-engineer` — write the `.feature` files and step definitions.
-4. `test-driven-developer` — implement any custom filters, flows, or `BaseElement` extensions test-first.
+4. `developer` — implement any custom filters, flows, or `BaseElement` extensions, with their unit tests.
 5. `code-reviewer` — enforce the Site-Centric pattern; reject POM regressions.
 6. `sre-engineer` — validate OTel span naming and cardinality.
 7. `devops-engineer` — wire Playwright projects into CI, configure Friday ingestion.

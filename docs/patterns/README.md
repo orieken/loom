@@ -69,11 +69,10 @@ structure, a concrete example, and the trade-offs each pattern brings, not just 
 - [test-suite-health-metrics.md](test-suite-health-metrics.md) — the four numbers that detect a suite
   getting greener and blinder at once (flake rate, time to diagnose, escaped defects, wall-clock), and
   why coverage is not one of them. Judgment-only: three of the four have no source loom can read.
-  Acceptance, E2E/UI), FIRST principles for unit tests, and the Three Laws of TDD with an honest
-  scoping note: XP TDD's design pressure only fully applies to agent-written code when there's role
-  separation (as in `deliver-atdd`). For single-agent `test-driven-developer` use, tests are still
-  valuable as executable spec and regression safety, but the design lever is elsewhere (complexity
-  thresholds, SOLID, `code-reviewer`). References Saturday and Sunday patterns for the top two levels
+  Acceptance, E2E/UI), FIRST principles for unit tests, and the Three Laws of TDD as a technique, not a
+  rule: an agent writing both test and code has no friction to preserve, so what is required is the
+  result on the change — coverage, tests that can fail, mutants killed (ADR-008, ADR-009) — with the
+  design lever elsewhere (complexity thresholds, SOLID, `code-reviewer`). References Saturday and Sunday patterns for the top two levels
   rather than restating them.
 - [agent-skill-pair-convention.md](agent-skill-pair-convention.md) — when the same `name` appears in
   both `shared/agents/` and `shared/skills/`: two intentional sub-patterns (**Delegation Wrapper**

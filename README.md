@@ -49,7 +49,7 @@ for how the Context/Memory/Learning loop actually works, and the pipeline diagra
 
 ```
 shared/                              <- single source of truth, edit here only
-├── agents/        (40 agents)       <- .md with YAML frontmatter, versioned (CHANGELOG.md)
+├── agents/        (39 agents)       <- .md with YAML frontmatter, versioned (CHANGELOG.md)
 ├── skills/        (69 skills)       <- .md with trigger keywords/patterns
 ├── rules/                           <- architecture-guardrails.md, design-principles.md, approval-gates.md
 ├── contracts/                       <- required-section contracts for pipeline agent handoffs
@@ -266,7 +266,7 @@ that's what those tools are actually capable of running.
 
 ---
 
-## Agent Roster (40)
+## Agent Roster (39)
 
 Full definitions in `shared/agents/`; versions tracked in `shared/agents/CHANGELOG.md`. For what actually
 checks each agent's work today (a contract, a downstream reviewer, a human approval gate, or an honestly
@@ -298,7 +298,6 @@ documented gap), see [docs/AGENT_REFERENCE.md](docs/AGENT_REFERENCE.md).
 | **memory-auditor** | Read-only counter-agent for the KI corpus — audits schema compliance, duplicate candidates, and stale metadata without modifying memory. |
 | **modernization-supervisor** | Coordinates parallel legacy-modernization workstreams (dependencies, patterns, test coverage). |
 | **api-test-generator** | Generates Sunday Framework API test suites (Playwright + Vitest + Zod) from a spec. |
-| **test-driven-developer** | Autonomous red-green-refactor loop: writes tests first, iterates until green. |
 | **unit-tester** | Backfills unit and characterization tests for existing code without modifying production implementation. |
 | **refactor-engineer** | Large-scale structural refactoring: builds characterization-test safety net, applies named Fowler operations, verifies behavior preservation. Never adds behavior in the same run. |
 | **visual-qa-engineer** | Analyzes interaction heatmaps and Playwright screenshot baselines for visual regression after qa-engineer. |

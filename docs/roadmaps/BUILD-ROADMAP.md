@@ -3478,6 +3478,35 @@ lenient: a method, or a helper outside the module, handed `t` is assumed able to
 ### L3.61 — Retire the unit-level TDD ritual and `test-driven-developer`
 **Workstream**: PLATFORM · **Effort**: M · **Blocked by**: L3.58, L3.59 (report-only is enough), L3.60 · **Blocks**: none · *(raised 2026-09-22, ADR-009)*
 
+**SHIPPED** 2026-09-22/23, except the Training backlog item, which lives in another repository —
+steps (a)–(g) all landed.
+
+- **(a) The safety net first** (`0536ba1`): `internal/references` fails on a path to an agent, skill or
+  workflow that does not exist, and on any name in its `retired` list. Its first run found a real dead
+  link in `shared/mcp/README.md`. Proved red on the repository and by eight mutants.
+- **(b) The rule**: `testing-conventions.md` now requires ADR-008's result — changed lines >= 85%
+  covered, every new test shown able to fail, mutants on changed lines killed — and calls test-first a
+  technique, not a rule. `CLAUDE.md` and the platform text embedded in `content.go` follow. No rule
+  requires Red-Green-Refactor any more.
+- **(c) One answer to who writes unit tests**: `developer` 1.4.0 writes them for the code it changes;
+  its "Do NOT write test files" line, which contradicted its own Red step, is gone.
+- **(d)/(e) Removed outright**: the agent, `TDDWorkflow` and its flat `tdd-state.json`, the golden
+  fixtures and their manifest entries, and two contract mappings in the test scripts that already
+  pointed at a `tdd-contract.md` which never existed. Putting the four names in `retired` made the
+  check list every live reference — about fifty files — and it is green with **no live exceptions
+  added**; three historical files joined the excluded list, each with its reason (`docs/MIGRATION.md`,
+  which must name what it removed, among them).
+- **(f)** `deliver-atdd` Phase 3 invokes `developer`; its rationale now says what the independence
+  buys — acceptance tests written from the spec — rather than TDD design pressure. A stale cross-
+  reference ("entry #24", which was `api-test-generator`) went with it.
+- **(g)** Configs regenerated; the drift check passes.
+
+Two counts moved with the removal and were updated with the source change as evidence: the README
+roster heading (caught by the inventory check) and an install test asserting "40 agents".
+
+**Open**: the Training repository needs a backlog item to teach ADR-008's definition of done in place
+of agent TDD. It is outside this repository, so it waits for approval to write there.
+
 1. **Problem**: "ALWAYS practice TDD — Red-Green-Refactor" is a rule whose reason does not hold for an
    agent that writes both sides, and the mechanisms contradict each other: `developer.md` says both
    "write the failing test first" and "Do NOT write test files"; `TDDWorkflow` gives RED to

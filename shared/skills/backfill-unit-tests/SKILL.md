@@ -12,8 +12,8 @@ When the user wants tests added to code that already exists and should not chang
 trusted code, or building a characterization-test safety net before refactoring or migrating legacy code.
 Accepts a file, directory, or module.
 
-Do NOT use when the code doesn't exist yet or is expected to change to satisfy the tests — use
-`test-driven-developer` instead (tests-first, code conforms to the tests). Do NOT use inside a
+Do NOT use when the code doesn't exist yet or is expected to change to satisfy the tests — that is
+`developer`'s work, which writes the tests for the code it changes (ADR-009). Do NOT use inside a
 `deliver-feature` run — `qa-engineer` already covers testing for a feature just implemented, including its
 own Legacy Code section for touching pre-existing files in that context; this skill is for standalone
 coverage/characterization work with no accompanying feature delivery.

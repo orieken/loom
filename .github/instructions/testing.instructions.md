@@ -21,8 +21,8 @@ map.
 
 | Level | Written by | Framework | Speed budget | Principles |
 |---|---|---|---|---|
-| Unit | `test-driven-developer` (greenfield) or `unit-tester` (backfill/characterization) | project's language convention (Vitest/pytest/JUnit/xUnit/`testing`) | fractions of a second | FIRST |
-| Integration | `qa-engineer` (or `test-driven-developer` when the integration IS the feature) | same as unit | seconds, not minutes | FIRST |
+| Unit | `developer`, with the code it changes (ADR-009), or `unit-tester` (backfill/characterization) | project's language convention (Vitest/pytest/JUnit/xUnit/`testing`) | fractions of a second | FIRST |
+| Integration | `qa-engineer` (or `developer` when the integration IS the feature) | same as unit | seconds, not minutes | FIRST |
 | API Contract | `api-test-generator` (from OpenAPI) or `qa-engineer` (hand-written) | Sunday (`BaseApiClient` + `IHttpAdapter` + Fluent Matchers + Zod + Resilience Primitives) | seconds | Sunday's Declarative API Client Pattern |
 | Acceptance | `qa-engineer` inside `deliver-atdd` or `deliver-feature` | Gherkin (Cucumber.js / Reqnroll / pytest-bdd / Cucumber-JVM per language) | tens of seconds per scenario | scenario IS the AC, business language |
 | E2E / UI | `qa-engineer` following Saturday conventions | Saturday (Cucumber.js + Playwright, Site-Centric pattern) | minutes total for the suite | Saturday's Site-Centric Pattern |
@@ -41,9 +41,10 @@ ALWAYS validate schemas with Zod (`validateSchema()`).
 NEVER use custom retry loops — use `CircuitBreaker` or `ExponentialBackoffStrategy`.
 
 ## Test Quality
-CRITICAL: Test coverage MUST be >= 85%.
+CRITICAL: Lines a change adds or modifies MUST be >= 85% covered (ADR-008).
 CRITICAL: Cyclomatic complexity per function MUST be < 7.
-ALWAYS practice TDD/BDD — Red-Green-Refactor.
+ALWAYS prove a new test can fail: no test without a path to a failure; mutants on changed lines die.
+Test-first is a technique, not a rule (ADR-009) — write the test before or after, then show it fails.
 NEVER write feature code without tests.
 ALWAYS keep tests "moist," not fully dry — DRY the setup noise (via Flows, Factories, fixtures) but
 keep the critical assertion path visible in the test itself. A test verifying search results should

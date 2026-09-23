@@ -73,8 +73,8 @@ shared/rules/approval-gates.md gates exactly 8 actions -- all of them genuinely 
 deploys, migrations, external API calls) -- not "anything that feels risky." docs/AGENT_REFERENCE.md
 categorizes every agent's counterbalance into one of four kinds (structural contract, downstream agent
 review, human approval gate, or aggregate/delayed metric) and is explicit about where a gap is real vs.
-where it's a conscious, accepted tradeoff (test-driven-developer bypasses the whole review chain
-on purpose, for speed, and that's written down rather than hidden).
+where it's a conscious, accepted tradeoff (a standalone TDD agent once bypassed the whole review
+chain on purpose, for speed, and that was written down rather than hidden — until ADR-009 retired it).
 
 ### 5. Auditing the auditor
 Three independent AI tools (Antigravity, Codex, Copilot) each ran a structural self-audit against this
