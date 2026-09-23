@@ -3331,6 +3331,31 @@ before it gates.
 ### L3.60 — Reject tests that cannot fail
 **Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: L3.61 · *(raised 2026-09-22, ADR-008)*
 
+**SHIPPED** 2026-09-22 — `internal/testlint` walks the module and fails any test with no path to
+`t.Error`/`t.Errorf`/`t.Fatal`/`t.Fatalf`/`t.Fail`/`t.FailNow`, following subtest closures and helpers
+handed the testing value, across packages and import aliases, through recursion. The fitness function
+is `internal/testlint/repository_test.go`; `permitted` is empty — all 600 tests in the module can fail.
+A second test fails on a pin that no longer matches, so a fixed test cannot leave a dead excuse behind.
+
+**What verifying the premise changed.** The "only asserts no error" half of the item is **not
+decidable in plain Go** and was dropped. A survey flagged 22 tests whose every failure sat under
+`if err != nil`, and each one inspected was a real assertion: `os.Stat(archived)` failing *is* "the
+file was not archived", `json.Unmarshal` failing *is* "the output does not parse". No AST rule tells
+that apart from "the code under test did not error". The repository uses no testify, so the
+`NoError`-only form that is decidable has nothing to run on. Weak-but-asserting tests are **L3.59's**
+job. ADR-008's third clause overstates what can be rejected mechanically; its fitness-function
+section (a test function with no assertion) is what shipped.
+
+**Proved red, and the proof is kept.** A fixture module under `internal/testlint/testdata/` pins
+every edge — nine tests that must be flagged, nine that must pass, `TestMain` and a lower-case name
+that are not tests — and the fixture test asserts the exact flagged set. Seven mutants of the checker
+were run; **two first attempts proved nothing**: M2 (accept any receiver's `Error`) did not compile,
+and its compiling rewrite *survived*, because the logger fixture called `slog.Default().Error` — a
+call, not a named receiver. The fixture now uses a named logger and all seven are killed. The aliased-
+import case was likewise vacuous until a helper that cannot fail was reached through the alias. Also
+proved on the real module: a planted assertion-free test and a stale pin both fail. Deliberately
+lenient: a method, or a helper outside the module, handed `t` is assumed able to fail.
+
 1. **Problem**: A test with no assertion — or whose only check is that an error is nil — passes
    coverage and review alike. `code-reviewer`'s "would it fail?" catches it only when someone looks.
 2. **Architectural Fix**: An AST check over `_test.go` files, in the style of
