@@ -1,7 +1,7 @@
 # `loom` Build Roadmap — L2 → L4
 
 **Status**: active build plan · **Framework version**: v3.3.14 · **Compiled**: 2026-08-29
-· **Status markers last reconciled**: 2026-09-18
+· **Status markers last reconciled**: 2026-09-22
 
 > **Reading the Problem statements.** Each item's "Problem" paragraph describes the state of the
 > repository *when this roadmap was compiled*, in present tense. Items that have since shipped carry
@@ -97,6 +97,9 @@ highest-leverage item in the entire document.
 ### M0.1 — Decide and record what `loom` is
 **Workstream**: KERNEL · **Effort**: S · **Blocked by**: none · **Blocks**: M0.4
 
+**SHIPPED** 2026-08-29 (epic 76, `9f6c90f` → `82a8c2d`) — ADR-006 "loom executes pipelines" is
+Accepted. The README half of the done-when was reconciled in `77367be` (2026-08-31).
+
 1. **Problem**: The repository is 52k lines of markdown specification and 8.9k lines of Go that only
    installs files. `README.md` and `docs/ARCHITECTURE.md` describe orchestration, telemetry, policy
    evaluation, and retrieval tiers as though implemented; all are prose with no executor. The
@@ -114,6 +117,10 @@ highest-leverage item in the entire document.
 
 ### M0.2 — Put the Go in CI and turn the framework's rules on itself
 **Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: M0.4 · *(audit H9)*
+
+**SHIPPED** 2026-08-29 (epic 76, `7c3e35d`) — golangci-lint job with `gocyclo` min-complexity 7 as
+the build gate, SHA-pinned actions, coverage ratchet, and a fixture manifest that fails CI on a
+deleted golden fixture.
 
 1. **Problem**: `.github/workflows/framework-ci.yml` runs five bash/python scripts and **zero Go
    steps** — no `go build`, `go test`, `go vet`, `golangci-lint`. There is no `.golangci.yml`.
@@ -135,6 +142,11 @@ highest-leverage item in the entire document.
 
 ### M0.3 — Fix the domain-layer dependency violation
 **Workstream**: TOOLS · **Effort**: S · **Blocked by**: M0.2 · **Blocks**: L2.1 · *(audit H4)*
+
+**SHIPPED** 2026-08-29 (`c67262e`) — the domain tool abstraction is transport-free. Since D.2,
+`internal/domain` re-exports the public `github.com/orieken/loom/tools` package rather than importing
+only stdlib; that package is itself pinned stdlib-only by `tools/deps_test.go`, and
+`shared/mcp/internal/domain/deps_test.go` enforces the boundary transitively.
 
 1. **Problem**: `shared/mcp/internal/domain/tool.go` — commented as "the framework's first-class
    abstraction for every capability" — imports `github.com/mark3labs/mcp-go/mcp` and
@@ -261,6 +273,11 @@ human-in-the-loop control.*
 
 ### L2.4 — Replace the hardcoded tool slice with a registry
 **Workstream**: TOOLS · **Effort**: M · **Blocked by**: M0.3 · **Blocks**: L2.2, L2.5, L3.2, L4.7
+
+**SHIPPED** 2026-08-29 (`a68a23e`) — `domain.Registry` with per-tool timeout, retry class and
+permission scope; adding a tool is one entry in `frameworkRegistrations`
+(`shared/mcp/internal/server/tool_provider.go`), no edit to `handler.go`. The declared timeouts are
+not yet enforced — that is L2.2.
 
 1. **Problem**: `buildFrameworkTools()` is a slice literal returning six constructor calls. Adding a
    tool means editing and recompiling the handler. No discovery, no per-tool metadata (timeout,
@@ -691,6 +708,10 @@ orchestration kernel exists, which is why they sit in Milestone 1 despite spanni
 ### D.1 — Fold the MCP server into the `loom` binary as `loom mcp serve`
 **Workstream**: PLATFORM · **Effort**: M · **Blocked by**: none · **Blocks**: D.3, D.5
 
+**SHIPPED** 2026-08-29 (epic 75 Phase A, `248a742`) — `loom mcp serve`, tested in
+`cmd/loom/cmd/mcp_serve_test.go`; `.goreleaser.yaml` builds the single `loom` binary. The `brew
+install` half of the done-when was not re-verified in the 2026-09-22 reconciliation.
+
 1. **Problem**: The MCP server is a separate module with its own entrypoint
    (`shared/mcp/cmd/mcp-server/main.go`, own `go.mod`), while the distributed binary is `cmd/loom/`.
    Teams adopting via `brew install orieken/tap/loom` get the installer but not the server — the
@@ -707,6 +728,9 @@ orchestration kernel exists, which is why they sit in Milestone 1 despite spanni
 
 ### D.2 — Publish the embedding API as a semver'd public package
 **Workstream**: PLATFORM · **Effort**: M · **Blocked by**: M0.3, L2.4 · **Blocks**: D.5
+
+**SHIPPED** 2026-08-29 (epic 75 Phase B, `f597c8d`; example tidied `d23e5cd`) — public `tools/`
+package, stdlib-only by `tools/deps_test.go`; `examples/embedding` is built by `framework-ci.yml`.
 
 1. **Problem**: `register.FrameworkTools` is the right seam for "use loom's tools in your own MCP
    server," but it takes `*server.MCPServer` from `mark3labs/mcp-go` — embedding it welds every
@@ -728,6 +752,9 @@ orchestration kernel exists, which is why they sit in Milestone 1 despite spanni
 ### D.3 — Maturity-level install profiles: `loom init --level N`
 **Workstream**: PLATFORM · **Effort**: L · **Blocked by**: D.1 · **Blocks**: D.4 · *(audit H10 context tax)*
 
+**SHIPPED** 2026-08-29 (epic 75 Phase C, `762457c`) — `shared/levels.yaml` with a documented
+core-bundle byte ceiling (lowered by L3.19 on 2026-09-22).
+
 1. **Problem**: The maturity ladder exists in this roadmap but not in the product. `loom install`
    drops the full corpus — 40 agents, 70 skills, every language convention — on every project, so a
    Level 1 team pays the full context tax (C.1's ~20k-token problem) for capabilities three levels
@@ -747,6 +774,9 @@ orchestration kernel exists, which is why they sit in Milestone 1 despite spanni
 ### D.4 — Teach `loom health` to report maturity level
 **Workstream**: PLATFORM · **Effort**: M · **Blocked by**: D.3 · **Blocks**: none
 
+**SHIPPED** 2026-08-29 (epic 75 Phase D, `8991d0b`) — `loom health` infers maturity level;
+`TestInferMaturityAcrossAllLevels` covers all four.
+
 1. **Problem**: "Help teams graduate from Level 1 to 2 to 3" has no instrument. Nothing tells a
    team what level they are at, what evidence supports that, or what specifically is missing for
    the next level. Adoption progress is vibes.
@@ -763,6 +793,10 @@ orchestration kernel exists, which is why they sit in Milestone 1 despite spanni
 
 ### D.5 — Grow the MCP surface from lint tools to framework capabilities
 **Workstream**: PLATFORM · **Effort**: L · **Blocked by**: D.1, D.2, L2.9 (state-read tools only) · **Blocks**: none
+
+**PARTIAL** — `validate_artifact` shipped structural-only (`c0e8441`, 2026-08-29). The other three
+tools were waiting on L2.12, L3.9 and L2.16, **all of which have since shipped**, so `pipeline_state`
+(the half of the done-when still missing) is now unblocked. Status verified 2026-09-22.
 
 1. **Problem**: The server exposes six introspective lint/search tools. The framework's actual
    capabilities — artifact contract validation, pipeline state, telemetry queries, policy

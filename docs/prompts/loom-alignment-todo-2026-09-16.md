@@ -363,8 +363,10 @@ the warning: `L3.38`–`L3.46` were all verified in code for this audit and all 
       matched), and both hook headers, which described an `enabled:` switch that does not exist. The
       pattern is prose describing a mechanism rather than the mechanism — and the marked-comment
       convention catches none of it, because none of them was marked.
-- [ ] Two standing `health-check` warnings: doc-audit now **42 days** old; `CODEMAP.md` stale. Both
+- [x] Two standing `health-check` warnings: doc-audit now **42 days** old; `CODEMAP.md` stale. Both
       one command (`documentation-auditor`; `bash scripts/generate-codemap.sh`).
+      **Cleared 2026-09-18** (`docs: clear the two stale-artifact warnings`); `health-check` on
+      2026-09-22 reports 373 passed, **0 warned**.
 - [x] Exemplar audits scheduled but disabled — **settled by `A10`, and the framing was wrong.** It is
       not that the entries are switched off; **loom dispatches no hooks at all** (`shared/hooks/README.md`:
       "the executor for them is roadmap L3.10"). `enabled:` is a flag for a runner the project supplies,

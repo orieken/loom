@@ -13,12 +13,13 @@ until its consumers have been checked and the proposed action has been approved.
 - [x] Retire the legacy extensionless `install`/`uninstall` path in favor of `install.sh` and
   `uninstall.sh`. Remove its unconsumed `.claude.md` compatibility source and record the convention in
   ADR-005.
-- [ ] Keep `README.md`, `LICENSE-CONTENT.md`, `AGENTS.md`, `CLAUDE.md`, `.openai.md`, and
+- [x] Keep `README.md`, `LICENSE-CONTENT.md`, `AGENTS.md`, `CLAUDE.md`, `.openai.md`, and
   `CODEMAP.md` at the repository root. Their locations are conventional or explicitly consumed by
   platform tooling and validation scripts.
-- [ ] Keep the root `ARCHITECTURE_RULES.md`, `DOMAIN_DICTIONARY.md`, and `TEAM_TOPOLOGY.md` symlinks.
+- [x] Keep the root `ARCHITECTURE_RULES.md`, `DOMAIN_DICTIONARY.md`, and `TEAM_TOPOLOGY.md` symlinks.
   They expose canonical files from `shared/` at fixed compatibility paths used by skills and generated
-  platform configurations.
+  platform configurations. *Verified 2026-09-22: all six root files present; the three symlinks
+  resolve into `shared/`.*
 
 ## `docs/` Root
 
@@ -54,9 +55,10 @@ until its consumers have been checked and the proposed action has been approved.
   `docs/ARCHITECTURE.md` and `docs/ONBOARDING.md`. The current check reported zero drift while both files
   contained stale counts. Wiring this new fitness-function coverage requires the repository's approval
   gate before implementation.
-- [ ] Keep `docs/AGENT_REFERENCE.md`: all 39 canonical agent names are represented and its stated count is
-  current.
-- [ ] Keep `docs/MIGRATION.md`: it documents the supported pre-`shared/` migration and current version
+- [x] Keep `docs/AGENT_REFERENCE.md`: all 39 canonical agent names are represented and its stated count is
+  current. *Re-verified 2026-09-22: 40 agents (41 files less `CHANGELOG.md`), every name present;
+  `check-inventory-drift.sh` reports 0 drift.*
+- [x] Keep `docs/MIGRATION.md`: it documents the supported pre-`shared/` migration and current version
   marker behavior.
 
 ### Link-check result
