@@ -90,6 +90,14 @@ starts in); embedders use `register.FrameworksAt(logWriter, rootDir)`.
 Residual: a path is checked when the tool is called and then opened by name, so a link swapped in
 between the two would be followed. Opening through `os.Root` end to end would close it.
 
+## Deadlines and cancellation (roadmap L2.2)
+
+Each registration declares a `Timeout` (60s for tools that walk a project, 15s for corpus search).
+`loom mcp serve` applies it to every call; embedders adapting `register.Frameworks` should apply the
+same field. A call's context reaches every walk, every per-file analysis loop and both retrievers, so
+a client that disconnects or a deadline that passes stops the work — within 100ms of cancellation for
+a walk, by test — and the tool returns an error naming the cancellation rather than a partial result.
+
 ## Installing into a downstream project
 
 If you already have an MCP server, see

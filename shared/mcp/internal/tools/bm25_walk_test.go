@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,7 +13,7 @@ import (
 func TestTheDocsIndexIgnoresLinkedFilesFromOutside(t *testing.T) {
 	retriever := indexedDocsWithAnOutsideLink(t)
 
-	refs, err := retriever.Retrieve("launch", nil, "")
+	refs, err := retriever.Retrieve(context.Background(), "launch", nil, "")
 	if err != nil {
 		t.Fatalf("Retrieve: %v", err)
 	}
@@ -35,8 +36,29 @@ func indexedDocsWithAnOutsideLink(t *testing.T) *BM25Retriever {
 	if err != nil {
 		t.Fatalf("NewBM25Retriever: %v", err)
 	}
-	if err := retriever.EnsureIndex([]string{docs}); err != nil {
+	if err := retriever.EnsureIndex(context.Background(), []string{docs}); err != nil {
 		t.Fatalf("EnsureIndex: %v", err)
 	}
 	return retriever
+}
+
+// Every document is indexed, not just the first. A negated error check in
+// the indexing loop stopped after one file and still passed a one-document
+// test — the report-only mutation job's third run found it (L3.59).
+func TestTheDocsIndexIndexesEveryDocument(t *testing.T) {
+	docs := t.TempDir()
+	for _, name := range []string{"alpha.md", "beta.md", "gamma.md"} {
+		WriteFile(t, filepath.Join(docs, name), "# "+name+"\n\nshared keyword\n")
+	}
+	retriever, err := NewBM25Retriever(filepath.Join(t.TempDir(), "docs.db"))
+	if err != nil {
+		t.Fatalf("NewBM25Retriever: %v", err)
+	}
+	if err := retriever.EnsureIndex(context.Background(), []string{docs}); err != nil {
+		t.Fatalf("EnsureIndex: %v", err)
+	}
+	refs, err := retriever.Retrieve(context.Background(), "keyword", nil, "")
+	if err != nil || len(refs) != 3 {
+		t.Errorf("retrieved %d documents (err %v), want all three indexed", len(refs), err)
+	}
 }

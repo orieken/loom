@@ -1,6 +1,7 @@
 package analyzers
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -33,7 +34,7 @@ func TestCollectFilesNeverFollowsASymbolicLink(t *testing.T) {
 		t.Fatalf("symlink dir: %v", err)
 	}
 
-	files, err := CollectFiles(root, goFiles)
+	files, err := CollectFiles(context.Background(), root, goFiles)
 	if err != nil {
 		t.Fatalf("CollectFiles: %v", err)
 	}
@@ -47,7 +48,7 @@ func TestCollectFilesSkipsUninterestingDirectoriesAndFiltersByInclude(t *testing
 	for _, name := range []string{"a.go", "b.txt", "sub/c.go", "vendor/d.go", "node_modules/e.go", ".hidden/f.go"} {
 		write(t, filepath.Join(root, name), "x")
 	}
-	files, err := CollectFiles(root, goFiles)
+	files, err := CollectFiles(context.Background(), root, goFiles)
 	if err != nil {
 		t.Fatalf("CollectFiles: %v", err)
 	}
@@ -65,11 +66,11 @@ func TestCollectFilesSkipsUninterestingDirectoriesAndFiltersByInclude(t *testing
 func TestCollectFilesReturnsASingleFileAsItself(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "only.go")
 	write(t, file, "package only")
-	files, err := CollectFiles(file, goFiles)
+	files, err := CollectFiles(context.Background(), file, goFiles)
 	if err != nil || len(files) != 1 || files[0] != file {
-		t.Errorf("CollectFiles(file) = %v, %v; want the file itself", files, err)
+		t.Errorf("CollectFiles(context.Background(), file) = %v, %v; want the file itself", files, err)
 	}
-	if _, err := CollectFiles(filepath.Join(t.TempDir(), "missing"), goFiles); err == nil {
+	if _, err := CollectFiles(context.Background(), filepath.Join(t.TempDir(), "missing"), goFiles); err == nil {
 		t.Error("a missing path was walked without error")
 	}
 }
@@ -85,12 +86,12 @@ func TestAWalkPastItsCeilingAborts(t *testing.T) {
 		"byte total": {files: 100, bytes: 25},
 	} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := collectWithin(root, goFiles, limits); !errors.Is(err, ErrWalkTooLarge) {
+			if _, err := collectWithin(context.Background(), root, goFiles, limits); !errors.Is(err, ErrWalkTooLarge) {
 				t.Errorf("err = %v, want ErrWalkTooLarge", err)
 			}
 		})
 	}
-	if files, err := collectWithin(root, goFiles, walkLimits{files: 3, bytes: 30}); err != nil || len(files) != 3 {
+	if files, err := collectWithin(context.Background(), root, goFiles, walkLimits{files: 3, bytes: 30}); err != nil || len(files) != 3 {
 		t.Errorf("a walk exactly at its ceilings = %v, %v; want all three files", files, err)
 	}
 }

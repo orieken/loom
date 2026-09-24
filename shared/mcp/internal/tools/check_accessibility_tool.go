@@ -45,7 +45,7 @@ func (t *CheckAccessibilityTool) OutputSchema() json.RawMessage {
 	return reflectSchema(&analyzers.AccessibilityReportResult{})
 }
 
-func (t *CheckAccessibilityTool) Execute(_ context.Context, request domain.ToolRequest) (*domain.ToolResult, error) {
+func (t *CheckAccessibilityTool) Execute(ctx context.Context, request domain.ToolRequest) (*domain.ToolResult, error) {
 	t.logger.Info("Handling check_accessibility request")
 
 	target := resolveAccessibilityTarget(request)
@@ -57,7 +57,7 @@ func (t *CheckAccessibilityTool) Execute(_ context.Context, request domain.ToolR
 		return domain.NewErrorResult(err.Error()), nil
 	}
 
-	result, err := t.analyzer.Analyze(target)
+	result, err := t.analyzer.Analyze(ctx, target)
 	if err != nil {
 		t.logger.Error("Accessibility analysis failed", "error", err)
 		return domain.NewErrorResult(fmt.Sprintf("Accessibility analysis failed: %v", err)), nil

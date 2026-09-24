@@ -2,6 +2,7 @@ package analyzers
 
 import (
 	"bufio"
+	"context"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -55,16 +56,16 @@ var (
 	htmlHasLangRe             = regexp.MustCompile(`(?i)\blang\s*=`)
 )
 
-func (a *AccessibilityAnalyzer) Analyze(path string) (*AccessibilityReportResult, error) {
+func (a *AccessibilityAnalyzer) Analyze(ctx context.Context, path string) (*AccessibilityReportResult, error) {
 	result := &AccessibilityReportResult{Success: true, Path: path, Violations: []AccessibilityViolation{}}
 
-	files, err := a.collectFiles(path)
+	files, err := a.collectFiles(ctx, path)
 	if err != nil {
 		return nil, err
 	}
 	result.TotalFiles = len(files)
-	for _, f := range files {
-		a.analyzeFile(f, result)
+	if err := ForEachFile(ctx, files, func(file string) { a.analyzeFile(file, result) }); err != nil {
+		return nil, err
 	}
 	result.ViolationsCount = len(result.Violations)
 	if result.ViolationsCount == 0 {
@@ -75,8 +76,8 @@ func (a *AccessibilityAnalyzer) Analyze(path string) (*AccessibilityReportResult
 	return result, nil
 }
 
-func (a *AccessibilityAnalyzer) collectFiles(path string) ([]string, error) {
-	return CollectFiles(path, func(candidate string) bool {
+func (a *AccessibilityAnalyzer) collectFiles(ctx context.Context, path string) ([]string, error) {
+	return CollectFiles(ctx, path, func(candidate string) bool {
 		_, scanned := scannedExtensions[strings.ToLower(filepath.Ext(candidate))]
 		return scanned
 	})

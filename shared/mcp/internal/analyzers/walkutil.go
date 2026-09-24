@@ -1,6 +1,7 @@
 package analyzers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -46,8 +47,24 @@ var ErrWalkTooLarge = errors.New("the path holds more files than an analysis wil
 // SkipUninterestingDir names, never follows a symbolic link — a link inside
 // the workspace root must not lead the walk outside it — and aborts with
 // ErrWalkTooLarge past maxWalkFiles files or maxWalkBytes bytes.
-func CollectFiles(root string, include func(path string) bool) ([]string, error) {
-	return collectWithin(root, include, walkLimits{files: maxWalkFiles, bytes: maxWalkBytes})
+//
+// It stops as soon as ctx is done, returning ctx's error (roadmap L2.2):
+// before, a client disconnect or a deadline could not stop a walk already
+// under way.
+func CollectFiles(ctx context.Context, root string, include func(path string) bool) ([]string, error) {
+	return collectWithin(ctx, root, include, walkLimits{files: maxWalkFiles, bytes: maxWalkBytes})
+}
+
+// ForEachFile calls analyze on each file in turn, stopping with ctx's error
+// once ctx is done — the analysis after a walk can outlast the walk itself.
+func ForEachFile(ctx context.Context, files []string, analyze func(file string)) error {
+	for _, file := range files {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		analyze(file)
+	}
+	return nil
 }
 
 // walkLimits are the ceilings one walk enforces; tests pass small ones.
@@ -56,7 +73,7 @@ type walkLimits struct {
 	bytes int64
 }
 
-func collectWithin(root string, include func(path string) bool, limits walkLimits) ([]string, error) {
+func collectWithin(ctx context.Context, root string, include func(path string) bool, limits walkLimits) ([]string, error) {
 	info, err := os.Lstat(root)
 	if err != nil {
 		return nil, err
@@ -64,12 +81,13 @@ func collectWithin(root string, include func(path string) bool, limits walkLimit
 	if !info.IsDir() {
 		return []string{root}, nil
 	}
-	collector := &fileCollector{root: root, include: include, limits: limits}
+	collector := &fileCollector{ctx: ctx, root: root, include: include, limits: limits}
 	err = filepath.Walk(root, collector.visit)
 	return collector.files, err
 }
 
 type fileCollector struct {
+	ctx     context.Context
 	root    string
 	include func(path string) bool
 	limits  walkLimits
@@ -78,6 +96,9 @@ type fileCollector struct {
 }
 
 func (c *fileCollector) visit(path string, info os.FileInfo, walkErr error) error {
+	if err := c.ctx.Err(); err != nil {
+		return err
+	}
 	if walkErr != nil || info == nil {
 		return nil
 	}

@@ -42,7 +42,7 @@ func (t *CheckUbiquitousLanguageTool) OutputSchema() json.RawMessage {
 	return reflectSchema(&analyzers.UbiquitousLanguageResult{})
 }
 
-func (t *CheckUbiquitousLanguageTool) Execute(_ context.Context, request domain.ToolRequest) (*domain.ToolResult, error) {
+func (t *CheckUbiquitousLanguageTool) Execute(ctx context.Context, request domain.ToolRequest) (*domain.ToolResult, error) {
 	t.logger.Info("Handling check_ubiquitous_language request")
 
 	projectPath := request.StringArg("projectPath")
@@ -56,7 +56,7 @@ func (t *CheckUbiquitousLanguageTool) Execute(_ context.Context, request domain.
 		return domain.NewErrorResult(err.Error()), nil
 	}
 
-	result, err := t.analyzer.Analyze(projectPath, dictionaryPath)
+	result, err := t.analyzer.Analyze(ctx, projectPath, dictionaryPath)
 	if err != nil {
 		t.logger.Error("Ubiquitous language analysis failed", "error", err)
 		return domain.NewErrorResult(fmt.Sprintf("Ubiquitous language analysis failed: %v", err)), nil

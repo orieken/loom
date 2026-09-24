@@ -46,7 +46,7 @@ func (t *AnalyzeComplexityTool) OutputSchema() json.RawMessage {
 	return reflectSchema(&analyzers.ComplexityAnalysisResult{})
 }
 
-func (t *AnalyzeComplexityTool) Execute(_ context.Context, request domain.ToolRequest) (*domain.ToolResult, error) {
+func (t *AnalyzeComplexityTool) Execute(ctx context.Context, request domain.ToolRequest) (*domain.ToolResult, error) {
 	t.logger.Info("Handling analyze_complexity request")
 	projectPath, maxComplexity, maxLines := parseComplexityArgs(request.Args)
 	if projectPath == "" {
@@ -56,7 +56,7 @@ func (t *AnalyzeComplexityTool) Execute(_ context.Context, request domain.ToolRe
 	if err != nil {
 		return domain.NewErrorResult(err.Error()), nil
 	}
-	result, err := t.analyzer.Analyze(projectPath, maxComplexity, maxLines)
+	result, err := t.analyzer.Analyze(ctx, projectPath, maxComplexity, maxLines)
 	if err != nil {
 		t.logger.Error("Complexity analysis failed", "error", err)
 		return domain.NewErrorResult(fmt.Sprintf("Complexity analysis failed: %v", err)), nil

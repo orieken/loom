@@ -2,6 +2,7 @@ package analyzers
 
 import (
 	"bufio"
+	"context"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -47,7 +48,7 @@ type termMatcher struct {
 	canonical string
 }
 
-func (a *UbiquitousLanguageAnalyzer) Analyze(projectPath, dictionaryPath string) (*UbiquitousLanguageResult, error) {
+func (a *UbiquitousLanguageAnalyzer) Analyze(ctx context.Context, projectPath, dictionaryPath string) (*UbiquitousLanguageResult, error) {
 	result := &UbiquitousLanguageResult{
 		Success: true, ProjectPath: projectPath, Violations: []LanguageViolation{},
 	}
@@ -59,13 +60,13 @@ func (a *UbiquitousLanguageAnalyzer) Analyze(projectPath, dictionaryPath string)
 		result.Summary = "No ubiquitous language violations found"
 		return result, nil
 	}
-	files, err := a.collectSourceFiles(projectPath)
+	files, err := a.collectSourceFiles(ctx, projectPath)
 	if err != nil {
 		return nil, err
 	}
 	matchers := compileMatchers(synonyms)
-	for _, f := range files {
-		a.scanFile(f, matchers, result)
+	if err := ForEachFile(ctx, files, func(file string) { a.scanFile(file, matchers, result) }); err != nil {
+		return nil, err
 	}
 	result.ViolationsCount = len(result.Violations)
 	if result.ViolationsCount == 0 {
@@ -163,8 +164,8 @@ func compileMatchers(synonyms map[string]string) []termMatcher {
 	return matchers
 }
 
-func (a *UbiquitousLanguageAnalyzer) collectSourceFiles(root string) ([]string, error) {
-	return CollectFiles(root, func(path string) bool {
+func (a *UbiquitousLanguageAnalyzer) collectSourceFiles(ctx context.Context, root string) ([]string, error) {
+	return CollectFiles(ctx, root, func(path string) bool {
 		_, scanned := scannedSourceExtensions[strings.ToLower(filepath.Ext(path))]
 		return scanned
 	})

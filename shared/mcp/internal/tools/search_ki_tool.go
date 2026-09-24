@@ -48,7 +48,7 @@ func (t *SearchKITool) OutputSchema() json.RawMessage {
 	return reflectSchema(&KISearchResult{})
 }
 
-func (t *SearchKITool) Execute(_ context.Context, request domain.ToolRequest) (*domain.ToolResult, error) {
+func (t *SearchKITool) Execute(ctx context.Context, request domain.ToolRequest) (*domain.ToolResult, error) {
 	t.logger.Info("Handling search_ki request")
 
 	query := request.StringArg("query")
@@ -63,7 +63,7 @@ func (t *SearchKITool) Execute(_ context.Context, request domain.ToolRequest) (*
 		return t.emptyResult(query, "no retriever configured")
 	}
 
-	refs, err := t.retriever.Retrieve(query, tags, boundedContext)
+	refs, err := t.retriever.Retrieve(ctx, query, tags, boundedContext)
 	if err != nil {
 		t.logger.Error("KI retrieval failed", "error", err)
 		return domain.NewErrorResult(fmt.Sprintf("Retrieval failed: %v", err)), nil

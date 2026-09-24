@@ -76,7 +76,7 @@ func TestMCPToolHandlerConvertsRequestAndResult(t *testing.T) {
 			request := mcp.CallToolRequest{}
 			request.Params.Arguments = map[string]any{"projectPath": "/tmp/x"}
 
-			got, err := New(logging.NewLogger(&bytes.Buffer{})).mcpToolHandler(stub)(context.Background(), request)
+			got, err := New(logging.NewLogger(&bytes.Buffer{})).mcpToolHandler(domain.ToolRegistration{Tool: stub})(context.Background(), request)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -112,7 +112,7 @@ func TestMCPToolHandlerPropagatesExecuteError(t *testing.T) {
 	executeErr := errors.New("transport failure")
 	stub := &stubTool{name: "stub_tool", err: executeErr}
 
-	_, err := New(logging.NewLogger(&bytes.Buffer{})).mcpToolHandler(stub)(context.Background(), mcp.CallToolRequest{})
+	_, err := New(logging.NewLogger(&bytes.Buffer{})).mcpToolHandler(domain.ToolRegistration{Tool: stub})(context.Background(), mcp.CallToolRequest{})
 	if !errors.Is(err, executeErr) {
 		t.Errorf("expected execute error to propagate, got %v", err)
 	}
@@ -133,7 +133,7 @@ func TestToolHandlerWorksWithoutATelemetrySession(t *testing.T) {
 	request.Params.Arguments = map[string]any{"projectPath": "/tmp/x"}
 
 	handler := New(logging.NewLogger(&bytes.Buffer{}))
-	got, err := handler.mcpToolHandler(stub)(context.Background(), request)
+	got, err := handler.mcpToolHandler(domain.ToolRegistration{Tool: stub})(context.Background(), request)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -157,7 +157,7 @@ func TestToolCallLogsCarryTraceCorrelation(t *testing.T) {
 
 	stub := &stubTool{name: "stub_tool", result: domain.NewTextResult("ok")}
 	ctx := telemetry.ContextFromEnvironment(context.Background())
-	if _, err := handler.mcpToolHandler(stub)(ctx, mcp.CallToolRequest{}); err != nil {
+	if _, err := handler.mcpToolHandler(domain.ToolRegistration{Tool: stub})(ctx, mcp.CallToolRequest{}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	_ = session.Shutdown(context.Background())
@@ -174,7 +174,7 @@ func TestUntracedToolCallLogsWithoutEmptyCorrelationFields(t *testing.T) {
 	handler := New(logging.NewLogger(logs))
 	stub := &stubTool{name: "stub_tool", result: domain.NewTextResult("ok")}
 
-	if _, err := handler.mcpToolHandler(stub)(context.Background(), mcp.CallToolRequest{}); err != nil {
+	if _, err := handler.mcpToolHandler(domain.ToolRegistration{Tool: stub})(context.Background(), mcp.CallToolRequest{}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if strings.Contains(logs.String(), "trace_id") {

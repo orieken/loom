@@ -2,6 +2,7 @@ package analyzers
 
 import (
 	"bufio"
+	"context"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -33,7 +34,7 @@ type ComplexityAnalyzer struct{}
 
 func NewComplexityAnalyzer() *ComplexityAnalyzer { return &ComplexityAnalyzer{} }
 
-func (a *ComplexityAnalyzer) Analyze(projectPath string, maxComplexity, maxLines int) (*ComplexityAnalysisResult, error) {
+func (a *ComplexityAnalyzer) Analyze(ctx context.Context, projectPath string, maxComplexity, maxLines int) (*ComplexityAnalysisResult, error) {
 	if maxComplexity <= 0 {
 		maxComplexity = 7
 	}
@@ -45,18 +46,20 @@ func (a *ComplexityAnalyzer) Analyze(projectPath string, maxComplexity, maxLines
 		ProjectPath: projectPath,
 		Violations:  []FunctionComplexity{},
 	}
-	files, err := collectSourceFiles(projectPath)
+	files, err := collectSourceFiles(ctx, projectPath)
 	if err != nil {
 		return nil, err
 	}
 	result.TotalFiles = len(files)
-	a.analyzeAll(files, maxComplexity, maxLines, result)
+	if err := a.analyzeAll(ctx, files, maxComplexity, maxLines, result); err != nil {
+		return nil, err
+	}
 	result.Summary = complexitySummary(result.ViolationsCount)
 	return result, nil
 }
 
-func collectSourceFiles(projectPath string) ([]string, error) {
-	return CollectFiles(projectPath, isAnalyzableExtension)
+func collectSourceFiles(ctx context.Context, projectPath string) ([]string, error) {
+	return CollectFiles(ctx, projectPath, isAnalyzableExtension)
 }
 
 func isAnalyzableExtension(path string) bool {
@@ -70,14 +73,14 @@ func complexitySummary(violationCount int) string {
 	return "All functions pass complexity and LOC checks"
 }
 
-func (a *ComplexityAnalyzer) analyzeAll(files []string, maxComplexity, maxLines int, result *ComplexityAnalysisResult) {
-	for _, file := range files {
+func (a *ComplexityAnalyzer) analyzeAll(ctx context.Context, files []string, maxComplexity, maxLines int, result *ComplexityAnalysisResult) error {
+	return ForEachFile(ctx, files, func(file string) {
 		if strings.HasSuffix(file, ".go") {
 			a.analyzeGoFile(file, maxComplexity, maxLines, result)
-		} else {
-			a.analyzeGenericFile(file, maxComplexity, maxLines, result)
+			return
 		}
-	}
+		a.analyzeGenericFile(file, maxComplexity, maxLines, result)
+	})
 }
 
 func (a *ComplexityAnalyzer) analyzeGoFile(file string, maxComplexity, maxLines int, result *ComplexityAnalysisResult) {

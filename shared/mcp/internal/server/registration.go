@@ -21,7 +21,7 @@ func (h *Handler) RegisterTools(s *server.MCPServer) error {
 	h.logger.Info("Registering tools")
 
 	for _, registration := range h.registry.All() {
-		s.AddTool(mcpToolDefinition(registration.Tool), h.mcpToolHandler(registration.Tool))
+		s.AddTool(mcpToolDefinition(registration.Tool), h.mcpToolHandler(registration))
 	}
 
 	h.logger.Info("Tools registered successfully")

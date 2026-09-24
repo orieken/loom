@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
@@ -25,12 +26,18 @@ func mcpToolDefinition(tool domain.Tool) mcp.Tool {
 	}
 }
 
-// mcpToolHandler adapts a domain.Tool's Execute into an mcp-go handler,
+// mcpToolHandler adapts a registration's Execute into an mcp-go handler,
 // wrapping each call in a span and a correlated log line. This is the only
 // place tool-call telemetry is emitted; the tools themselves stay unaware
 // of it, and `internal/domain` stays stdlib-only (guardrail #8 and M0.3).
-func (h *Handler) mcpToolHandler(tool domain.Tool) func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+//
+// It also applies the registration's declared Timeout (roadmap L2.2): the
+// registry carried a budget per tool since L2.4, and nothing enforced it.
+func (h *Handler) mcpToolHandler(registration domain.ToolRegistration) func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	tool := registration.Tool
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		ctx, cancel := withDeadline(ctx, registration.Timeout)
+		defer cancel()
 		call := telemetry.ToolCall{
 			Name:          tool.Name(),
 			Arguments:     stringArguments(request.GetArguments()),
@@ -128,4 +135,13 @@ func mcpResult(result *domain.ToolResult) *mcp.CallToolResult {
 		content = append(content, mcp.NewTextContent(block.Text))
 	}
 	return &mcp.CallToolResult{Content: content, IsError: result.IsError}
+}
+
+// withDeadline bounds ctx by timeout. A registration with no timeout runs
+// under the caller's context alone.
+func withDeadline(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	if timeout <= 0 {
+		return context.WithCancel(ctx)
+	}
+	return context.WithTimeout(ctx, timeout)
 }

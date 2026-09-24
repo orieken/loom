@@ -11,6 +11,7 @@ package tools
 
 import (
 	"bufio"
+	"context"
 	"os"
 	"path/filepath"
 	"sort"
@@ -32,7 +33,7 @@ type Reference struct {
 // Retriever surfaces corpus items relevant to a query. Implementations
 // vary by corpus per ADR-002's graduated retrieval strategy.
 type Retriever interface {
-	Retrieve(query string, tags []string, domain string) ([]Reference, error)
+	Retrieve(ctx context.Context, query string, tags []string, domain string) ([]Reference, error)
 }
 
 // maxResults caps the surfaced set so the calling LLM sees a
@@ -52,14 +53,18 @@ func NewKICorpusRetriever(corpusPaths []string) *KICorpusRetriever {
 
 // Retrieve walks every configured corpus path, scores every markdown
 // file, and returns the top-N by relevance descending.
-func (r *KICorpusRetriever) Retrieve(query string, tags []string, domain string) ([]Reference, error) {
+func (r *KICorpusRetriever) Retrieve(ctx context.Context, query string, tags []string, domain string) ([]Reference, error) {
 	if len(r.corpusPaths) == 0 || strings.TrimSpace(query) == "" {
 		return nil, nil
 	}
 	queryTokens := tokenize(query)
 	var hits []Reference
 	for _, root := range r.corpusPaths {
-		hits = append(hits, hitsFromRoot(root, queryTokens, tags, domain)...)
+		found, err := hitsFromRoot(ctx, root, queryTokens, tags, domain)
+		if err != nil {
+			return nil, err
+		}
+		hits = append(hits, found...)
 	}
 	sort.SliceStable(hits, func(i, j int) bool { return hits[i].Relevance > hits[j].Relevance })
 	if len(hits) > maxResults {
@@ -72,13 +77,18 @@ func shouldSkipEntry(entry os.DirEntry) bool {
 	return entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") || entry.Name() == "README.md"
 }
 
-func hitsFromRoot(root string, queryTokens, tags []string, domain string) []Reference {
+// hitsFromRoot scores every corpus file directly under root, stopping with
+// ctx's error once ctx is done (roadmap L2.2).
+func hitsFromRoot(ctx context.Context, root string, queryTokens, tags []string, domain string) ([]Reference, error) {
 	entries, err := os.ReadDir(root)
 	if err != nil {
-		return nil
+		return nil, nil
 	}
 	var hits []Reference
 	for _, entry := range entries {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		if shouldSkipEntry(entry) {
 			continue
 		}
@@ -91,7 +101,7 @@ func hitsFromRoot(root string, queryTokens, tags []string, domain string) []Refe
 			hits = append(hits, ref)
 		}
 	}
-	return hits
+	return hits, nil
 }
 
 func parseCorpusFile(path string) (Reference, bool) {

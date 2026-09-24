@@ -2,6 +2,7 @@ package analyzers
 
 import (
 	"bufio"
+	"context"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -66,16 +67,16 @@ type importRef struct {
 	Line int
 }
 
-func (a *DependencyBoundaryAnalyzer) Analyze(projectPath string) (*DependencyVerificationResult, error) {
+func (a *DependencyBoundaryAnalyzer) Analyze(ctx context.Context, projectPath string) (*DependencyVerificationResult, error) {
 	result := &DependencyVerificationResult{
 		Success: true, ProjectPath: projectPath, Violations: []DependencyBoundaryViolation{},
 	}
-	files, err := a.collectSourceFiles(projectPath)
+	files, err := a.collectSourceFiles(ctx, projectPath)
 	if err != nil {
 		return nil, err
 	}
-	for _, f := range files {
-		a.scanFile(f, result)
+	if err := ForEachFile(ctx, files, func(file string) { a.scanFile(file, result) }); err != nil {
+		return nil, err
 	}
 	result.ViolationsCount = len(result.Violations)
 	if result.ViolationsCount == 0 {
@@ -102,8 +103,8 @@ func isBoundaryViolation(from, to string) bool {
 	return ok1 && ok2 && fromRank < toRank
 }
 
-func (a *DependencyBoundaryAnalyzer) collectSourceFiles(root string) ([]string, error) {
-	return CollectFiles(root, func(path string) bool {
+func (a *DependencyBoundaryAnalyzer) collectSourceFiles(ctx context.Context, root string) ([]string, error) {
+	return CollectFiles(ctx, root, func(path string) bool {
 		_, scanned := scannedImportExtensions[strings.ToLower(filepath.Ext(path))]
 		return scanned
 	})

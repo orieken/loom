@@ -36,7 +36,7 @@ func (t *VerifyDependenciesTool) OutputSchema() json.RawMessage {
 	return reflectSchema(&analyzers.DependencyVerificationResult{})
 }
 
-func (t *VerifyDependenciesTool) Execute(_ context.Context, request domain.ToolRequest) (*domain.ToolResult, error) {
+func (t *VerifyDependenciesTool) Execute(ctx context.Context, request domain.ToolRequest) (*domain.ToolResult, error) {
 	t.logger.Info("Handling verify_dependencies request")
 
 	projectPath := request.StringArg("projectPath")
@@ -48,7 +48,7 @@ func (t *VerifyDependenciesTool) Execute(_ context.Context, request domain.ToolR
 		return domain.NewErrorResult(err.Error()), nil
 	}
 
-	result, err := t.analyzer.Analyze(projectPath)
+	result, err := t.analyzer.Analyze(ctx, projectPath)
 	if err != nil {
 		t.logger.Error("Dependency verification failed", "error", err)
 		return domain.NewErrorResult(fmt.Sprintf("Dependency verification failed: %v", err)), nil

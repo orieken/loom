@@ -8,6 +8,7 @@ package tools
 
 import (
 	"bufio"
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -67,7 +68,7 @@ func (r *BM25Retriever) Close() error {
 }
 
 // EnsureIndex walks each corpus root and (re)indexes every .md / .mdx file.
-func (r *BM25Retriever) EnsureIndex(corpusPaths []string) error {
+func (r *BM25Retriever) EnsureIndex(ctx context.Context, corpusPaths []string) error {
 	for _, root := range corpusPaths {
 		if strings.TrimSpace(root) == "" {
 			continue
@@ -76,7 +77,7 @@ func (r *BM25Retriever) EnsureIndex(corpusPaths []string) error {
 		if err != nil || !info.IsDir() {
 			continue
 		}
-		if walkErr := r.walkAndIndex(root); walkErr != nil {
+		if walkErr := r.walkAndIndex(ctx, root); walkErr != nil {
 			return fmt.Errorf("bm25 retriever: walk %q: %w", root, walkErr)
 		}
 	}
@@ -86,12 +87,15 @@ func (r *BM25Retriever) EnsureIndex(corpusPaths []string) error {
 // walkAndIndex indexes every markdown file under root through the same
 // collector the analyzers use (roadmap L2.3): it never follows a symbolic
 // link out of the workspace, and it stops at the walk ceilings.
-func (r *BM25Retriever) walkAndIndex(root string) error {
-	files, err := analyzers.CollectFiles(root, isMarkdownExtension)
+func (r *BM25Retriever) walkAndIndex(ctx context.Context, root string) error {
+	files, err := analyzers.CollectFiles(ctx, root, isMarkdownExtension)
 	if err != nil {
 		return err
 	}
 	for _, file := range files {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if err := r.indexFile(file); err != nil {
 			return err
 		}
@@ -151,7 +155,7 @@ func extractFrontmatterName(body []byte) string {
 
 // Retrieve runs an fts5 MATCH query and returns up to bm25MaxResults
 // hits ordered by BM25 rank (title-column-boosted 10x over body).
-func (r *BM25Retriever) Retrieve(query string, tags []string, domain string) ([]Reference, error) {
+func (r *BM25Retriever) Retrieve(ctx context.Context, query string, tags []string, domain string) ([]Reference, error) {
 	_ = tags
 	_ = domain
 	trimmed := strings.TrimSpace(query)
@@ -162,7 +166,7 @@ func (r *BM25Retriever) Retrieve(query string, tags []string, domain string) ([]
 	if escaped == "" {
 		return nil, nil
 	}
-	rows, err := r.db.Query(
+	rows, err := r.db.QueryContext(ctx,
 		`SELECT path, title,
 		        snippet(docs_fts, 2, '[', ']', '...', 20) AS summary,
 		        bm25(docs_fts, 1.0, 10.0, 1.0) AS relevance
@@ -172,11 +176,22 @@ func (r *BM25Retriever) Retrieve(query string, tags []string, domain string) ([]
 		 LIMIT ?`,
 		escaped, bm25MaxResults,
 	)
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		// A cancelled or timed-out search is not an empty one (roadmap L2.2);
+		// the swallow below used to report it as "no results".
+		return nil, ctxErr
+	}
 	if err != nil {
+		// Unchanged: a query FTS5 cannot parse reads as no matches.
 		return nil, nil
 	}
 	defer rows.Close()
+	return scanReferences(ctx, rows)
+}
 
+// scanReferences reads ranked rows into references. A context that ends
+// partway through the rows yields its error, not a partial list.
+func scanReferences(ctx context.Context, rows *sql.Rows) ([]Reference, error) {
 	var refs []Reference
 	for rows.Next() {
 		var (
@@ -192,6 +207,9 @@ func (r *BM25Retriever) Retrieve(query string, tags []string, domain string) ([]
 			Summary:   summary,
 			Relevance: -rank,
 		})
+	}
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return nil, ctxErr // stopped partway through the rows; a partial list is not a result
 	}
 	return refs, nil
 }

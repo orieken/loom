@@ -243,6 +243,29 @@ human-in-the-loop control.*
 ### L2.2 — Propagate `context.Context` and set per-tool deadlines
 **Workstream**: TOOLS · **Effort**: M · **Blocked by**: M0.3 · **Blocks**: L2.5
 
+**SHIPPED** 2026-09-24 — a tool call's context now reaches the work, and every call has a deadline.
+
+- **Deadlines**: the registry has carried a `Timeout` per tool since L2.4 and nothing applied it. The
+  server now bounds each call by it (`withDeadline` in `mcp_adapter.go`); a zero timeout imposes none.
+  A test fails if any framework tool registers without one.
+- **Cancellation**: all six tools pass their context to the analyzers and retrievers instead of
+  discarding it. It is checked on every entry of the shared walk (`analyzers.CollectFiles`, from L2.3),
+  between files in every analysis loop (`analyzers.ForEachFile`), per file in the KI retriever, and
+  around the docs index's walk and query (`QueryContext`).
+- **A real bug on the way**: the docs retriever's `Retrieve` swallowed every query error as "no
+  results", cancellation included, so a timed-out search read as an empty one. It now returns the
+  context's error, before the rows and after them, and keeps the swallow only for a query FTS5 cannot
+  parse.
+
+**Done-when**: `TestACancelledWalkStopsWithin100ms` cancels from inside the walk on its first file —
+mid-walk by construction, not by timing — over 3,000 files, and asserts the walk returns
+`context.Canceled` within 100ms with files left unvisited. Cancellation *between* the walk and the
+analysis needed a context that reports itself done after a set number of checks; a context cancelled
+up front never reaches that window, and the changed-line coverage gate is what showed those branches
+were unexercised (77.1% until then, 100% after). Eight mutants: seven killed. **C7 survived and is
+effectively equivalent** — if the docs index's walk ignores cancellation, the per-file check straight
+after it still stops indexing with `Canceled`; only the time spent walking differs.
+
 1. **Problem**: All six tools sign `Execute(_ context.Context, ...)` —
    `analyze_complexity_tool.go:54`, `check_accessibility_tool.go:52`,
    `check_ubiquitous_language_tool.go:50`, `search_docs_tool.go:64`, `search_ki_tool.go:56`,
@@ -3420,12 +3443,16 @@ integration routing: all killed. **M9 first survived**: its test made the report
 |---|---|---|---|---|---|---|
 | 2026-09-23 | `e2c0741..deb86b2` | 5 (two in integration mode) | 42 | 42 | 100.0% | ~3 min |
 | 2026-09-24 | `deb86b2..2fcea94` | 5 | 44 | 39 | 88.6% | ~1 min |
+| 2026-09-24 | `2fcea94..0941643` | 5 | 34 | 33 | 97.1% | — |
 
 Of run 2's five survivors, three were equivalent (boundary mutants on `plan.go:85`, where two stages can
 never share an index) and two were **real test gaps**, closed the same day: nothing checked that a stage
 runs the agent it is named for, and the references fixture had no exact-path historical entry, so a
 negated exact match made every file historical and the repository scan passed empty. That is the job
 earning its keep before it gates anything.
+
+Run 3's one survivor was also real: a negated error check in the docs indexer's loop stopped after the
+first file, and the only indexing test had one document. Closed with a three-document test (L2.2).
 
 **Not done from the original fix**: `backfill-unit-tests` step 6 still mutates by hand, and `run-tests`
 does not mention the runner — both can call `cmd/diff-mutation` once a floor exists.

@@ -15,7 +15,7 @@ import (
 
 // DocIndexer refreshes a docs index for the given corpus roots.
 type DocIndexer interface {
-	EnsureIndex(corpusPaths []string) error
+	EnsureIndex(ctx context.Context, corpusPaths []string) error
 }
 
 const defaultDocsPath = "docs/"
@@ -56,7 +56,7 @@ func (t *SearchDocsTool) OutputSchema() json.RawMessage {
 	return reflectSchema(&DocSearchResult{})
 }
 
-func (t *SearchDocsTool) Execute(_ context.Context, request domain.ToolRequest) (*domain.ToolResult, error) {
+func (t *SearchDocsTool) Execute(ctx context.Context, request domain.ToolRequest) (*domain.ToolResult, error) {
 	t.logger.Info("Handling search_docs request")
 
 	query := request.StringArg("query")
@@ -74,12 +74,12 @@ func (t *SearchDocsTool) Execute(_ context.Context, request domain.ToolRequest) 
 		return t.emptyResult(query, "no docs retriever configured")
 	}
 
-	if err := t.indexer.EnsureIndex([]string{docsPath}); err != nil {
+	if err := t.indexer.EnsureIndex(ctx, []string{docsPath}); err != nil {
 		t.logger.Error("Docs index refresh failed", "error", err, "docsPath", docsPath)
 		return domain.NewErrorResult(fmt.Sprintf("Index refresh failed: %v", err)), nil
 	}
 
-	refs, err := t.retriever.Retrieve(query, nil, "")
+	refs, err := t.retriever.Retrieve(ctx, query, nil, "")
 	if err != nil {
 		t.logger.Error("Docs retrieval failed", "error", err)
 		return domain.NewErrorResult(fmt.Sprintf("Retrieval failed: %v", err)), nil
