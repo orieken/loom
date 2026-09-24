@@ -26,7 +26,9 @@ func fails(kind domain.ErrorKind) step {
 	}
 }
 
-func transportFails(context.Context) (*domain.ToolResult, error) { return nil, errors.New("pipe closed") }
+func transportFails(context.Context) (*domain.ToolResult, error) {
+	return nil, errors.New("pipe closed")
+}
 
 // scriptedTool runs its steps in order, repeating the last, and counts runs.
 type scriptedTool struct {

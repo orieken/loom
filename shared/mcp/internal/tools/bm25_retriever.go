@@ -14,8 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/orieken/loom/shared/mcp/internal/analyzers"
+	"sync"
 
 	// Register the pure-Go sqlite driver under the name "sqlite".
 	_ "modernc.org/sqlite"
@@ -23,9 +22,16 @@ import (
 
 // BM25Retriever implements Retriever using fts5's built-in bm25()
 // ranking.
+//
+// The mutex makes it safe for the concurrent calls an MCP server fields
+// (roadmap L2.7): indexing takes it exclusively, so two refreshes never
+// interleave, and a search waits for a refresh rather than reading a half-
+// written index.
 type BM25Retriever struct {
 	db     *sql.DB
 	dbPath string
+	files  docFiles
+	mutex  sync.RWMutex
 }
 
 const bm25MaxResults = 25
@@ -52,11 +58,11 @@ func NewBM25Retriever(dbPath string) (*BM25Retriever, error) {
 	if err != nil {
 		return nil, fmt.Errorf("bm25 retriever: open %q failed: %w", dbPath, err)
 	}
-	if _, err := db.Exec(docsFTSSchema); err != nil {
+	if err := createDocsSchema(db); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("bm25 retriever: schema init failed: %w", err)
 	}
-	return &BM25Retriever{db: db, dbPath: dbPath}, nil
+	return &BM25Retriever{db: db, dbPath: dbPath, files: osDocFiles{}}, nil
 }
 
 // Close releases the underlying database handle.
@@ -67,72 +73,32 @@ func (r *BM25Retriever) Close() error {
 	return r.db.Close()
 }
 
-// EnsureIndex walks each corpus root and (re)indexes every .md / .mdx file.
+// EnsureIndex brings the index of each corpus root up to date. Only what
+// changed is read — see bm25_index.go.
 func (r *BM25Retriever) EnsureIndex(ctx context.Context, corpusPaths []string) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 	for _, root := range corpusPaths {
-		if strings.TrimSpace(root) == "" {
+		if !r.isIndexableRoot(root) {
 			continue
 		}
-		info, err := os.Stat(root)
-		if err != nil || !info.IsDir() {
-			continue
-		}
-		if walkErr := r.walkAndIndex(ctx, root); walkErr != nil {
-			return fmt.Errorf("bm25 retriever: walk %q: %w", root, walkErr)
+		if err := r.reconcile(ctx, root); err != nil {
+			return fmt.Errorf("bm25 retriever: index %q: %w", root, err)
 		}
 	}
 	return nil
 }
 
-// walkAndIndex indexes every markdown file under root through the same
-// collector the analyzers use (roadmap L2.3): it never follows a symbolic
-// link out of the workspace, and it stops at the walk ceilings.
-func (r *BM25Retriever) walkAndIndex(ctx context.Context, root string) error {
-	files, err := analyzers.CollectFiles(ctx, root, isMarkdownExtension)
-	if err != nil {
-		return err
-	}
-	for _, file := range files {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		if err := r.indexFile(file); err != nil {
-			return err
-		}
-	}
-	return nil
+// isIndexableRoot is a directory. A blank root fails the stat, so it is
+// skipped rather than read as the working directory.
+func (r *BM25Retriever) isIndexableRoot(root string) bool {
+	info, err := r.files.Stat(root)
+	return err == nil && info.IsDir()
 }
 
 func isMarkdownExtension(path string) bool {
 	ext := strings.ToLower(filepath.Ext(path))
 	return ext == ".md" || ext == ".mdx"
-}
-
-func (r *BM25Retriever) indexFile(path string) error {
-	body, err := os.ReadFile(path)
-	if err != nil {
-		return nil
-	}
-	title := extractFrontmatterName(body)
-	if title == "" {
-		title = titleFromFilename(path)
-	}
-	tx, err := r.db.Begin()
-	if err != nil {
-		return err
-	}
-	if _, err := tx.Exec("DELETE FROM docs_fts WHERE path = ?", path); err != nil {
-		_ = tx.Rollback()
-		return err
-	}
-	if _, err := tx.Exec(
-		"INSERT INTO docs_fts (path, title, body) VALUES (?, ?, ?)",
-		path, title, string(body),
-	); err != nil {
-		_ = tx.Rollback()
-		return err
-	}
-	return tx.Commit()
 }
 
 func extractFrontmatterName(body []byte) string {
@@ -166,6 +132,8 @@ func (r *BM25Retriever) Retrieve(ctx context.Context, query string, tags []strin
 	if escaped == "" {
 		return nil, nil
 	}
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT path, title,
 		        snippet(docs_fts, 2, '[', ']', '...', 20) AS summary,

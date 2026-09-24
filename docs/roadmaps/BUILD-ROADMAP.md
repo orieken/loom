@@ -467,6 +467,41 @@ either.
 ### L2.7 — Fix the per-query full-corpus re-index
 **Workstream**: TOOLS · **Effort**: M · **Blocked by**: L2.2 · **Blocks**: L3.7 · *(audit H2)*
 
+**SHIPPED** 2026-09-24 — a search reads only the docs that changed since the last, evicts the ones that
+are gone, and writes it all in one transaction (`shared/mcp/internal/tools/bm25_index.go`).
+
+- **Freshness stays on the query path, as a stat-only check.** Each refresh walks the root and compares
+  every file's `(modification time, size)` with a new `docs_files` table, reading the contents of
+  only those that differ. That meets the done-when — a repeated search reads zero files — while
+  keeping every search current without a watcher. The table is additive: an index built before it
+  has rows and no fingerprints, so its files are read once more and a row whose file is gone is
+  evicted.
+- **One transaction per refresh**, begun with the call's context: all of it lands, or none. A refresh
+  cancelled partway leaves the previous index whole. A test found that such a rollback surfaced as
+  "transaction has already been committed or rolled back" — classified `internal`, which would have
+  counted against L2.6's breaker for a call its caller merely stopped; the context's own error now
+  takes precedence.
+- **Eviction** is scoped to the refreshed root (a separator-aware prefix, so `docs` never evicts
+  `docs2`), and a file that can no longer be read is evicted rather than left searchable under text
+  it no longer has.
+- **Concurrency**: a `sync.RWMutex` — refreshes exclusive, searches shared — and a concurrent test
+  run under `-race`.
+- **Done-when tests**: `TestASecondIdenticalSearchReadsNoFile` (through the `search_docs` tool, with
+  reads counted through a filesystem seam) and `TestADeletedDocDisappearsFromResults`. Red proof: 20
+  mutants; 18 killed. Two survivors were **redundant code, deleted rather than tested**: a per-file
+  context check the context-bound transaction already enforces, and an empty-plan short circuit whose
+  only effect was skipping an empty SQLite transaction. Four more were first survivors that exposed
+  real gaps, now tested: an unreadable file left indexed, a file vanishing mid-refresh kept, the
+  frontmatter title (untested since before L2.7), and a root that is a *file* — which would have
+  admitted that file whatever its extension, and never evicted it.
+- **Not done, deliberately**: the `reindex_docs` tool and `fsnotify` watcher. With a stat-only check on
+  every search, neither makes a search fresher; a watcher would add a goroutine and a dependency to
+  save a stat walk. Worth revisiting if a corpus grows large enough for the walk itself to cost.
+- **Found, not fixed**: `Retrieve` ranks across *every* root ever indexed, not the requested
+  `docsPath` — a search of `docs/a` can return hits from `docs/b` indexed earlier. Scoping it needs
+  the root passed to `Retrieve`, which the shared `Retriever` interface does not carry; it belongs
+  with the retriever-backend work in L3.4.
+
 1. **Problem**: `search_docs_tool.go:82` calls `EnsureIndex` inside `Execute`.
    `bm25_retriever.go:70` then walks the whole docs tree, `os.ReadFile`s every `.md`, and runs **one
    sqlite transaction per file** — no mtime check, no content hash, no dirty tracking. Every search
@@ -3535,6 +3570,7 @@ integration routing: all killed. **M9 first survived**: its test made the report
 | 2026-09-24 | `0941643..b81f725` | 3 | 12 | 11 | 91.7% | — |
 | 2026-09-24 | `b81f725..63265c2` | 2 | 21 | 19 | 90.5% | — |
 | 2026-09-24 | `63265c2..2408612` | 4 | 11 | 11 | 100.0% | — |
+| 2026-09-24 | `2408612..38b600e` | 2 | 15 | 15 | 100.0% | — |
 
 Of run 2's five survivors, three were equivalent (boundary mutants on `plan.go:85`, where two stages can
 never share an index) and two were **real test gaps**, closed the same day: nothing checked that a stage

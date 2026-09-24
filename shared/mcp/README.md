@@ -12,7 +12,7 @@ A reference scaffold exposing the framework's deterministic tools as an
 | `check_ubiquitous_language` | Synonym violations against a `DOMAIN_DICTIONARY.md` |
 | `verify_dependencies` | Clean Architecture layer-boundary violations in Go and TypeScript imports |
 | `search_ki` | Lexical-ranked search of the framework's Knowledge Items and ADRs |
-| `search_docs` | BM25 search (sqlite-fts5) of the installed project's `docs/` corpus |
+| `search_docs` | BM25 search (sqlite-fts5) of the installed project's `docs/` corpus, kept current incrementally — each search reads only the docs that changed since the last (L2.7) |
 | `validate_artifact` | Structural contract validation of a pipeline artifact against `shared/contracts/` — required-heading presence plus WARN-level retrieval frontmatter checks; returns typed violations |
 
 All tools are deterministic and stateless — no LLM is required.
