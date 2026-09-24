@@ -38,7 +38,11 @@ type otlpSpan struct {
 	StartTimeUnixNano string     `json:"startTimeUnixNano"`
 	EndTimeUnixNano   string     `json:"endTimeUnixNano"`
 	Attributes        []otlpAttr `json:"attributes"`
-	Status            struct {
+	Events            []struct {
+		Name       string     `json:"name"`
+		Attributes []otlpAttr `json:"attributes"`
+	} `json:"events"`
+	Status struct {
 		Code int `json:"code"`
 	} `json:"status"`
 }

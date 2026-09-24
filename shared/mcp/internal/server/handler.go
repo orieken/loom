@@ -16,6 +16,9 @@ type Handler struct {
 	// case and is safe to use: the server runs untraced unless an OTLP
 	// endpoint is configured.
 	session *telemetry.Session
+	// resilience is the retry and breaker policy every tool call runs under
+	// (roadmap L2.6).
+	resilience resiliencePolicy
 }
 
 // New constructs a Handler wired with all framework M1 tools.
@@ -26,8 +29,9 @@ func New(logger *logging.Logger) *Handler {
 // NewAt constructs a Handler whose tools read only under root (roadmap L2.3).
 func NewAt(logger *logging.Logger, root tools.WorkspaceRoot) *Handler {
 	return &Handler{
-		logger:   logger,
-		registry: buildFrameworkRegistry(logger, root),
+		logger:     logger,
+		registry:   buildFrameworkRegistry(logger, root),
+		resilience: defaultResiliencePolicy,
 	}
 }
 

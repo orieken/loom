@@ -139,6 +139,29 @@ zero hits, indistinguishable from a search that found nothing.
 `ToolResult.Error` without parsing text. `tools.NewErrorResult` still works and is classified
 `internal`; new tools should use `tools.NewToolErrorResult` and say which kind they mean.
 
+## Retries and circuit breakers (roadmap L2.6)
+
+`loom mcp serve` runs every call through the tool's own circuit breaker, with retries inside it, so
+no tool implements either:
+
+- **Retry**: a `transient` failure of a tool registered `RetryIdempotent` (every framework tool) is
+  retried with exponential backoff from 200ms, **three attempts at most**, each under the tool's full
+  `Timeout`. A walk that keeps timing out therefore costs up to three budgets unless the caller stops
+  it sooner — and a caller that stops it ends the backoff at once. Nothing else is retried.
+- **Breaker**: **five consecutive** `transient` or `internal` failures open the tool's breaker. An open
+  breaker answers at once, without running the tool, with a retryable `transient` error naming the
+  breaker; after 30s it lets one trial call through, which closes it on success and reopens it on
+  failure. One call is one sample, however many attempts it took.
+- **What does not count**: `validation`, `not_found` and `permission` failures are the caller's
+  mistake, not the tool's health — counting them would let one confused model switch a tool off for
+  everyone. `cancelled` calls, and malformed calls refused before the tool ran, are not counted
+  either.
+
+Each traced call records `loom.tool.error.kind`, `loom.tool.attempts` and `loom.tool.breaker.state`,
+and the call that moves a breaker carries a `loom.tool.breaker.state_change` event; every transition
+is also logged as `tool.breaker.state_changed`. Embedders adapting `register.Frameworks` get the
+registrations' `Retry` class and should apply the same policy.
+
 ## Installing into a downstream project
 
 If you already have an MCP server, see
@@ -223,3 +246,6 @@ repo root.
 - [`mark3labs/mcp-go`](https://github.com/mark3labs/mcp-go) v0.57.0 — MCP SDK
 - [`invopop/jsonschema`](https://github.com/invopop/jsonschema) v0.14.0 — output schema reflection
 - [`modernc.org/sqlite`](https://pkg.go.dev/modernc.org/sqlite) v1.55.0 — pure-Go sqlite for BM25 retrieval
+- [`santhosh-tekuri/jsonschema`](https://github.com/santhosh-tekuri/jsonschema) v6.0.2 — argument validation (L2.1)
+- [`sony/gobreaker`](https://github.com/sony/gobreaker) v2.4.0 — per-tool circuit breakers (L2.6)
+- [`cenkalti/backoff`](https://github.com/cenkalti/backoff) v5.0.3 — exponential backoff for transient failures (L2.6)

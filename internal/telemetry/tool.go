@@ -90,6 +90,20 @@ type ToolResult struct {
 	// one that returned an error to the transport.
 	IsError bool
 	Err     error
+	// ErrorKind is the failure's kind (validation, transient, …), empty on
+	// success. A closed set, so it is safe as an attribute (guardrail #9).
+	ErrorKind string
+	// Attempts is how many times the tool ran; above one, it was retried
+	// (roadmap L2.6). Zero means the caller did not count.
+	Attempts int
+	// Breaker is the tool's circuit breaker state before and after the call.
+	// Both empty when the tool has no breaker.
+	Breaker BreakerStates
+}
+
+// BreakerStates is a circuit breaker's state either side of one call.
+type BreakerStates struct {
+	Before, After string
 }
 
 // StartTool opens a span for one tool call beneath whatever is in ctx —
@@ -135,8 +149,30 @@ func (s *ToolSpan) End(result ToolResult) {
 		attribute.Int("loom.tool.result.blocks", result.Blocks),
 		attribute.Bool("loom.tool.is_error", result.IsError),
 	)
+	s.recordResilience(result)
 	s.recordToolStatus(result)
 	s.span.End()
+}
+
+// recordResilience records what L2.5 and L2.6 add to a call: the kind of
+// failure, the attempts it took, and the breaker's state — with an event when
+// this call moved the breaker, so an opening shows on the call that opened it.
+func (s *ToolSpan) recordResilience(result ToolResult) {
+	if result.ErrorKind != "" {
+		s.span.SetAttributes(attribute.String("loom.tool.error.kind", result.ErrorKind))
+	}
+	if result.Attempts > 0 {
+		s.span.SetAttributes(attribute.Int("loom.tool.attempts", result.Attempts))
+	}
+	if result.Breaker.After == "" {
+		return
+	}
+	s.span.SetAttributes(attribute.String("loom.tool.breaker.state", result.Breaker.After))
+	if result.Breaker.Before != result.Breaker.After {
+		s.span.AddEvent("loom.tool.breaker.state_change", trace.WithAttributes(
+			attribute.String("loom.tool.breaker.from", result.Breaker.Before),
+			attribute.String("loom.tool.breaker.to", result.Breaker.After)))
+	}
 }
 
 func (s *ToolSpan) recordToolStatus(result ToolResult) {

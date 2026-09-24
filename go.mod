@@ -3,11 +3,13 @@ module github.com/orieken/loom
 go 1.26.5
 
 require (
+	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/charmbracelet/huh v1.0.0
 	github.com/invopop/jsonschema v0.14.0
 	github.com/mark3labs/mcp-go v0.57.0
 	github.com/mattn/go-isatty v0.0.20
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
+	github.com/sony/gobreaker/v2 v2.4.0
 	github.com/spf13/cobra v1.10.1
 	go.opentelemetry.io/otel v1.46.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.46.0
@@ -23,7 +25,6 @@ require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.1.2 // indirect
 	github.com/catppuccin/go v0.3.0 // indirect
-	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/charmbracelet/bubbles v0.21.1-0.20250623103423-23b8fd6302d7 // indirect
 	github.com/charmbracelet/bubbletea v1.3.6 // indirect

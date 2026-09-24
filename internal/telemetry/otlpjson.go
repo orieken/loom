@@ -56,7 +56,16 @@ type otlpSpan struct {
 	StartTimeUnixNano string          `json:"startTimeUnixNano"`
 	EndTimeUnixNano   string          `json:"endTimeUnixNano"`
 	Attributes        []otlpAttribute `json:"attributes,omitempty"`
+	Events            []otlpEvent     `json:"events,omitempty"`
 	Status            otlpStatus      `json:"status"`
+}
+
+// otlpEvent is OTLP's Span.Event: something that happened at one moment of a
+// span, such as a breaker opening or an exception being recorded.
+type otlpEvent struct {
+	TimeUnixNano string          `json:"timeUnixNano"`
+	Name         string          `json:"name"`
+	Attributes   []otlpAttribute `json:"attributes,omitempty"`
 }
 
 type otlpStatus struct {
@@ -109,8 +118,23 @@ func encodeSpan(span sdktrace.ReadOnlySpan) otlpSpan {
 		StartTimeUnixNano: strconv.FormatInt(span.StartTime().UnixNano(), 10),
 		EndTimeUnixNano:   strconv.FormatInt(span.EndTime().UnixNano(), 10),
 		Attributes:        encodeAttributes(span.Attributes()),
+		Events:            encodeEvents(span.Events()),
 		Status:            encodeStatus(span),
 	}
+}
+
+// encodeEvents keeps a span's events. Until L2.6 they were dropped, which
+// silently lost the exception event RecordError adds for a transport error.
+func encodeEvents(events []sdktrace.Event) []otlpEvent {
+	encoded := make([]otlpEvent, 0, len(events))
+	for _, event := range events {
+		encoded = append(encoded, otlpEvent{
+			TimeUnixNano: strconv.FormatInt(event.Time.UnixNano(), 10),
+			Name:         event.Name,
+			Attributes:   encodeAttributes(event.Attributes),
+		})
+	}
+	return encoded
 }
 
 func parentID(span sdktrace.ReadOnlySpan) string {

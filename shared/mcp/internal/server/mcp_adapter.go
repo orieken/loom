@@ -31,8 +31,9 @@ func mcpToolDefinition(tool domain.Tool) mcp.Tool {
 // place tool-call telemetry is emitted; the tools themselves stay unaware
 // of it, and `internal/domain` stays stdlib-only (guardrail #8 and M0.3).
 //
-// It also applies the registration's declared Timeout (roadmap L2.2): the
-// registry carried a budget per tool since L2.4, and nothing enforced it.
+// Every call runs through the registration's circuit breaker and retry
+// (roadmap L2.6, middleware.go), each attempt under its declared Timeout
+// (L2.2). The span covers the whole call, attempts included.
 func (h *Handler) mcpToolHandler(registration domain.ToolRegistration) func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	validator, err := compileArgumentValidator(registration.Tool)
 	if err != nil {
@@ -42,16 +43,16 @@ func (h *Handler) mcpToolHandler(registration domain.ToolRegistration) func(cont
 }
 
 // validatedToolHandler is mcpToolHandler with the argument validator already
-// compiled. A call whose arguments break the schema never reaches Execute: it
-// returns the field-level violations instead (roadmap L2.1).
+// compiled. A call whose arguments break the schema never reaches Execute —
+// nor the breaker, since a malformed call says nothing about the tool's
+// health: it returns the field-level violations instead (roadmap L2.1).
 func (h *Handler) validatedToolHandler(registration domain.ToolRegistration, validator *argumentValidator) func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	tool := registration.Tool
+	resilient := newResilientTool(registration, h.resilience, h.logger)
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if violations := validator.violations(request.GetArguments()); len(violations) > 0 {
 			return mcpResult(invalidArgumentsResult(tool.Name(), violations)), nil
 		}
-		ctx, cancel := withDeadline(ctx, registration.Timeout)
-		defer cancel()
 		call := telemetry.ToolCall{
 			Name:          tool.Name(),
 			Arguments:     stringArguments(request.GetArguments()),
@@ -59,12 +60,12 @@ func (h *Handler) validatedToolHandler(registration domain.ToolRegistration, val
 		}
 		ctx, span := h.session.StartTool(ctx, call)
 		h.logToolCall(ctx, tool.Name())
-		result, err := tool.Execute(ctx, domainRequest(tool.Name(), request))
-		span.End(toolResult(result, err))
-		if err != nil {
-			return nil, err
+		outcome := resilient.call(ctx, domainRequest(tool.Name(), request))
+		span.End(toolResult(outcome))
+		if outcome.err != nil {
+			return nil, outcome.err
 		}
-		return mcpResult(result), nil
+		return mcpResult(outcome.result), nil
 	}
 }
 
@@ -90,16 +91,30 @@ func safeArgumentNames(tool domain.Tool) []string {
 	return declaring.SafeArgumentNames()
 }
 
-func toolResult(result *domain.ToolResult, err error) telemetry.ToolResult {
-	if result == nil {
-		return telemetry.ToolResult{Err: err}
+func toolResult(outcome callOutcome) telemetry.ToolResult {
+	recorded := telemetry.ToolResult{Err: outcome.err, Attempts: outcome.attempts, Breaker: outcome.breaker}
+	if outcome.result == nil {
+		return recorded
 	}
-	return telemetry.ToolResult{
-		Bytes:   resultBytes(result),
-		Blocks:  len(result.Content),
-		IsError: result.IsError,
-		Err:     err,
+	recorded.Bytes = resultBytes(outcome.result)
+	recorded.Blocks = len(outcome.result.Content)
+	recorded.IsError = outcome.result.IsError
+	recorded.ErrorKind = boundedKind(failureKind(outcome.result))
+	return recorded
+}
+
+// knownKinds are the kinds a span may name. A kind an embedder's tool
+// invented is recorded as "other", keeping the attribute a closed set.
+var knownKinds = map[domain.ErrorKind]bool{
+	domain.ErrorValidation: true, domain.ErrorNotFound: true, domain.ErrorPermission: true,
+	domain.ErrorTransient: true, domain.ErrorCancelled: true, domain.ErrorInternal: true,
+}
+
+func boundedKind(kind domain.ErrorKind) string {
+	if kind == "" || knownKinds[kind] {
+		return string(kind)
 	}
+	return "other"
 }
 
 // resultBytes sizes the result without assembling it: the span records how

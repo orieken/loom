@@ -349,3 +349,53 @@ func TestNilSessionTracesNothingAndDoesNotPanic(t *testing.T) {
 	}
 	span.End(telemetry.ToolResult{Bytes: 1, Blocks: 1})
 }
+
+// L2.5 and L2.6 on the span: the kind of failure, the attempts it took, the
+// breaker's state, and an event on the call that moved the breaker.
+func TestResilienceIsRecordedAndABreakerTransitionIsAnEvent(t *testing.T) {
+	span := toolSpan(t, traceTool(context.Background(), t,
+		telemetry.ToolCall{Name: "search_ki"},
+		telemetry.ToolResult{IsError: true, ErrorKind: "internal", Attempts: 1,
+			Breaker: telemetry.BreakerStates{Before: "closed", After: "open"}}))
+
+	assertStringAttribute(t, span, "loom.tool.error.kind", "internal")
+	assertIntAttribute(t, span, "loom.tool.attempts", "1")
+	assertStringAttribute(t, span, "loom.tool.breaker.state", "open")
+	if len(span.Events) != 1 || span.Events[0].Name != "loom.tool.breaker.state_change" {
+		t.Fatalf("events = %+v, want one breaker state change", span.Events)
+	}
+	event := otlpSpan{Attributes: span.Events[0].Attributes}
+	assertStringAttribute(t, event, "loom.tool.breaker.from", "closed")
+	assertStringAttribute(t, event, "loom.tool.breaker.to", "open")
+}
+
+// A call that left the breaker where it found it adds no event, and a call
+// with nothing to say about resilience adds no attributes.
+func TestAnUnchangedBreakerAndAnUncountedCallAddNothing(t *testing.T) {
+	steady := toolSpan(t, traceTool(context.Background(), t,
+		telemetry.ToolCall{Name: "search_ki"},
+		telemetry.ToolResult{Attempts: 2, Breaker: telemetry.BreakerStates{Before: "closed", After: "closed"}}))
+	if len(steady.Events) != 0 {
+		t.Errorf("an unchanged breaker produced events: %+v", steady.Events)
+	}
+	assertStringAttribute(t, steady, "loom.tool.breaker.state", "closed")
+
+	bare := toolSpan(t, traceTool(context.Background(), t, telemetry.ToolCall{Name: "search_ki"}, telemetry.ToolResult{}))
+	for _, key := range []string{"loom.tool.error.kind", "loom.tool.attempts", "loom.tool.breaker.state"} {
+		if bare.find(key) != nil {
+			t.Errorf("%s recorded on a call that did not report it", key)
+		}
+	}
+}
+
+// The exception event RecordError adds for a transport error reaches the
+// trace file. The encoder dropped every event until L2.6, this one included.
+func TestATransportErrorKeepsItsExceptionEvent(t *testing.T) {
+	failed := toolSpan(t, traceTool(context.Background(), t,
+		telemetry.ToolCall{Name: "search_ki"},
+		telemetry.ToolResult{Err: errors.New("transport exploded")}))
+	if len(failed.Events) != 1 || failed.Events[0].Name != "exception" {
+		t.Fatalf("events = %+v, want the recorded exception", failed.Events)
+	}
+	assertStringAttribute(t, otlpSpan{Attributes: failed.Events[0].Attributes}, "exception.message", "transport exploded")
+}

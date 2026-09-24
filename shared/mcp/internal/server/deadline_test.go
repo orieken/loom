@@ -34,8 +34,14 @@ func (w *waitingTool) Execute(ctx context.Context, _ domain.ToolRequest) (*domai
 func TestAToolCallIsBoundedByItsRegisteredTimeout(t *testing.T) {
 	tool := &waitingTool{}
 	handler := New(logging.NewLogger(&bytes.Buffer{}))
+	// A cancel, not a deadline, bounds the test: were the Timeout ever not
+	// applied, the elapsed check below fails in 2s instead of the suite
+	// hanging, and hadDeadline still means the Timeout gave the deadline.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	time.AfterFunc(2*time.Second, cancel)
 	started := time.Now()
-	_, err := handler.mcpToolHandler(domain.ToolRegistration{Tool: tool, Timeout: 50 * time.Millisecond})(context.Background(), mcp.CallToolRequest{})
+	_, err := handler.mcpToolHandler(domain.ToolRegistration{Tool: tool, Timeout: 50 * time.Millisecond})(ctx, mcp.CallToolRequest{})
 	if err != nil {
 		t.Fatalf("handler: %v", err)
 	}

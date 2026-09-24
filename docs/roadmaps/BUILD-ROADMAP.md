@@ -410,6 +410,48 @@ success payload.
 ### L2.6 — Add the resilience primitives the guardrails already mandate
 **Workstream**: TOOLS · **Effort**: M · **Blocked by**: L2.5 · **Blocks**: L4.7
 
+**SHIPPED** 2026-09-24 — every tool call runs through its own circuit breaker, with backoff retries
+inside it, applied as middleware in `shared/mcp/internal/server/middleware.go`; no tool implements
+either.
+
+- **Libraries**: `sony/gobreaker/v2` v2.4.0 and `cenkalti/backoff/v5` v5.0.3 — v5 rather than the v4
+  named above: it is the current major and was already in the module graph through OpenTelemetry.
+  There is no `shared/mcp/go.mod`; the dependency is in the root module, and the embedding example's
+  `go.sum` gained the entry.
+- **What counts against a tool** is the design decision here: only `transient` and `internal`
+  failures. `validation`, `not_found` and `permission` are the caller's mistake — counting them would
+  let one confused model switch a tool off for every caller — and `cancelled` calls and malformed
+  calls refused by the L2.1 validator are not counted at all.
+- **Retry**: a `transient` failure of a `RetryIdempotent` registration is retried from 200ms, three
+  attempts at most, each under the registration's full `Timeout` — the deadline moved inside the
+  attempt, so a retry is not born with its predecessor's spent budget. The cost is stated in the
+  README: a walk that keeps timing out takes up to three budgets unless its caller stops it, and a
+  caller that stops it ends the backoff at once, uncounted. Retries run inside the breaker, so one
+  call is one sample.
+- **Breaker**: five consecutive unhealthy calls open it; open, it answers at once with a retryable
+  `transient` error naming itself, and after 30s lets one trial call through.
+- **Telemetry**: spans gained `loom.tool.error.kind` (a closed set; an embedder's invented kind is
+  recorded as `other`), `loom.tool.attempts`, `loom.tool.breaker.state`, and a
+  `loom.tool.breaker.state_change` event on the call that moved it; transitions are also logged.
+  Adding the event exposed that the trace file's hand-written OTLP/JSON encoder **dropped every span
+  event** — including the `exception` event `RecordError` has added for transport errors since L3.8.
+  Events are now encoded, and a test pins the exception event.
+- **Done-when test**: `TestFiveConsecutiveFailuresOpenTheBreakerAndTheNextCallReturnsImmediately` —
+  five failing calls run the tool five times; the sixth returns in under 50ms without running it. Red
+  proof: 27 mutants across the middleware, the adapter and the span encoding, all killed and none by
+  timeout. Two were first caught only by *hanging* — removing the retry cap, and sharing one deadline
+  across attempts — which the L3.59 job would count against the score; the retry tests and L2.2's
+  deadline test are now bounded (the latter by a cancel, not a deadline, so its `hadDeadline` check
+  still proves the Timeout gave the deadline) and fail in seconds instead.
+- **One test was vacuous on its first draft**, caught before commit: the "caller stops during backoff"
+  test used a one-hour delay, which backoff's own 15-minute elapsed cap ends before any wait, so it
+  passed without the cancellation mattering. It now uses 10s.
+- **Not done**: a breaker per *downstream dependency* (the roadmap's second granularity). Today each
+  store has exactly one tool in front of it — BM25 behind `search_docs`, the KI corpus behind
+  `search_ki` — so a per-tool breaker is the same breaker; it becomes a separate one when two tools
+  share a store. The orchestrator side (`deliver-feature`'s prose "retry three times") is unchanged:
+  that is L4.7's.
+
 1. **Problem**: `architecture-guardrails.md` #5 forbids hand-rolled retry loops and requires
    `CircuitBreaker` or `ExponentialBackoffStrategy`. Neither exists anywhere in the Go tree. The only
    retry logic in the framework is prose in `deliver-feature/SKILL.md` telling an LLM to count to
@@ -3492,6 +3534,7 @@ integration routing: all killed. **M9 first survived**: its test made the report
 | 2026-09-24 | `2fcea94..0941643` | 5 | 34 | 33 | 97.1% | — |
 | 2026-09-24 | `0941643..b81f725` | 3 | 12 | 11 | 91.7% | — |
 | 2026-09-24 | `b81f725..63265c2` | 2 | 21 | 19 | 90.5% | — |
+| 2026-09-24 | `63265c2..2408612` | 4 | 11 | 11 | 100.0% | — |
 
 Of run 2's five survivors, three were equivalent (boundary mutants on `plan.go:85`, where two stages can
 never share an index) and two were **real test gaps**, closed the same day: nothing checked that a stage
