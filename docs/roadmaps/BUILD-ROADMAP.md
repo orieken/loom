@@ -225,6 +225,28 @@ human-in-the-loop control.*
 ### L2.1 — Enforce input schemas server-side instead of trusting the model
 **Workstream**: TOOLS · **Effort**: M · **Blocked by**: M0.3 · **Blocks**: L2.5
 
+**SHIPPED** 2026-09-24 — every call is validated against the tool's schema before the tool runs, and a
+malformed one comes back as field-level violations rather than a generic error.
+
+- **At the handler boundary** (`server/argument_validator.go`, the adapter layer, so `internal/domain`
+  stays stdlib-only): each tool's `InputSchema` is compiled once at `RegisterTools` with
+  `santhosh-tekuri/jsonschema/v6`, promoted from indirect to direct — same version, one `go.mod` line.
+  A schema that does not compile, or a tool that declares none, stops registration.
+- **The error is a repair signal**: `{"error":"invalid arguments","tool":…,"violations":[{"field":…,
+  "problem":…}]}`, every problem in one response. A missing or unknown argument is reported against
+  that argument, not the object holding it, and the combinators (`anyOf`) are left to their leaves.
+- **The schemas now say what the tools need**: unknown arguments rejected (`additionalProperties:
+  false`); `maxComplexity`/`maxLines` at least 1, where a zero was silently replaced by the default;
+  `check_accessibility` declares that one of `filePath`/`projectPath` is required; required strings
+  are non-empty; and the path descriptions, which still said "Absolute path" after L2.3 made them
+  root-relative, say what the server actually does.
+
+**Done-when, for all seven tools** (six when the item was written): through the same handler the MCP
+server registers, a wrong type names the field, an unknown argument names itself, a missing required
+argument names itself, and a well-formed call passes validation. Ten mutants: nine killed; **V4
+survived because the code it removed was dead** — a nil arguments map already validates as an empty
+object — so the defensive default was deleted and the no-arguments test pins the behaviour instead.
+
 1. **Problem**: `InputSchema()` exists only to describe arguments *to the LLM*. Enforcement is
    unchecked type assertion — `parseComplexityArgs` does `args["projectPath"].(string)` and silently
    yields `""` on any non-string, then returns a generic error. A hallucinated argument shape
@@ -3444,6 +3466,7 @@ integration routing: all killed. **M9 first survived**: its test made the report
 | 2026-09-23 | `e2c0741..deb86b2` | 5 (two in integration mode) | 42 | 42 | 100.0% | ~3 min |
 | 2026-09-24 | `deb86b2..2fcea94` | 5 | 44 | 39 | 88.6% | ~1 min |
 | 2026-09-24 | `2fcea94..0941643` | 5 | 34 | 33 | 97.1% | — |
+| 2026-09-24 | `0941643..b81f725` | 3 | 12 | 11 | 91.7% | — |
 
 Of run 2's five survivors, three were equivalent (boundary mutants on `plan.go:85`, where two stages can
 never share an index) and two were **real test gaps**, closed the same day: nothing checked that a stage
@@ -3453,6 +3476,10 @@ earning its keep before it gates anything.
 
 Run 3's one survivor was also real: a negated error check in the docs indexer's loop stopped after the
 first file, and the only indexing test had one document. Closed with a three-document test (L2.2).
+
+Run 4's one miss was a TIMED OUT, not a survivor: negating the deadline check left the deadline test
+waiting on a tool that never returns. Caught in fact, but uncredited by design — the score counts a
+timeout against itself, because the spike showed timeouts can hide survivors.
 
 **Not done from the original fix**: `backfill-unit-tests` step 6 still mutates by hand, and `run-tests`
 does not mention the runner — both can call `cmd/diff-mutation` once a floor exists.

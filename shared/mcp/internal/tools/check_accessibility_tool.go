@@ -28,15 +28,19 @@ func (t *CheckAccessibilityTool) Description() string {
 	return "Scan UI template files (HTML, Vue, JSX, TSX, Svelte) for semantic-HTML and ARIA accessibility violations"
 }
 
+// InputSchema requires one of filePath or projectPath — declared here, so the
+// server's validation (L2.1) reports it, rather than only Execute's check.
 func (t *CheckAccessibilityTool) InputSchema() json.RawMessage {
-	return objectSchema(nil, map[string]any{
+	return eitherOfSchema([]string{"filePath", "projectPath"}, map[string]any{
 		"filePath": map[string]any{
 			"type":        "string",
-			"description": "Absolute path to a single UI template file to scan",
+			"minLength":   1,
+			"description": "Path to a single UI template file to scan" + pathNote,
 		},
 		"projectPath": map[string]any{
 			"type":        "string",
-			"description": "Absolute path to a project root; the walker scans every .html/.htm/.vue/.jsx/.tsx/.svelte file underneath",
+			"minLength":   1,
+			"description": "Path to a project root; the walker scans every .html/.htm/.vue/.jsx/.tsx/.svelte file underneath" + pathNote,
 		},
 	})
 }

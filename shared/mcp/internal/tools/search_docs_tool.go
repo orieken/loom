@@ -43,11 +43,12 @@ func (t *SearchDocsTool) InputSchema() json.RawMessage {
 	return objectSchema([]string{"query"}, map[string]any{
 		"query": map[string]any{
 			"type":        "string",
+			"minLength":   1,
 			"description": "Free-text query. Whitespace-split into tokens; each token is matched via fts5 against doc titles (10x weight) and bodies (1x weight).",
 		},
 		"docsPath": map[string]any{
 			"type":        "string",
-			"description": "Corpus root to index and search. Defaults to \"docs/\" (relative to the server's working directory).",
+			"description": "Corpus root to index and search. Defaults to \"docs/\"" + pathNote,
 		},
 	})
 }

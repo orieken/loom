@@ -33,7 +33,8 @@ func (t *CheckUbiquitousLanguageTool) InputSchema() json.RawMessage {
 		"projectPath": projectPathProperty(),
 		"dictionaryPath": map[string]any{
 			"type":        "string",
-			"description": "Absolute path to the DOMAIN_DICTIONARY.md that defines canonical terms and their forbidden synonyms",
+			"minLength":   1,
+			"description": "Path to the DOMAIN_DICTIONARY.md that defines canonical terms and their forbidden synonyms" + pathNote,
 		},
 	})
 }

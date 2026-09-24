@@ -61,11 +61,12 @@ func (t *ValidateArtifactTool) InputSchema() json.RawMessage {
 	return objectSchema([]string{"artifactPath"}, map[string]any{
 		"artifactPath": map[string]any{
 			"type":        "string",
-			"description": "Absolute path to the pipeline artifact markdown file (e.g. analysis.md)",
+			"minLength":   1,
+			"description": "Path to the pipeline artifact markdown file (e.g. analysis.md)" + pathNote,
 		},
 		"contractPath": map[string]any{
 			"type":        "string",
-			"description": "Absolute path to the contract markdown file; omit to infer it from the artifact filename against the framework's shared/contracts/ directory",
+			"description": "Path to the contract markdown file (inside the workspace or the framework's contracts directory); omit to infer it from the artifact filename against the framework's shared/contracts/ directory",
 		},
 	})
 }

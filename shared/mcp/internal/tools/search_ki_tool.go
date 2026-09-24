@@ -30,6 +30,7 @@ func (t *SearchKITool) InputSchema() json.RawMessage {
 	return objectSchema([]string{"query"}, map[string]any{
 		"query": map[string]any{
 			"type":        "string",
+			"minLength":   1,
 			"description": "Free-text query. Whitespace-split into tokens; matches against KI/ADR titles and summaries.",
 		},
 		"tags": map[string]any{

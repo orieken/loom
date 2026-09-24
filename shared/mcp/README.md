@@ -98,6 +98,22 @@ same field. A call's context reaches every walk, every per-file analysis loop an
 a client that disconnects or a deadline that passes stops the work — within 100ms of cancellation for
 a walk, by test — and the tool returns an error naming the cancellation rather than a partial result.
 
+## Argument validation (roadmap L2.1)
+
+Every call is validated against the tool's own `InputSchema` before the tool runs. A call that breaks
+it returns an error result the model can repair from, naming each field:
+
+```json
+{"error": "invalid arguments", "tool": "analyze_complexity", "violations": [
+  {"field": "maxComplexity", "problem": "minimum: got 0, want 1"},
+  {"field": "projectPath", "problem": "got number, want string"},
+  {"field": "projectPth", "problem": "is not an argument this tool accepts"}]}
+```
+
+Schemas reject arguments they do not declare. A tool whose schema does not compile — or that declares
+none — stops `RegisterTools`, so a broken schema fails at startup rather than on the first call.
+Embedders adapting `register.Frameworks` to their own MCP library should validate the same way.
+
 ## Installing into a downstream project
 
 If you already have an MCP server, see

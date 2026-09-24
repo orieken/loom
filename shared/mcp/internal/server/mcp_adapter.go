@@ -34,8 +34,22 @@ func mcpToolDefinition(tool domain.Tool) mcp.Tool {
 // It also applies the registration's declared Timeout (roadmap L2.2): the
 // registry carried a budget per tool since L2.4, and nothing enforced it.
 func (h *Handler) mcpToolHandler(registration domain.ToolRegistration) func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	validator, err := compileArgumentValidator(registration.Tool)
+	if err != nil {
+		return func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) { return nil, err }
+	}
+	return h.validatedToolHandler(registration, validator)
+}
+
+// validatedToolHandler is mcpToolHandler with the argument validator already
+// compiled. A call whose arguments break the schema never reaches Execute: it
+// returns the field-level violations instead (roadmap L2.1).
+func (h *Handler) validatedToolHandler(registration domain.ToolRegistration, validator *argumentValidator) func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	tool := registration.Tool
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if violations := validator.violations(request.GetArguments()); len(violations) > 0 {
+			return mcpResult(invalidArgumentsResult(tool.Name(), violations)), nil
+		}
 		ctx, cancel := withDeadline(ctx, registration.Timeout)
 		defer cancel()
 		call := telemetry.ToolCall{

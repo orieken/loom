@@ -26,9 +26,17 @@ type stubTool struct {
 	gotRequest   domain.ToolRequest
 }
 
-func (s *stubTool) Name() string                  { return s.name }
-func (s *stubTool) Description() string           { return s.description }
-func (s *stubTool) InputSchema() json.RawMessage  { return s.inputSchema }
+func (s *stubTool) Name() string        { return s.name }
+func (s *stubTool) Description() string { return s.description }
+
+// InputSchema defaults to an unconstrained object: every MCP tool declares a
+// schema, and the server compiles it before any call (L2.1).
+func (s *stubTool) InputSchema() json.RawMessage {
+	if s.inputSchema == nil {
+		return json.RawMessage(`{"type":"object"}`)
+	}
+	return s.inputSchema
+}
 func (s *stubTool) OutputSchema() json.RawMessage { return s.outputSchema }
 
 func (s *stubTool) Execute(_ context.Context, request domain.ToolRequest) (*domain.ToolResult, error) {

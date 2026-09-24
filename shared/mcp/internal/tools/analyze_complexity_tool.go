@@ -33,10 +33,12 @@ func (t *AnalyzeComplexityTool) InputSchema() json.RawMessage {
 		"projectPath": projectPathProperty(),
 		"maxComplexity": map[string]any{
 			"type":        "integer",
+			"minimum":     1,
 			"description": "Maximum allowed cyclomatic complexity (default 7)",
 		},
 		"maxLines": map[string]any{
 			"type":        "integer",
+			"minimum":     1,
 			"description": "Maximum allowed lines of code per function (default 30)",
 		},
 	})
