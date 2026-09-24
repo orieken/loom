@@ -36,14 +36,22 @@ func rootedProject(t *testing.T) WorkspaceRoot {
 	return root
 }
 
-func rootedTools(root WorkspaceRoot) map[string]domain.Tool {
+// rootedTools builds every path-taking tool over root. search_docs gets a real
+// index: with none configured it now fails as not_found (L2.5), which would
+// say nothing about whether its docsPath was accepted.
+func rootedTools(t *testing.T, root WorkspaceRoot) map[string]domain.Tool {
+	t.Helper()
 	logger := SilentLogger()
+	docsIndex, err := NewBM25Retriever(filepath.Join(t.TempDir(), "docs.db"))
+	if err != nil {
+		t.Fatalf("NewBM25Retriever: %v", err)
+	}
 	return map[string]domain.Tool{
 		"analyze_complexity":        NewAnalyzeComplexityTool(logger, analyzers.NewComplexityAnalyzer(), root),
 		"check_accessibility":       NewCheckAccessibilityTool(logger, analyzers.NewAccessibilityAnalyzer(), root),
 		"check_ubiquitous_language": NewCheckUbiquitousLanguageTool(logger, analyzers.NewUbiquitousLanguageAnalyzer(), root),
 		"verify_dependencies":       NewVerifyDependenciesTool(logger, analyzers.NewDependencyBoundaryAnalyzer(), root),
-		"search_docs":               NewSearchDocsTool(logger, nil, nil, root),
+		"search_docs":               NewSearchDocsTool(logger, docsIndex, docsIndex, root),
 	}
 }
 
@@ -58,7 +66,7 @@ var validArguments = map[string]map[string]any{
 
 func TestRootedToolsAnalyzeAPathInsideTheWorkspace(t *testing.T) {
 	root := rootedProject(t)
-	for name, tool := range rootedTools(root) {
+	for name, tool := range rootedTools(t, root) {
 		t.Run(name, func(t *testing.T) {
 			result, err := tool.Execute(context.Background(), BuildRequest(validArguments[name]))
 			if err != nil || result.IsError {
@@ -70,7 +78,7 @@ func TestRootedToolsAnalyzeAPathInsideTheWorkspace(t *testing.T) {
 
 func TestRootedToolsRefuseEveryPathArgumentThatEscapes(t *testing.T) {
 	root := rootedProject(t)
-	for name, tool := range rootedTools(root) {
+	for name, tool := range rootedTools(t, root) {
 		for _, key := range pathKeys(validArguments[name]) {
 			t.Run(name+" "+key, func(t *testing.T) {
 				args := withArgument(validArguments[name], key, "../outside")
@@ -108,7 +116,7 @@ func withArgument(args map[string]any, key string, value any) map[string]any {
 // accessibility takes filePath as an alternative to projectPath; both are
 // confined.
 func TestAccessibilityConfinesItsFilePath(t *testing.T) {
-	tool := rootedTools(rootedProject(t))["check_accessibility"]
+	tool := rootedTools(t, rootedProject(t))["check_accessibility"]
 	inside, err := tool.Execute(context.Background(), BuildRequest(map[string]any{"filePath": "index.html"}))
 	if err != nil || inside.IsError {
 		t.Errorf("filePath inside the workspace refused: %v %s", err, ExtractText(t, inside))

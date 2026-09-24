@@ -3,7 +3,6 @@ package tools
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/orieken/loom/shared/mcp/internal/analyzers"
 	"github.com/orieken/loom/shared/mcp/internal/domain"
@@ -52,21 +51,21 @@ func (t *AnalyzeComplexityTool) Execute(ctx context.Context, request domain.Tool
 	t.logger.Info("Handling analyze_complexity request")
 	projectPath, maxComplexity, maxLines := parseComplexityArgs(request.Args)
 	if projectPath == "" {
-		return domain.NewErrorResult("projectPath is required"), nil
+		return missingArgument("projectPath", "projectPath is required"), nil
 	}
 	projectPath, err := t.root.Resolve(projectPath)
 	if err != nil {
-		return domain.NewErrorResult(err.Error()), nil
+		return pathFailure("projectPath", err), nil
 	}
 	result, err := t.analyzer.Analyze(ctx, projectPath, maxComplexity, maxLines)
 	if err != nil {
 		t.logger.Error("Complexity analysis failed", "error", err)
-		return domain.NewErrorResult(fmt.Sprintf("Complexity analysis failed: %v", err)), nil
+		return operationFailure("complexity analysis", err), nil
 	}
 	resultJSON, err := json.Marshal(result)
 	if err != nil {
 		t.logger.Error("Failed to marshal complexity result", "error", err)
-		return domain.NewErrorResult(fmt.Sprintf("Failed to format result: %v", err)), nil
+		return operationFailure("formatting the result", err), nil
 	}
 	t.logger.Info("Complexity analysis completed", "path", projectPath, "violations", result.ViolationsCount)
 	return domain.NewTextResult(string(resultJSON)), nil

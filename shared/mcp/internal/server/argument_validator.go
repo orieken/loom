@@ -12,7 +12,6 @@ package server
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -23,19 +22,6 @@ import (
 
 	"github.com/orieken/loom/shared/mcp/internal/domain"
 )
-
-// ArgumentViolation is one field that failed validation.
-type ArgumentViolation struct {
-	Field   string `json:"field"`
-	Problem string `json:"problem"`
-}
-
-// argumentReport is the error result body: machine-readable first.
-type argumentReport struct {
-	Error      string              `json:"error"`
-	Tool       string              `json:"tool"`
-	Violations []ArgumentViolation `json:"violations"`
-}
 
 // argumentValidator checks one tool's arguments against its InputSchema.
 type argumentValidator struct {
@@ -70,13 +56,13 @@ func compileArgumentValidator(tool domain.Tool) (*argumentValidator, error) {
 // violations returns every field-level problem with args, or none. A nil
 // map validates as an empty object — TestACallWithNoArgumentsIsValidatedAsEmpty
 // pins that, and a defensive default here was dead code (mutant V4 survived).
-func (v *argumentValidator) violations(args map[string]any) []ArgumentViolation {
+func (v *argumentValidator) violations(args map[string]any) []domain.FieldViolation {
 	err := v.schema.Validate(args)
 	var validationErr *jsonschema.ValidationError
 	if !errors.As(err, &validationErr) {
 		return nil
 	}
-	var found []ArgumentViolation
+	var found []domain.FieldViolation
 	for _, unit := range validationErr.BasicOutput().Errors {
 		found = append(found, violationsFrom(unit)...)
 	}
@@ -87,7 +73,7 @@ func (v *argumentValidator) violations(args map[string]any) []ArgumentViolation 
 // violationsFrom turns one output unit into violations. A missing or unknown
 // argument is reported against that argument, not the object holding it; the
 // combinators (anyOf and friends) are left to the leaves under them.
-func violationsFrom(unit jsonschema.OutputUnit) []ArgumentViolation {
+func violationsFrom(unit jsonschema.OutputUnit) []domain.FieldViolation {
 	if unit.Error == nil {
 		return nil
 	}
@@ -99,14 +85,14 @@ func violationsFrom(unit jsonschema.OutputUnit) []ArgumentViolation {
 	case *kind.Schema, *kind.Group, *kind.Reference, *kind.AnyOf, *kind.AllOf, *kind.OneOf:
 		return nil // the leaves under a combinator say what is wrong
 	}
-	return []ArgumentViolation{{Field: fieldName(unit.InstanceLocation), Problem: unit.Error.String()}}
+	return []domain.FieldViolation{{Field: fieldName(unit.InstanceLocation), Problem: unit.Error.String()}}
 }
 
 // namedViolations reports one problem against each named argument.
-func namedViolations(names []string, problem string) []ArgumentViolation {
-	violations := make([]ArgumentViolation, 0, len(names))
+func namedViolations(names []string, problem string) []domain.FieldViolation {
+	violations := make([]domain.FieldViolation, 0, len(names))
 	for _, name := range names {
-		violations = append(violations, ArgumentViolation{Field: name, Problem: problem})
+		violations = append(violations, domain.FieldViolation{Field: name, Problem: problem})
 	}
 	return violations
 }
@@ -121,11 +107,10 @@ func fieldName(pointer string) string {
 	return field
 }
 
-// invalidArgumentsResult is the error result a rejected call returns.
-func invalidArgumentsResult(tool string, violations []ArgumentViolation) *domain.ToolResult {
-	body, err := json.Marshal(argumentReport{Error: "invalid arguments", Tool: tool, Violations: violations})
-	if err != nil {
-		return domain.NewErrorResult("invalid arguments")
-	}
-	return domain.NewErrorResult(string(body))
+// invalidArgumentsResult is the error result a rejected call returns: a
+// validation failure (L2.5) whose violations name each field to repair.
+func invalidArgumentsResult(tool string, violations []domain.FieldViolation) *domain.ToolResult {
+	failure := domain.NewToolError(domain.ErrorValidation, "invalid arguments to "+tool)
+	failure.Violations = violations
+	return domain.NewToolErrorResult(failure)
 }

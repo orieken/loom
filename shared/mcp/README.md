@@ -104,15 +104,40 @@ Every call is validated against the tool's own `InputSchema` before the tool run
 it returns an error result the model can repair from, naming each field:
 
 ```json
-{"error": "invalid arguments", "tool": "analyze_complexity", "violations": [
-  {"field": "maxComplexity", "problem": "minimum: got 0, want 1"},
-  {"field": "projectPath", "problem": "got number, want string"},
-  {"field": "projectPth", "problem": "is not an argument this tool accepts"}]}
+{"error": {"kind": "validation", "message": "invalid arguments to analyze_complexity", "retryable": false,
+  "violations": [
+    {"field": "maxComplexity", "problem": "minimum: got 0, want 1"},
+    {"field": "projectPath", "problem": "got number, want string"},
+    {"field": "projectPth", "problem": "is not an argument this tool accepts"}]}}
 ```
 
 Schemas reject arguments they do not declare. A tool whose schema does not compile — or that declares
 none — stops `RegisterTools`, so a broken schema fails at startup rather than on the first call.
 Embedders adapting `register.Frameworks` to their own MCP library should validate the same way.
+
+## Failure taxonomy (roadmap L2.5)
+
+Every failed call returns `IsError` with one error envelope, and never a success payload carrying a
+note — `search_docs` and `search_ki` with no index configured used to answer `"success": true` with
+zero hits, indistinguishable from a search that found nothing.
+
+```json
+{"error": {"kind": "permission", "field": "projectPath", "retryable": false,
+  "message": "path \"../etc\" resolves outside the workspace root /work/app"}}
+```
+
+| `kind` | Means | Caller should |
+|---|---|---|
+| `validation` | An argument is wrong: missing, malformed, or a path too large to walk | Fix `field` (or each `violations` entry) and call again |
+| `not_found` | A path, or a capability such as the docs index, does not exist | Stop; the same call will not succeed |
+| `permission` | Refused, e.g. a path outside the workspace root | Stop |
+| `transient` | A deadline passed | Back off and retry — the only kind with `retryable: true` |
+| `cancelled` | The caller stopped the call | Nothing; it chose to stop |
+| `internal` | A defect in the tool | Report it; do not retry |
+
+`retryable` is derived from `kind`, so they cannot disagree. Go embedders read the same error from
+`ToolResult.Error` without parsing text. `tools.NewErrorResult` still works and is classified
+`internal`; new tools should use `tools.NewToolErrorResult` and say which kind they mean.
 
 ## Installing into a downstream project
 

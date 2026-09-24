@@ -369,6 +369,30 @@ not yet enforced — that is L2.2.
 ### L2.5 — Introduce a typed failure taxonomy
 **Workstream**: TOOLS · **Effort**: M · **Blocked by**: L2.1, L2.2, L2.4 · **Blocks**: L2.6, L4.2
 
+**SHIPPED** 2026-09-24 — every failure of every tool is a typed error in one envelope, and none is a
+success payload.
+
+- **The type is public** (`tools/tool_error.go`, stdlib-only, additive to the semver'd API):
+  `ToolError{Kind, Message, Field, Retryable, Violations}`, `NewToolErrorResult`, and a typed
+  `ToolResult.Error` so a Go caller never parses text. Kinds are the five planned plus `cancelled`:
+  a caller that stops a call has not met a failure to retry, and folding it into `transient` would
+  have L2.6 retrying calls their callers abandoned. `Retryable` is derived from `Kind`.
+  `NewErrorResult` keeps its text and is classified `internal`, so no `IsError` result lacks a kind.
+- **Classification** (`internal/tools/tool_failures.go`) is by sentinel with `errors.Is`, never by
+  message text: `WorkspaceRoot.Resolve` now wraps `ErrPathNotFound`/`ErrEmptyPath`, and an
+  uninferable contract wraps `errNeedsContractPath` (validation — the caller can name one).
+- **The two success-shaped failures are gone**: `search_docs` and `search_ki` with no retriever
+  configured return `not_found` instead of `"success": true` with the reason in `query`. The L2.1
+  violations moved onto the same envelope as `kind: validation`.
+- **Done-when test**: `TestEveryFailurePathReturnsATypedErrorAndNeverASuccessPayload` — 40 cases,
+  the path cases derived from every rooted tool's path arguments so a new tool is covered by
+  construction; each asserts kind, field, retryability, that the envelope matches the typed error,
+  and that no `"success"` key appears. Red proof: 23 mutants, all killed, including restoring either
+  success-shaped `emptyResult`.
+- **Left**: the analyzers' own `success: true` field on *successful* results is now redundant but
+  unchanged — removing it is an output-schema change. Telemetry records `is_error` but not the kind;
+  a bounded `loom.tool.error.kind` attribute is a small follow-up, and L2.6 will want it.
+
 1. **Problem**: Every failure path collapses to `mcp.NewToolResultError(fmt.Sprintf(...))` with
    `err == nil` — a *successful* tool call carrying a prose error string. The caller cannot
    distinguish "bad argument, fix and retry" from "corpus missing, stop" from "transient I/O, back
@@ -3467,6 +3491,7 @@ integration routing: all killed. **M9 first survived**: its test made the report
 | 2026-09-24 | `deb86b2..2fcea94` | 5 | 44 | 39 | 88.6% | ~1 min |
 | 2026-09-24 | `2fcea94..0941643` | 5 | 34 | 33 | 97.1% | — |
 | 2026-09-24 | `0941643..b81f725` | 3 | 12 | 11 | 91.7% | — |
+| 2026-09-24 | `b81f725..63265c2` | 2 | 21 | 19 | 90.5% | — |
 
 Of run 2's five survivors, three were equivalent (boundary mutants on `plan.go:85`, where two stages can
 never share an index) and two were **real test gaps**, closed the same day: nothing checked that a stage
@@ -3480,6 +3505,11 @@ first file, and the only indexing test had one document. Closed with a three-doc
 Run 4's one miss was a TIMED OUT, not a survivor: negating the deadline check left the deadline test
 waiting on a tool that never returns. Caught in fact, but uncredited by design — the score counts a
 timeout against itself, because the spike showed timeouts can hide survivors.
+
+Run 5's two survivors were both on the violation sort in `argument_validator.go`. The boundary mutant
+(`<` to `<=`) is equivalent — no two violations of one call share a field in a way the order could show.
+The negation was real: nothing asserted the order the violations are listed in, so reversing it
+passed. Closed with a test that pins field order (L2.5).
 
 **Not done from the original fix**: `backfill-unit-tests` step 6 still mutates by hand, and `run-tests`
 does not mention the runner — both can call `cmd/diff-mutation` once a floor exists.

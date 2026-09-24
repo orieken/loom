@@ -24,6 +24,12 @@ type (
 	RetryClass = tools.RetryClass
 	// PermissionScope aliases tools.PermissionScope.
 	PermissionScope = tools.PermissionScope
+	// ToolError aliases tools.ToolError.
+	ToolError = tools.ToolError
+	// ErrorKind aliases tools.ErrorKind.
+	ErrorKind = tools.ErrorKind
+	// FieldViolation aliases tools.FieldViolation.
+	FieldViolation = tools.FieldViolation
 )
 
 const (
@@ -35,6 +41,18 @@ const (
 	ScopeReadOnly = tools.ScopeReadOnly
 	// ScopeWorkspaceWrite aliases tools.ScopeWorkspaceWrite.
 	ScopeWorkspaceWrite = tools.ScopeWorkspaceWrite
+	// ErrorValidation aliases tools.ErrorValidation.
+	ErrorValidation = tools.ErrorValidation
+	// ErrorNotFound aliases tools.ErrorNotFound.
+	ErrorNotFound = tools.ErrorNotFound
+	// ErrorPermission aliases tools.ErrorPermission.
+	ErrorPermission = tools.ErrorPermission
+	// ErrorTransient aliases tools.ErrorTransient.
+	ErrorTransient = tools.ErrorTransient
+	// ErrorCancelled aliases tools.ErrorCancelled.
+	ErrorCancelled = tools.ErrorCancelled
+	// ErrorInternal aliases tools.ErrorInternal.
+	ErrorInternal = tools.ErrorInternal
 )
 
 // NewTextResult aliases tools.NewTextResult.
@@ -45,3 +63,9 @@ func NewErrorResult(message string) *ToolResult { return tools.NewErrorResult(me
 
 // NewRegistry aliases tools.NewRegistry.
 func NewRegistry() *Registry { return tools.NewRegistry() }
+
+// NewToolError aliases tools.NewToolError.
+func NewToolError(kind ErrorKind, message string) ToolError { return tools.NewToolError(kind, message) }
+
+// NewToolErrorResult aliases tools.NewToolErrorResult.
+func NewToolErrorResult(toolError ToolError) *ToolResult { return tools.NewToolErrorResult(toolError) }

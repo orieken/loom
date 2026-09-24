@@ -3,7 +3,6 @@ package tools
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/orieken/loom/shared/mcp/internal/analyzers"
 	"github.com/orieken/loom/shared/mcp/internal/domain"
@@ -49,24 +48,24 @@ func (t *CheckUbiquitousLanguageTool) Execute(ctx context.Context, request domai
 	projectPath := request.StringArg("projectPath")
 	dictionaryPath := request.StringArg("dictionaryPath")
 
-	if projectPath == "" || dictionaryPath == "" {
-		return domain.NewErrorResult("both projectPath and dictionaryPath are required"), nil
+	if failure := requireBoth(projectPath, dictionaryPath); failure != nil {
+		return failure, nil
 	}
-	projectPath, dictionaryPath, err := t.resolvePaths(projectPath, dictionaryPath)
-	if err != nil {
-		return domain.NewErrorResult(err.Error()), nil
+	projectPath, dictionaryPath, failure := t.resolvePaths(projectPath, dictionaryPath)
+	if failure != nil {
+		return failure, nil
 	}
 
 	result, err := t.analyzer.Analyze(ctx, projectPath, dictionaryPath)
 	if err != nil {
 		t.logger.Error("Ubiquitous language analysis failed", "error", err)
-		return domain.NewErrorResult(fmt.Sprintf("Ubiquitous language analysis failed: %v", err)), nil
+		return operationFailure("ubiquitous language analysis", err), nil
 	}
 
 	body, err := json.Marshal(result)
 	if err != nil {
 		t.logger.Error("Failed to marshal ubiquitous language result", "error", err)
-		return domain.NewErrorResult(fmt.Sprintf("Failed to format result: %v", err)), nil
+		return operationFailure("formatting the result", err), nil
 	}
 
 	t.logger.Info("Ubiquitous language analysis completed", "path", projectPath, "violations", result.ViolationsCount)
@@ -79,11 +78,29 @@ func (t *CheckUbiquitousLanguageTool) SafeArgumentNames() []string {
 	return []string{"projectPath", "dictionaryPath"}
 }
 
-func (t *CheckUbiquitousLanguageTool) resolvePaths(projectPath, dictionaryPath string) (string, string, error) {
+// requireBoth names the first missing argument, so the caller knows which
+// one to supply.
+func requireBoth(projectPath, dictionaryPath string) *domain.ToolResult {
+	const message = "both projectPath and dictionaryPath are required"
+	if projectPath == "" {
+		return missingArgument("projectPath", message)
+	}
+	if dictionaryPath == "" {
+		return missingArgument("dictionaryPath", message)
+	}
+	return nil
+}
+
+// resolvePaths resolves both paths, or returns the failure of the first that
+// does not resolve, against that argument.
+func (t *CheckUbiquitousLanguageTool) resolvePaths(projectPath, dictionaryPath string) (string, string, *domain.ToolResult) {
 	project, err := t.root.Resolve(projectPath)
 	if err != nil {
-		return "", "", err
+		return "", "", pathFailure("projectPath", err)
 	}
 	dictionary, err := t.root.Resolve(dictionaryPath)
-	return project, dictionary, err
+	if err != nil {
+		return "", "", pathFailure("dictionaryPath", err)
+	}
+	return project, dictionary, nil
 }

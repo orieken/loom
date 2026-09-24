@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/orieken/loom/shared/mcp/internal/domain"
 )
 
 func cancelledContext() context.Context {
@@ -18,13 +20,10 @@ func cancelledContext() context.Context {
 // before, all six signed Execute(_ context.Context, ...) and dropped it.
 func TestEveryWalkingToolStopsOnACancelledContext(t *testing.T) {
 	root := rootedProject(t)
-	for name, tool := range rootedTools(root) {
-		if name == "search_docs" {
-			continue // no retriever configured here; covered by the retriever tests below
-		}
+	for name, tool := range rootedTools(t, root) {
 		t.Run(name, func(t *testing.T) {
 			result, err := tool.Execute(cancelledContext(), BuildRequest(validArguments[name]))
-			if err != nil || !result.IsError || !strings.Contains(ExtractText(t, result), context.Canceled.Error()) {
+			if err != nil || !result.IsError || result.Error == nil || result.Error.Kind != domain.ErrorCancelled || !strings.Contains(ExtractText(t, result), context.Canceled.Error()) {
 				t.Errorf("%s ran on a cancelled context: %v %s", name, err, ExtractText(t, result))
 			}
 		})

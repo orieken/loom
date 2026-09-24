@@ -3,7 +3,6 @@ package tools
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/orieken/loom/shared/mcp/internal/analyzers"
 	"github.com/orieken/loom/shared/mcp/internal/domain"
@@ -54,23 +53,23 @@ func (t *CheckAccessibilityTool) Execute(ctx context.Context, request domain.Too
 
 	target := resolveAccessibilityTarget(request)
 	if target == "" {
-		return domain.NewErrorResult("either filePath or projectPath is required"), nil
+		return missingArgument("filePath", "either filePath or projectPath is required"), nil
 	}
 	target, err := t.root.Resolve(target)
 	if err != nil {
-		return domain.NewErrorResult(err.Error()), nil
+		return pathFailure(accessibilityTargetField(request), err), nil
 	}
 
 	result, err := t.analyzer.Analyze(ctx, target)
 	if err != nil {
 		t.logger.Error("Accessibility analysis failed", "error", err)
-		return domain.NewErrorResult(fmt.Sprintf("Accessibility analysis failed: %v", err)), nil
+		return operationFailure("accessibility analysis", err), nil
 	}
 
 	body, err := json.Marshal(result)
 	if err != nil {
 		t.logger.Error("Failed to marshal accessibility result", "error", err)
-		return domain.NewErrorResult(fmt.Sprintf("Failed to format result: %v", err)), nil
+		return operationFailure("formatting the result", err), nil
 	}
 
 	t.logger.Info("Accessibility analysis completed", "path", target, "violations", result.ViolationsCount)
@@ -78,10 +77,16 @@ func (t *CheckAccessibilityTool) Execute(ctx context.Context, request domain.Too
 }
 
 func resolveAccessibilityTarget(request domain.ToolRequest) string {
-	if filePath := request.StringArg("filePath"); filePath != "" {
-		return filePath
+	return request.StringArg(accessibilityTargetField(request))
+}
+
+// accessibilityTargetField is the argument the target comes from: filePath
+// when given, projectPath otherwise.
+func accessibilityTargetField(request domain.ToolRequest) string {
+	if request.StringArg("filePath") != "" {
+		return "filePath"
 	}
-	return request.StringArg("projectPath")
+	return "projectPath"
 }
 
 // SafeArgumentNames declares which arguments may be recorded verbatim in

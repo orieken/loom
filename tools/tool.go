@@ -35,10 +35,13 @@ type ContentBlock struct {
 
 // ToolResult is a transport-free tool outcome. IsError marks a failure the
 // calling LLM should repair (bad arguments, analysis failure); transport-level
-// failures are returned as Go errors from Execute instead.
+// failures are returned as Go errors from Execute instead. Error carries the
+// typed failure whenever IsError is set by NewToolErrorResult or
+// NewErrorResult, so a caller can act on its Kind without parsing text.
 type ToolResult struct {
 	Content []ContentBlock
 	IsError bool
+	Error   *ToolError
 }
 
 // NewTextResult wraps text in a successful single-block result.
@@ -46,9 +49,12 @@ func NewTextResult(text string) *ToolResult {
 	return &ToolResult{Content: []ContentBlock{{Text: text}}}
 }
 
-// NewErrorResult wraps message in a single-block result flagged as an error.
+// NewErrorResult wraps message in a single-block result flagged as an error,
+// classified as ErrorInternal. Prefer NewToolErrorResult, which says what
+// kind of failure it is; the framework's own tools no longer call this.
 func NewErrorResult(message string) *ToolResult {
-	return &ToolResult{Content: []ContentBlock{{Text: message}}, IsError: true}
+	toolError := NewToolError(ErrorInternal, message)
+	return &ToolResult{Content: []ContentBlock{{Text: message}}, IsError: true, Error: &toolError}
 }
 
 // Tool is the framework's first-class abstraction for every capability exposed

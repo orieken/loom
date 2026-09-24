@@ -50,6 +50,11 @@ func callTool(t *testing.T, name string, args map[string]any) (*mcp.CallToolResu
 	return nil, argumentReport{}
 }
 
+// argumentReport is the error envelope an invalid call returns.
+type argumentReport struct {
+	Error domain.ToolError `json:"error"`
+}
+
 func reportOf(result *mcp.CallToolResult) argumentReport {
 	var report argumentReport
 	for _, content := range result.Content {
@@ -62,15 +67,15 @@ func reportOf(result *mcp.CallToolResult) argumentReport {
 
 func assertViolation(t *testing.T, result *mcp.CallToolResult, report argumentReport, field, problemFragment string) {
 	t.Helper()
-	if !result.IsError || report.Error != "invalid arguments" {
-		t.Fatalf("want an invalid-arguments error, got %+v", report)
+	if !result.IsError || report.Error.Kind != domain.ErrorValidation || report.Error.Retryable {
+		t.Fatalf("want a validation error, got %+v", report)
 	}
-	for _, violation := range report.Violations {
+	for _, violation := range report.Error.Violations {
 		if violation.Field == field && strings.Contains(violation.Problem, problemFragment) {
 			return
 		}
 	}
-	t.Errorf("no violation on %q containing %q in %+v", field, problemFragment, report.Violations)
+	t.Errorf("no violation on %q containing %q in %+v", field, problemFragment, report.Error.Violations)
 }
 
 // The L2.1 done-when, for every framework tool: a malformed call returns a
@@ -91,8 +96,8 @@ func TestAMalformedCallNamesTheFieldForEveryTool(t *testing.T) {
 		})
 		t.Run(name+" passes validation when well-formed", func(t *testing.T) {
 			_, report := callTool(t, name, spec.valid)
-			if report.Error == "invalid arguments" {
-				t.Errorf("a well-formed call was rejected: %+v", report.Violations)
+			if strings.HasPrefix(report.Error.Message, "invalid arguments") {
+				t.Errorf("a well-formed call was rejected: %+v", report.Error.Violations)
 			}
 		})
 	}
@@ -122,7 +127,7 @@ func TestTheTightenedConstraintsAreEnforced(t *testing.T) {
 	result, report = callTool(t, "check_accessibility", map[string]any{})
 	assertViolation(t, result, report, "filePath", "required")
 	assertViolation(t, result, report, "projectPath", "required")
-	for _, violation := range report.Violations {
+	for _, violation := range report.Error.Violations {
 		if strings.Contains(violation.Problem, "anyOf") {
 			t.Errorf("the combinator itself was reported: %+v", violation)
 		}
@@ -133,6 +138,20 @@ func TestTheTightenedConstraintsAreEnforced(t *testing.T) {
 
 	result, report = callTool(t, "search_docs", map[string]any{"query": ""})
 	assertViolation(t, result, report, "query", "minLength")
+}
+
+// Violations are listed by field, so a model reading them — and a test
+// comparing them — sees the same order every call. The mutation job found
+// that reversing the sort passed (run 5, L3.59).
+func TestViolationsAreListedByField(t *testing.T) {
+	_, report := callTool(t, "analyze_complexity", map[string]any{"projectPath": 7, "maxComplexity": 0, "extra": true})
+	var fields []string
+	for _, violation := range report.Error.Violations {
+		fields = append(fields, violation.Field)
+	}
+	if strings.Join(fields, ",") != "extra,maxComplexity,projectPath" {
+		t.Errorf("violations listed as %v, want extra, maxComplexity, projectPath", fields)
+	}
 }
 
 // A call with no arguments object at all is validated as an empty one.

@@ -3,7 +3,6 @@ package tools
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/orieken/loom/shared/mcp/internal/domain"
 	"github.com/orieken/loom/shared/mcp/internal/logging"
@@ -54,20 +53,20 @@ func (t *SearchKITool) Execute(ctx context.Context, request domain.ToolRequest) 
 
 	query := request.StringArg("query")
 	if query == "" {
-		return domain.NewErrorResult("query is required"), nil
+		return missingArgument("query", "query is required"), nil
 	}
 
 	tags := extractStringArray(request.Args["tags"])
 	boundedContext := request.StringArg("domain")
 
 	if t.retriever == nil {
-		return t.emptyResult(query, "no retriever configured")
+		return unavailable("no KI retriever is configured on this server"), nil
 	}
 
 	refs, err := t.retriever.Retrieve(ctx, query, tags, boundedContext)
 	if err != nil {
 		t.logger.Error("KI retrieval failed", "error", err)
-		return domain.NewErrorResult(fmt.Sprintf("Retrieval failed: %v", err)), nil
+		return operationFailure("retrieval", err), nil
 	}
 
 	result := KISearchResult{
@@ -75,15 +74,6 @@ func (t *SearchKITool) Execute(ctx context.Context, request domain.ToolRequest) 
 		Query:     query,
 		TotalHits: len(refs),
 		Matches:   convertReferencesToMatches(refs),
-	}
-	return marshalToolResult(t.logger, result, "search_ki")
-}
-
-func (t *SearchKITool) emptyResult(query, note string) (*domain.ToolResult, error) {
-	result := KISearchResult{
-		Success:   true,
-		Query:     fmt.Sprintf("%s (%s)", query, note),
-		TotalHits: 0,
 	}
 	return marshalToolResult(t.logger, result, "search_ki")
 }
@@ -120,7 +110,7 @@ func marshalToolResult(logger *logging.Logger, v any, toolName string) (*domain.
 	resultJSON, err := marshalJSON(v)
 	if err != nil {
 		logger.Error("Failed to marshal result", "tool", toolName, "error", err)
-		return domain.NewErrorResult(fmt.Sprintf("Failed to format result: %v", err)), nil
+		return operationFailure("formatting the result", err), nil
 	}
 	return domain.NewTextResult(string(resultJSON)), nil
 }

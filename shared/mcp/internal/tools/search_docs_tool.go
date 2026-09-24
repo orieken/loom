@@ -7,7 +7,6 @@ package tools
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/orieken/loom/shared/mcp/internal/domain"
 	"github.com/orieken/loom/shared/mcp/internal/logging"
@@ -62,28 +61,28 @@ func (t *SearchDocsTool) Execute(ctx context.Context, request domain.ToolRequest
 
 	query := request.StringArg("query")
 	if query == "" {
-		return domain.NewErrorResult("query is required"), nil
+		return missingArgument("query", "query is required"), nil
 	}
 
 	// Resolved first: a path outside the workspace is refused whether or not
 	// a retriever is configured, rather than slipping through as "no results".
 	docsPath, err := t.requestedDocsPath(request)
 	if err != nil {
-		return domain.NewErrorResult(err.Error()), nil
+		return pathFailure("docsPath", err), nil
 	}
 	if t.retriever == nil || t.indexer == nil {
-		return t.emptyResult(query, "no docs retriever configured")
+		return unavailable("no docs retriever is configured on this server"), nil
 	}
 
 	if err := t.indexer.EnsureIndex(ctx, []string{docsPath}); err != nil {
 		t.logger.Error("Docs index refresh failed", "error", err, "docsPath", docsPath)
-		return domain.NewErrorResult(fmt.Sprintf("Index refresh failed: %v", err)), nil
+		return operationFailure("index refresh", err), nil
 	}
 
 	refs, err := t.retriever.Retrieve(ctx, query, nil, "")
 	if err != nil {
 		t.logger.Error("Docs retrieval failed", "error", err)
-		return domain.NewErrorResult(fmt.Sprintf("Retrieval failed: %v", err)), nil
+		return operationFailure("retrieval", err), nil
 	}
 
 	result := DocSearchResult{
@@ -91,15 +90,6 @@ func (t *SearchDocsTool) Execute(ctx context.Context, request domain.ToolRequest
 		Query:     query,
 		TotalHits: len(refs),
 		Matches:   convertReferencesToDocMatches(refs),
-	}
-	return marshalToolResult(t.logger, result, "search_docs")
-}
-
-func (t *SearchDocsTool) emptyResult(query, note string) (*domain.ToolResult, error) {
-	result := DocSearchResult{
-		Success:   true,
-		Query:     fmt.Sprintf("%s (%s)", query, note),
-		TotalHits: 0,
 	}
 	return marshalToolResult(t.logger, result, "search_docs")
 }

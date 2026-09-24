@@ -3,7 +3,6 @@ package tools
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/orieken/loom/shared/mcp/internal/analyzers"
 	"github.com/orieken/loom/shared/mcp/internal/domain"
@@ -41,23 +40,23 @@ func (t *VerifyDependenciesTool) Execute(ctx context.Context, request domain.Too
 
 	projectPath := request.StringArg("projectPath")
 	if projectPath == "" {
-		return domain.NewErrorResult("projectPath is required"), nil
+		return missingArgument("projectPath", "projectPath is required"), nil
 	}
 	projectPath, err := t.root.Resolve(projectPath)
 	if err != nil {
-		return domain.NewErrorResult(err.Error()), nil
+		return pathFailure("projectPath", err), nil
 	}
 
 	result, err := t.analyzer.Analyze(ctx, projectPath)
 	if err != nil {
 		t.logger.Error("Dependency verification failed", "error", err)
-		return domain.NewErrorResult(fmt.Sprintf("Dependency verification failed: %v", err)), nil
+		return operationFailure("dependency verification", err), nil
 	}
 
 	body, err := json.Marshal(result)
 	if err != nil {
 		t.logger.Error("Failed to marshal dependency verification result", "error", err)
-		return domain.NewErrorResult(fmt.Sprintf("Failed to format result: %v", err)), nil
+		return operationFailure("formatting the result", err), nil
 	}
 
 	t.logger.Info("Dependency verification completed", "path", projectPath, "violations", result.ViolationsCount)

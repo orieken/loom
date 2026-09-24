@@ -12,6 +12,12 @@ import (
 // workspace root (roadmap L2.3).
 var ErrOutsideWorkspace = errors.New("resolves outside the workspace root")
 
+// ErrPathNotFound reports a path argument that names nothing.
+var ErrPathNotFound = errors.New("does not exist under the workspace root")
+
+// ErrEmptyPath reports a blank path argument.
+var ErrEmptyPath = errors.New("path is empty")
+
 // WorkspaceRoot confines the paths a model passes as tool arguments to one
 // directory, supplied by server configuration and never by an argument.
 // Before it, `projectPath: "/"` walked the disk and `../../etc` read outside
@@ -61,7 +67,7 @@ func (r WorkspaceRoot) Dir() string { return r.dir }
 // working directory.
 func (r WorkspaceRoot) Resolve(argument string) (string, error) {
 	if strings.TrimSpace(argument) == "" {
-		return "", errors.New("path is empty")
+		return "", ErrEmptyPath
 	}
 	candidate := argument
 	if !filepath.IsAbs(candidate) {
@@ -69,7 +75,7 @@ func (r WorkspaceRoot) Resolve(argument string) (string, error) {
 	}
 	resolved, err := filepath.EvalSymlinks(candidate)
 	if err != nil {
-		return "", fmt.Errorf("path %q does not exist under the workspace root", argument)
+		return "", fmt.Errorf("path %q %w", argument, ErrPathNotFound)
 	}
 	if !r.contains(resolved) {
 		return "", fmt.Errorf("path %q %w %s", argument, ErrOutsideWorkspace, r.dir)

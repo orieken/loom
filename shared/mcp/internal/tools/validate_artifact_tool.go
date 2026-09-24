@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -80,15 +81,15 @@ func (t *ValidateArtifactTool) Execute(_ context.Context, request domain.ToolReq
 
 	artifactPath := request.StringArg("artifactPath")
 	if artifactPath == "" {
-		return domain.NewErrorResult("artifactPath is required"), nil
+		return missingArgument("artifactPath", "artifactPath is required"), nil
 	}
 	artifactPath, err := t.root.Resolve(artifactPath)
 	if err != nil {
-		return domain.NewErrorResult(err.Error()), nil
+		return pathFailure("artifactPath", err), nil
 	}
 	contractPath, err := t.resolveContractPath(artifactPath, request.StringArg("contractPath"))
 	if err != nil {
-		return domain.NewErrorResult(err.Error()), nil
+		return pathFailure("contractPath", err), nil
 	}
 	return t.validate(artifactPath, contractPath)
 }
@@ -97,16 +98,20 @@ func (t *ValidateArtifactTool) validate(artifactPath, contractPath string) (*dom
 	result, err := t.analyzer.Validate(artifactPath, contractPath)
 	if err != nil {
 		t.logger.Error("Artifact validation failed", "error", err)
-		return domain.NewErrorResult(fmt.Sprintf("Artifact validation failed: %v", err)), nil
+		return operationFailure("artifact validation", err), nil
 	}
 	body, err := json.Marshal(result)
 	if err != nil {
 		t.logger.Error("Failed to marshal artifact validation result", "error", err)
-		return domain.NewErrorResult(fmt.Sprintf("Failed to format result: %v", err)), nil
+		return operationFailure("formatting the result", err), nil
 	}
 	t.logger.Info("Artifact validation completed", "artifact", artifactPath, "status", result.Status, "violations", len(result.Violations))
 	return domain.NewTextResult(string(body)), nil
 }
+
+// errNeedsContractPath is a contract that cannot be inferred: the caller must
+// name it, which makes it a validation failure the caller can repair.
+var errNeedsContractPath = errors.New("pass contractPath explicitly")
 
 // resolveContractPath prefers an explicit contractPath, then falls back to
 // the filename mapping rooted at the framework's contracts directory.
@@ -116,10 +121,10 @@ func (t *ValidateArtifactTool) resolveContractPath(artifactPath, explicit string
 	}
 	contractFile, ok := contractByArtifact[filepath.Base(artifactPath)]
 	if !ok {
-		return "", fmt.Errorf("no known contract for artifact %q — pass contractPath explicitly", filepath.Base(artifactPath))
+		return "", fmt.Errorf("no known contract for artifact %q — %w", filepath.Base(artifactPath), errNeedsContractPath)
 	}
 	if t.contractsDir == "" {
-		return "", fmt.Errorf("framework contracts directory is unknown (set AI_ASSISTANT_DOTFILES_PATH) — pass contractPath explicitly")
+		return "", fmt.Errorf("framework contracts directory is unknown (set AI_ASSISTANT_DOTFILES_PATH) — %w", errNeedsContractPath)
 	}
 	return filepath.Join(t.contractsDir, contractFile), nil
 }
