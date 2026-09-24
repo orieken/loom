@@ -67,6 +67,22 @@ func TestAPlanWritingScenariosAfterTheBuildIsRejected(t *testing.T) {
 	}
 }
 
+// The scenario stage is qa-engineer under another ID, and every other stage
+// is still run by the agent it is named after. The mock provider does not
+// care which agent runs, so without this a mapping that sent every stage to
+// qa-engineer passed — the report-only mutation job found it (L3.59).
+func TestEachStageRunsTheAgentItIsNamedFor(t *testing.T) {
+	for _, stage := range orchestrator.DefaultDeliverFeaturePlan().Stages {
+		want := stage.ID
+		if stage.ID == state.AcceptanceScenariosStageID {
+			want = "qa-engineer"
+		}
+		if stage.Agent != want {
+			t.Errorf("stage %q runs agent %q, want %q", stage.ID, stage.Agent, want)
+		}
+	}
+}
+
 func TestQAEngineerAutomatesTheScenariosItWasGiven(t *testing.T) {
 	provider := runRecordingProvider(t, orchestrator.DefaultDeliverFeaturePlan())
 	var given state.QAScenariosInput

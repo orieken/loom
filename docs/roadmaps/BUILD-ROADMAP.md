@@ -3389,6 +3389,13 @@ integration routing: all killed. **M9 first survived**: its test made the report
 | Date | Commit(s) | Packages | Tested | Killed | Score | Run time |
 |---|---|---|---|---|---|---|
 | 2026-09-23 | `e2c0741..deb86b2` | 5 (two in integration mode) | 42 | 42 | 100.0% | ~3 min |
+| 2026-09-24 | `deb86b2..2fcea94` | 5 | 44 | 39 | 88.6% | ~1 min |
+
+Of run 2's five survivors, three were equivalent (boundary mutants on `plan.go:85`, where two stages can
+never share an index) and two were **real test gaps**, closed the same day: nothing checked that a stage
+runs the agent it is named for, and the references fixture had no exact-path historical entry, so a
+negated exact match made every file historical and the repository scan passed empty. That is the job
+earning its keep before it gates anything.
 
 **Not done from the original fix**: `backfill-unit-tests` step 6 still mutates by hand, and `run-tests`
 does not mention the runner — both can call `cmd/diff-mutation` once a floor exists.

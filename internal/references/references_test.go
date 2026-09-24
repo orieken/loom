@@ -14,7 +14,7 @@ const fixtureRoot = "testdata/fixture"
 var fixtureRules = references.Rules{
 	Retired:      map[string]string{"test-driven-developer": "folded into developer (ADR-009)"},
 	Placeholders: map[string]bool{"foo": true},
-	Historical:   []string{"docs/history/", "*CHANGELOG.md", "*_test.go"},
+	Historical:   []string{"docs/history/", "*CHANGELOG.md", "*_test.go", "exact/record.md"},
 }
 
 func fixtureFiles(t *testing.T) []string {
@@ -52,7 +52,11 @@ func TestFixtureReportsExactlyTheDanglingReferences(t *testing.T) {
 	for _, finding := range findings {
 		got = append(got, located{finding.File, finding.Reference, finding.Line})
 	}
+	// exact/record.md is historical by an exact-path entry; its neighbour
+	// is not. The mutation job showed that without an exact entry here, a
+	// negated exact match turned every file historical and still passed.
 	want := []located{
+		{"exact/live.md", "shared/agents/also-gone.md", 1},
 		{"live.md", "shared/agents/gone.md", 2},
 		{"live.md", "shared/skills/vanished/SKILL.md", 3},
 		{"live.md", "shared/workflows/tdd.md", 3},
