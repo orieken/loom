@@ -3504,8 +3504,8 @@ steps (a)–(g) all landed.
 Two counts moved with the removal and were updated with the source change as evidence: the README
 roster heading (caught by the inventory check) and an install test asserting "40 agents".
 
-**Open**: the Training repository needs a backlog item to teach ADR-008's definition of done in place
-of agent TDD. It is outside this repository, so it waits for approval to write there.
+**Deferred by decision (2026-09-23)**: the Training backlog item — teach ADR-008's definition of done
+in place of agent TDD — is picked up in the Training project itself, not written from here.
 
 1. **Problem**: "ALWAYS practice TDD — Red-Green-Refactor" is a rule whose reason does not hold for an
    agent that writes both sides, and the mechanisms contradict each other: `developer.md` says both
@@ -3532,6 +3532,39 @@ of agent TDD. It is outside this repository, so it waits for approval to write t
 
 ### L3.62 — Keep acceptance authoring blind to the implementation
 **Workstream**: KERNEL · **Effort**: M · **Blocked by**: none · **Blocks**: none · *(raised 2026-09-22, ADR-009)*
+
+**SHIPPED** 2026-09-23 — acceptance scenarios are now written before the build, and the executor
+enforces the order for every plan.
+
+**The fact first, as the item asked.** Under `loom run`, `qa-engineer` ran after the developer and read
+three projections, one of them `projectImplementationForQA` — the developer's own report — and it holds
+file tools in a working tree that already contained the code. So the premise held, and it also ruled
+out the cheaper fix: **no projection can make a stage blind once the code exists**, because the stage
+can read the tree. Blindness is a property of order.
+
+**What changed.**
+- A new stage, `acceptance-scenarios` — `qa-engineer` under its own stage ID, typed by a new
+  `scenarios` kind (`ScenariosState`: each scenario names its criterion and needs a `When` and a `Then`
+  that can fail). It reads the analysis projection alone and sits before `developer` in the built-in
+  plan and in `deliver-bugfix`, where the failing scenario written from the bug report is the
+  reproduce-first discipline that skill already asked for.
+- `qa-engineer` now also reads the scenarios, and its prompt (1.7.0) says to automate them as given — a
+  scenario the code fails is a finding, not a scenario to edit.
+- **`Plan.Validate` rejects any plan that runs `acceptance-scenarios` after `developer`.** Plans pick
+  their own order; the built-in plan being right was not enough.
+- The markdown pipeline gets the step as an unnumbered note before step 18, and says it is
+  judgment-only there.
+
+**Done-when, proved red.** `TestAcceptanceScenariosAreWrittenBlind` runs the built-in plan end to end
+and inspects what the stage *received* — only the analyst's upstream, only acceptance-criteria fields,
+invoked before the developer — rather than reading the plan's declaration back. Killed: an extra
+upstream that runs earlier (with and without a projection wired), a projection widened past the
+criteria fields, the stage moved after the developer, the executor no longer enforcing order, and
+qa-engineer not given the scenarios. One first attempt proved nothing: an extra upstream of
+`architect`, which the mock route skips, so its absence was legitimate and the test rightly passed.
+
+**Cost**: one more model call per run (the trace-shape baseline moved from 7 to 8 provider calls under
+the mock). Measure it on the next real run before judging it.
 
 1. **Problem**: The independence worth keeping is that acceptance tests come from the acceptance
    criteria, not the code. `deliver-atdd` gets this by order — scenarios are written before
