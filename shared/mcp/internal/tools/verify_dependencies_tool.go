@@ -14,11 +14,12 @@ import (
 type VerifyDependenciesTool struct {
 	logger   *logging.Logger
 	analyzer *analyzers.DependencyBoundaryAnalyzer
+	root     WorkspaceRoot
 }
 
 // NewVerifyDependenciesTool wires the tool with its dependencies.
-func NewVerifyDependenciesTool(logger *logging.Logger, analyzer *analyzers.DependencyBoundaryAnalyzer) *VerifyDependenciesTool {
-	return &VerifyDependenciesTool{logger: logger, analyzer: analyzer}
+func NewVerifyDependenciesTool(logger *logging.Logger, analyzer *analyzers.DependencyBoundaryAnalyzer, root WorkspaceRoot) *VerifyDependenciesTool {
+	return &VerifyDependenciesTool{logger: logger, analyzer: analyzer, root: root}
 }
 
 func (t *VerifyDependenciesTool) Name() string { return "verify_dependencies" }
@@ -41,6 +42,10 @@ func (t *VerifyDependenciesTool) Execute(_ context.Context, request domain.ToolR
 	projectPath := request.StringArg("projectPath")
 	if projectPath == "" {
 		return domain.NewErrorResult("projectPath is required"), nil
+	}
+	projectPath, err := t.root.Resolve(projectPath)
+	if err != nil {
+		return domain.NewErrorResult(err.Error()), nil
 	}
 
 	result, err := t.analyzer.Analyze(projectPath)

@@ -25,11 +25,12 @@ type SearchDocsTool struct {
 	logger    *logging.Logger
 	retriever Retriever
 	indexer   DocIndexer
+	root      WorkspaceRoot
 }
 
 // NewSearchDocsTool wires the tool with its retriever and indexer.
-func NewSearchDocsTool(logger *logging.Logger, retriever Retriever, indexer DocIndexer) *SearchDocsTool {
-	return &SearchDocsTool{logger: logger, retriever: retriever, indexer: indexer}
+func NewSearchDocsTool(logger *logging.Logger, retriever Retriever, indexer DocIndexer, root WorkspaceRoot) *SearchDocsTool {
+	return &SearchDocsTool{logger: logger, retriever: retriever, indexer: indexer, root: root}
 }
 
 func (t *SearchDocsTool) Name() string { return "search_docs" }
@@ -63,11 +64,12 @@ func (t *SearchDocsTool) Execute(_ context.Context, request domain.ToolRequest) 
 		return domain.NewErrorResult("query is required"), nil
 	}
 
-	docsPath := request.StringArg("docsPath")
-	if docsPath == "" {
-		docsPath = defaultDocsPath
+	// Resolved first: a path outside the workspace is refused whether or not
+	// a retriever is configured, rather than slipping through as "no results".
+	docsPath, err := t.requestedDocsPath(request)
+	if err != nil {
+		return domain.NewErrorResult(err.Error()), nil
 	}
-
 	if t.retriever == nil || t.indexer == nil {
 		return t.emptyResult(query, "no docs retriever configured")
 	}
@@ -123,4 +125,14 @@ func marshalJSON(v any) ([]byte, error) {
 // guardrail #9 keeps it off the span as a hash and a length.
 func (t *SearchDocsTool) SafeArgumentNames() []string {
 	return []string{"docsPath"}
+}
+
+// requestedDocsPath is the docsPath argument, or the default docs directory,
+// resolved inside the workspace root.
+func (t *SearchDocsTool) requestedDocsPath(request domain.ToolRequest) (string, error) {
+	docsPath := request.StringArg("docsPath")
+	if docsPath == "" {
+		docsPath = defaultDocsPath
+	}
+	return t.root.Resolve(docsPath)
 }

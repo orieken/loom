@@ -103,27 +103,10 @@ func isBoundaryViolation(from, to string) bool {
 }
 
 func (a *DependencyBoundaryAnalyzer) collectSourceFiles(root string) ([]string, error) {
-	info, err := os.Stat(root)
-	if err != nil {
-		return nil, err
-	}
-	if !info.IsDir() {
-		return []string{root}, nil
-	}
-	var files []string
-	err = filepath.Walk(root, func(p string, entry os.FileInfo, walkErr error) error {
-		if walkErr != nil || entry == nil {
-			return nil
-		}
-		if entry.IsDir() {
-			return SkipUninterestingDir(root, p, entry.Name())
-		}
-		if _, ok := scannedImportExtensions[strings.ToLower(filepath.Ext(p))]; ok {
-			files = append(files, p)
-		}
-		return nil
+	return CollectFiles(root, func(path string) bool {
+		_, scanned := scannedImportExtensions[strings.ToLower(filepath.Ext(path))]
+		return scanned
 	})
-	return files, err
 }
 
 func (a *DependencyBoundaryAnalyzer) scanFile(file string, result *DependencyVerificationResult) {

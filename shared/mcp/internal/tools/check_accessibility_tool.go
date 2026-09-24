@@ -14,11 +14,12 @@ import (
 type CheckAccessibilityTool struct {
 	logger   *logging.Logger
 	analyzer *analyzers.AccessibilityAnalyzer
+	root     WorkspaceRoot
 }
 
 // NewCheckAccessibilityTool wires the tool with its dependencies.
-func NewCheckAccessibilityTool(logger *logging.Logger, analyzer *analyzers.AccessibilityAnalyzer) *CheckAccessibilityTool {
-	return &CheckAccessibilityTool{logger: logger, analyzer: analyzer}
+func NewCheckAccessibilityTool(logger *logging.Logger, analyzer *analyzers.AccessibilityAnalyzer, root WorkspaceRoot) *CheckAccessibilityTool {
+	return &CheckAccessibilityTool{logger: logger, analyzer: analyzer, root: root}
 }
 
 func (t *CheckAccessibilityTool) Name() string { return "check_accessibility" }
@@ -50,6 +51,10 @@ func (t *CheckAccessibilityTool) Execute(_ context.Context, request domain.ToolR
 	target := resolveAccessibilityTarget(request)
 	if target == "" {
 		return domain.NewErrorResult("either filePath or projectPath is required"), nil
+	}
+	target, err := t.root.Resolve(target)
+	if err != nil {
+		return domain.NewErrorResult(err.Error()), nil
 	}
 
 	result, err := t.analyzer.Analyze(target)

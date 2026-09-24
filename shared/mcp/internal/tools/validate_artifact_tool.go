@@ -41,13 +41,14 @@ type ValidateArtifactTool struct {
 	logger       *logging.Logger
 	analyzer     *analyzers.ArtifactContractAnalyzer
 	contractsDir string
+	root         WorkspaceRoot
 }
 
 // NewValidateArtifactTool wires the tool. contractsDir points at the
 // framework's shared/contracts/ directory and may be empty when the install
 // root is unknown — callers must then pass contractPath explicitly.
-func NewValidateArtifactTool(logger *logging.Logger, analyzer *analyzers.ArtifactContractAnalyzer, contractsDir string) *ValidateArtifactTool {
-	return &ValidateArtifactTool{logger: logger, analyzer: analyzer, contractsDir: contractsDir}
+func NewValidateArtifactTool(logger *logging.Logger, analyzer *analyzers.ArtifactContractAnalyzer, contractsDir string, root WorkspaceRoot) *ValidateArtifactTool {
+	return &ValidateArtifactTool{logger: logger, analyzer: analyzer, contractsDir: contractsDir, root: root}
 }
 
 func (t *ValidateArtifactTool) Name() string { return "validate_artifact" }
@@ -80,6 +81,10 @@ func (t *ValidateArtifactTool) Execute(_ context.Context, request domain.ToolReq
 	if artifactPath == "" {
 		return domain.NewErrorResult("artifactPath is required"), nil
 	}
+	artifactPath, err := t.root.Resolve(artifactPath)
+	if err != nil {
+		return domain.NewErrorResult(err.Error()), nil
+	}
 	contractPath, err := t.resolveContractPath(artifactPath, request.StringArg("contractPath"))
 	if err != nil {
 		return domain.NewErrorResult(err.Error()), nil
@@ -106,7 +111,7 @@ func (t *ValidateArtifactTool) validate(artifactPath, contractPath string) (*dom
 // the filename mapping rooted at the framework's contracts directory.
 func (t *ValidateArtifactTool) resolveContractPath(artifactPath, explicit string) (string, error) {
 	if explicit != "" {
-		return explicit, nil
+		return t.resolveExplicitContract(explicit)
 	}
 	contractFile, ok := contractByArtifact[filepath.Base(artifactPath)]
 	if !ok {
@@ -122,4 +127,22 @@ func (t *ValidateArtifactTool) resolveContractPath(artifactPath, explicit string
 // telemetry (tools.SafeArguments, guardrail #9).
 func (t *ValidateArtifactTool) SafeArgumentNames() []string {
 	return []string{"artifactPath", "contractPath"}
+}
+
+// resolveExplicitContract accepts a contract inside the workspace, or inside
+// the framework's own contracts directory, and nothing else: a contract is
+// read and echoed back as headings, so it is a path argument like any other.
+func (t *ValidateArtifactTool) resolveExplicitContract(explicit string) (string, error) {
+	inWorkspace, err := t.root.Resolve(explicit)
+	if err == nil || t.contractsDir == "" {
+		return inWorkspace, err
+	}
+	contracts, contractsErr := NewWorkspaceRoot(t.contractsDir)
+	if contractsErr != nil {
+		return "", err
+	}
+	if inContracts, contractsErr := contracts.Resolve(explicit); contractsErr == nil {
+		return inContracts, nil
+	}
+	return "", err
 }

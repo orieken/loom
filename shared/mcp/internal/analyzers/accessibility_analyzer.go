@@ -58,11 +58,7 @@ var (
 func (a *AccessibilityAnalyzer) Analyze(path string) (*AccessibilityReportResult, error) {
 	result := &AccessibilityReportResult{Success: true, Path: path, Violations: []AccessibilityViolation{}}
 
-	info, err := os.Stat(path)
-	if err != nil {
-		return nil, err
-	}
-	files, err := a.collectFiles(path, info.IsDir())
+	files, err := a.collectFiles(path)
 	if err != nil {
 		return nil, err
 	}
@@ -79,24 +75,11 @@ func (a *AccessibilityAnalyzer) Analyze(path string) (*AccessibilityReportResult
 	return result, nil
 }
 
-func (a *AccessibilityAnalyzer) collectFiles(path string, isDir bool) ([]string, error) {
-	if !isDir {
-		return []string{path}, nil
-	}
-	var files []string
-	err := filepath.Walk(path, func(p string, info os.FileInfo, walkErr error) error {
-		if walkErr != nil || info == nil {
-			return nil
-		}
-		if info.IsDir() {
-			return SkipUninterestingDir(path, p, info.Name())
-		}
-		if _, ok := scannedExtensions[strings.ToLower(filepath.Ext(p))]; ok {
-			files = append(files, p)
-		}
-		return nil
+func (a *AccessibilityAnalyzer) collectFiles(path string) ([]string, error) {
+	return CollectFiles(path, func(candidate string) bool {
+		_, scanned := scannedExtensions[strings.ToLower(filepath.Ext(candidate))]
+		return scanned
 	})
-	return files, err
 }
 
 func (a *AccessibilityAnalyzer) analyzeFile(file string, result *AccessibilityReportResult) {

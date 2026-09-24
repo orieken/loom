@@ -4,6 +4,7 @@ import (
 	"github.com/orieken/loom/internal/telemetry"
 	"github.com/orieken/loom/shared/mcp/internal/domain"
 	"github.com/orieken/loom/shared/mcp/internal/logging"
+	"github.com/orieken/loom/shared/mcp/internal/tools"
 )
 
 // Handler owns the tool registry and orchestrates MCP registration.
@@ -19,9 +20,14 @@ type Handler struct {
 
 // New constructs a Handler wired with all framework M1 tools.
 func New(logger *logging.Logger) *Handler {
+	return NewAt(logger, WorkingDirectoryRoot(logger))
+}
+
+// NewAt constructs a Handler whose tools read only under root (roadmap L2.3).
+func NewAt(logger *logging.Logger, root tools.WorkspaceRoot) *Handler {
 	return &Handler{
 		logger:   logger,
-		registry: buildFrameworkRegistry(logger),
+		registry: buildFrameworkRegistry(logger, root),
 	}
 }
 

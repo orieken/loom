@@ -61,3 +61,14 @@ func assertToolNames(t *testing.T, names []string) {
 		t.Errorf("tools/list returned %d tools, want %d: %v", len(names), len(expectedMCPToolNames), names)
 	}
 }
+
+// A --root that does not exist stops the server before it serves (L2.3),
+// rather than surfacing on the first tool call.
+func TestMCPServeRefusesARootThatDoesNotExist(t *testing.T) {
+	previous := mcpServeArgs
+	t.Cleanup(func() { mcpServeArgs = previous })
+	mcpServeArgs = mcpServeFlags{root: filepath.Join(t.TempDir(), "missing")}
+	if err := runMCPServe(nil, nil); err == nil {
+		t.Error("mcp serve started with a root that does not exist")
+	}
+}

@@ -16,6 +16,7 @@ import (
 	"github.com/orieken/loom/internal/telemetry"
 	"github.com/orieken/loom/shared/mcp/internal/logging"
 	mcpserver "github.com/orieken/loom/shared/mcp/internal/server"
+	internaltools "github.com/orieken/loom/shared/mcp/internal/tools"
 	"github.com/orieken/loom/tools"
 )
 
@@ -39,6 +40,17 @@ func Frameworks(logWriter io.Writer) *tools.Registry {
 	return mcpserver.FrameworkRegistry(logging.NewLogger(resolveLogWriter(logWriter)))
 }
 
+// FrameworksAt is Frameworks with every tool's path arguments confined to
+// rootDir (roadmap L2.3): a path that resolves outside it, including through
+// a symbolic link, is rejected. Frameworks confines to the working directory.
+func FrameworksAt(logWriter io.Writer, rootDir string) (*tools.Registry, error) {
+	root, err := internaltools.NewWorkspaceRoot(rootDir)
+	if err != nil {
+		return nil, err
+	}
+	return mcpserver.FrameworkRegistryAt(logging.NewLogger(resolveLogWriter(logWriter)), root), nil
+}
+
 // FrameworkTools registers all framework tools on s, an mcp-go server pinned
 // to loom's own mcp-go version.
 //
@@ -55,6 +67,18 @@ func FrameworkTools(s *server.MCPServer, logWriter io.Writer) error {
 // nothing, which is what FrameworkTools passes.
 func FrameworkToolsTraced(s *server.MCPServer, logWriter io.Writer, session *telemetry.Session) error {
 	handler := mcpserver.New(logging.NewLogger(resolveLogWriter(logWriter)))
+	handler.WithTracing(session)
+	return handler.RegisterTools(s)
+}
+
+// FrameworkToolsTracedAt is FrameworkToolsTraced with every path argument
+// confined to rootDir (roadmap L2.3). `loom mcp serve --root` uses it.
+func FrameworkToolsTracedAt(s *server.MCPServer, logWriter io.Writer, session *telemetry.Session, rootDir string) error {
+	root, err := internaltools.NewWorkspaceRoot(rootDir)
+	if err != nil {
+		return err
+	}
+	handler := mcpserver.NewAt(logging.NewLogger(resolveLogWriter(logWriter)), root)
 	handler.WithTracing(session)
 	return handler.RegisterTools(s)
 }

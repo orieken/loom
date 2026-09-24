@@ -74,6 +74,22 @@ Or register it with the Claude Code CLI:
 claude mcp add loom -- loom mcp serve
 ```
 
+## Path confinement (roadmap L2.3)
+
+Every tool argument that names a file or directory — `projectPath`, `filePath`, `dictionaryPath`,
+`docsPath`, `artifactPath`, `contractPath` — is resolved against a **workspace root** supplied by the
+server, never by the caller. `loom mcp serve --root <dir>` sets it (default: the directory the server
+starts in); embedders use `register.FrameworksAt(logWriter, rootDir)`.
+
+- A path that resolves outside the root is rejected: `/`, `../../etc`, an absolute path elsewhere, or
+  a symbolic link inside the root that points out. Relative paths are taken relative to the root.
+- Walks under a resolved path never follow symbolic links, and stop past 50,000 files or 512 MiB.
+- An explicit `contractPath` may also sit in the framework's own contracts directory.
+- If the server cannot resolve its working directory, every path is rejected.
+
+Residual: a path is checked when the tool is called and then opened by name, so a link swapped in
+between the two would be followed. Opening through `os.Root` end to end would close it.
+
 ## Installing into a downstream project
 
 If you already have an MCP server, see

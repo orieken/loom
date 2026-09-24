@@ -259,6 +259,36 @@ human-in-the-loop control.*
 ### L2.3 — Confine filesystem access to an explicit root
 **Workstream**: TOOLS · **Effort**: M · **Blocked by**: M0.3 · **Blocks**: none
 
+**SHIPPED** 2026-09-24 — every path a model passes to an MCP tool is confined to a workspace root the
+server supplies (`loom mcp serve --root`, default the working directory; `register.FrameworksAt` for
+embedders, added alongside the unchanged `Frameworks`).
+
+- **At the boundary**: `tools.WorkspaceRoot.Resolve` follows symbolic links, then refuses anything
+  outside the root's own resolved path — `/`, `../../etc`, an absolute path elsewhere, a link pointing
+  out. All six path-taking tools resolve every path argument before any analyzer runs, and
+  `search_docs` does so before checking for a retriever, so a bad path is refused rather than returned
+  as "no results". An explicit `contractPath` may also sit in the framework's contracts directory.
+- **In the walk**: the four analyzers' copies of one walk became `analyzers.CollectFiles`, which never
+  follows a link and aborts past 50,000 files or 512 MiB; the docs indexer uses it too. The
+  complexity analyzer is the one behaviour change: it was the only walk that did not skip `vendor/`,
+  `node_modules/` and hidden directories, so it counted vendored code.
+- **Fail closed**: an unresolvable working directory yields a root that rejects every path.
+
+**Deviation from the item, stated**: it asked for `os.Root` end to end. The check uses link-resolved
+paths instead and the analyzers still open by name, so a link swapped between check and open would be
+followed. That residual is written in `workspace_root.go` and the MCP README; closing it means
+rewriting five analyzers onto `os.Root`, not worth it for a local stdio server with one user.
+
+**Done-when, and past it**: `/` and `../../etc` are rejected — through the real registry, for every
+path argument of every path-taking tool (`TestEveryPathTakingToolRejectsEscapes`), against a fixture
+where `../../etc` exists, so the refusal is for escaping and not for being missing. A companion test
+fails if a registered tool is in neither the path-taking nor the pathless list. Eleven mutants killed.
+**One survived first**: the registry test escaped only the first path argument of each tool, so
+`check_ubiquitous_language` resolving only its `projectPath` passed; the table now escapes every path
+argument in turn. The changed-line coverage gate also caught real debt on the way: the analyzers
+package had almost no tests of its own, so the touched collectors read as uncovered (53.4%) until each
+got one.
+
 1. **Problem**: `analyze_complexity` accepts an arbitrary `projectPath` from model-controlled
    arguments with no validation, no root confinement, and no symlink handling, then walks it
    unbounded and uncancellably. `projectPath: "/"` walks the disk. Same pattern in

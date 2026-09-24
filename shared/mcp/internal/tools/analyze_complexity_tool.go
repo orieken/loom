@@ -14,11 +14,12 @@ import (
 type AnalyzeComplexityTool struct {
 	logger   *logging.Logger
 	analyzer *analyzers.ComplexityAnalyzer
+	root     WorkspaceRoot
 }
 
 // NewAnalyzeComplexityTool wires the tool with its dependencies.
-func NewAnalyzeComplexityTool(logger *logging.Logger, analyzer *analyzers.ComplexityAnalyzer) *AnalyzeComplexityTool {
-	return &AnalyzeComplexityTool{logger: logger, analyzer: analyzer}
+func NewAnalyzeComplexityTool(logger *logging.Logger, analyzer *analyzers.ComplexityAnalyzer, root WorkspaceRoot) *AnalyzeComplexityTool {
+	return &AnalyzeComplexityTool{logger: logger, analyzer: analyzer, root: root}
 }
 
 func (t *AnalyzeComplexityTool) Name() string { return "analyze_complexity" }
@@ -50,6 +51,10 @@ func (t *AnalyzeComplexityTool) Execute(_ context.Context, request domain.ToolRe
 	projectPath, maxComplexity, maxLines := parseComplexityArgs(request.Args)
 	if projectPath == "" {
 		return domain.NewErrorResult("projectPath is required"), nil
+	}
+	projectPath, err := t.root.Resolve(projectPath)
+	if err != nil {
+		return domain.NewErrorResult(err.Error()), nil
 	}
 	result, err := t.analyzer.Analyze(projectPath, maxComplexity, maxLines)
 	if err != nil {

@@ -83,19 +83,20 @@ func (r *BM25Retriever) EnsureIndex(corpusPaths []string) error {
 	return nil
 }
 
+// walkAndIndex indexes every markdown file under root through the same
+// collector the analyzers use (roadmap L2.3): it never follows a symbolic
+// link out of the workspace, and it stops at the walk ceilings.
 func (r *BM25Retriever) walkAndIndex(root string) error {
-	return filepath.Walk(root, func(p string, entry os.FileInfo, walkErr error) error {
-		if walkErr != nil || entry == nil {
-			return nil
+	files, err := analyzers.CollectFiles(root, isMarkdownExtension)
+	if err != nil {
+		return err
+	}
+	for _, file := range files {
+		if err := r.indexFile(file); err != nil {
+			return err
 		}
-		if entry.IsDir() {
-			return analyzers.SkipUninterestingDir(root, p, entry.Name())
-		}
-		if !isMarkdownExtension(p) {
-			return nil
-		}
-		return r.indexFile(p)
-	})
+	}
+	return nil
 }
 
 func isMarkdownExtension(path string) bool {

@@ -14,6 +14,7 @@ import (
 
 type mcpServeFlags struct {
 	logFile string
+	root    string
 }
 
 var mcpServeArgs mcpServeFlags
@@ -30,7 +31,11 @@ client closes stdin or the process receives SIGINT.
 Tool calls are traced (roadmap L3.8) when OTEL_EXPORTER_OTLP_ENDPOINT is
 set; no trace file is written. An inherited TRACEPARENT is adopted when
 present, so a tool call made during a "loom run" stage lands under it —
-best-effort, since loom does not spawn this process.`,
+best-effort, since loom does not spawn this process.
+
+Every tool's path arguments are confined to --root (default: the directory
+the server starts in). A path that resolves outside it — "/", "../../etc",
+or a symbolic link pointing out — is rejected, and walks never follow links.`,
 	Args: cobra.NoArgs,
 	RunE: runMCPServe,
 }
@@ -38,6 +43,7 @@ best-effort, since loom does not spawn this process.`,
 func init() {
 	mcpCmd.AddCommand(mcpServeCmd)
 	mcpServeCmd.Flags().StringVar(&mcpServeArgs.logFile, "log-file", "", "append structured JSON logs to this file instead of stderr")
+	mcpServeCmd.Flags().StringVar(&mcpServeArgs.root, "root", ".", "workspace root every tool path argument is confined to")
 }
 
 func runMCPServe(_ *cobra.Command, _ []string) error {
@@ -46,10 +52,10 @@ func runMCPServe(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	defer closeLog()
-	return serveMCP(logWriter)
+	return serveMCP(logWriter, mcpServeArgs.root)
 }
 
-func serveMCP(logWriter io.Writer) error {
+func serveMCP(logWriter io.Writer, root string) error {
 	session, err := startMCPTelemetry()
 	if err != nil {
 		return err
@@ -59,7 +65,7 @@ func serveMCP(logWriter io.Writer) error {
 	// `loom mcp serve` IS the deprecation notice's recommended replacement, so
 	// it legitimately keeps using the compat wrapper until D.2's embedding API
 	// grows an in-binary adapter.
-	if err := register.FrameworkToolsTraced(mcpServer, logWriter, session); err != nil {
+	if err := register.FrameworkToolsTracedAt(mcpServer, logWriter, session, root); err != nil {
 		return fmt.Errorf("register framework tools: %w", err)
 	}
 	if err := server.ServeStdio(mcpServer); err != nil {

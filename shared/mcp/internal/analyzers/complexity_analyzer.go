@@ -56,24 +56,7 @@ func (a *ComplexityAnalyzer) Analyze(projectPath string, maxComplexity, maxLines
 }
 
 func collectSourceFiles(projectPath string) ([]string, error) {
-	info, err := os.Stat(projectPath)
-	if err != nil {
-		return nil, err
-	}
-	if !info.IsDir() {
-		return []string{projectPath}, nil
-	}
-	var files []string
-	err = filepath.Walk(projectPath, func(path string, fi os.FileInfo, walkErr error) error {
-		if walkErr != nil || fi.IsDir() {
-			return nil
-		}
-		if isAnalyzableExtension(path) {
-			files = append(files, path)
-		}
-		return nil
-	})
-	return files, err
+	return CollectFiles(projectPath, isAnalyzableExtension)
 }
 
 func isAnalyzableExtension(path string) bool {

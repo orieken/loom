@@ -14,11 +14,12 @@ import (
 type CheckUbiquitousLanguageTool struct {
 	logger   *logging.Logger
 	analyzer *analyzers.UbiquitousLanguageAnalyzer
+	root     WorkspaceRoot
 }
 
 // NewCheckUbiquitousLanguageTool wires the tool with its dependencies.
-func NewCheckUbiquitousLanguageTool(logger *logging.Logger, analyzer *analyzers.UbiquitousLanguageAnalyzer) *CheckUbiquitousLanguageTool {
-	return &CheckUbiquitousLanguageTool{logger: logger, analyzer: analyzer}
+func NewCheckUbiquitousLanguageTool(logger *logging.Logger, analyzer *analyzers.UbiquitousLanguageAnalyzer, root WorkspaceRoot) *CheckUbiquitousLanguageTool {
+	return &CheckUbiquitousLanguageTool{logger: logger, analyzer: analyzer, root: root}
 }
 
 func (t *CheckUbiquitousLanguageTool) Name() string { return "check_ubiquitous_language" }
@@ -50,6 +51,10 @@ func (t *CheckUbiquitousLanguageTool) Execute(_ context.Context, request domain.
 	if projectPath == "" || dictionaryPath == "" {
 		return domain.NewErrorResult("both projectPath and dictionaryPath are required"), nil
 	}
+	projectPath, dictionaryPath, err := t.resolvePaths(projectPath, dictionaryPath)
+	if err != nil {
+		return domain.NewErrorResult(err.Error()), nil
+	}
 
 	result, err := t.analyzer.Analyze(projectPath, dictionaryPath)
 	if err != nil {
@@ -71,4 +76,13 @@ func (t *CheckUbiquitousLanguageTool) Execute(_ context.Context, request domain.
 // telemetry (tools.SafeArguments, guardrail #9).
 func (t *CheckUbiquitousLanguageTool) SafeArgumentNames() []string {
 	return []string{"projectPath", "dictionaryPath"}
+}
+
+func (t *CheckUbiquitousLanguageTool) resolvePaths(projectPath, dictionaryPath string) (string, string, error) {
+	project, err := t.root.Resolve(projectPath)
+	if err != nil {
+		return "", "", err
+	}
+	dictionary, err := t.root.Resolve(dictionaryPath)
+	return project, dictionary, err
 }

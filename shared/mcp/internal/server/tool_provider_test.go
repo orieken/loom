@@ -6,10 +6,11 @@ import (
 
 	"github.com/orieken/loom/shared/mcp/internal/domain"
 	"github.com/orieken/loom/shared/mcp/internal/logging"
+	"github.com/orieken/loom/shared/mcp/internal/tools"
 )
 
 func TestBuildFrameworkRegistryRegistersAllFrameworkTools(t *testing.T) {
-	registry := buildFrameworkRegistry(logging.NewLogger(&bytes.Buffer{}))
+	registry := buildFrameworkRegistry(logging.NewLogger(&bytes.Buffer{}), tools.WorkspaceRoot{})
 
 	want := []string{
 		"analyze_complexity",
