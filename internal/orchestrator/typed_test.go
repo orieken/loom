@@ -195,6 +195,8 @@ func TestDefaultPlanTypedStages(t *testing.T) {
 		"developer":         string(state.KindImplementation),
 		"security-reviewer": string(state.KindSecurity),
 		"qa-engineer":       string(state.KindQA),
+		// Written before the build, from the analysis alone (L3.62).
+		state.AcceptanceScenariosStageID: string(state.KindScenarios),
 	}
 
 	if len(kinds) != len(want) {
@@ -274,10 +276,12 @@ func TestEditingTheRenderedViewDoesNotDemoteTheStage(t *testing.T) {
 	assertInvocations(t, provider, []string{"analyst", "architect", "developer"})
 }
 
-// TestQAEngineerReadsThreeUpstreams covers the multi-upstream case the
+// TestQAEngineerReadsFourUpstreams covers the multi-upstream case the
 // contracts describe: what was built, what security found, and the criteria
-// to test against — each labelled with where it came from.
-func TestQAEngineerReadsThreeUpstreams(t *testing.T) {
+// to test against — each labelled with where it came from — plus, since
+// L3.62, the acceptance scenarios written before the build, which it
+// automates rather than writes afresh from the code.
+func TestQAEngineerReadsFourUpstreams(t *testing.T) {
 	plan := orchestrator.DefaultDeliverFeaturePlan()
 	consumed := map[string][]string{}
 	for _, stage := range plan.Stages {
@@ -287,10 +291,10 @@ func TestQAEngineerReadsThreeUpstreams(t *testing.T) {
 	}
 
 	qa := consumed["qa-engineer"]
-	if len(qa) != 3 {
-		t.Fatalf("qa-engineer consumes %v, want its three declared upstreams", qa)
+	if len(qa) != 4 {
+		t.Fatalf("qa-engineer consumes %v, want its four declared upstreams", qa)
 	}
-	for _, want := range []string{"developer", "security-reviewer", "analyst"} {
+	for _, want := range []string{state.AcceptanceScenariosStageID, "developer", "security-reviewer", "analyst"} {
 		if !containsString(qa, want) {
 			t.Errorf("qa-engineer does not consume %q", want)
 		}

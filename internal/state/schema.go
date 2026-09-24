@@ -34,6 +34,7 @@ const (
 	KindImplementation Kind = "implementation"
 	KindSecurity       Kind = "security"
 	KindQA             Kind = "qa"
+	KindScenarios      Kind = "scenarios"
 	KindContext        Kind = "context"
 )
 
@@ -60,6 +61,7 @@ func StageSchemas() []StageSchema {
 		{Kind: KindImplementation, FileName: "implementation.schema.json", subject: &ImplementationState{}},
 		{Kind: KindSecurity, FileName: "security.schema.json", subject: &SecurityState{}},
 		{Kind: KindQA, FileName: "qa.schema.json", subject: &QAState{}},
+		{Kind: KindScenarios, FileName: "scenarios.schema.json", subject: &ScenariosState{}},
 		{Kind: KindContext, FileName: "context.schema.json", subject: &ContextState{}},
 	}
 }
@@ -113,6 +115,7 @@ func documentFactories() map[Kind]func() Validatable {
 		KindImplementation: func() Validatable { return &ImplementationState{} },
 		KindSecurity:       func() Validatable { return &SecurityState{} },
 		KindQA:             func() Validatable { return &QAState{} },
+		KindScenarios:      func() Validatable { return &ScenariosState{} },
 		KindContext:        func() Validatable { return &ContextState{} },
 	}
 }

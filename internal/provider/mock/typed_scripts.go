@@ -32,6 +32,7 @@ func typedPayloads() map[state.Kind]func() interface{} {
 		state.KindImplementation: func() interface{} { return sampleImplementation() },
 		state.KindSecurity:       func() interface{} { return sampleSecurity() },
 		state.KindQA:             func() interface{} { return sampleQA() },
+		state.KindScenarios:      func() interface{} { return sampleScenarios() },
 	}
 }
 
@@ -157,5 +158,18 @@ func sampleArchitecture() state.ArchitectureState {
 		},
 		BoundedContext:   state.BoundedContext{Owning: "mock"},
 		FitnessFunctions: []state.FitnessFunction{fitness},
+	}
+}
+
+func sampleScenarios() state.ScenariosState {
+	return state.ScenariosState{
+		SchemaVersion: state.SchemaVersion,
+		Feature:       "mock-feature",
+		Scenarios: []state.AcceptanceScenario{{
+			Criterion: "Scripted acceptance criterion",
+			Name:      "the scripted criterion holds",
+			When:      []string{"the user does the scripted thing"},
+			Then:      []string{"the scripted outcome is visible"},
+		}},
 	}
 }

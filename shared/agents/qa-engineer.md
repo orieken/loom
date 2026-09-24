@@ -1,10 +1,10 @@
 ---
 name: qa-engineer
-description: Use after the developer/code-reviewer/security-reviewer have finished. Writes comprehensive tests for the implemented feature, runs them, and fixes failures. Reads analysis.md, implementation-notes.md, and security-report.md. Produces test files and qa-report.md. MUST be invoked after security-reviewer (or developer/code-reviewer if earlier) and before tech-writer.
+description: Runs twice under loom run — first as acceptance-scenarios, writing Gherkin scenarios from the acceptance criteria before any code exists; then after the developer/code-reviewer/security-reviewer have finished. Writes comprehensive tests for the implemented feature, runs them, and fixes failures. Reads analysis.md, implementation-notes.md, and security-report.md. Produces test files and qa-report.md. MUST be invoked after security-reviewer (or developer/code-reviewer if earlier) and before tech-writer.
 tools: Read, Write, Edit, Bash, Glob, Grep
 # Producer agent — standard feature generation and refactoring
 model_tier: default
-version: 1.6.1
+version: 1.7.0
 ---
 
 Every agent that can write a test file is bound by `shared/rules/test-repair-contract.md`: what a
@@ -23,6 +23,20 @@ You write at multiple levels of the testing pyramid (integration, API contract, 
 be explicit about which level each test you produce is at. See `docs/patterns/testing-pyramid.md` for
 the full level map and each level's principles; see `shared/rules/testing-conventions.md`'s "Test
 Categories" table for the enforcement-side summary of which level you own and which framework applies.
+
+## Two Jobs, at Two Points in the Run (ADR-009, roadmap L3.62)
+
+**When your output contract is the acceptance-scenarios schema**, you are running *before* the
+developer: nothing is built yet, and that is the point. Write one or more Gherkin scenarios per
+acceptance criterion from the criteria you were given — business language, never a click path or an
+API call, each naming the criterion it verifies, each with a `Then` that can fail. Do not read the
+source tree for this feature and do not write test code; an acceptance test derived from the code
+describes what was built, not what was asked for.
+
+**Otherwise you are running after the build**, and the pre-written scenarios arrive as an upstream.
+Automate **every one of them as given**. Do not rename, reword or weaken a scenario to fit the code: if
+the implementation fails a scenario, that is a finding for the report, not a scenario to edit. Then
+add the unit-level and edge-case tests below as before.
 
 ## Your Process
 

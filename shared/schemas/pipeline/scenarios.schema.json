@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/orieken/loom/internal/state/scenarios-state",
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 2,
+      "description": "Always 2 — the schema version this build accepts."
+    },
+    "feature": {
+      "type": "string"
+    },
+    "scenarios": {
+      "items": {
+        "properties": {
+          "criterion": {
+            "type": "string",
+            "description": "The acceptance criterion's statement this scenario verifies"
+          },
+          "name": {
+            "type": "string",
+            "description": "Scenario name in business language; it IS the acceptance criterion as a test"
+          },
+          "given": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "description": "Preconditions"
+          },
+          "when": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "description": "The action"
+          },
+          "then": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "description": "The observable outcome that decides pass or fail"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "criterion",
+          "name",
+          "when",
+          "then"
+        ]
+      },
+      "type": "array",
+      "minItems": 1
+    },
+    "retrieval": {
+      "properties": {
+        "domainTerms": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Canonical terms from DOMAIN_DICTIONARY.md used by this feature"
+        },
+        "issueRefs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Ticket or issue references"
+        },
+        "linkedAdrs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Repo-relative paths to referenced ADRs"
+        },
+        "linkedKis": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Repo-relative paths to referenced Knowledge Items"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "feature",
+    "scenarios"
+  ]
+}

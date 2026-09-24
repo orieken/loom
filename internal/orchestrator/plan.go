@@ -67,7 +67,35 @@ func (p Plan) Validate() error {
 	if err := p.validateStageIDs(); err != nil {
 		return err
 	}
+	if err := p.validateBlindScenarios(); err != nil {
+		return err
+	}
 	return p.validateGateNames()
+}
+
+// validateBlindScenarios rejects a plan that writes acceptance scenarios
+// after the implementation exists. Their value is that they describe what
+// was asked for rather than what was built (roadmap L3.62, ADR-009), and
+// that is a property of order: the stage has file tools, so once the code is
+// in the working tree no projection can keep it from reading it. Plans
+// choose their own order, so the executor holds this rather than the
+// built-in plan alone.
+func (p Plan) validateBlindScenarios() error {
+	scenarios, developer := p.indexOf(state.AcceptanceScenariosStageID), p.indexOf("developer")
+	if scenarios < 0 || developer < 0 || scenarios < developer {
+		return nil
+	}
+	return fmt.Errorf("plan %q runs %q after %q: acceptance scenarios must be written before the implementation exists",
+		p.Name, state.AcceptanceScenariosStageID, "developer")
+}
+
+func (p Plan) indexOf(stageID string) int {
+	for index, stage := range p.Stages {
+		if stage.ID == stageID {
+			return index
+		}
+	}
+	return -1
 }
 
 func (p Plan) validateGateNames() error {
@@ -150,14 +178,15 @@ func defaultSkippableStages() map[string]bool {
 // the analyst -> architect hop; every other stage still writes markdown.
 func defaultTypedStages() (kinds map[string]string, consumes map[string][]string) {
 	return map[string]string{
-		"context-engineer":  string(state.KindContext),
-		"analyst":           string(state.KindAnalysis),
-		RouterStageID:       string(state.KindRoute),
-		"architect":         string(state.KindArchitecture),
-		"developer":         string(state.KindImplementation),
-		"code-reviewer":     string(state.KindReview),
-		"security-reviewer": string(state.KindSecurity),
-		"qa-engineer":       string(state.KindQA),
+		"context-engineer":               string(state.KindContext),
+		"analyst":                        string(state.KindAnalysis),
+		RouterStageID:                    string(state.KindRoute),
+		"architect":                      string(state.KindArchitecture),
+		"developer":                      string(state.KindImplementation),
+		"code-reviewer":                  string(state.KindReview),
+		"security-reviewer":              string(state.KindSecurity),
+		"qa-engineer":                    string(state.KindQA),
+		state.AcceptanceScenariosStageID: string(state.KindScenarios),
 	}, map[string][]string{
 		// The router deliberately has no projection: projections exist to
 		// narrow what a *model* is shown, and the router is the executor
@@ -166,9 +195,14 @@ func defaultTypedStages() (kinds map[string]string, consumes map[string][]string
 		// On a second round the developer reads the reviewer's findings.
 		"developer":         {"code-reviewer"},
 		"security-reviewer": {"developer"},
-		// Three upstreams, per qa-contract.md's "Consumed by" line: what
-		// was built, what security found, and the criteria to test against.
-		"qa-engineer": {"developer", "security-reviewer", "analyst"},
+		// The analysis and nothing else, and it runs before the developer:
+		// acceptance scenarios describe what was asked for, not what was
+		// built (roadmap L3.62, ADR-009).
+		state.AcceptanceScenariosStageID: {"analyst"},
+		// Per qa-contract.md's "Consumed by" line — what was built, what
+		// security found, the criteria to test against — plus the scenarios
+		// written before the build, which it automates rather than rewrites.
+		"qa-engineer": {state.AcceptanceScenariosStageID, "developer", "security-reviewer", "analyst"},
 		// tech-writer produces markdown in this cut but still reads typed
 		// state — what a stage reads and what it writes vary separately.
 		"tech-writer": {"qa-engineer", "analyst"},
@@ -231,6 +265,7 @@ func DefaultDeliverFeaturePlan() Plan {
 		"architect",
 		"performance-engineer",
 		"data-engineer",
+		state.AcceptanceScenariosStageID,
 		"developer",
 		"code-reviewer",
 		"accessibility-engineer",
@@ -242,10 +277,10 @@ func DefaultDeliverFeaturePlan() Plan {
 		"devops-engineer",
 	}
 	stages := make([]Stage, 0, len(agents))
-	for _, agent := range agents {
-		stages = append(stages, Stage{ID: agent, Agent: agent, Gate: gates[agent],
-			StateKind: kinds[agent], Consumes: consumes[agent], Skippable: skippable[agent],
-			Internal: agent == RouterStageID, Timeout: defaultStageTimeout})
+	for _, id := range agents {
+		stages = append(stages, Stage{ID: id, Agent: agentFor(id), Gate: gates[id],
+			StateKind: kinds[id], Consumes: consumes[id], Skippable: skippable[id],
+			Internal: id == RouterStageID, Timeout: defaultStageTimeout})
 	}
 	return Plan{Name: DefaultDeliverFeaturePlanName, Stages: stages, Loops: defaultPlanLoops()}
 }
@@ -265,3 +300,13 @@ func defaultPlanLoops() []Loop {
 // defaultReviewIterations bounds the review loop. Three rounds matches the
 // Tier B contract-retry default in deliver-feature's own policy block.
 const defaultReviewIterations = 3
+
+// agentFor names the agent that runs a stage. Stages are named after their
+// agent except where one agent does two jobs at two points in the run:
+// qa-engineer writes acceptance scenarios before the build and tests it after.
+func agentFor(stageID string) string {
+	if stageID == state.AcceptanceScenariosStageID {
+		return "qa-engineer"
+	}
+	return stageID
+}

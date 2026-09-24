@@ -24,7 +24,12 @@ func projections() map[string]map[Kind]func([]byte) ([]byte, error) {
 		"architect":         {KindAnalysis: projectAnalysisForArchitect},
 		"developer":         {KindReview: projectReviewForDeveloper},
 		"security-reviewer": {KindImplementation: projectImplementationForSecurity},
+		// Written before the developer runs, from the analysis alone
+		// (roadmap L3.62). The only upstream it may ever read is analysis:
+		// see TestAcceptanceScenariosAreWrittenBlind in internal/orchestrator.
+		AcceptanceScenariosStageID: {KindAnalysis: projectAnalysisForQA},
 		"qa-engineer": {
+			KindScenarios:      projectScenariosForQA,
 			KindImplementation: projectImplementationForQA,
 			KindSecurity:       projectSecurityForQA,
 			KindAnalysis:       projectAnalysisForQA,
@@ -252,4 +257,25 @@ func projectQAForTechWriter(payload []byte) ([]byte, error) {
 	return json.Marshal(TechWriterQAInput{
 		Feature: qa.Feature, NotesForTechWriter: qa.NotesForTechWriter, KnownGaps: qa.KnownGaps,
 	})
+}
+
+// AcceptanceScenariosStageID is the stage that writes acceptance scenarios
+// before implementation. It is qa-engineer under its own stage ID, so its
+// projection and its place in the plan can differ from qa-engineer's.
+const AcceptanceScenariosStageID = "acceptance-scenarios"
+
+// QAScenariosInput is what qa-engineer reads from the scenarios written
+// before the build: every one of them, to automate unchanged. It automates
+// the scenarios it was given rather than writing new ones from the code.
+type QAScenariosInput struct {
+	Feature   string               `json:"feature"`
+	Scenarios []AcceptanceScenario `json:"scenarios"`
+}
+
+func projectScenariosForQA(payload []byte) ([]byte, error) {
+	scenarios, err := decodeUpstream[*ScenariosState](KindScenarios, payload)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(QAScenariosInput{Feature: scenarios.Feature, Scenarios: scenarios.Scenarios})
 }

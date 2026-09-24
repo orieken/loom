@@ -20,6 +20,9 @@ stages:
   - context-engineer
   - analyst
   - router
+  # The failing scenario, written from the bug report before the fix exists:
+  # reproduce-first, as deliver-bugfix/SKILL.md asks (roadmap L3.62).
+  - acceptance-scenarios
   - developer
   - code-reviewer
   - security-reviewer

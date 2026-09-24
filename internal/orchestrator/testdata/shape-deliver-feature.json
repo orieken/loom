@@ -17,6 +17,11 @@
       "status": "COMPLETED"
     },
     {
+      "id": "acceptance-scenarios",
+      "iteration": 1,
+      "status": "COMPLETED"
+    },
+    {
       "id": "developer",
       "iteration": 1,
       "status": "COMPLETED"
@@ -45,5 +50,5 @@
   "loops": {
     "review": "converged"
   },
-  "providerCalls": 7
+  "providerCalls": 8
 }

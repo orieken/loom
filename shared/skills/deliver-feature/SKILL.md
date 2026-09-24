@@ -95,6 +95,11 @@ directly at the root (not inside any `<feature-name>/` subdirectory). If found:
 17. **Invoke validate-artifact** against `shared/contracts/data-engineering-contract.md` (only if data-engineer was invoked). If FAIL: apply Tier B retry loop up to `maxContractRetries`. **Checkpoint** on PASS or SKIP.
 
 ### Phase 2: Implementation and Review
+    **Before step 18 — acceptance scenarios, written blind** (roadmap L3.62, ADR-009): invoke
+    qa-engineer to write `acceptance-scenarios.md` — Gherkin scenarios per acceptance criterion — from
+    `analysis.md` alone, before any code exists. Step 26 automates those scenarios as given. Under
+    `loom run` this is the `acceptance-scenarios` stage and the executor enforces the order; in this
+    markdown pipeline it is judgment-only, because nothing stops a later stage from reading the code.
 18. **Invoke developer** -> reads `context-manifest.md` first, then produces `implementation-notes.md`.
 19. **Invoke validate-artifact** against `shared/contracts/implementation-contract.md`. If FAIL: apply Tier B retry loop up to `maxContractRetries`. **Checkpoint** on PASS.
 20. **Invoke code-reviewer** -> produces `code-review-report.md`.

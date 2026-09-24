@@ -24,6 +24,7 @@ func viewFileNames() map[Kind]string {
 		KindImplementation: "implementation-notes.md",
 		KindSecurity:       "security-report.md",
 		KindQA:             "qa-report.md",
+		KindScenarios:      "acceptance-scenarios.md",
 		KindContext:        "context-manifest.md",
 	}
 }

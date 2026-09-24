@@ -198,9 +198,10 @@ func TestDefaultDeliverFeaturePlanEncodesTheLinearAgentSequence(t *testing.T) {
 	if err := plan.Validate(); err != nil {
 		t.Fatalf("default plan invalid: %v", err)
 	}
-	// Fourteen agent stages plus the executor-internal router (L3.0).
-	if len(plan.Stages) != 15 {
-		t.Fatalf("default plan has %d stages, want 15", len(plan.Stages))
+	// Fifteen agent stages plus the executor-internal router (L3.0); the
+	// fifteenth is acceptance-scenarios, qa-engineer before the build (L3.62).
+	if len(plan.Stages) != 16 {
+		t.Fatalf("default plan has %d stages, want 16", len(plan.Stages))
 	}
 	first, last := plan.Stages[0], plan.Stages[len(plan.Stages)-1]
 	if first.ID != "context-engineer" || last.ID != "devops-engineer" {

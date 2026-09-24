@@ -16,6 +16,17 @@ Semantic-ish, not strict SemVer:
 When you bump an agent's `version:` frontmatter field, add a row under a new dated heading here in the same
 commit — the pre-commit hook checks for exactly this.
 
+## 2026-09-23 — acceptance scenarios are written before the build (roadmap L3.62)
+
+| Agent | Version | Change |
+|---|---|---|
+| qa-engineer | 1.6.1 -> 1.7.0 | Minor: runs twice under `loom run`. As the new `acceptance-scenarios` stage, before the developer, it writes Gherkin scenarios from the acceptance criteria alone and reads no code; after the build it automates those scenarios as given, and a scenario the code fails is a finding, not a scenario to edit |
+
+qa-engineer used to write acceptance tests after the developer, reading implementation notes in a
+working tree that already held the code, so its scenarios could describe what was built rather than
+what was asked for. The independence ADR-009 keeps is exactly that difference, and it is a property of
+order: the executor now rejects any plan that runs the scenario stage after the developer.
+
 ## 2026-09-22 — the implementer owns its unit tests; `test-driven-developer` is removed (ADR-009)
 
 | Agent | Version | Change |
