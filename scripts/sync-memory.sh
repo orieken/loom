@@ -57,7 +57,9 @@ read_config_key() {
   local key="$1"
   local default="${2:-}"
   local val
-  val=$(grep "^\s*${key}:" "$CONFIG_PATH" 2>/dev/null | head -1 | sed "s/.*${key}:\s*//" | tr -d '"' || true)
+  # POSIX classes, not \s: BSD sed (macOS) has no \s, so the value kept its
+  # leading space and every pull tried to clone ' git@github.com:...'.
+  val=$(grep -E "^[[:space:]]*${key}:" "$CONFIG_PATH" 2>/dev/null | head -1 | sed -E "s/.*${key}:[[:space:]]*//; s/[[:space:]]+$//" | tr -d '"' || true)
   echo "${val:-$default}"
 }
 
@@ -88,9 +90,21 @@ fi
 #
 # If you must use MEMORY_SYNC_TOKEN, never set it inline in a shell command that
 # appears in your history. Instead, export it from a secret manager or CI secrets store.
+#
+# CLONE_URL carries the token and is used for git's clone alone. ORG_REPO stays
+# token-free: it is printed, and stamped into every pulled KI's sync_source —
+# which, before this was split (roadmap L3.7), wrote the token into
+# shared/knowledge/*.md, the files this script then tells you to commit.
+CLONE_URL="$ORG_REPO"
 if [[ -n "${MEMORY_SYNC_TOKEN:-}" && "$ORG_REPO" =~ ^git@github.com: ]]; then
-  ORG_REPO=$(echo "$ORG_REPO" | sed "s|git@github.com:|https://$MEMORY_SYNC_TOKEN@github.com/|")
+  CLONE_URL=$(echo "$ORG_REPO" | sed "s|git@github.com:|https://$MEMORY_SYNC_TOKEN@github.com/|")
 fi
+
+# KIs the injection scan flagged, reported at the end of the pull. Held in
+# a variable, not a temp file: a temp file needs an EXIT trap to clean up, and
+# under bash 3.2 (macOS) an EXIT trap turns an unbound-variable crash into
+# exit 0 — a pull that crashed would report success. No trap guards the pull.
+FLAGGED=()
 
 SLUG=$(echo "$ORG_REPO" | sed 's|.*[:/]||; s|\.git$||')
 CACHE_DIR="$CACHE_BASE/$SLUG"
@@ -107,6 +121,43 @@ validate_ki() {
   if command -v python3 &>/dev/null && [[ -f "$VALIDATE_SCRIPT" && -f "$KI_SCHEMA" ]]; then
     python3 "$VALIDATE_SCRIPT" "$KI_SCHEMA" "$ki_file" > /dev/null 2>&1
   fi
+}
+
+# --- Injection scan (roadmap L3.7) --------------------------------------------
+# Every org KI is scanned for instruction-override patterns before anything is
+# written — dry run included — so a poisoned KI is flagged before it can be
+# pulled. The scan is `loom ki scan`; frontmatter validation above is
+# best-effort, but this is not: if no scanner can run, nothing is pulled.
+#
+# Scanner resolution: $LOOM_BIN when set (and then nothing else), else `loom`
+# on PATH, else `go run ./cmd/loom` from this checkout. Each candidate must
+# answer `ki scan --help`, so an older loom without the command is skipped
+# rather than mistaken for one reporting findings.
+SCANNER_CMD=()
+
+scanner_answers() {
+  "$@" ki scan --help > /dev/null 2>&1
+}
+
+resolve_scanner() {
+  if [[ -n "${LOOM_BIN:-}" ]]; then
+    scanner_answers "$LOOM_BIN" && SCANNER_CMD=("$LOOM_BIN")
+    return 0
+  fi
+  if command -v loom &>/dev/null && scanner_answers loom; then
+    SCANNER_CMD=(loom)
+  elif [[ -f "$REPO_DIR/go.mod" ]] && command -v go &>/dev/null && (cd "$REPO_DIR" && scanner_answers go run ./cmd/loom); then
+    SCANNER_CMD=(go run "$REPO_DIR/cmd/loom")
+  fi
+}
+
+# scan_org_ki prints findings and returns 0 clean, 1 flagged, anything else
+# when the file could not be scanned.
+scan_org_ki() {
+  local file="$1" output status=0
+  output=$(cd "$REPO_DIR" && "${SCANNER_CMD[@]}" ki scan "$file" 2>&1) || status=$?
+  printf '%s\n' "$output" | grep -v '^clean:' | sed 's/^/             /' || true
+  return "$status"
 }
 
 # --- Resolve target KI directory inside a repo root -------------------------
@@ -131,7 +182,7 @@ refresh_cache() {
   else
     log "Cloning org repo (first run)..."
     mkdir -p "$CACHE_BASE"
-    git clone --depth=1 "$ORG_REPO" "$CACHE_DIR" --quiet
+    git clone --depth=1 "$CLONE_URL" "$CACHE_DIR" --quiet
     ok "cloned to $CACHE_DIR"
   fi
 }
@@ -203,9 +254,15 @@ pull_kis() {
     fi
   done
 
+  # Phase 2b: injection scan — flagged KIs are dropped from the pull.
+  if [[ $(( ${#to_add[@]} + ${#to_update[@]} )) -gt 0 ]]; then
+    screen_pending_kis "$org_ki_dir"
+  fi
+
   local changes=$(( ${#to_add[@]} + ${#to_update[@]} ))
 
   if [[ "$changes" -eq 0 ]]; then
+    report_flagged
     echo "  (no changes — shared/knowledge/ is up to date with org repo)"
     date -u "+%Y-%m-%dT%H:%M:%SZ" > "$LAST_SYNC_FILE"
     echo ""
@@ -220,6 +277,7 @@ pull_kis() {
     echo ""
     echo "Dry run — no files changed. Re-run with --confirm to apply:"
     echo "  bash scripts/sync-memory.sh pull --confirm"
+    report_flagged
     return
   fi
 
@@ -227,7 +285,8 @@ pull_kis() {
   echo ""
   echo "Applying changes..."
 
-  for base in "${to_add[@]}" "${to_update[@]}"; do
+  # The +"..." form: bash 3.2 (macOS) calls an empty array unbound under set -u.
+  for base in ${to_add[@]+"${to_add[@]}"} ${to_update[@]+"${to_update[@]}"}; do
     org_ki="$org_ki_dir/$base"
     local_ki="$local_ki_dir/$base"
 
@@ -268,6 +327,68 @@ PYEOF
   echo "Sync complete. $changes KI(s) written to shared/knowledge/."
   echo "Review, then commit:"
   echo "  git add shared/knowledge/ && git commit -m 'chore(knowledge): sync KIs from org repo'"
+  report_flagged
+}
+
+# screen_pending_kis scans every pending org KI and removes the flagged ones
+# from to_add and to_update (both callers' locals, by bash's dynamic scope).
+# A file the scanner could not scan aborts the whole pull: an unscanned KI
+# must never be written.
+screen_pending_kis() {
+  local org_ki_dir="$1"
+  resolve_scanner
+  if [[ ${#SCANNER_CMD[@]} -eq 0 ]]; then
+    echo ""
+    echo "ERROR: no injection scanner available — refusing to pull unscanned KIs."
+    echo "Install loom (with 'loom ki scan'), set LOOM_BIN, or run from a framework checkout with Go."
+    exit 1
+  fi
+  echo ""
+  echo "Scanning pending KIs for instruction-override patterns..."
+  # screen_list runs in a subshell, where its exit stops only itself: the
+  # status is checked here so an unscannable file really aborts the pull.
+  local screened verdict kind base
+  screened=$(
+    screen_list add "$org_ki_dir" ${to_add[@]+"${to_add[@]}"}
+    screen_list update "$org_ki_dir" ${to_update[@]+"${to_update[@]}"}
+  ) || exit 1
+  to_add=()
+  to_update=()
+  while read -r verdict kind base; do
+    case "$verdict:$kind" in
+      clean:add)    to_add+=("$base") ;;
+      clean:update) to_update+=("$base") ;;
+      flagged:*)    FLAGGED+=("$base") ;;
+    esac
+  done <<< "$screened"
+}
+
+# screen_list prints a verdict line per KI — "clean <kind> <name>" or
+# "flagged <kind> <name>" — and exits the subshell on one it cannot scan.
+screen_list() {
+  local kind="$1" org_ki_dir="$2"; shift 2
+  local base status
+  for base in "$@"; do
+    status=0
+    scan_org_ki "$org_ki_dir/$base" >&2 || status=$?
+    case "$status" in
+      0) echo "clean $kind $base" ;;
+      1) echo "  ! FLAGGED $base — not pulled" >&2; echo "flagged $kind $base" ;;
+      *) echo "ERROR: could not scan $base (scanner exit $status) — refusing to pull." >&2; exit 1 ;;
+    esac
+  done
+}
+
+# report_flagged ends a pull that dropped flagged KIs with a non-zero exit, so
+# automation notices: a flagged KI is a human's decision, not a warning.
+report_flagged() {
+  [[ ${#FLAGGED[@]} -gt 0 ]] || return 0
+  echo ""
+  echo "FLAGGED: ${#FLAGGED[@]} org KI(s) matched instruction-override patterns and were NOT pulled:"
+  printf '  %s\n' "${FLAGGED[@]}"
+  echo "Read each one in $CACHE_DIR. If it is safe, copy it into shared/knowledge/ by hand —"
+  echo "a person deciding, never this script. See shared/rules/memory-trust-boundary.md."
+  exit 1
 }
 
 # === PUSH ===================================================================
@@ -327,7 +448,7 @@ print((datetime.date.today() - datetime.timedelta(days=30)).isoformat())
   trap "rm -rf '$tmp_dir'" EXIT
 
   log "Cloning org repo to temp dir..."
-  git clone --depth=1 "$ORG_REPO" "$tmp_dir" --quiet
+  git clone --depth=1 "$CLONE_URL" "$tmp_dir" --quiet
   ok "cloned"
 
   local branch_name="ki-sync/$(basename "$REPO_DIR")-$(date +%Y%m%d)"

@@ -41,6 +41,7 @@ Adopt the **separate git repo** model. An organization creates a repository (con
 3. Print a human-readable diff of what will change — **no mutations without `--confirm`**
 4. On `--confirm`: copy new/updated org KIs into `shared/knowledge/`; never overwrite `.claude/knowledge/` (project-local wins on divergence)
 5. Validate every merged KI against `shared/schemas/ki-frontmatter.schema.json` — reject any that fail validation
+6. **Scan every incoming KI's body for instruction-override patterns before anything is written, dry run included** — `loom ki scan`. A flagged KI is not pulled; the pull names it and exits non-zero, and only a person copies it in after reading it. If no scanner can run, nothing is pulled. *(Added 2026-09-24, roadmap L3.7: until then only the frontmatter was validated, and a synced body entered agent context unaudited.)*
 
 **Push** (`install.sh --sync-memory push`):
 
@@ -60,7 +61,7 @@ Adopt the **separate git repo** model. An organization creates a repository (con
 
 **M1 path**: SSH (GitHub org membership). The sync script calls `git clone git@github.com:<org>/<repo>.git` — if SSH is configured, it just works.
 
-**Fallback**: HTTPS + personal access token. Set `MEMORY_SYNC_TOKEN=<pat>` in the environment; the script substitutes `https://<token>@github.com/<org>/<repo>.git`. Documented in README; never hardcoded.
+**Fallback**: HTTPS + personal access token. Set `MEMORY_SYNC_TOKEN=<pat>` in the environment; the script substitutes `https://<token>@github.com/<org>/<repo>.git` **for git's clone only**. Documented in README; never hardcoded. *(Corrected 2026-09-24, roadmap L3.7: the substituted URL was also printed and stamped into every pulled KI's `sync_source`, writing the token into files the script told you to commit. It no longer is, and a test holds that.)*
 
 ### Configuration
 

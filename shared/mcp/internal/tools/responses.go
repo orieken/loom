@@ -6,13 +6,17 @@ import (
 	"github.com/invopop/jsonschema"
 )
 
-// KIMatch represents a Knowledge Item search hit.
+// KIMatch represents a Knowledge Item search hit. Provenance travels with
+// it (roadmap L3.7): Trust says whose text this is, and InjectionFlags say
+// whether its body addressed a model — so an agent knows before reading it.
 type KIMatch struct {
-	Title     string   `json:"title"`
-	Path      string   `json:"path"`
-	Summary   string   `json:"summary"`
-	Tags      []string `json:"tags,omitempty"`
-	Relevance float64  `json:"relevance"`
+	Title          string   `json:"title"`
+	Path           string   `json:"path"`
+	Summary        string   `json:"summary"`
+	Tags           []string `json:"tags,omitempty"`
+	Relevance      float64  `json:"relevance"`
+	Trust          string   `json:"trust" jsonschema:"enum=framework,enum=org-sync"`
+	InjectionFlags []string `json:"injectionFlags,omitempty"`
 }
 
 // KISearchResult is the response from search_ki.

@@ -1300,6 +1300,48 @@ is equally defensible and a reader should not have to guess which produced the r
 ### L3.7 — Structurally separate retrieved content from instructions
 **Workstream**: MEMORY · **Effort**: M · **Blocked by**: L3.4 · **Blocks**: none
 
+**SHIPPED** 2026-09-24 — a KI that addresses its reader is flagged before it can be pulled, and one
+already on disk reaches a model through `search_ki` only as a path, a title and its flags.
+
+- **A deterministic scanner** (`internal/injectionscan`), exposed as `loom ki scan`: named rules for
+  override phrasing, new-instruction headers, role reassignment, gate and guardrail bypass, prompt
+  disclosure, secrecy toward the user, role markers (`system:`, `<|im_start|>`), and invisible
+  characters (zero-width and bidi overrides, shown by code point in the report). Exit 0 clean, 1
+  flagged, 2 unscannable — the distinction the sync script branches on. A fitness test scans every KI
+  and ADR this repository ships and requires zero findings: a scanner that cries wolf gets switched off.
+- **The done-when**, `TestSyncMemoryRefusesToPullAPoisonedKI`, runs the real script against a local
+  org repo holding a clean KI and one containing "ignore your previous instructions": the clean one is
+  pulled, the poisoned one is named and not written, and the pull exits 1. The dry run reports it too.
+  The gate **fails closed** — no scanner, or a scanner that errors, pulls nothing — and a test asserts
+  each refusal by its message, because the first draft of that test passed on an unrelated failure.
+- **Red proof**: 38 mutants across the scanner, retrieval, the CLI and the shell script itself — all
+  killed, none by timeout. The first pass found four real gaps and two vacuous tests: the colon that
+  separates a "New instructions:" header from prose about one; the test for an explicit `LOOM_BIN`,
+  whose permissive stand-in was a shell syntax error (`echo clean: 1 file(s)`) and so tested nothing;
+  and the trap above.
+- **Provenance at retrieval**: every `search_ki` match carries `trust` (`framework` or `org-sync`,
+  from `sync_source`) and `injectionFlags`; the whole file is scanned, not just the summary lines, and a
+  flagged match's summary is withheld. The analyst (2.0.0 -> 2.1.0) is told what the fields mean.
+- **Three pre-existing defects in `sync-memory.sh`, found by running it for the first time under
+  test** — all fixed and each held by a test:
+  1. **Pull never worked on macOS.** The config reader used `\s` in `sed`, which BSD sed lacks, so every
+     value kept a leading space and `git clone ' git@github.com:...'` failed.
+  2. **The sync token leaked into committed files.** With `MEMORY_SYNC_TOKEN` set, the token-bearing
+     clone URL was printed and stamped into every pulled KI's `sync_source`. The token now reaches
+     git's clone alone; a test routes the real token URL to a local repo with `url.insteadOf` and
+     asserts the token appears nowhere.
+  3. **An empty add or update list crashed the apply loop** under bash 3.2's `set -u` (macOS calls an
+     empty array unbound). Chasing it found a sharper hazard: **under bash 3.2 an EXIT trap turns an
+     unbound-variable crash into exit 0**, and `$?` inside the trap is already 0, so no trap can repair
+     it. My first fix — a status-preserving trap — changed nothing, and the mutation run said so. The
+     pull path now holds no trap at all (flagged KIs are kept in a variable, not a temp file), the arrays
+     are guarded, and a test fails if a trap is ever set before `push_kis`.
+- **Not done**: KI bodies an agent reads with its own Read tool are still the file as written; the
+  controls are that such a body was scanned at sync and is flagged at retrieval. Prompt-level caution
+  in `memory-trust-boundary.md` stays, now described as defence in depth behind these controls. The
+  push path keeps its pre-existing EXIT trap (it cleans up a temp clone), so a crash there can still
+  exit 0 under bash 3.2 — out of this item's scope, and worth its own small fix.
+
 1. **Problem**: KIs are read whole into the context window. `shared/rules/memory-trust-boundary.md`
    correctly identifies synced org KIs (`sync_source` frontmatter, ADR-003 pull) as an injection
    vector — and then mitigates it by *asking the model in a prompt* to treat other prompt text as
@@ -3611,6 +3653,7 @@ integration routing: all killed. **M9 first survived**: its test made the report
 | 2026-09-24 | `63265c2..2408612` | 4 | 11 | 11 | 100.0% | — |
 | 2026-09-24 | `2408612..38b600e` | 2 | 15 | 15 | 100.0% | — |
 | 2026-09-24 | `38b600e..4e37fcf` | 1 | 27 | 27 | 100.0% | — |
+| 2026-09-24 | `4e37fcf..600e718` | 3 | 123 | 108 | 87.8% | — |
 
 Of run 2's five survivors, three were equivalent (boundary mutants on `plan.go:85`, where two stages can
 never share an index) and two were **real test gaps**, closed the same day: nothing checked that a stage
@@ -3624,6 +3667,11 @@ first file, and the only indexing test had one document. Closed with a three-doc
 Run 4's one miss was a TIMED OUT, not a survivor: negating the deadline check left the deadline test
 waiting on a tool that never returns. Caught in fact, but uncredited by design — the score counts a
 timeout against itself, because the spike showed timeouts can hide survivors.
+
+Run 9 (L3.4) left 12 survivors and 3 timeouts, against the 53 hand mutants the item's own run killed —
+gremlins mutates operators the hand set did not, mostly loop and slice boundaries in `chunking.go`
+and `vector_index.go`. The three timeouts are chunking loops negated into non-termination. Not yet
+triaged into equivalent and real; that is the next small item, not a note.
 
 Run 5's two survivors were both on the violation sort in `argument_validator.go`. The boundary mutant
 (`<` to `<=`) is equivalent — no two violations of one call share a field in a way the order could show.

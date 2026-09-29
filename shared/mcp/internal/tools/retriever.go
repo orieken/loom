@@ -11,11 +11,14 @@ package tools
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/orieken/loom/internal/injectionscan"
 )
 
 // Reference is a single retrieval hit — a pointer to canonical
@@ -28,6 +31,12 @@ type Reference struct {
 	Tags      []string
 	Domain    string
 	Relevance float64
+	// Untrusted marks a KI synced from an org repo (sync_source frontmatter,
+	// ADR-003): content this repository did not author (roadmap L3.7).
+	Untrusted bool
+	// InjectionFlags names the injectionscan rules its body matched. A
+	// flagged reference carries no summary: its text must not reach a model.
+	InjectionFlags []string
 }
 
 // Retriever surfaces corpus items relevant to a query. Implementations
@@ -105,12 +114,11 @@ func hitsFromRoot(ctx context.Context, root string, queryTokens, tags []string, 
 }
 
 func parseCorpusFile(path string) (Reference, bool) {
-	file, err := os.Open(path)
+	body, err := os.ReadFile(path)
 	if err != nil {
 		return Reference{}, false
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(bytes.NewReader(body))
 	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 	if !scanner.Scan() || scanner.Text() != "---" {
 		return Reference{}, false
@@ -121,7 +129,36 @@ func parseCorpusFile(path string) (Reference, bool) {
 		ref.Title = titleFromFilename(path)
 	}
 	ref.Summary = strings.Join(summaryLines, " ")
+	withholdIfFlagged(&ref, string(body))
 	return ref, true
+}
+
+// withholdIfFlagged scans the whole file (roadmap L3.7) — not just what
+// becomes the summary, since an agent that finds the KI will read all of it.
+// A flagged KI keeps its path and title, so it can be found and reviewed, but
+// its summary is withheld: the matched text never enters a model's context
+// through this tool.
+func withholdIfFlagged(ref *Reference, body string) {
+	ref.InjectionFlags = injectionRules(injectionscan.Scan(body))
+	if len(ref.InjectionFlags) > 0 {
+		ref.Summary = withheldSummary
+	}
+}
+
+// withheldSummary replaces a flagged KI's summary.
+const withheldSummary = "[withheld: matched instruction-override patterns — a person must review this KI before any agent acts on it]"
+
+// injectionRules is the distinct rule names among findings, in first-seen order.
+func injectionRules(findings []injectionscan.Finding) []string {
+	var names []string
+	seen := map[string]bool{}
+	for _, finding := range findings {
+		if !seen[finding.Rule] {
+			seen[finding.Rule] = true
+			names = append(names, finding.Rule)
+		}
+	}
+	return names
 }
 
 func scanFrontmatterAndBody(scanner *bufio.Scanner, ref *Reference) []string {
@@ -167,6 +204,8 @@ func assignFrontmatterField(ref *Reference, line string) {
 		ref.Domain = value
 	case "tags":
 		ref.Tags = parseTagsList(value)
+	case "sync_source":
+		ref.Untrusted = value != ""
 	}
 }
 

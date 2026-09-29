@@ -16,6 +16,16 @@ Semantic-ish, not strict SemVer:
 When you bump an agent's `version:` frontmatter field, add a row under a new dated heading here in the same
 commit — the pre-commit hook checks for exactly this.
 
+## 2026-09-24 — KI provenance and injection flags (roadmap L3.7)
+
+| Agent | Version | Change |
+|---|---|---|
+| analyst | 2.0.0 -> 2.1.0 | Minor: new guardrail in step 4. A KI with `sync_source` (or a `search_ki` match with `trust: org-sync`) is weighed as external; a match with `injectionFlags` is not read into reasoning or acted on, but named under Risks and raised with the human |
+
+`search_ki` now says whose text a KI is and whether its body addressed a model, and `sync-memory.sh`
+refuses to pull a KI that did. The analyst is the agent that reads surfaced KIs first, so it is the
+one told what those fields mean.
+
 ## 2026-09-23 — acceptance scenarios are written before the build (roadmap L3.62)
 
 | Agent | Version | Change |

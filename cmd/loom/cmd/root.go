@@ -33,6 +33,7 @@ func Execute(frameworkFS, mcpFS platform.Content) {
 	if errors.Is(err, orchestrator.ErrWaitingApproval) {
 		os.Exit(ExitCodeWaitingApproval)
 	}
+	exitOnKIScan(err)
 	cobra.CheckErr(err)
 }
 
