@@ -47,6 +47,8 @@ var failureKinds = []struct {
 	{ErrEmptyPath, domain.ErrorValidation},
 	{analyzers.ErrWalkTooLarge, domain.ErrorValidation},
 	{errNeedsContractPath, domain.ErrorValidation},
+	{ErrEmbedderUnavailable, domain.ErrorTransient},
+	{ErrEmbeddingModelMissing, domain.ErrorNotFound},
 	{ErrPathNotFound, domain.ErrorNotFound},
 	{fs.ErrNotExist, domain.ErrorNotFound},
 }

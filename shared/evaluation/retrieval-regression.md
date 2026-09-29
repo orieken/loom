@@ -10,40 +10,30 @@ verification: using queries people actually asked, not synthetic benchmarks.
 
 ---
 
-## Telemetry dependency (PENDING — schema extension required)
+## Telemetry: `retrieval.queried` (emitted since roadmap L3.4)
 
-Auto-population from telemetry requires a `retrieval.queried` event type that nothing
-emits and that is deliberately absent from the event vocabulary — which holds only
-emitted types (roadmap L3.9). Adding it means building the emitter, in the retriever
-work of **L3.4**, not adding a row to a table. Until then, `retrieval-evaluator` must
-propose cases manually from memory (i.e., from prior known query failures surfaced in
-evaluation reports).
+Every corpus search through `loom mcp serve` — `search_docs` and `search_features` — is traced as a
+`loom.retrieval <corpus>` span beneath its tool call, carrying a `retrieval.queried` event. It is a
+span event rather than an entry in the executor's event vocabulary because the searches run in the MCP
+server's process, not the executor's; `TRACEPARENT` ties it back to the run.
 
-**Proposed schema extension** (for human review before implementing — schema changes
-ripple to all telemetry consumers):
+| Attribute | On | Meaning |
+|---|---|---|
+| `loom.retrieval.corpus` | span | `project-docs`, `project-features` |
+| `loom.retrieval.backend` | span | `bm25`, `hybrid` |
+| `loom.retrieval.query.length` | span | the query's length in characters |
+| `loom.retrieval.query.hash` | span | salted digest, **only** when `LOOM_TELEMETRY_SALT` is set |
+| `loom.retrieval.hits` | event | how many references came back |
+| `loom.retrieval.outcome` | event | `hit`, or `miss` for zero hits |
+| `loom.retrieval.top_hit` | event | the best reference, relative to the corpus root |
 
-```json
-{
-  "timestamp": "2026-08-04T00:00:00.000Z",
-  "event_type": "retrieval.queried",
-  "agent_or_skill_name": "search-ki",
-  "artifact_path": null,
-  "outcome": "hit | miss",
-  "metadata": {
-    "query": "the literal query string",
-    "hits": 3,
-    "top_hit": "shared/knowledge/some-ki.md",
-    "chosen": "shared/knowledge/some-ki.md",
-    "corpus": "ki | adr | feature-archive | domain-dictionary"
-  }
-}
-```
-
-Fields needed for regression set automation: `query` (required), `hits` (required),
-`chosen` (optional — the result the agent actually loaded). A `hits: 0` case is
-auto-candidate for a missing-KI finding.
-
----
+**The query text is never recorded.** The schema first proposed here carried `metadata.query` as the
+literal string; guardrail #9 (`architecture-guardrails.md`, a hard constraint) forbids recording free
+text a caller composed, and a query is exactly that. What survives is enough to find the pattern — the
+same salted hash missing again and again, which corpus, which backend — but not what was asked. A case
+therefore still starts with a person: the hash says *that* a query keeps missing, and whoever asked it
+writes the case below. `chosen` (the result the agent actually loaded) is not emitted: the server cannot
+see which reference an agent went on to read.
 
 ## Case format
 
@@ -96,18 +86,19 @@ The evaluator never modifies this file — all case additions require human appr
 |---|---|---|
 
 ## Proposed new cases (from telemetry misses)
-(only populated if retrieval.queried events are available)
-- Query "<query>" returned 0 hits — candidate for create-ki or tag update
+(from `retrieval.queried` events with `outcome: miss`; the query is known only by its hash)
+- Query hash `sha256:<16 hex>` missed <N> times in `<corpus>` — ask whoever ran the query what it was; candidate for create-ki or tag update
 ```
 
 ---
 
-## Seed cases (manually added — 0 from telemetry, schema extension pending)
+## Seed cases (manually added — telemetry points at misses, people write the cases)
 
-No seed cases yet. Once something emits `retrieval.queried` — which means building the
-emitter, roadmap **L3.4** — it joins the generated vocabulary and `retrieval-evaluator`
-can propose cases from actual zero-hit queries. Until then, cases can be added manually
-by the framework team when a known retrieval failure is identified.
+No seed cases yet. `retrieval.queried` is emitted now (see above), so `retrieval-evaluator`
+can find repeated misses in a traced run's spans — a salted query hash with `outcome: miss`
+more than once. The case itself is still written by whoever asked the query, since the span
+holds its hash and never its text. Cases can also be added directly when a known retrieval
+failure is identified.
 
 ### Example (reference — not a real case, shows format)
 

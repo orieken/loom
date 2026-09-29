@@ -46,6 +46,10 @@ func (failingRetriever) Retrieve(context.Context, string, []string, string) ([]R
 
 func (failingRetriever) EnsureIndex(context.Context, []string) error { return nil }
 
+func (failingRetriever) SearchWithin(context.Context, string, string) ([]Reference, error) {
+	return nil, errors.New("corpus store unreadable")
+}
+
 func taxonomyTools(t *testing.T, root WorkspaceRoot) map[string]domain.Tool {
 	t.Helper()
 	logger := SilentLogger()
@@ -53,8 +57,9 @@ func taxonomyTools(t *testing.T, root WorkspaceRoot) map[string]domain.Tool {
 	tools["search_ki"] = NewSearchKITool(logger, NewKICorpusRetriever([]string{root.Dir()}))
 	tools["search_ki unconfigured"] = NewSearchKITool(logger, nil)
 	tools["search_ki broken"] = NewSearchKITool(logger, failingRetriever{})
-	tools["search_docs unconfigured"] = NewSearchDocsTool(logger, nil, nil, root)
-	tools["search_docs broken"] = NewSearchDocsTool(logger, failingRetriever{}, failingRetriever{}, root)
+	tools["search_docs unconfigured"] = NewSearchDocsTool(logger, nil, root)
+	tools["search_features unconfigured"] = NewSearchFeaturesTool(logger, nil, root)
+	tools["search_docs broken"] = NewSearchDocsTool(logger, failingRetriever{}, root)
 	tools["validate_artifact"] = NewValidateArtifactTool(logger, analyzers.NewArtifactContractAnalyzer(), "", root)
 	return tools
 }
@@ -90,6 +95,8 @@ var failureCases = []failureCase{
 	{"validate_artifact", map[string]any{"artifactPath": "main.go", "contractPath": "../outside"}, background, domain.ErrorPermission, "contractPath"},
 	{"search_docs unconfigured", map[string]any{"query": "guide"}, background, domain.ErrorNotFound, ""},
 	{"search_ki unconfigured", map[string]any{"query": "guide"}, background, domain.ErrorNotFound, ""},
+	{"search_features unconfigured", map[string]any{"query": "guide", "featuresPath": "docs"}, background, domain.ErrorNotFound, ""},
+	{"search_features", map[string]any{}, background, domain.ErrorValidation, "query"},
 	{"search_docs broken", map[string]any{"query": "guide", "docsPath": "docs"}, background, domain.ErrorInternal, ""},
 	{"search_ki broken", map[string]any{"query": "guide"}, background, domain.ErrorInternal, ""},
 	{"analyze_complexity", map[string]any{"projectPath": "."}, cancelledContext, domain.ErrorCancelled, ""},
@@ -161,6 +168,8 @@ func TestClassifyFailure(t *testing.T) {
 		{fmt.Errorf("%w (limits)", analyzers.ErrWalkTooLarge), domain.ErrorValidation},
 		{fmt.Errorf("no contract — %w", errNeedsContractPath), domain.ErrorValidation},
 		{fmt.Errorf("path %w", ErrPathNotFound), domain.ErrorNotFound},
+		{fmt.Errorf("embed: %w", ErrEmbedderUnavailable), domain.ErrorTransient},
+		{fmt.Errorf("embed: %w", ErrEmbeddingModelMissing), domain.ErrorNotFound},
 		{fmt.Errorf("read: %w", fs.ErrNotExist), domain.ErrorNotFound},
 		{errors.New("unexpected"), domain.ErrorInternal},
 	}

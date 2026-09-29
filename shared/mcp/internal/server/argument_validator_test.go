@@ -25,6 +25,7 @@ var mainArgument = map[string]struct {
 	"check_ubiquitous_language": {"dictionaryPath", map[string]any{"projectPath": ".", "dictionaryPath": "D.md"}},
 	"verify_dependencies":       {"projectPath", map[string]any{"projectPath": "."}},
 	"search_docs":               {"query", map[string]any{"query": "anything"}},
+	"search_features":           {"query", map[string]any{"query": "anything"}},
 	"search_ki":                 {"query", map[string]any{"query": "anything"}},
 	"validate_artifact":         {"artifactPath", map[string]any{"artifactPath": "analysis.md"}},
 }

@@ -11,9 +11,9 @@ import (
 // symbolic link inside the docs never pulls a file from outside the workspace
 // into the index.
 func TestTheDocsIndexIgnoresLinkedFilesFromOutside(t *testing.T) {
-	retriever := indexedDocsWithAnOutsideLink(t)
+	retriever, docs := indexedDocsWithAnOutsideLink(t)
 
-	refs, err := retriever.Retrieve(context.Background(), "launch", nil, "")
+	refs, err := retriever.SearchWithin(context.Background(), docs, "launch")
 	if err != nil {
 		t.Fatalf("Retrieve: %v", err)
 	}
@@ -24,7 +24,7 @@ func TestTheDocsIndexIgnoresLinkedFilesFromOutside(t *testing.T) {
 
 // indexedDocsWithAnOutsideLink indexes a docs directory holding one real
 // guide and a link to a document outside it; both mention "launch".
-func indexedDocsWithAnOutsideLink(t *testing.T) *BM25Retriever {
+func indexedDocsWithAnOutsideLink(t *testing.T) (*BM25Retriever, string) {
 	t.Helper()
 	outside, docs := t.TempDir(), t.TempDir()
 	WriteFile(t, filepath.Join(outside, "secret.md"), "# Secret\n\nlaunch codes\n")
@@ -39,7 +39,7 @@ func indexedDocsWithAnOutsideLink(t *testing.T) *BM25Retriever {
 	if err := retriever.EnsureIndex(context.Background(), []string{docs}); err != nil {
 		t.Fatalf("EnsureIndex: %v", err)
 	}
-	return retriever
+	return retriever, docs
 }
 
 // Every document is indexed, not just the first. A negated error check in
@@ -57,7 +57,7 @@ func TestTheDocsIndexIndexesEveryDocument(t *testing.T) {
 	if err := retriever.EnsureIndex(context.Background(), []string{docs}); err != nil {
 		t.Fatalf("EnsureIndex: %v", err)
 	}
-	refs, err := retriever.Retrieve(context.Background(), "keyword", nil, "")
+	refs, err := retriever.SearchWithin(context.Background(), docs, "keyword")
 	if err != nil || len(refs) != 3 {
 		t.Errorf("retrieved %d documents (err %v), want all three indexed", len(refs), err)
 	}

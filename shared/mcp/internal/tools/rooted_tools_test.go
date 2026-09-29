@@ -51,7 +51,8 @@ func rootedTools(t *testing.T, root WorkspaceRoot) map[string]domain.Tool {
 		"check_accessibility":       NewCheckAccessibilityTool(logger, analyzers.NewAccessibilityAnalyzer(), root),
 		"check_ubiquitous_language": NewCheckUbiquitousLanguageTool(logger, analyzers.NewUbiquitousLanguageAnalyzer(), root),
 		"verify_dependencies":       NewVerifyDependenciesTool(logger, analyzers.NewDependencyBoundaryAnalyzer(), root),
-		"search_docs":               NewSearchDocsTool(logger, docsIndex, docsIndex, root),
+		"search_docs":               NewSearchDocsTool(logger, docsIndex, root),
+		"search_features":           NewSearchFeaturesTool(logger, docsIndex, root),
 	}
 }
 
@@ -62,6 +63,7 @@ var validArguments = map[string]map[string]any{
 	"check_ubiquitous_language": {"projectPath": ".", "dictionaryPath": "DOMAIN_DICTIONARY.md"},
 	"verify_dependencies":       {"projectPath": "."},
 	"search_docs":               {"query": "guide", "docsPath": "docs"},
+	"search_features":           {"query": "guide", "featuresPath": "docs"},
 }
 
 func TestRootedToolsAnalyzeAPathInsideTheWorkspace(t *testing.T) {

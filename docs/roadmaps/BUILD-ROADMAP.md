@@ -1163,6 +1163,45 @@ able to route to agents it was never hardcoded to know about.)*
 ### L3.4 — Implement the retriever backends that are currently markdown
 **Workstream**: MEMORY · **Effort**: L · **Blocked by**: L2.7 · **Blocks**: L3.5, ADR-002's fitness function
 
+**SHIPPED** 2026-09-24 — the vector adapter exists in code, a hybrid fuses it with BM25, and every
+corpus search emits `retrieval.queried`. The done-when is proven against a real model:
+`TestAParaphraseBM25MissesIsAnsweredByTheVectorAdapter` (opt-in, `LOOM_OLLAMA_TEST=1`) — "user
+preference sync" shares no word with a delivery titled "Settings persistence across devices"; BM25
+returns nothing, and the vector adapter and the hybrid both rank it first (nomic-embed-text, cosine
+0.600 against 0.506 for the next).
+
+- **`CorpusIndex`** (`shared/mcp/internal/tools/corpus_index.go`) is the contract in Go:
+  `EnsureIndex(roots)` and `SearchWithin(root, query)`. The root travels with every search, which closes
+  the leak L2.7 found — a search of `docs/a` could return `docs/b`'s hits. BM25 lost its unscoped
+  `Retrieve`; a byte-range prefix test keeps a sibling like `docs2` out.
+- **Vector adapter** (`vector_index.go`): section chunks embedded behind an `Embedder` interface, stored
+  as float32 BLOBs, searched by exact cosine similarity in Go. **Not `sqlite-vec`, deviating from item
+  2 above**, decided with the user: release builds are `CGO_ENABLED=0` and the pure-Go driver cannot load
+  a native extension, so `sqlite-vec` meant replacing the driver and L2.7's storage — and `vec0` is exact
+  brute-force search anyway. Refresh is incremental on a `(modification time, size, model)` fingerprint;
+  a model change re-embeds; each file commits alone, so an interrupted first index resumes.
+- **Ollama adapter** (`ollama_embedder.go`), opt-in by `LOOM_EMBEDDINGS=ollama` (default model
+  `nomic-embed-text`, with its task prefixes). Unreachable or 5xx is `transient` — retried and counted by
+  the L2.6 breaker; a missing model is `not_found`, naming the `ollama pull`.
+- **Hybrid = reciprocal-rank fusion**, replacing the round-robin interleave
+  `retriever.interface.md` prescribed; the interface doc is amended.
+- **`search_features`** (new MCP tool, the adapter doc's `project-features` corpus): BM25 alone by
+  default, hybrid with an embedder. `search_docs` and it share one `CorpusSearchTool`.
+- **`retrieval.queried`**: a `loom.retrieval` span beneath each tool call, with the event carrying hits,
+  `hit`/`miss` and the top hit relative to the corpus — emitted by a decorator in the server's adapter
+  layer (guardrail #8), not by the indexes. **The query is never recorded**, only its length and a salted
+  hash: the schema `retrieval-regression.md` proposed carried the literal text, which guardrail #9
+  forbids. Telemetry now shows *that* a query keeps missing; a person still writes the case.
+- **Red proof**: 53 mutants across fusion, both indexes, the adapter, chunking, the tool, the server
+  wiring and the span — all killed, none by timeout, with the real-model test in the run. Eight first
+  survived and each was a real gap now tested: BM25 scoping itself (A8, the very leak), relevance as
+  cosine rather than raw dot product (V1, V17), a provider that never answers (O9), a chunk cut mid-word
+  (C3 — the test's words divided the limit evenly), and which root `search_features` searches (T1, T2).
+  One branch was redundant and removed (`filepath.Rel` already yields "" on error).
+- **Not done**: no agent calls `search_features` yet — `context-engineer` and `analyst` still grep the
+  archive, so the registry records the feature archive as `lexical`, with a note. Wiring them is prompt
+  work. `search_docs` stays BM25-only; the KI corpus stays lexical; the `episodic` corpus stays deferred.
+
 **Also owns the `retrieval.queried` emitter** (added 2026-09-01, epic 86). ADR-002 declared
 retrieval quality a judgment-only fitness function whose evidence would be a telemetry log of
 retrieval events. That log never existed, the event type was never defined, and the layer was
@@ -3571,6 +3610,7 @@ integration routing: all killed. **M9 first survived**: its test made the report
 | 2026-09-24 | `b81f725..63265c2` | 2 | 21 | 19 | 90.5% | — |
 | 2026-09-24 | `63265c2..2408612` | 4 | 11 | 11 | 100.0% | — |
 | 2026-09-24 | `2408612..38b600e` | 2 | 15 | 15 | 100.0% | — |
+| 2026-09-24 | `38b600e..4e37fcf` | 1 | 27 | 27 | 100.0% | — |
 
 Of run 2's five survivors, three were equivalent (boundary mutants on `plan.go:85`, where two stages can
 never share an index) and two were **real test gaps**, closed the same day: nothing checked that a stage

@@ -13,6 +13,7 @@ A reference scaffold exposing the framework's deterministic tools as an
 | `verify_dependencies` | Clean Architecture layer-boundary violations in Go and TypeScript imports |
 | `search_ki` | Lexical-ranked search of the framework's Knowledge Items and ADRs |
 | `search_docs` | BM25 search (sqlite-fts5) of the installed project's `docs/` corpus, kept current incrementally — each search reads only the docs that changed since the last (L2.7) |
+| `search_features` | "Have we built something like this before?" over `docs/features/` — BM25, fused with vector similarity when an embedding provider is configured, so a description can find a delivery that shares none of its words (L3.4) |
 | `validate_artifact` | Structural contract validation of a pipeline artifact against `shared/contracts/` — required-heading presence plus WARN-level retrieval frontmatter checks; returns typed violations |
 
 All tools are deterministic and stateless — no LLM is required.
@@ -48,6 +49,9 @@ Copy `.env.example` to `.env` and set:
 |---|---|---|
 | `AI_ASSISTANT_DOTFILES_PATH` | Root of this framework checkout; enables `search_ki` corpus | _(required for search_ki)_ |
 | `DOCS_FTS_PATH` | Absolute path to the FTS5 sqlite index for `search_docs` | `.claude/rag/docs-fts5.sqlite` if `.claude/` exists |
+| `LOOM_EMBEDDINGS` | Embedding provider for `search_features`; only `ollama` is supported. Unset, search ranks by BM25 alone — an embedding call leaves the process, so it is never a default | unset |
+| `LOOM_EMBEDDING_MODEL` | Embedding model name | `nomic-embed-text` |
+| `OLLAMA_HOST` | Ollama base URL | `http://localhost:11434` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OpenTelemetry collector endpoint | _(optional)_ |
 
 ## Wire into Claude Code
@@ -161,6 +165,34 @@ Each traced call records `loom.tool.error.kind`, `loom.tool.attempts` and `loom.
 and the call that moves a breaker carries a `loom.tool.breaker.state_change` event; every transition
 is also logged as `tool.breaker.state_changed`. Embedders adapting `register.Frameworks` get the
 registrations' `Retry` class and should apply the same policy.
+
+## Semantic search (roadmap L3.4)
+
+`search_features` searches the feature archive two ways and fuses them by **reciprocal rank**: BM25,
+and — with `LOOM_EMBEDDINGS=ollama` — embedding similarity. The fusion uses ranks, not scores, because a
+BM25 score and a cosine similarity are on different scales; a delivery both rank well beats one only a
+single backend ranks first.
+
+```bash
+ollama pull nomic-embed-text
+LOOM_EMBEDDINGS=ollama loom mcp serve
+```
+
+- **Vectors are searched in pure Go**, exactly, inside the same sqlite file as the BM25 index — not with
+  `sqlite-vec`, which release builds (`CGO_ENABLED=0`) cannot load into the pure-Go driver. `sqlite-vec`
+  is itself exact brute-force search, so nothing is lost at a docs corpus's scale.
+- Documents are embedded **per `##` section** (about 500 tokens at most), and a document scores by its
+  best section. Indexing is incremental like `search_docs`': only changed files are embedded, a file
+  embedded by a different model is re-embedded, and a first index that outlives its deadline keeps the
+  files it finished — the retry middleware (L2.6) resumes it.
+- An unreachable provider fails as `transient`, so it is retried and counted toward the breaker; a
+  model the provider does not have fails as `not_found`, naming the `ollama pull` that fixes it.
+- Every search, `search_docs` included, is traced as a `loom.retrieval` span carrying a
+  **`retrieval.queried`** event: corpus, backend, hit count, `hit`/`miss`, and the top hit relative to
+  the corpus. The query itself is never recorded — only its length and, with `LOOM_TELEMETRY_SALT`
+  set, a salted hash (guardrail #9).
+- The real-model proof runs locally: `LOOM_OLLAMA_TEST=1 go test -run TestAParaphrase
+  ./shared/mcp/internal/tools/`. CI has no model and skips it.
 
 ## Installing into a downstream project
 

@@ -27,6 +27,7 @@ var pathArguments = map[string]struct {
 	"check_ubiquitous_language": {paths: []string{"projectPath", "dictionaryPath"}, valid: map[string]any{"projectPath": ".", "dictionaryPath": "DOMAIN_DICTIONARY.md"}},
 	"verify_dependencies":       {paths: []string{"projectPath"}, valid: map[string]any{"projectPath": "."}},
 	"search_docs":               {paths: []string{"docsPath"}, valid: map[string]any{"docsPath": ".", "query": "anything"}},
+	"search_features":           {paths: []string{"featuresPath"}, valid: map[string]any{"featuresPath": ".", "query": "anything"}},
 	"validate_artifact":         {paths: []string{"artifactPath"}, valid: map[string]any{"artifactPath": "DOMAIN_DICTIONARY.md"}},
 }
 

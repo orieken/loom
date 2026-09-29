@@ -41,16 +41,23 @@ type Reference = {
 
 5. **No side effects.** `Retrieve` is a pure read operation. It never writes to the index, never updates `memory-registry.json`, never emits telemetry. Callers may emit telemetry around `Retrieve` calls if desired.
 
-6. **Score is comparable within a backend, not across backends.** BM25 scores and cosine similarities live on different scales. The merger pattern is: sort each corpus's results by descending score, interleave round-robin, deduplicate by path.
+6. **Score is comparable within a backend, not across backends.** BM25 scores and cosine similarities live on different scales, so results are merged by **reciprocal-rank fusion**, never by score: each path scores the sum of `1/(60 + rank)` over the lists it appears in, deduplicated by path. A path two backends both rank well beats one only a single backend ranks first. *(Amended 2026-09-24, roadmap L3.4 — this rule previously prescribed a round-robin interleave, which gives a single backend's weakest result the same weight as another's best.)*
+
+7. **Scoped to its root.** A search returns only references under the corpus root it was asked about. *(Added by L3.4: before it, a docs search ranked across every root ever indexed.)*
 
 ### Implementations
 
-| Backend | File | Corpus |
-|---|---|---|
-| LLM-as-retriever | `adapters/llm-as-retriever.md` | `framework-ki` |
-| BM25 | `adapters/bm25.md` | `project-docs` |
-| Vector (sqlite-vec) | `adapters/vector.md` | `project-features` |
-| Deferred | `adapters/source-retrieval.deferred.md` | `project-source` |
+| Backend | File | Corpus | In code |
+|---|---|---|---|
+| LLM-as-retriever | `adapters/llm-as-retriever.md` | `framework-ki` | lexical pre-filter in `search_ki`; the calling LLM judges |
+| BM25 | `adapters/bm25.md` | `project-docs`, `project-features` | `BM25Retriever` — `search_docs`, `search_features` |
+| Vector | `adapters/vector.md` | `project-features` | `VectorIndex` (pure Go, opt-in) — fused into `search_features` |
+| Deferred | `adapters/source-retrieval.deferred.md` | `project-source` | none |
+
+In Go the contract is `CorpusIndex` (`shared/mcp/internal/tools/corpus_index.go`): `EnsureIndex(roots)`
+keeps an index current and `SearchWithin(root, query)` answers within one root. `HybridIndex` fuses any
+number of them by rule 6. Rule 5 holds: the indexes never emit telemetry; a decorator in the server's
+adapter layer records each search as a `retrieval.queried` event.
 
 ### Extension
 

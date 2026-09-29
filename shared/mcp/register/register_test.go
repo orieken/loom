@@ -13,8 +13,8 @@ func TestFrameworksAtRegistersEveryToolUnderAValidRoot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FrameworksAt: %v", err)
 	}
-	if count := len(registry.All()); count != 7 {
-		t.Errorf("registered %d tools, want 7", count)
+	if count := len(registry.All()); count != 8 {
+		t.Errorf("registered %d tools, want 8", count)
 	}
 }
 

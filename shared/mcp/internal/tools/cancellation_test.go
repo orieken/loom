@@ -52,7 +52,7 @@ func TestTheDocsIndexStopsOnACancelledContext(t *testing.T) {
 	if err := retriever.EnsureIndex(cancelledContext(), []string{docs}); !errors.Is(err, context.Canceled) {
 		t.Errorf("EnsureIndex err = %v, want context.Canceled", err)
 	}
-	if _, err := retriever.Retrieve(cancelledContext(), "guide", nil, ""); !errors.Is(err, context.Canceled) {
+	if _, err := retriever.SearchWithin(cancelledContext(), docs, "guide"); !errors.Is(err, context.Canceled) {
 		t.Errorf("Retrieve err = %v, want context.Canceled", err)
 	}
 }
@@ -86,9 +86,9 @@ func TestTheDocsIndexStopsWhenCancelledBetweenWalkAndIndexing(t *testing.T) {
 // A context that ends while the rows are read yields its error, not the
 // rows read so far.
 func TestADocsSearchCancelledPartwayYieldsNoPartialList(t *testing.T) {
-	retriever := indexedDocsWithAnOutsideLink(t)
+	retriever, docs := indexedDocsWithAnOutsideLink(t)
 	queryThenCancel := &countdownContext{Context: context.Background(), remaining: 1}
-	if refs, err := retriever.Retrieve(queryThenCancel, "launch", nil, ""); !errors.Is(err, context.Canceled) || refs != nil {
+	if refs, err := retriever.SearchWithin(queryThenCancel, docs, "launch"); !errors.Is(err, context.Canceled) || refs != nil {
 		t.Errorf("refs=%v err=%v, want no list and context.Canceled", refs, err)
 	}
 }
@@ -107,7 +107,7 @@ func TestSearchToolsPassTheirContextToRealRetrievers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewBM25Retriever: %v", err)
 	}
-	docs := NewSearchDocsTool(SilentLogger(), retriever, retriever, root)
+	docs := NewSearchDocsTool(SilentLogger(), retriever, root)
 	found, err := docs.Execute(context.Background(), BuildRequest(map[string]any{"query": "guide", "docsPath": "docs"}))
 	if err != nil || found.IsError || !strings.Contains(ExtractText(t, found), "guide.md") {
 		t.Errorf("search_docs did not find the guide: %v %s", err, ExtractText(t, found))

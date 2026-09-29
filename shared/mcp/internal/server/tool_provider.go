@@ -68,6 +68,7 @@ func frameworkRegistrations(logger *logging.Logger, root tools.WorkspaceRoot) []
 		readOnlyTool(tools.NewVerifyDependenciesTool(logger, analyzers.NewDependencyBoundaryAnalyzer(), root), analysisTimeout),
 		readOnlyTool(tools.NewSearchKITool(logger, tools.NewKICorpusRetriever(frameworkCorpusPaths())), searchTimeout),
 		readOnlyTool(newSearchDocsTool(logger, root), searchTimeout),
+		readOnlyTool(newSearchFeaturesTool(logger, root), analysisTimeout),
 		readOnlyTool(tools.NewValidateArtifactTool(logger, analyzers.NewArtifactContractAnalyzer(), frameworkContractsDir(), root), searchTimeout),
 	}
 }
@@ -90,34 +91,6 @@ func registerFrameworkTool(logger *logging.Logger, registry *domain.Registry, en
 	if err := registry.Register(entry); err != nil {
 		logger.Error("Skipping tool registration", "error", err)
 	}
-}
-
-func newSearchDocsTool(logger *logging.Logger, root tools.WorkspaceRoot) domain.Tool {
-	dbPath, ok := docsFTSDBPath()
-	if !ok {
-		logger.Info("BM25 retriever not initialised — search_docs will return no-corpus diagnostic responses")
-		return tools.NewSearchDocsTool(logger, nil, nil, root)
-	}
-	retriever, err := tools.NewBM25Retriever(dbPath)
-	if err != nil {
-		logger.Warn("BM25 retriever init failed — search_docs will return no-corpus diagnostic responses", "dbPath", dbPath, "error", err)
-		return tools.NewSearchDocsTool(logger, nil, nil, root)
-	}
-	return tools.NewSearchDocsTool(logger, retriever, retriever, root)
-}
-
-func docsFTSDBPath() (string, bool) {
-	if override := os.Getenv("DOCS_FTS_PATH"); override != "" {
-		return override, true
-	}
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", false
-	}
-	if _, err := os.Stat(filepath.Join(cwd, ".claude")); err != nil {
-		return "", false
-	}
-	return filepath.Join(cwd, ".claude", "rag", "docs-fts5.sqlite"), true
 }
 
 // frameworkContractsDir resolves shared/contracts/ from the install root, or

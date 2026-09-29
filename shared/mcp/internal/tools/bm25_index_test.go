@@ -74,9 +74,9 @@ func refresh(t *testing.T, retriever *BM25Retriever, roots ...string) {
 }
 
 // hits is the base names of the documents a query finds, sorted.
-func hits(t *testing.T, retriever *BM25Retriever, query string) []string {
+func hits(t *testing.T, retriever *BM25Retriever, root, query string) []string {
 	t.Helper()
-	refs, err := retriever.Retrieve(context.Background(), query, nil, "")
+	refs, err := retriever.SearchWithin(context.Background(), root, query)
 	if err != nil {
 		t.Fatalf("Retrieve: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestASecondIdenticalSearchReadsNoFile(t *testing.T) {
 	root := rootedProject(t)
 	retriever, files := countedRetriever(t)
 	WriteFile(t, filepath.Join(root.Dir(), "docs", "setup.md"), "# Setup\n\nguide to setup\n")
-	search := NewSearchDocsTool(SilentLogger(), retriever, retriever, root)
+	search := NewSearchDocsTool(SilentLogger(), retriever, root)
 	request := BuildRequest(map[string]any{"query": "guide", "docsPath": "docs"})
 
 	if result, err := search.Execute(context.Background(), request); err != nil || result.IsError {
@@ -128,13 +128,13 @@ func TestADeletedDocDisappearsFromResults(t *testing.T) {
 	WriteFile(t, filepath.Join(docs, "gone.md"), "# Gone\n\nrelease plan\n")
 	retriever, _ := countedRetriever(t)
 	refresh(t, retriever, docs)
-	assertNames(t, "before deletion", hits(t, retriever, "release"), "gone.md", "kept.md")
+	assertNames(t, "before deletion", hits(t, retriever, docs, "release"), "gone.md", "kept.md")
 
 	if err := os.Remove(filepath.Join(docs, "gone.md")); err != nil {
 		t.Fatalf("remove: %v", err)
 	}
 	refresh(t, retriever, docs)
-	assertNames(t, "after deletion", hits(t, retriever, "release"), "kept.md")
+	assertNames(t, "after deletion", hits(t, retriever, docs, "release"), "kept.md")
 }
 
 // Only what changed is read, and the change is searchable. The edit keeps
@@ -156,8 +156,8 @@ func TestOnlyAChangedDocIsReadAndItsNewTextIsSearchable(t *testing.T) {
 	}
 	refresh(t, retriever, docs)
 	assertNames(t, "refresh read", files.takeReads(), "beta.md")
-	assertNames(t, "new text", hits(t, retriever, "final"), "beta.md")
-	assertNames(t, "old text", hits(t, retriever, "first"), "alpha.md", "gamma.md")
+	assertNames(t, "new text", hits(t, retriever, docs, "final"), "beta.md")
+	assertNames(t, "old text", hits(t, retriever, docs, "first"), "alpha.md", "gamma.md")
 }
 
 // An index built before fingerprints existed has rows and no fingerprints: a
@@ -175,7 +175,7 @@ func TestAnIndexFromBeforeFingerprintsIsReconciled(t *testing.T) {
 	}
 
 	refresh(t, retriever, docs)
-	assertNames(t, "legacy rows after refresh", hits(t, retriever, "legacy"), "present.md")
+	assertNames(t, "legacy rows after refresh", hits(t, retriever, docs, "legacy"), "present.md")
 	assertNames(t, "first refresh read", files.takeReads(), "present.md")
 	refresh(t, retriever, docs)
 	assertNames(t, "second refresh read", files.takeReads())
@@ -203,11 +203,11 @@ func TestACancelledRefreshLeavesThePreviousIndexWhole(t *testing.T) {
 	if read := files.takeReads(); len(read) != 1 {
 		t.Errorf("a cancelled refresh read %v, want it to stop after the first", read)
 	}
-	assertNames(t, "old text after the cancelled refresh", hits(t, retriever, "old"), "one.md", "two.md")
-	assertNames(t, "new text after the cancelled refresh", hits(t, retriever, "newer"))
+	assertNames(t, "old text after the cancelled refresh", hits(t, retriever, docs, "old"), "one.md", "two.md")
+	assertNames(t, "new text after the cancelled refresh", hits(t, retriever, docs, "newer"))
 
 	refresh(t, retriever, docs)
-	assertNames(t, "new text after a full refresh", hits(t, retriever, "newer"), "one.md", "two.md")
+	assertNames(t, "new text after a full refresh", hits(t, retriever, docs, "newer"), "one.md", "two.md")
 }
 
 // Refreshing one root touches only its own rows — including a sibling whose
@@ -222,7 +222,7 @@ func TestRefreshingOneRootLeavesAnotherAlone(t *testing.T) {
 	files.takeReads()
 
 	refresh(t, retriever, docs)
-	assertNames(t, "after refreshing docs alone", hits(t, retriever, "shared"), "a.md", "b.md")
+	assertNames(t, "after refreshing docs alone", hits(t, retriever, base, "shared"), "a.md", "b.md")
 	assertNames(t, "reads", files.takeReads())
 }
 
@@ -243,7 +243,7 @@ func TestConcurrentRefreshesAndSearchesAreSafe(t *testing.T) {
 			if err := retriever.EnsureIndex(context.Background(), []string{docs}); err != nil {
 				failures <- err
 			}
-			if _, err := retriever.Retrieve(context.Background(), "common", nil, ""); err != nil {
+			if _, err := retriever.SearchWithin(context.Background(), docs, "common"); err != nil {
 				failures <- err
 			}
 		}()
@@ -253,7 +253,7 @@ func TestConcurrentRefreshesAndSearchesAreSafe(t *testing.T) {
 	for err := range failures {
 		t.Errorf("concurrent call failed: %v", err)
 	}
-	assertNames(t, "index after concurrent refreshes", hits(t, retriever, "common"), "a.md", "b.md", "c.md")
+	assertNames(t, "index after concurrent refreshes", hits(t, retriever, docs, "common"), "a.md", "b.md", "c.md")
 }
 
 // A file that is still listed but can no longer be read is evicted, not left
@@ -271,7 +271,7 @@ func TestAnUnreadableDocIsEvictedRatherThanLeftStale(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(locked, 0o600) })
 	refresh(t, retriever, docs)
-	assertNames(t, "stale text", hits(t, retriever, "stale"))
+	assertNames(t, "stale text", hits(t, retriever, docs, "stale"))
 }
 
 // A file deleted between the walk and its stat is evicted like any other.
@@ -283,7 +283,7 @@ func TestADocThatVanishesDuringARefreshIsEvicted(t *testing.T) {
 
 	files.vanished = map[string]bool{"brief.md": true}
 	refresh(t, retriever, docs)
-	assertNames(t, "after it vanished", hits(t, retriever, "fleeting"))
+	assertNames(t, "after it vanished", hits(t, retriever, docs, "fleeting"))
 }
 
 // A document's frontmatter name is its title; without one, its file name is.
@@ -292,7 +292,7 @@ func TestADocIsTitledByItsFrontmatterName(t *testing.T) {
 	WriteFile(t, filepath.Join(docs, "named.md"), "---\nname: Release Runbook\n---\n\nrunbook steps\n")
 	retriever, _ := countedRetriever(t)
 	refresh(t, retriever, docs)
-	refs, err := retriever.Retrieve(context.Background(), "runbook", nil, "")
+	refs, err := retriever.SearchWithin(context.Background(), docs, "runbook")
 	if err != nil || len(refs) != 1 || refs[0].Title != "Release Runbook" {
 		t.Errorf("refs = %+v (err %v), want one titled by its frontmatter", refs, err)
 	}
@@ -306,7 +306,7 @@ func TestARootThatIsAFileIndexesNothing(t *testing.T) {
 	WriteFile(t, source, "package main // unmistakable\n")
 	retriever, files := countedRetriever(t)
 	refresh(t, retriever, source)
-	assertNames(t, "indexed from a file root", hits(t, retriever, "unmistakable"))
+	assertNames(t, "indexed from a file root", hits(t, retriever, filepath.Dir(source), "unmistakable"))
 	assertNames(t, "reads", files.takeReads())
 }
 
@@ -361,4 +361,18 @@ func TestABlankRootIsSkipped(t *testing.T) {
 	retriever, files := countedRetriever(t)
 	refresh(t, retriever, "  ")
 	assertNames(t, "reads", files.takeReads())
+}
+
+// A search stays within the root it names. Before L3.4 a search ranked across
+// every root ever indexed, so docs/a could answer with docs/b's documents —
+// a sibling whose name merely extends the root's included.
+func TestABM25SearchStaysWithinItsRoot(t *testing.T) {
+	base := t.TempDir()
+	docs, sibling := filepath.Join(base, "docs"), filepath.Join(base, "docs2")
+	WriteFile(t, filepath.Join(docs, "a.md"), "# A\n\nshared term\n")
+	WriteFile(t, filepath.Join(sibling, "b.md"), "# B\n\nshared term\n")
+	retriever, _ := countedRetriever(t)
+	refresh(t, retriever, docs, sibling)
+	assertNames(t, "within docs", hits(t, retriever, docs, "shared"), "a.md")
+	assertNames(t, "within docs2", hits(t, retriever, sibling, "shared"), "b.md")
 }

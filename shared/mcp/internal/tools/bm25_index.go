@@ -70,22 +70,23 @@ func (r *BM25Retriever) reconcile(ctx context.Context, root string) error {
 	if err != nil {
 		return err
 	}
-	plan, err := r.planRefresh(ctx, files, known)
+	plan, err := planRefresh(ctx, r.files, files, known)
 	if err != nil {
 		return err
 	}
 	return r.applyRefresh(ctx, plan)
 }
 
-// planRefresh compares the disk with what the index knows, reading nothing.
-func (r *BM25Retriever) planRefresh(ctx context.Context, files []string, known map[string]fingerprint) (refreshPlan, error) {
+// planRefresh compares the disk with what an index knows, reading nothing.
+// Shared by the BM25 and vector indexes (L3.4).
+func planRefresh(ctx context.Context, disk docFiles, files []string, known map[string]fingerprint) (refreshPlan, error) {
 	plan := refreshPlan{changed: map[string]fingerprint{}}
 	present := make(map[string]bool, len(files))
 	for _, file := range files {
 		if err := ctx.Err(); err != nil {
 			return refreshPlan{}, err
 		}
-		info, err := r.files.Stat(file)
+		info, err := disk.Stat(file)
 		if err != nil {
 			continue // gone between the walk and now: evicted below
 		}

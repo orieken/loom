@@ -15,6 +15,7 @@ var expectedMCPToolNames = []string{
 	"check_accessibility",
 	"check_ubiquitous_language",
 	"search_docs",
+	"search_features",
 	"search_ki",
 	"validate_artifact",
 	"verify_dependencies",

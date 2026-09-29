@@ -72,7 +72,7 @@
       "indexable": true,
       "retrievalBackend": "lexical",
       "format": "markdown (multiple files per feature directory)",
-      "notes": "Retrieved via context-engineer's bounded-context grep (recency-independent) and analyst's 3-most-recent scan (recency-based) \u2014 see docs/runbooks/context-engineering.md section 2."
+      "notes": "Retrieved via context-engineer's bounded-context grep (recency-independent) and analyst's 3-most-recent scan (recency-based) \u2014 see docs/runbooks/context-engineering.md section 2. Also searchable through the search_features MCP tool (roadmap L3.4): BM25, fused with vector similarity when LOOM_EMBEDDINGS is set. No agent calls it yet, so the backend recorded here stays the one agents use."
     },
     {
       "name": "feature-archive-summaries",
@@ -162,6 +162,21 @@
       "usedBy": [
         "search-ki",
         "query-memory"
+      ]
+    },
+    "bm25": {
+      "status": "active",
+      "description": "sqlite-fts5 BM25 over a corpus root, refreshed incrementally on each search (roadmap L2.7) and scoped to the searched root (L3.4). Returns references, never content.",
+      "usedBy": [
+        "search_docs",
+        "search_features"
+      ]
+    },
+    "vector": {
+      "status": "opt-in",
+      "description": "Exact cosine similarity over section embeddings, in pure Go inside the same sqlite file (roadmap L3.4) \u2014 not sqlite-vec, which release builds cannot load (CGO_ENABLED=0). Enabled by LOOM_EMBEDDINGS=ollama; search_features fuses it with BM25 by reciprocal rank.",
+      "usedBy": [
+        "search_features"
       ]
     },
     "lightrag": {

@@ -8,14 +8,16 @@ import (
 	"github.com/orieken/loom/tools"
 )
 
-// frameworkToolsForTest builds each tool as a zero value. Neither
-// SafeArgumentNames nor InputSchema reads a field, so the constructors'
-// loggers and analyzers are not needed to ask a tool what it declares.
+// frameworkToolsForTest builds each tool without its dependencies: a zero
+// value, or — for the corpus search tools, whose name and arguments come from
+// their spec — the constructor with nothing wired. Asking a tool what it
+// declares needs no logger, analyzer or index.
 func frameworkToolsForTest(t *testing.T) []tools.Tool {
 	t.Helper()
 	return []tools.Tool{
 		&SearchKITool{},
-		&SearchDocsTool{},
+		NewSearchDocsTool(nil, nil, WorkspaceRoot{}),
+		NewSearchFeaturesTool(nil, nil, WorkspaceRoot{}),
 		&AnalyzeComplexityTool{},
 		&CheckUbiquitousLanguageTool{},
 		&CheckAccessibilityTool{},
@@ -34,6 +36,7 @@ func frameworkToolsForTest(t *testing.T) []tools.Tool {
 var declaredSafeArguments = map[string][]string{
 	"search_ki":                 {"domain", "tags"},
 	"search_docs":               {"docsPath"},
+	"search_features":           {"featuresPath"},
 	"analyze_complexity":        {"maxComplexity", "maxLines", "projectPath"},
 	"check_ubiquitous_language": {"dictionaryPath", "projectPath"},
 	"check_accessibility":       {"filePath", "projectPath"},

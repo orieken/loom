@@ -20,7 +20,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// BM25Retriever implements Retriever using fts5's built-in bm25()
+// BM25Retriever implements CorpusIndex using fts5's built-in bm25()
 // ranking.
 //
 // The mutex makes it safe for the concurrent calls an MCP server fields
@@ -119,11 +119,12 @@ func extractFrontmatterName(body []byte) string {
 	return ""
 }
 
-// Retrieve runs an fts5 MATCH query and returns up to bm25MaxResults
-// hits ordered by BM25 rank (title-column-boosted 10x over body).
-func (r *BM25Retriever) Retrieve(ctx context.Context, query string, tags []string, domain string) ([]Reference, error) {
-	_ = tags
-	_ = domain
+// SearchWithin runs an fts5 MATCH query over the documents under root and
+// returns up to bm25MaxResults hits ordered by BM25 rank (title-column-boosted
+// 10x over body). Scoping is a byte range on the path: every path under
+// "root/" sorts at or after it and before "root0" — the separator's successor
+// — so a sibling such as "root2/" can never match (L3.4).
+func (r *BM25Retriever) SearchWithin(ctx context.Context, root, query string) ([]Reference, error) {
 	trimmed := strings.TrimSpace(query)
 	if trimmed == "" {
 		return nil, nil
@@ -132,6 +133,7 @@ func (r *BM25Retriever) Retrieve(ctx context.Context, query string, tags []strin
 	if escaped == "" {
 		return nil, nil
 	}
+	lower, upper := pathRange(root)
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 	rows, err := r.db.QueryContext(ctx,
@@ -139,10 +141,10 @@ func (r *BM25Retriever) Retrieve(ctx context.Context, query string, tags []strin
 		        snippet(docs_fts, 2, '[', ']', '...', 20) AS summary,
 		        bm25(docs_fts, 1.0, 10.0, 1.0) AS relevance
 		 FROM docs_fts
-		 WHERE docs_fts MATCH ?
+		 WHERE docs_fts MATCH ? AND path >= ? AND path < ?
 		 ORDER BY relevance
 		 LIMIT ?`,
-		escaped, bm25MaxResults,
+		escaped, lower, upper, bm25MaxResults,
 	)
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		// A cancelled or timed-out search is not an empty one (roadmap L2.2);
@@ -180,6 +182,13 @@ func scanReferences(ctx context.Context, rows *sql.Rows) ([]Reference, error) {
 		return nil, ctxErr // stopped partway through the rows; a partial list is not a result
 	}
 	return refs, nil
+}
+
+// pathRange is the half-open byte range holding every path under root.
+func pathRange(root string) (lower, upper string) {
+	separator := string(filepath.Separator)
+	lower = strings.TrimSuffix(root, separator) + separator
+	return lower, lower[:len(lower)-1] + string(rune(filepath.Separator+1))
 }
 
 func escapeFTS5Query(q string) string {

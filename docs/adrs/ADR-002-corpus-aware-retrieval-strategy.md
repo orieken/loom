@@ -71,6 +71,17 @@ The `shared/rag/` adapter interface stays intentionally simple: `Retrieve(query,
   > judgement call with no data behind it. Giving it data means building the retriever and its
   > emitter together — roadmap **L3.4** — not adding a row to a table. Until then, treat any claim
   > about retrieval quality in this repository as an opinion.
+
+  > **Amendment, 2026-09-24 (roadmap L3.4).** The retriever and its emitter now exist together.
+  > Every corpus search through `loom mcp serve` records a `retrieval.queried` event — corpus,
+  > backend, hit count, hit or miss, top hit — as properties only: the query is a salted hash and a
+  > length, never its text (guardrail #9). The fitness function is still judgment-only, but it now
+  > has data to judge: a query hash that keeps missing is the signal this ADR named. Two decisions
+  > above changed in building it. Vector retrieval is exact cosine search in pure Go, not
+  > `sqlite-vec`, because release builds are `CGO_ENABLED=0` and the pure-Go sqlite driver cannot
+  > load a native extension; `sqlite-vec` is exact brute-force search too, so no quality is lost at
+  > this scale. And merged results are fused by reciprocal rank, not interleaved round-robin
+  > (`shared/rag/retriever.interface.md` rule 6).
 - **Mechanical CI check that could be added later**: assert every entry in `shared/memory-registry.json` has a `retrievalBackend` field valued from the enum `{lexical, llm-as-retriever, bm25, vector}` — no false positives, catches "someone added a source without deciding how it's retrieved."
 
 ## Related
