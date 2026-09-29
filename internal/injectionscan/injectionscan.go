@@ -13,7 +13,6 @@
 package injectionscan
 
 import (
-	"bufio"
 	"fmt"
 	"regexp"
 	"strings"
@@ -54,12 +53,14 @@ var rules = []rule{
 const excerptLimit = 80
 
 // Scan returns every rule each line of text matches, in line order.
+//
+// Lines are split directly, never read through a size-capped reader: the
+// first version used a bufio.Scanner and ignored its error, so one line past
+// the cap ended the scan and hid everything after it.
 func Scan(text string) []Finding {
 	var findings []Finding
-	scanner := bufio.NewScanner(strings.NewReader(text))
-	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
-	for line := 1; scanner.Scan(); line++ {
-		findings = append(findings, scanLine(line, scanner.Text())...)
+	for index, line := range strings.Split(text, "\n") {
+		findings = append(findings, scanLine(index+1, line)...)
 	}
 	return findings
 }

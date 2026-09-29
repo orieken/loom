@@ -1314,6 +1314,8 @@ already on disk reaches a model through `search_ki` only as a path, a title and 
   pulled, the poisoned one is named and not written, and the pull exits 1. The dry run reports it too.
   The gate **fails closed** — no scanner, or a scanner that errors, pulls nothing — and a test asserts
   each refusal by its message, because the first draft of that test passed on an unrelated failure.
+- **Follow-up, 2026-09-28**: CI's mutation job (run 10) found that an oversized line ended the scan
+  and hid what followed it; fixed by splitting lines directly (see the L3.59 log).
 - **Red proof**: 38 mutants across the scanner, retrieval, the CLI and the shell script itself — all
   killed, none by timeout. The first pass found four real gaps and two vacuous tests: the colon that
   separates a "New instructions:" header from prose about one; the test for an explicit `LOOM_BIN`,
@@ -3654,6 +3656,7 @@ integration routing: all killed. **M9 first survived**: its test made the report
 | 2026-09-24 | `2408612..38b600e` | 2 | 15 | 15 | 100.0% | — |
 | 2026-09-24 | `38b600e..4e37fcf` | 1 | 27 | 27 | 100.0% | — |
 | 2026-09-24 | `4e37fcf..600e718` | 3 | 123 | 108 | 87.8% | — |
+| 2026-09-28 | `600e718..e665f49` | 3 | 19 | 16 | 84.2% | — |
 
 Of run 2's five survivors, three were equivalent (boundary mutants on `plan.go:85`, where two stages can
 never share an index) and two were **real test gaps**, closed the same day: nothing checked that a stage
@@ -3672,6 +3675,13 @@ Run 9 (L3.4) left 12 survivors and 3 timeouts, against the 53 hand mutants the i
 gremlins mutates operators the hand set did not, mostly loop and slice boundaries in `chunking.go`
 and `vector_index.go`. The three timeouts are chunking loops negated into non-termination. Not yet
 triaged into equivalent and real; that is the next small item, not a note.
+
+Run 10's three survivors were one real hole in the scanner L3.7 had just shipped. All three were
+arithmetic mutants of the line reader's buffer sizes in `injectionscan.Scan`, and they lived because
+`Scan` read lines through a `bufio.Scanner` capped at 4 MB and ignored its error: one line past the cap
+ended the scan, and a poisoned instruction placed behind it scanned clean. Closed the same day — lines
+are split directly, with no cap to exceed, and a test puts the instruction behind a 5 MB line. The
+report-only job found a security bypass the item's own 38 hand mutants did not.
 
 Run 5's two survivors were both on the violation sort in `argument_validator.go`. The boundary mutant
 (`<` to `<=`) is equivalent — no two violations of one call share a field in a way the order could show.
