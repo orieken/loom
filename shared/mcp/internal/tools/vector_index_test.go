@@ -359,3 +359,15 @@ func TestRelevanceIsCosineSimilarity(t *testing.T) {
 		t.Errorf("relevance %v and %v, want 1 and 1/sqrt(17)", refs[0].Relevance, refs[1].Relevance)
 	}
 }
+
+// When two sections of a document score the same, the earlier one supplies
+// the excerpt — deterministically, whatever order they are compared in.
+func TestAnEqualScoringEarlierSectionSuppliesTheExcerpt(t *testing.T) {
+	chunks := []storedChunk{
+		{path: "/r/doc.md", excerpt: "first section", vector: []float32{1}},
+		{path: "/r/doc.md", excerpt: "second section", vector: []float32{1}},
+	}
+	if refs := bestPerDocument([]float32{1}, chunks); len(refs) != 1 || refs[0].Summary != "first section" {
+		t.Errorf("refs = %+v, want the first of two equal sections", refs)
+	}
+}

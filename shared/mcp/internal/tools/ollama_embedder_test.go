@@ -205,3 +205,16 @@ func TestAProviderThatNeverAnswersTimesOut(t *testing.T) {
 		t.Errorf("err %v after %v, want unavailable within the timeout", err, time.Since(started))
 	}
 }
+
+// Exactly one batch of texts is one request — never a trailing empty one,
+// which a real provider may reject.
+func TestAFullBatchIsOneRequest(t *testing.T) {
+	fake := &fakeOllama{}
+	texts := make([]string, ollamaBatchSize)
+	if _, err := ollamaAgainst(t, fake, "m").EmbedDocuments(context.Background(), texts); err != nil {
+		t.Fatalf("EmbedDocuments: %v", err)
+	}
+	if len(fake.requests) != 1 {
+		t.Errorf("%d requests for exactly one batch, want 1", len(fake.requests))
+	}
+}

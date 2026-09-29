@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/orieken/loom/shared/mcp/internal/domain"
@@ -169,5 +170,29 @@ func TestTheTopHitIsRelativeToTheCorpus(t *testing.T) {
 	}
 	if got := topHit("relative/root", []tools.Reference{{Path: "/absolute/path.md"}}); got != "" {
 		t.Errorf("an unrelatable path gave %q, want nothing rather than an absolute path", got)
+	}
+}
+
+// DOCS_FTS_PATH overrides where the docs index lives; without it, the index
+// sits under .claude/rag only where the project has a .claude directory.
+func TestTheDocsIndexPathHonoursItsOverride(t *testing.T) {
+	t.Setenv("DOCS_FTS_PATH", "/custom/docs.sqlite")
+	if path, ok := docsFTSDBPath(); !ok || path != "/custom/docs.sqlite" {
+		t.Errorf("with the override: %q %v", path, ok)
+	}
+	t.Setenv("DOCS_FTS_PATH", "")
+	bare := t.TempDir()
+	t.Chdir(bare)
+	if _, ok := docsFTSDBPath(); ok {
+		t.Error("without the override or a .claude directory, a path was offered")
+	}
+	project := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(project, ".claude"), 0o750); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	t.Chdir(project)
+	path, ok := docsFTSDBPath()
+	if !ok || !strings.HasSuffix(path, filepath.Join(".claude", "rag", "docs-fts5.sqlite")) {
+		t.Errorf("under .claude: %q %v", path, ok)
 	}
 }

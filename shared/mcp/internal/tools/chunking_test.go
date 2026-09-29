@@ -90,3 +90,37 @@ func TestAnExcerptIsOneBoundedLine(t *testing.T) {
 		t.Errorf("long excerpt has %d runes", utf8.RuneCountInString(long))
 	}
 }
+
+// Only the body survives, exactly — whatever the frontmatter held, and even
+// when it held nothing. An empty block was once missed and embedded whole.
+func TestFrontmatterIsRemovedExactly(t *testing.T) {
+	cases := map[string]string{
+		"---\nname: x\ntags: [a]\n---\nbody text\n": "body text\n",
+		"---\n---\nbody text\n":                     "body text\n",
+		"---\n\n---\nbody text\n":                   "body text\n",
+	}
+	for document, want := range cases {
+		if got := stripFrontmatter(document); got != want {
+			t.Errorf("stripFrontmatter(%q) = %q, want %q", document, got, want)
+		}
+	}
+}
+
+// A section that fits exactly is one chunk: the limit is inclusive.
+func TestASectionOfExactlyTheLimitIsOneChunk(t *testing.T) {
+	body := strings.Repeat("ab ", maxChunkRunes/3) + strings.Repeat("x", maxChunkRunes%3)
+	if runes := utf8.RuneCountInString(body); runes != maxChunkRunes {
+		t.Fatalf("fixture is %d runes, want exactly %d", runes, maxChunkRunes)
+	}
+	if chunks := chunkDocument(body); len(chunks) != 1 {
+		t.Errorf("%d chunks for a section of exactly %d runes, want 1", len(chunks), maxChunkRunes)
+	}
+}
+
+// An excerpt that fits exactly is not marked as cut.
+func TestAnExcerptOfExactlyTheLimitIsNotMarkedCut(t *testing.T) {
+	exact := strings.Repeat("e", excerptRunes)
+	if got := excerptOf(docChunk{text: exact}); got != exact {
+		t.Errorf("an excerpt of exactly %d runes became %d runes", excerptRunes, utf8.RuneCountInString(got))
+	}
+}

@@ -3657,6 +3657,7 @@ integration routing: all killed. **M9 first survived**: its test made the report
 | 2026-09-24 | `38b600e..4e37fcf` | 1 | 27 | 27 | 100.0% | — |
 | 2026-09-24 | `4e37fcf..600e718` | 3 | 123 | 108 | 87.8% | — |
 | 2026-09-28 | `600e718..e665f49` | 3 | 19 | 16 | 84.2% | — |
+| 2026-09-28 | `e665f49..a26fbe7` | 1 | 1 | 1 | 100.0% | — |
 
 Of run 2's five survivors, three were equivalent (boundary mutants on `plan.go:85`, where two stages can
 never share an index) and two were **real test gaps**, closed the same day: nothing checked that a stage
@@ -3672,9 +3673,27 @@ waiting on a tool that never returns. Caught in fact, but uncredited by design �
 timeout against itself, because the spike showed timeouts can hide survivors.
 
 Run 9 (L3.4) left 12 survivors and 3 timeouts, against the 53 hand mutants the item's own run killed —
-gremlins mutates operators the hand set did not, mostly loop and slice boundaries in `chunking.go`
-and `vector_index.go`. The three timeouts are chunking loops negated into non-termination. Not yet
-triaged into equivalent and real; that is the next small item, not a note.
+gremlins mutates operators the hand set did not, mostly boundaries. **Triaged 2026-09-28: 8 real, 4
+equivalent**, each verdict checked by replaying the mutant — the real ones now die, the equivalent ones
+still live:
+
+- **Real, and hiding a bug**: an empty frontmatter block (`---\n---`) was never stripped — the closing
+  marker was searched for from after the opening line's newline, so it could not be found at once —
+  and the block was embedded as text. Fixed; the boundary survivor (`end < 0`) was the only trace.
+- **Real, the most consequential**: reciprocal-rank fusion with `k - rank` in place of `k + rank`
+  survived because every fusion test compared ranks across lists or at rank 0. A test now fuses one
+  ranking and requires its order kept.
+- **Real**: the `DOCS_FTS_PATH` override, moved in L3.4 and never tested; the exact frontmatter offset
+  (the test checked one value's absence, not what remained); a section of exactly the chunk limit
+  split needlessly; an excerpt of exactly the limit marked "..."; equal-scoring sections choosing the
+  excerpt nondeterministically; and an exact multiple of the embedding batch size sending a trailing
+  empty request, which a real provider may reject.
+- **Equivalent**: `space > 0` in the chunk cut (the only difference is a whitespace-only piece, which
+  is dropped); `offset < len` in the rune walk (decoding at the end advances zero bytes); the
+  relevance comparison inside an `if relevances differ` branch; and the path comparison between map
+  keys, which are never equal.
+- **Timeouts**: three chunking loop conditions negated into non-termination — caught in fact, and
+  uncredited by design.
 
 Run 10's three survivors were one real hole in the scanner L3.7 had just shipped. All three were
 arithmetic mutants of the line reader's buffer sizes in `injectionscan.Scan`, and they lived because

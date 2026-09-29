@@ -30,16 +30,19 @@ func chunkDocument(body string) []docChunk {
 	return chunks
 }
 
-// stripFrontmatter drops a leading "---" block: metadata, not prose.
+// stripFrontmatter drops a leading "---" block: metadata, not prose. The
+// closing marker is searched for from the opening line's own newline, so an
+// empty block ("---\n---") is found too — searching from after it missed one,
+// and the block was embedded as text.
 func stripFrontmatter(body string) string {
 	if !strings.HasPrefix(body, "---\n") {
 		return body
 	}
-	end := strings.Index(body[4:], "\n---")
+	end := strings.Index(body[3:], "\n---")
 	if end < 0 {
 		return body
 	}
-	return strings.TrimPrefix(body[4+end+4:], "\n")
+	return strings.TrimPrefix(body[3+end+4:], "\n")
 }
 
 // splitSections cuts at each "## " heading; text before the first belongs to

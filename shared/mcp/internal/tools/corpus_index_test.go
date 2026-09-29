@@ -139,3 +139,9 @@ func TestAHybridIndexFailsWhenAnyBackendFails(t *testing.T) {
 		t.Error("a refresh continued past a failed backend")
 	}
 }
+
+// Fusing a single ranking keeps its order: a lower rank always scores less.
+// A fusion that let a later rank outscore an earlier one would reverse it.
+func TestFusionKeepsASingleRankingsOrder(t *testing.T) {
+	assertNames(t, "one list fused", paths(fuseReciprocalRank(refs("first", "second", "third"))), "first", "second", "third")
+}
