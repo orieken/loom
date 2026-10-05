@@ -24,15 +24,17 @@ import (
 )
 
 type documentFlags struct {
-	root   string
-	path   string
-	limit  int
-	dryRun bool
+	root      string
+	path      string
+	limit     int
+	dryRun    bool
+	maxRounds int
+	noAudit   bool
 }
 
 var documentArgs documentFlags
 
-var errDocumentFailed = errors.New("some directories could not be documented")
+var errDocumentFailed = errors.New("some directories could not be documented or verified")
 
 // maxPlanLines caps how many directories a dry run lists.
 const maxPlanLines = 25
@@ -45,9 +47,16 @@ fact-sheet hash has changed since it was documented, children before parents.
 Each invocation gets one fact sheet and its children's summaries — never raw
 source — and returns typed JSON.
 
-Results are candidates, written to .loom/runs/<run>/. Nothing is added to the
-index or to your repository. Use --dry-run to see what would be sent, and
---limit or --path to bound the cost: every directory is one model call.
+Every result is then checked: first by a deterministic verifier that confirms each
+name, tag and citation exists in the fact sheet, then by the repo-doc-auditor
+agent, which judges whether the cited facts support the claims. A problem sends
+the directory back to the documenter with typed findings, up to --max-rounds. A
+directory still failing then is reported "unverified" and nothing is accepted.
+
+Verified results are candidates, written to .loom/runs/<run>/. Nothing is added
+to the index or to your repository. Use --dry-run to see what would be sent, and
+--limit or --path to bound the cost: a directory is at least one model call, and
+up to two per round.
 
 Run 'loom index' first so the fact sheets are current.`,
 	Args: cobra.NoArgs,
@@ -58,6 +67,8 @@ func init() {
 	documentCmd.Flags().StringVar(&documentArgs.root, "root", ".", "repository root")
 	documentCmd.Flags().StringVar(&documentArgs.path, "path", "", "only document this directory and those below it")
 	documentCmd.Flags().IntVar(&documentArgs.limit, "limit", 0, "document at most this many directories, deepest first (0 = no limit)")
+	documentCmd.Flags().IntVar(&documentArgs.maxRounds, "max-rounds", repodoc.DefaultMaxRounds, "attempts per directory before it is reported unverified")
+	documentCmd.Flags().BoolVar(&documentArgs.noAudit, "no-audit", false, "skip the semantic auditor and run only the deterministic verifier (cheaper, weaker)")
 	documentCmd.Flags().BoolVar(&documentArgs.dryRun, "dry-run", false, "list what would be documented and make no model calls")
 	rootCmd.AddCommand(documentCmd)
 }
@@ -109,7 +120,7 @@ func documentRepo(ctx context.Context, out io.Writer, flags documentFlags) error
 		printDocumentPlan(out, tasks)
 		return nil
 	}
-	return executeDocument(ctx, out, flags.root, repodoc.Runner{Recorded: recorded, Vocabulary: vocabulary, Now: time.Now}, tasks)
+	return executeDocument(ctx, out, flags.root, repodoc.Runner{Recorded: recorded, Vocabulary: vocabulary, Now: time.Now, MaxRounds: flags.maxRounds, SkipAudit: flags.noAudit}, tasks)
 }
 
 func printDocumentPlan(out io.Writer, tasks []repodoc.Task) {
@@ -129,20 +140,28 @@ func executeDocument(ctx context.Context, out io.Writer, root string, runner rep
 		return err
 	}
 	runner.Provider, runner.Root = provider, root
-	fmt.Fprintf(out, "documenting %d directories with %s (one model call each)\n", len(tasks), repodoc.AgentName)
+	fmt.Fprintf(out, "documenting %d directories with %s, verified by a Go check%s\n", len(tasks), repodoc.AgentName, auditorClause(runner))
 	record, err := runner.Run(ctx, tasks)
 	if err != nil {
 		return err
 	}
 	fmt.Fprintln(out, summarizeDocumentRun(record, root))
-	if record.Failed() > 0 {
-		return fmt.Errorf("%w: %d of %d failed", errDocumentFailed, record.Failed(), len(record.Outcomes))
+	if record.Failed()+record.Unverified() > 0 {
+		return fmt.Errorf("%w: %d failed, %d unverified of %d", errDocumentFailed, record.Failed(), record.Unverified(), len(record.Outcomes))
 	}
 	return nil
 }
 
+func auditorClause(runner repodoc.Runner) string {
+	if runner.SkipAudit {
+		return " only (--no-audit)"
+	}
+	return " and the " + repodoc.AuditorName
+}
+
 func summarizeDocumentRun(record repodoc.RunRecord, root string) string {
-	line := fmt.Sprintf("%d documented, %d failed: candidates in %s", len(record.Outcomes)-record.Failed(), record.Failed(), repodoc.RunDir(root, record.RunID))
+	line := fmt.Sprintf("%d verified, %d unverified, %d failed: candidates in %s",
+		record.Count(repodoc.StatusVerified), record.Unverified(), record.Failed(), repodoc.RunDir(root, record.RunID))
 	if record.Interrupted {
 		line += " (interrupted)"
 	}

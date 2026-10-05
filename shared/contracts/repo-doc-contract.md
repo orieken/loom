@@ -1,7 +1,7 @@
 # Contract: repo-doc (typed state)
 
 **Produced by**: repo-documenter
-**Consumed by**: the Go verifier (`loom` Phase 5), `repo-doc-auditor` (a later phase), the renderer that writes
+**Consumed by**: the Go verifier, `repo-doc-auditor`, the renderer that writes
 `.loom/docs/<dir>/README.md` and the context index (`.loom/index.json`)
 
 ## Typed State
@@ -21,7 +21,9 @@ The executor sends one directory per invocation, bottom-up, so a directory is do
 | Input block | Content |
 |---|---|
 | `fact-sheet` | the directory's `.loom/facts/<dir>.json`, verbatim |
-| `child-summaries` | for each child directory, its generated summary (purpose, tags, layer) or `undocumented` |
+| `child-summaries` | for each child directory, its **verified** summary (purpose, tags, layer) or `undocumented` |
+| `allowed-tags` | the vocabulary the agent may draw `tags` from |
+| `revision-feedback` | only on a later round: the previous attempt and the typed findings to fix |
 
 Only a directory whose `input_hash` differs from the one it was last documented against is sent. The agent receives
 no raw source. It may read specific files by line range when a fact-sheet field is ambiguous, and must record each
@@ -53,12 +55,31 @@ Checked by `Validate` in Go on receipt (structure only — it cannot see the fac
 5. Every invariant has a statement and at least one piece of evidence.
 6. Every `filesRead` entry has a path, a reason, and a line range with `1 <= startLine <= endLine`.
 
-## Checked against the fact sheet (Phase 5)
+## Checked against the fact sheet (the verifier)
 
-Not enforceable here, and not claimed to be: that every symbol, dependency and entrypoint named exists in the fact
-sheet, that every tag is in the vocabulary (`shared/vocabulary/context-tags.yaml`, extended by `.loom/tags.yaml`), and
-that each claim's text appears in `evidence`. Those need the sheet and run in the verifier. Until it lands, a
-documenter result is a **candidate**, recorded under `.loom/runs/` and never written into the index.
+`Validate` cannot see the sheet, so a second, deterministic check does — `Verify` in `internal/repodoc`, run by
+`loom document` on every result before anything else:
+
+- every `tags` entry is in the vocabulary (`shared/vocabulary/context-tags.yaml`, extended by `.loom/tags.yaml`);
+- every `keyEntrypoints` entry is an export or an entrypoint the sheet lists;
+- every purpose, responsibility and invariant statement appears, **verbatim**, as the `claim` of an `evidence` entry;
+- every citation names a value its field actually holds, and a citation of an **empty** field is rejected — it
+  supports nothing;
+- an invariant may cite a source line range only if the same range is covered by a `filesRead` entry;
+- every `filesRead` path is a file of the directory;
+- every name **written in backticks** in a claim exists in the sheet. The agent is told backticks are reserved for such
+  names; a name written bare is outside what a program can see and is left to the auditor;
+- a name known only through an `approximate_*` field is not stated as fact — it must read as possible or unconfirmed.
+
+Each finding is a typed `Violation` (source, code, where, message) and is returned to the documenter as
+`revision-feedback` on the next round.
+
+Then `repo-doc-auditor` judges whether the cited facts *support* the claims (`repo-doc-audit-contract.md`). The
+whole loop is bounded (default 3 rounds); a directory that does not verify is `unverified`, kept for a human under
+`.loom/runs/<run>/unverified/`, and never accepted.
+
+Until the approval gate (ADR-010, Phase 6) a verified document is still only a **candidate**, recorded under
+`.loom/runs/` and not written into the index.
 
 ## What this contract does not claim
 

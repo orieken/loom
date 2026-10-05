@@ -1,0 +1,9 @@
+# Fuzzy patterns expected in repo-doc-auditor's output (extended regex, case-insensitive).
+
+"schemaVersion"
+"path": *"internal/ledger"
+"inputHash": *"sha256:4be1d0a9c37f2e85b6a01d7c9e3f48a2d5c60b17e9f3a4d8c2b5e1f07a96d3c4"
+"verdict": *"CHANGES_REQUESTED"
+"blocking": *true
+Cryptographically signs
+"instruction"

@@ -27,6 +27,7 @@ func viewFileNames() map[Kind]string {
 		KindScenarios:      "acceptance-scenarios.md",
 		KindContext:        "context-manifest.md",
 		KindRepoDoc:        "repo-doc.md",
+		KindRepoDocAudit:   "repo-doc-audit.md",
 	}
 }
 

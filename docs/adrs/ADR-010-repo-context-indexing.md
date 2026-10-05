@@ -157,3 +157,26 @@ has been deleted from the working tree is skipped.
 - **No golden baseline yet.** `tests/agents/repo-documenter/` has the input (with planted traps), patterns and a rubric
   that penalizes every unsupported claim. `actual-output.md` needs a live run and is not committed, so the agent suite
   reports a SKIP rather than a pass for it.
+
+## Amendment 2026-10-05: Phase 5 (verification)
+- **Two checks, cheap first.** `Verify` (Go) runs on every reply: tags in the vocabulary, entrypoints and citations
+  that exist, every claim backed by an `evidence` entry with its exact text, citations of *empty* fields rejected,
+  source-line citations only where a `filesRead` covers them, and every backticked name present in the sheet. Only a
+  reply with no violations reaches `repo-doc-auditor`, a new read-only agent that judges whether the cited facts
+  *support* the claims. The prompt's alternative of extending `documentation-auditor` was rejected: its scope is
+  README and inventory staleness, and its fixture and rubric would have to serve two unrelated jobs.
+- **Backticks are the contract that makes names checkable.** A program cannot find a name inside prose, so the
+  documenter is told to write every symbol, file or directory name in backticks and nothing else. A bare name escapes
+  the verifier and is left to the auditor. This is a limit, stated rather than hidden.
+- **A typed loop.** Problems return as `revision-feedback`: the previous attempt plus typed violations (source, code,
+  where, message), whether from the verifier or the auditor. The executor counts rounds (default 3, `--max-rounds`) and
+  reads the auditor's `verdict` field. A reply that fails the schema, or documents the wrong directory, is *fed back*
+  rather than fatal, since the agent can fix that; a provider error cannot be revised away and fails the directory.
+- **Exhaustion is a status, not a crash.** A directory still failing at the limit is `unverified`: its last attempt is
+  kept under `unverified/`, every round is retained under `rounds/`, and nothing is accepted. A parent is shown an
+  unverified child as `undocumented`, never its unverified text. `loom document` exits non-zero if any directory is
+  failed or unverified.
+- **Cost.** A directory is now one to two calls per round. `--no-audit` runs the verifier alone (cheaper, weaker);
+  `--limit`, `--path` and `--max-rounds` bound the rest.
+- **The auditor's model tier is `default`, not `light`.** Read-only counter agents are usually `light`, but this
+  one's value is a judgement a lax model would waste. That is a cost decision worth revisiting with real data.

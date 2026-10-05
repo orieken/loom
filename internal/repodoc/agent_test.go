@@ -69,7 +69,7 @@ func TestAgentPromptNamesEveryFactSheetFieldAnEvidenceCitationMayUse(t *testing.
 func TestAgentIsReadOnlyAndNamedLikeItsFile(t *testing.T) {
 	prompt := readRepoFile(t, "shared/agents/repo-documenter.md")
 	frontmatter := strings.SplitN(prompt, "---", 3)[1]
-	for _, want := range []string{"name: repo-documenter", "tools: Read\n", "model_tier: default", "version: 1.0.0"} {
+	for _, want := range []string{"name: repo-documenter", "tools: Read\n", "model_tier: default", "version: 1.1.0"} {
 		if !strings.Contains(frontmatter, want) {
 			t.Errorf("frontmatter lacks %q:\n%s", want, frontmatter)
 		}
@@ -136,5 +136,103 @@ func TestEvalFixtureOffersOnlyTagsTheShippedVocabularyHas(t *testing.T) {
 		if !known.Contains(tag.Name) {
 			t.Errorf("fixture tag %q is not in the shipped vocabulary", tag.Name)
 		}
+	}
+}
+
+func TestDocumenterPromptNamesEveryInputBlockItCanReceive(t *testing.T) {
+	prompt := readRepoFile(t, "shared/agents/repo-documenter.md")
+	for _, block := range []string{inputFactSheet, inputChildSummaries, inputAllowedTags, inputFeedback} {
+		if !strings.Contains(prompt, block) {
+			t.Errorf("the documenter is sent a %q block its prompt never describes", block)
+		}
+	}
+	for _, field := range []string{"source", "code", "where", "message", "findings", "previous"} {
+		if !strings.Contains(prompt, field) {
+			t.Errorf("the prompt does not explain the feedback field %q", field)
+		}
+	}
+}
+
+func TestAuditorPromptNamesEveryOutputField(t *testing.T) {
+	prompt := readRepoFile(t, "shared/agents/repo-doc-auditor.md")
+	for _, typ := range []reflect.Type{reflect.TypeOf(state.RepoDocAuditState{}), reflect.TypeOf(state.DocAuditFinding{})} {
+		for _, field := range jsonFields(typ) {
+			if !strings.Contains(prompt, field) {
+				t.Errorf("repo-doc-auditor.md never mentions the output field %q", field)
+			}
+		}
+	}
+}
+
+func TestAuditorPromptDescribesItsInputsAndIsReadOnly(t *testing.T) {
+	prompt := readRepoFile(t, "shared/agents/repo-doc-auditor.md")
+	frontmatter := strings.SplitN(prompt, "---", 3)[1]
+	for _, want := range []string{"name: repo-doc-auditor", "tools: Read\n", "model_tier:", "version: 1.0.0"} {
+		if !strings.Contains(frontmatter, want) {
+			t.Errorf("frontmatter lacks %q", want)
+		}
+	}
+	for _, block := range []string{inputFactSheet, inputChildSummaries, inputCandidate} {
+		if !strings.Contains(prompt, block) {
+			t.Errorf("the auditor is sent a %q block its prompt never describes", block)
+		}
+	}
+	if AuditorName != "repo-doc-auditor" {
+		t.Errorf("AuditorName = %q", AuditorName)
+	}
+}
+
+func TestAuditContractNamesTheSchemaAndTheRules(t *testing.T) {
+	contract := readRepoFile(t, "shared/contracts/repo-doc-audit-contract.md")
+	for _, want := range []string{"shared/schemas/pipeline/repo-doc-audit.schema.json", "CHANGES_REQUESTED", "APPROVED", "blocking", "unverified"} {
+		if !strings.Contains(contract, want) {
+			t.Errorf("the contract does not mention %q", want)
+		}
+	}
+}
+
+func auditFixtureBlocks(t *testing.T) map[string][]byte {
+	t.Helper()
+	blocks := map[string][]byte{}
+	for _, match := range fencedJSON.FindAllStringSubmatch(readRepoFile(t, "tests/agents/repo-doc-auditor/input-candidate.md"), -1) {
+		blocks[match[1]] = []byte(match[2])
+	}
+	return blocks
+}
+
+// The auditor only ever sees documents the verifier passed. A fixture whose
+// candidate the verifier rejects would test a situation that cannot happen.
+func TestAuditorFixtureCandidatePassesTheDeterministicVerifier(t *testing.T) {
+	blocks := auditFixtureBlocks(t)
+	var sheet factsheet.FactSheet
+	var candidate state.RepoDocState
+	if err := json.Unmarshal(blocks[inputFactSheet], &sheet); err != nil {
+		t.Fatalf("fact-sheet: %v", err)
+	}
+	if err := json.Unmarshal(blocks[inputCandidate], &candidate); err != nil {
+		t.Fatalf("candidate: %v", err)
+	}
+	if err := candidate.Validate(); err != nil {
+		t.Fatalf("the candidate must be schema-valid: %v", err)
+	}
+	shipped, _ := parseVocabulary([]byte(readRepoFile(t, VocabularyFile)), VocabularyFile)
+	if violations := Verify(sheet, candidate, newVocabulary(shipped)); len(violations) != 0 {
+		t.Errorf("the auditor fixture's candidate must pass the verifier, so only judgement is left to test: %+v", violations)
+	}
+	if !strings.Contains(readRepoFile(t, "tests/agents/repo-doc-auditor/expected-patterns.txt"), sheet.InputHash) {
+		t.Error("expected-patterns.txt must pin the fixture's input_hash")
+	}
+}
+
+// The documenter fixture's whole point is that a careless answer fails the
+// verifier; make sure the trap it plants is one the verifier can catch.
+func TestDocumenterFixtureTrapIsCatchableByTheVerifier(t *testing.T) {
+	sheet := fixtureSheet(t)
+	doc := state.RepoDocState{SchemaVersion: state.SchemaVersion, Path: sheet.Path, InputHash: sheet.InputHash, Layer: state.LayerShared,
+		Purpose: "Depends on `internal/legacy` and rolls back with `Rollback`.", OpenQuestions: []string{"q"},
+		Evidence: []state.DocEvidence{{Claim: "Depends on `internal/legacy` and rolls back with `Rollback`.", Fields: []string{"exports"}}}}
+	violations := Verify(sheet, doc, newVocabulary(nil))
+	if !hasCode(violations, CodeUnknownName) || len(violations) != 2 {
+		t.Errorf("an invented symbol and an approximate edge stated flat: %+v", violations)
 	}
 }

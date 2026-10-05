@@ -14,6 +14,8 @@ const (
 	inputFactSheet      = "fact-sheet"
 	inputChildSummaries = "child-summaries"
 	inputAllowedTags    = "allowed-tags"
+	inputFeedback       = "revision-feedback"
+	inputCandidate      = "candidate"
 )
 
 // ChildSummary is what a parent is shown about one child directory.
@@ -61,7 +63,7 @@ func (s summaries) one(child string) ChildSummary {
 
 // buildInput assembles what one invocation is given: the fact sheet, the
 // children's summaries and the tags it may use. Never raw source.
-func buildInput(task Task, known summaries, vocabulary Vocabulary) (map[string][]byte, error) {
+func buildInput(task Task, known summaries, vocabulary Vocabulary, feedback *Feedback) (map[string][]byte, error) {
 	sheet, err := json.MarshalIndent(task.Sheet, "", "  ")
 	if err != nil {
 		return nil, fmt.Errorf("encode fact sheet %s: %w", task.Path, err)
@@ -74,5 +76,22 @@ func buildInput(task Task, known summaries, vocabulary Vocabulary) (map[string][
 	if err != nil {
 		return nil, fmt.Errorf("encode tags: %w", err)
 	}
-	return map[string][]byte{inputFactSheet: sheet, inputChildSummaries: children, inputAllowedTags: tags}, nil
+	input := map[string][]byte{inputFactSheet: sheet, inputChildSummaries: children, inputAllowedTags: tags}
+	if feedback == nil {
+		return input, nil
+	}
+	revision, err := json.MarshalIndent(feedback, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("encode revision feedback %s: %w", task.Path, err)
+	}
+	input[inputFeedback] = revision
+	return input, nil
+}
+
+// Feedback is what a documenter is shown on a revision round: the attempt it
+// made and every problem found with it, typed so each can be acted on.
+type Feedback struct {
+	Round    int                 `json:"round"`
+	Previous *state.RepoDocState `json:"previous,omitempty"`
+	Findings []Violation         `json:"findings"`
 }

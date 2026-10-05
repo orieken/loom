@@ -17,15 +17,32 @@ import (
 	"github.com/orieken/loom/internal/state"
 )
 
-func TestRunnerDocumentsBottomUpAndShowsParentsTheirChildrensSummaries(t *testing.T) {
+func documenterCalls(provider *mock.Provider) []string {
+	var documented []string
+	for _, id := range provider.Invocations() {
+		if !strings.HasPrefix(id, "repo-doc-audit-") {
+			documented = append(documented, id)
+		}
+	}
+	return documented
+}
+
+func TestRunnerDocumentsBottomUp(t *testing.T) {
 	provider := scriptedProvider(t, tree())
 	record, err := newRunner(provider, t.TempDir()).Run(context.Background(), tasksFor(tree()))
 	if err != nil || record.Failed() != 0 {
 		t.Fatalf("run: %+v %v", record, err)
 	}
 	want := []string{stageID("svc/api"), stageID("svc/store"), stageID("svc"), stageID(".")}
-	if !reflect.DeepEqual(provider.Invocations(), want) {
-		t.Errorf("invocation order = %v, want %v", provider.Invocations(), want)
+	if got := documenterCalls(provider); !reflect.DeepEqual(got, want) {
+		t.Errorf("documenter order = %v, want %v", got, want)
+	}
+}
+
+func TestRunnerShowsParentsTheirChildrensVerifiedSummaries(t *testing.T) {
+	provider := scriptedProvider(t, tree())
+	if _, err := newRunner(provider, t.TempDir()).Run(context.Background(), tasksFor(tree())); err != nil {
+		t.Fatal(err)
 	}
 	parent := provider.InputFor(stageID("svc")).UpstreamState[inputChildSummaries]
 	if !strings.Contains(string(parent), "does svc/api") || !strings.Contains(string(parent), "does svc/store") {
@@ -77,7 +94,10 @@ func TestAFailedChildIsRecordedAndItsParentIsToldItIsUndocumented(t *testing.T) 
 	}
 }
 
-func TestRunnerRejectsOutputThatDocumentsTheWrongDirectoryOrVersion(t *testing.T) {
+// A reply that documents the wrong directory is a typed problem fed back to
+// the agent — it can fix that — and after the round limit the directory is
+// unverified, never accepted.
+func TestOutputThatDocumentsTheWrongDirectoryOrVersionNeverVerifies(t *testing.T) {
 	cases := map[string]state.RepoDocState{
 		"wrong path": validDoc("svc/store", "h-api"),
 		"wrong hash": validDoc("svc/api", "h-old"),
@@ -86,14 +106,18 @@ func TestRunnerRejectsOutputThatDocumentsTheWrongDirectoryOrVersion(t *testing.T
 		t.Run(name, func(t *testing.T) {
 			provider := mock.New(map[string]mock.Script{stageID("svc/api"): {Payload: encode(t, doc)}})
 			record, _ := newRunner(provider, t.TempDir()).Run(context.Background(), tasksFor(tree()[2:3]))
-			if record.Failed() != 1 {
-				t.Fatalf("%s must be rejected: %+v", name, record.Outcomes)
+			outcome := record.Outcomes[0]
+			if outcome.Status != StatusUnverified || len(outcome.Rounds) != DefaultMaxRounds {
+				t.Fatalf("%s: %+v", name, outcome)
+			}
+			if outcome.Rounds[0].Violations[0].Code != CodeInvalidOutput {
+				t.Errorf("violation = %+v", outcome.Rounds[0].Violations)
 			}
 		})
 	}
 }
 
-func TestRunnerRejectsAPayloadThatFailsTheSchema(t *testing.T) {
+func TestAPayloadThatFailsTheSchemaNeverVerifiesAndIsNotStoredAsACandidate(t *testing.T) {
 	invalid := validDoc("svc/api", "h-api")
 	invalid.Layer = "mystery"
 	for name, payload := range map[string][]byte{"invalid layer": encode(t, invalid), "not json": []byte("prose, not json"), "unknown field": []byte(`{"extra": 1}`)} {
@@ -101,7 +125,7 @@ func TestRunnerRejectsAPayloadThatFailsTheSchema(t *testing.T) {
 			provider := mock.New(map[string]mock.Script{stageID("svc/api"): {Payload: payload}})
 			root := t.TempDir()
 			record, _ := newRunner(provider, root).Run(context.Background(), tasksFor(tree()[2:3]))
-			if record.Failed() != 1 {
+			if record.Unverified() != 1 {
 				t.Fatalf("outcomes = %+v", record.Outcomes)
 			}
 			if _, err := os.Stat(CandidatePath(RunDir(root, record.RunID), "svc/api")); err == nil {
@@ -113,10 +137,12 @@ func TestRunnerRejectsAPayloadThatFailsTheSchema(t *testing.T) {
 
 func TestRunnerTotalsReportedUsageAndCountsRecordedSourceReads(t *testing.T) {
 	doc := validDoc("svc/api", "h-api")
-	doc.FilesRead = []state.DocFileRead{{Path: "svc/api/x.go", StartLine: 1, EndLine: 9, Reason: "ambiguous export"}}
+	doc.FilesRead = []state.DocFileRead{{Path: "svc/api/api.go", StartLine: 1, EndLine: 9, Reason: "ambiguous export"}}
 	provider := mock.New(map[string]mock.Script{
-		stageID("svc/api"):   {Payload: encode(t, doc), Usage: &orchestrator.Usage{InputTokens: 100, CostUSD: 0.25}},
-		stageID("svc/store"): {Payload: encode(t, validDoc("svc/store", "h-store")), Usage: &orchestrator.Usage{InputTokens: 50, CostUSD: 0.5}},
+		stageID("svc/api"):        {Payload: encode(t, doc), Usage: &orchestrator.Usage{InputTokens: 100, CostUSD: 0.25}},
+		stageID("svc/store"):      {Payload: encode(t, validDoc("svc/store", "h-store")), Usage: &orchestrator.Usage{InputTokens: 50, CostUSD: 0.5}},
+		auditStageID("svc/api"):   {Payload: encodeAudit(t, approval("svc/api", "h-api"))},
+		auditStageID("svc/store"): {Payload: encodeAudit(t, approval("svc/store", "h-store"))},
 	})
 	record, _ := newRunner(provider, t.TempDir()).Run(context.Background(), tasksFor(tree()[2:]))
 	if record.TotalUsage == nil || record.TotalUsage.InputTokens != 150 || record.TotalUsage.CostUSD != 0.75 {
@@ -156,7 +182,7 @@ func TestRunnerStopsWhenCancelledAndSaysSo(t *testing.T) {
 }
 
 func TestRunRecordSerializesWithoutEmptyUsage(t *testing.T) {
-	raw, err := json.Marshal(RunRecord{RunID: "r", Outcomes: []Outcome{{Path: "a", Status: StatusDocumented}}})
+	raw, err := json.Marshal(RunRecord{RunID: "r", Outcomes: []Outcome{{Path: "a", Status: StatusVerified}}})
 	if err != nil || strings.Contains(string(raw), "usage") || strings.Contains(string(raw), "totalUsage") {
 		t.Errorf("%s %v", raw, err)
 	}
@@ -217,11 +243,13 @@ func runWithTimeout(t *testing.T, configured time.Duration) *deadlineProvider {
 
 func assertBoundedBy(t *testing.T, provider *deadlineProvider, want time.Duration) {
 	t.Helper()
-	if len(provider.deadlines) != 1 || provider.timeouts[0] != want {
-		t.Fatalf("deadlines %v timeouts %v, want %v", provider.deadlines, provider.timeouts, want)
+	if len(provider.deadlines) != 2 {
+		t.Fatalf("a directory is one documenter call and one auditor call, got deadlines %v", provider.deadlines)
 	}
-	if remaining := provider.deadlines[0]; remaining <= want-10*time.Second || remaining > want {
-		t.Errorf("deadline %v is not about %v away", remaining, want)
+	for index, remaining := range provider.deadlines {
+		if provider.timeouts[index] != want || remaining <= want-10*time.Second || remaining > want {
+			t.Errorf("call %d: deadline %v timeout %v, want about %v", index, remaining, provider.timeouts[index], want)
+		}
 	}
 }
 

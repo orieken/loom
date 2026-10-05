@@ -10,13 +10,18 @@ import (
 	"github.com/orieken/loom/internal/state"
 )
 
-// AgentName is the agent every invocation runs.
+// AgentName is the agent that writes each directory's document.
 const AgentName = "repo-documenter"
 
-// DefaultTimeout bounds one directory's invocation.
+// DefaultTimeout bounds one invocation.
 const DefaultTimeout = 5 * time.Minute
 
-// Runner documents directories through a Provider.
+// DefaultMaxRounds is how many times a directory may be attempted. Like the
+// review loop's bound (roadmap L2.17), exhaustion is where a human looks, not
+// a crash and not an unbounded spend.
+const DefaultMaxRounds = 3
+
+// Runner documents directories through a Provider and verifies each result.
 type Runner struct {
 	Provider   orchestrator.Provider
 	Root       string
@@ -26,78 +31,83 @@ type Runner struct {
 	Recorded contextindex.Index
 	Now      func() time.Time
 	Timeout  time.Duration
+	// MaxRounds caps attempts per directory; zero means DefaultMaxRounds.
+	MaxRounds int
+	// SkipAudit runs only the deterministic verifier.
+	SkipAudit bool
+}
+
+func (r Runner) timeout() time.Duration {
+	if r.Timeout == 0 {
+		return DefaultTimeout
+	}
+	return r.Timeout
+}
+
+func (r Runner) rounds() int {
+	if r.MaxRounds <= 0 {
+		return DefaultMaxRounds
+	}
+	return r.MaxRounds
 }
 
 // Run documents each task in the order given — which Plan makes bottom-up —
-// and records a candidate per directory plus one run record. A directory that
-// fails is recorded and skipped: its parent is told the child is undocumented
-// rather than being given nothing or being blocked. Run stops early, and says
-// so in the record, when ctx is cancelled.
+// and records a run. A directory that fails or stays unverified is recorded
+// and skipped: its parent is told the child is undocumented rather than being
+// blocked or being handed unverified text. Run stops early, and says so in the
+// record, when ctx is cancelled.
 func (r Runner) Run(ctx context.Context, tasks []Task) (RunRecord, error) {
 	started := r.Now().UTC()
 	record := RunRecord{RunID: started.Format("20060102T150405Z"), StartedAt: started.Format(time.RFC3339), Agent: AgentName, Outcomes: []Outcome{}}
 	runDir := RunDir(r.Root, record.RunID)
 	known := summaries{thisRun: map[string]state.RepoDocState{}, recorded: r.Recorded}
-	var total orchestrator.Usage
-	reported := false
+	var tally usageTally
 	for _, task := range tasks {
 		if ctx.Err() != nil {
 			record.Interrupted = true
 			break
 		}
-		outcome, doc := r.document(ctx, task, known, runDir)
+		outcome, verified := r.document(ctx, task, known, runDir)
 		record.Outcomes = append(record.Outcomes, outcome)
-		if doc != nil {
-			known.thisRun[task.Path] = *doc
+		if verified != nil {
+			known.thisRun[task.Path] = *verified
 		}
-		if outcome.Usage != nil {
-			total.Add(outcome.Usage)
-			reported = true
-		}
+		tally.add(outcome.Usage)
 	}
-	if reported {
-		record.TotalUsage = &total
-	}
-	if err := writeRecord(runDir, record); err != nil {
-		return record, err
-	}
-	return record, nil
+	record.TotalUsage = tally.result()
+	return record, writeRecord(runDir, record)
 }
 
-// document runs the agent for one directory and validates what comes back.
-func (r Runner) document(ctx context.Context, task Task, known summaries, runDir string) (Outcome, *state.RepoDocState) {
-	outcome := Outcome{Path: task.Path, InputHash: task.Sheet.InputHash, Status: StatusFailed}
-	input, err := buildInput(task, known, r.Vocabulary)
-	if err != nil {
-		outcome.Error = err.Error()
-		return outcome, nil
+// usageTally totals what providers reported. Nothing reported stays nil:
+// unmeasured is not zero.
+type usageTally struct {
+	total    orchestrator.Usage
+	reported bool
+}
+
+func (t *usageTally) add(usage *orchestrator.Usage) {
+	if usage == nil {
+		return
 	}
-	timeout := r.Timeout
-	if timeout == 0 {
-		timeout = DefaultTimeout
+	t.total.Add(usage)
+	t.reported = true
+}
+
+func (t *usageTally) result() *orchestrator.Usage {
+	if !t.reported {
+		return nil
 	}
-	stage := orchestrator.Stage{ID: stageID(task.Path), Agent: AgentName, StateKind: string(state.KindRepoDoc), Timeout: timeout}
-	stageCtx, cancel := context.WithTimeout(ctx, timeout)
+	total := t.total
+	return &total
+}
+
+// invoke calls the provider under the stage's own deadline.
+func (r Runner) invoke(ctx context.Context, stage orchestrator.Stage, task Task, runDir string, input map[string][]byte) (orchestrator.StageOutput, error) {
+	stageCtx, cancel := context.WithTimeout(ctx, stage.Timeout)
 	defer cancel()
-	output, err := r.Provider.Invoke(stageCtx, stage, orchestrator.StageInput{
+	return r.Provider.Invoke(stageCtx, stage, orchestrator.StageInput{
 		SpecPath: ".loom/facts/" + task.Path, WorkspaceDir: runDir, ProjectRoot: r.Root, UpstreamState: input,
 	})
-	outcome.Usage = output.Usage
-	if err != nil {
-		outcome.Error = err.Error()
-		return outcome, nil
-	}
-	doc, err := accept(task, output.Payload)
-	if err != nil {
-		outcome.Error = err.Error()
-		return outcome, nil
-	}
-	if err := writeCandidate(runDir, task.Path, output.Payload); err != nil {
-		outcome.Error = err.Error()
-		return outcome, nil
-	}
-	outcome.Status, outcome.FilesRead = StatusDocumented, len(doc.FilesRead)
-	return outcome, doc
 }
 
 // accept decodes a payload against the schema and checks it documents the

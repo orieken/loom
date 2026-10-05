@@ -2,7 +2,7 @@
 
 Every agent in this framework produces an output that *something* checks — another agent's review, a
 structural contract, a human approval gate, an aggregate metric measured after the fact, or (stated plainly
-where true) nothing yet. This doc makes that explicit for all 40 agents, one at a time, instead of leaving
+where true) nothing yet. This doc makes that explicit for all 41 agents, one at a time, instead of leaving
 it scattered implicitly across `deliver-feature/SKILL.md`, `shared/contracts/`, and each agent's own file.
 
 This is documentation of what already exists in v2 today — it does not introduce new agents or roles. Where
@@ -13,7 +13,7 @@ actually has running today.)
 
 ## How to read "Counterbalance"
 
-Five different *kinds* of check show up across these 40 agents, and they're not interchangeable:
+Five different *kinds* of check show up across these 41 agents, and they're not interchangeable:
 
 | Kind | What it catches | Example |
 |---|---|---|
@@ -495,20 +495,37 @@ questions — as typed JSON (`internal/state/repodoc_state.go`) on top of a dete
 child directories' summaries. It receives no source by default; it may read a line range only when a fact is
 ambiguous, and must record the read. Driven by `loom document` (ADR-010), which chooses the directories whose
 input hash changed and sends them children-first. Its contract is `repo-doc-contract.md`.
-**Counterbalance**: **Structural contract, in Go** — `loom document` rejects any payload that fails the schema,
-that documents a different directory than the one sent, or whose `inputHash` is not the sheet's, and an unknown
-purpose is valid only with an open question. **Human approval gate** is planned before anything is written into a
-target repository (ADR-010, Phase 6); today results are only candidates under `.loom/runs/`.
-**Gap**: Nothing yet checks the *content* against the fact sheet — that a named symbol, dependency or tag
-actually exists. That verifier (deterministic Go checks, then a read-only auditor) is Phase 5 of ADR-010, so until it
-lands a candidate's claims are schema-valid but unverified. No golden-file baseline is committed either: the
-`tests/agents/repo-documenter/` fixture has its input, patterns and rubric, but `actual-output.md` needs a live run.
+**Counterbalance**: Three layers. **Structural contract, in Go**: the reply is validated against the schema and must
+document the directory and hash it was sent. **A deterministic verifier** (`Verify`, `internal/repodoc`) checks every
+tag, entrypoint, citation and backticked name against the fact sheet, and that each claim has evidence. **Downstream
+agent review**: `repo-doc-auditor` judges whether the cited facts support the claims. Problems go back as typed
+feedback in a bounded loop (3 rounds); a directory that does not verify is `unverified` and never accepted. A **human
+approval gate** before anything is written to a target repository is planned (ADR-010, Phase 6).
+**Gap**: Names written *bare* (without backticks) are invisible to the verifier, so they are the auditor's to catch,
+and the auditor is a model. A verified document is a **Documentation Candidate**, recorded under `.loom/runs/`; nothing writes it to
+the index yet. No golden-file baseline is committed: `tests/agents/repo-documenter/` has its input, patterns and
+rubric, but `actual-output.md` needs a live run.
+
+---
+
+### 41. `repo-doc-auditor`
+**Role**: The read-only counter to `repo-documenter`. Given the fact sheet and the documenter's candidate, it judges
+what a program cannot: whether the fields each claim cites actually *support* what the claim says — a symbol named
+`Digest` does not establish "signs every record". It runs only after the Go verifier has found nothing, returns a typed
+verdict (`repo-doc-audit` state: `APPROVED` or `CHANGES_REQUESTED` with blocking findings) and never edits. Its
+contract is `repo-doc-audit-contract.md`.
+**Counterbalance**: **Structural contract, in Go** — a rejection must carry a blocking finding to act on, an approval
+may not carry one, and the verdict must audit the directory and hash it was sent. The loop's exit condition is the
+`verdict` field, not a parse of prose.
+**Gap**: It is a model judging a model, so it can approve something false. Nothing yet checks the auditor itself:
+`tests/agents/repo-doc-auditor/` plants one overreach among sound claims, but its baseline needs a live run. A
+mis-calibrated auditor shows up only as a drift in how many directories end `unverified`.
 
 ---
 
 ## What this survey actually shows
 
-Reading all 40 agents together, three patterns stand out:
+Reading all 41 agents together, three patterns stand out:
 
 1. **The 14 pipeline agents are well-checked** — the fourteen the delivery plan invokes, per "What counts as
    a pipeline agent" above, which includes `visual-qa-engineer` and excludes the pre-pipeline `spec-writer`

@@ -41,7 +41,7 @@ func TestChildWithoutADocumentedEntryIsUndocumented(t *testing.T) {
 
 func TestBuildInputHasTheSheetChildrenAndAllowedTagsAndNothingElse(t *testing.T) {
 	task := Task{Path: "svc", Sheet: tree()[1]}
-	input, err := buildInput(task, summaries{thisRun: map[string]state.RepoDocState{}, recorded: emptyIndex()}, newVocabulary([]Tag{{Name: "api", Description: "serves"}}))
+	input, err := buildInput(task, summaries{thisRun: map[string]state.RepoDocState{}, recorded: emptyIndex()}, newVocabulary([]Tag{{Name: "api", Description: "serves"}}), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

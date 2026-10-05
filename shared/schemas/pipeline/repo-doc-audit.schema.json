@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/orieken/loom/internal/state/repo-doc-audit-state",
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 2,
+      "description": "Always 2 — the schema version this build accepts."
+    },
+    "path": {
+      "type": "string",
+      "description": "The directory audited: copy it from the fact sheet"
+    },
+    "inputHash": {
+      "type": "string",
+      "description": "The fact sheet's input_hash: copy it exactly"
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "APPROVED",
+        "CHANGES_REQUESTED"
+      ]
+    },
+    "findings": {
+      "items": {
+        "properties": {
+          "claim": {
+            "type": "string",
+            "description": "The purpose or responsibility or invariant text as written in the document"
+          },
+          "problem": {
+            "type": "string",
+            "description": "Why the cited fact-sheet fields do not establish the claim"
+          },
+          "instruction": {
+            "type": "string",
+            "description": "What the documenter should do: soften to an open question or cite a field that supports it or remove the claim"
+          },
+          "blocking": {
+            "type": "boolean",
+            "description": "False for a suggestion that does not need a revision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "claim",
+          "problem",
+          "instruction"
+        ]
+      },
+      "type": "array"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "path",
+    "inputHash",
+    "verdict",
+    "findings"
+  ]
+}

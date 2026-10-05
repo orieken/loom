@@ -44,7 +44,9 @@ func answerEverything(t *testing.T, root string) *mock.Provider {
 			Purpose: "does " + sheet.Path, Layer: state.LayerShared,
 			Evidence: []state.DocEvidence{{Claim: "does " + sheet.Path, Fields: []string{"files"}}}}
 		raw, _ := json.Marshal(doc)
+		approved, _ := json.Marshal(state.RepoDocAuditState{SchemaVersion: state.SchemaVersion, Path: sheet.Path, InputHash: sheet.InputHash, Verdict: state.VerdictApproved})
 		scripts[documenterStage(sheet.Path)] = mock.Script{Payload: raw}
+		scripts["repo-doc-audit-"+strings.TrimPrefix(documenterStage(sheet.Path), "repo-doc-")] = mock.Script{Payload: approved}
 	}
 	return mock.New(scripts)
 }
@@ -89,9 +91,9 @@ func TestDocumentRunsTheAgentAndWritesCandidatesWithoutTouchingTheIndex(t *testi
 	if err != nil {
 		t.Fatalf("%v\n%s", err, output)
 	}
-	assertContainsAll(t, output, "documenting 3 directories with repo-documenter", "3 documented, 0 failed: candidates in")
-	if len(provider.Invocations()) != 3 {
-		t.Errorf("invocations = %v", provider.Invocations())
+	assertContainsAll(t, output, "documenting 3 directories with repo-documenter, verified by a Go check and the repo-doc-auditor", "3 verified, 0 unverified, 0 failed: candidates in")
+	if len(provider.Invocations()) != 6 {
+		t.Errorf("three documenter calls and three audits, got %v", provider.Invocations())
 	}
 	runs, _ := filepath.Glob(filepath.Join(root, ".loom", "runs", "*", "run.json"))
 	if len(runs) != 1 {
@@ -128,7 +130,7 @@ func TestDocumentExitsNonZeroWhenADirectoryFails(t *testing.T) {
 	provider.SetScript("repo-doc-a", mock.Script{Err: errors.New("boom")})
 	useDocumentFixtures(t, provider)
 	output, err := runDocumentWith(t, documentFlags{root: root})
-	if !errors.Is(err, errDocumentFailed) || !strings.Contains(output, "2 documented, 1 failed") {
+	if !errors.Is(err, errDocumentFailed) || !strings.Contains(output, "2 verified, 0 unverified, 1 failed") {
 		t.Errorf("%v\n%s", err, output)
 	}
 }
@@ -166,10 +168,10 @@ func TestDocumentPrintsOnlyTheFirstPlanLinesOfALongDryRun(t *testing.T) {
 }
 
 func TestSummaryMentionsInterruptionAndReportedCost(t *testing.T) {
-	record := repodoc.RunRecord{RunID: "r", Interrupted: true, Outcomes: []repodoc.Outcome{{Status: repodoc.StatusDocumented}},
+	record := repodoc.RunRecord{RunID: "r", Interrupted: true, Outcomes: []repodoc.Outcome{{Status: repodoc.StatusVerified}},
 		TotalUsage: &orchestrator.Usage{CostUSD: 1.5}}
 	line := summarizeDocumentRun(record, "/root")
-	assertContainsAll(t, line, "1 documented, 0 failed", "(interrupted)", "$1.5000")
+	assertContainsAll(t, line, "1 verified, 0 unverified, 0 failed", "(interrupted)", "$1.5000")
 }
 
 func TestFindAgentsDirInLooksUnderTheGivenRoot(t *testing.T) {
@@ -182,5 +184,46 @@ func TestFindAgentsDirInLooksUnderTheGivenRoot(t *testing.T) {
 	}
 	if dir, err := findAgentsDirIn(root); err != nil || !strings.HasSuffix(dir, filepath.Join(".claude", "agents")) {
 		t.Errorf("%q %v", dir, err)
+	}
+}
+
+func TestDocumentNoAuditRunsOnlyTheVerifier(t *testing.T) {
+	root := committedGoRepo(t)
+	provider := answerEverything(t, root)
+	useDocumentFixtures(t, provider)
+	output, err := runDocumentWith(t, documentFlags{root: root, noAudit: true})
+	if err != nil {
+		t.Fatalf("%v\n%s", err, output)
+	}
+	assertContainsAll(t, output, "verified by a Go check only (--no-audit)")
+	if len(provider.Invocations()) != 3 {
+		t.Errorf("no auditor calls expected, got %v", provider.Invocations())
+	}
+}
+
+func TestDocumentExitsNonZeroWhenADirectoryStaysUnverified(t *testing.T) {
+	root := committedGoRepo(t)
+	provider := answerEverything(t, root)
+	rejected, _ := json.Marshal(state.RepoDocAuditState{SchemaVersion: state.SchemaVersion, Path: "a", Verdict: state.VerdictChangesRequested,
+		Findings: []state.DocAuditFinding{{Claim: "c", Problem: "p", Instruction: "i", Blocking: true}}})
+	provider.SetHook(func(stage string, _ int) *mock.Script {
+		if stage == "repo-doc-audit-a" {
+			var audit state.RepoDocAuditState
+			_ = json.Unmarshal(rejected, &audit)
+			sheets, _ := contextindex.CurrentSheets(root, repograph.GitLister{})
+			for _, sheet := range sheets {
+				if sheet.Path == "a" {
+					audit.InputHash = sheet.InputHash
+				}
+			}
+			raw, _ := json.Marshal(audit)
+			return &mock.Script{Payload: raw}
+		}
+		return nil
+	})
+	useDocumentFixtures(t, provider)
+	output, err := runDocumentWith(t, documentFlags{root: root, maxRounds: 2})
+	if !errors.Is(err, errDocumentFailed) || !strings.Contains(output, "2 verified, 1 unverified, 0 failed") {
+		t.Errorf("%v\n%s", err, output)
 	}
 }

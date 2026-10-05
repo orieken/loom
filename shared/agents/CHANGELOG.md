@@ -21,6 +21,8 @@ commit — the pre-commit hook checks for exactly this.
 | Agent | Version | Change |
 |---|---|---|
 | repo-documenter | new -> 1.0.0 | New producer agent. Documents one directory from its fact sheet and child summaries as typed JSON (`repo-doc` state kind); read-only (`Read` only), no source by default, every claim cited, "unknown" is a valid answer. Contract: `shared/contracts/repo-doc-contract.md` |
+| repo-documenter | 1.0.0 -> 1.1.0 | Minor: new `revision-feedback` input block and a revise-don't-argue rule; backticks are now reserved for names the fact sheet contains (the verifier checks them); evidence claims must repeat the claim text exactly; never cite an empty fact-sheet field |
+| repo-doc-auditor | new -> 1.0.0 | New read-only counter agent to repo-documenter. Judges whether cited facts support each claim, after the Go verifier passes; typed `repo-doc-audit` verdict. Contract: `shared/contracts/repo-doc-audit-contract.md` |
 
 ## 2026-09-24 — KI provenance and injection flags (roadmap L3.7)
 

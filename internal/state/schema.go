@@ -37,6 +37,7 @@ const (
 	KindScenarios      Kind = "scenarios"
 	KindContext        Kind = "context"
 	KindRepoDoc        Kind = "repo-doc"
+	KindRepoDocAudit   Kind = "repo-doc-audit"
 )
 
 // StageSchema names one state document kind and the type behind it.
@@ -65,6 +66,7 @@ func StageSchemas() []StageSchema {
 		{Kind: KindScenarios, FileName: "scenarios.schema.json", subject: &ScenariosState{}},
 		{Kind: KindContext, FileName: "context.schema.json", subject: &ContextState{}},
 		{Kind: KindRepoDoc, FileName: "repo-doc.schema.json", subject: &RepoDocState{}},
+		{Kind: KindRepoDocAudit, FileName: "repo-doc-audit.schema.json", subject: &RepoDocAuditState{}},
 	}
 }
 
@@ -120,6 +122,7 @@ func documentFactories() map[Kind]func() Validatable {
 		KindScenarios:      func() Validatable { return &ScenariosState{} },
 		KindContext:        func() Validatable { return &ContextState{} },
 		KindRepoDoc:        func() Validatable { return &RepoDocState{} },
+		KindRepoDocAudit:   func() Validatable { return &RepoDocAuditState{} },
 	}
 }
 

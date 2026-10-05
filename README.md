@@ -49,7 +49,7 @@ for how the Context/Memory/Learning loop actually works, and the pipeline diagra
 
 ```
 shared/                              <- single source of truth, edit here only
-├── agents/        (40 agents)       <- .md with YAML frontmatter, versioned (CHANGELOG.md)
+├── agents/        (41 agents)       <- .md with YAML frontmatter, versioned (CHANGELOG.md)
 ├── skills/        (69 skills)       <- .md with trigger keywords/patterns
 ├── rules/                           <- architecture-guardrails.md, design-principles.md, approval-gates.md
 ├── contracts/                       <- required-section contracts for pipeline agent handoffs
@@ -266,7 +266,7 @@ that's what those tools are actually capable of running.
 
 ---
 
-## Agent Roster (40)
+## Agent Roster (41)
 
 Full definitions in `shared/agents/`; versions tracked in `shared/agents/CHANGELOG.md`. For what actually
 checks each agent's work today (a contract, a downstream reviewer, a human approval gate, or an honestly
@@ -304,7 +304,8 @@ documented gap), see [docs/AGENT_REFERENCE.md](docs/AGENT_REFERENCE.md).
 | **agent-evaluator** | Read-only counter agent — runs golden-file evaluations against agent frontmatter contracts and prompt behavior expectations. |
 | **context-auditor** | Read-only counter to context-engineer — audits context-manifest.md for pruning discipline, broken KI/ADR links, and budget accuracy. |
 | **documentation-auditor** | Read-only counter to tech-writer — audits README, AGENT_REFERENCE, and prose docs for staleness against current inventories. |
-| **repo-documenter** | Writes one directory's purpose, tags, layer and invariants as typed JSON from a deterministic fact sheet, each claim citing the facts it rests on; answers "unknown" rather than guess. Driven bottom-up by `loom document`. |
+| **repo-documenter** | Writes one directory's purpose, tags, layer and invariants as typed JSON from a deterministic fact sheet, each claim citing the facts it rests on; answers "unknown" rather than guess. Driven bottom-up by `loom document`; its work is verified before it is accepted. |
+| **repo-doc-auditor** | Read-only counter to repo-documenter — judges whether the fact-sheet fields a claim cites actually support it, after a deterministic Go check has confirmed every name exists. Verdict is typed; a bounded loop sends findings back. |
 | **knowledge-auditor** | Read-only counter to create-ki — audits new KIs for schema compliance, semantic duplication, and domain dictionary alignment. |
 | **model-tier-auditor** | Read-only counter to agent authors — audits agent frontmatter for portable `model_tier` declarations. |
 | **pattern-reviewer** | Read-only counter to pattern document authors — audits `docs/patterns/*.md` for accuracy against current codebase state. |
