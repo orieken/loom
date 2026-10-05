@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "git_sha": "fixture",
+  "generated_at": "2000-01-01T00:00:00Z",
+  "graph_hash": "sha256:1bd44f18151878b9be849c16e4846e01a3a4174d46d18e0fd0a05ddcd1b1d857",
+  "nodes": [
+    {
+      "id": "cmd/app",
+      "kind": "package",
+      "lang": "go",
+      "files": [
+        "cmd/app/main.go"
+      ]
+    },
+    {
+      "id": "internal/service",
+      "kind": "package",
+      "lang": "go",
+      "files": [
+        "internal/service/legacy.go",
+        "internal/service/service.go",
+        "internal/service/service_test.go"
+      ]
+    },
+    {
+      "id": "internal/store",
+      "kind": "package",
+      "lang": "go",
+      "files": [
+        "internal/store/store.go"
+      ]
+    },
+    {
+      "id": "internal/testsupport",
+      "kind": "package",
+      "lang": "go",
+      "files": [
+        "internal/testsupport/testsupport.go"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "cmd/app",
+      "to": "internal/service",
+      "kind": "imports",
+      "confidence": "exact"
+    },
+    {
+      "from": "internal/service",
+      "to": "internal/store",
+      "kind": "imports",
+      "confidence": "exact"
+    }
+  ],
+  "unresolved": [
+    {
+      "from": "internal/service/legacy.go",
+      "spec": "example.com/app/internal/missing",
+      "reason": "not-found"
+    }
+  ]
+}

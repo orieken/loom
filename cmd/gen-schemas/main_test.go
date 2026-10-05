@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/orieken/loom/internal/orchestrator"
+	"github.com/orieken/loom/internal/repograph"
 	"github.com/orieken/loom/internal/state"
 )
 
@@ -20,6 +21,21 @@ func TestGenerateWritesASchemaPerTypedStage(t *testing.T) {
 	}
 	for _, schema := range state.StageSchemas() {
 		assertValidJSONFile(t, filepath.Join(dir, schema.FileName))
+	}
+}
+
+// The committed graph schema must be what the types generate.
+func TestCommittedRepoGraphSchemaMatchesTheTypes(t *testing.T) {
+	generated, err := repograph.GenerateSchema()
+	if err != nil {
+		t.Fatal(err)
+	}
+	committed, err := os.ReadFile(filepath.Join("..", "..", repograph.SchemaDir, repograph.SchemaFile))
+	if err != nil {
+		t.Fatalf("read committed schema: %v (run go run ./cmd/gen-schemas)", err)
+	}
+	if string(committed) != string(generated) {
+		t.Error("shared/schemas/repograph/graph.schema.json drifted from internal/repograph; run go run ./cmd/gen-schemas")
 	}
 }
 

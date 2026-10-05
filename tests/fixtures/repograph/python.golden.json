@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "git_sha": "fixture",
+  "generated_at": "2000-01-01T00:00:00Z",
+  "graph_hash": "sha256:e88327a5ebfbb06dd9e231a363788d87da1d1c5f155c20d60a6deb3661ab4588",
+  "nodes": [
+    {
+      "id": "app",
+      "kind": "module",
+      "lang": "python",
+      "files": [
+        "app/__init__.py",
+        "app/config.py",
+        "app/main.py"
+      ]
+    },
+    {
+      "id": "app/models",
+      "kind": "module",
+      "lang": "python",
+      "files": [
+        "app/models/__init__.py",
+        "app/models/user.py"
+      ]
+    },
+    {
+      "id": "app/services",
+      "kind": "module",
+      "lang": "python",
+      "files": [
+        "app/services/billing.py"
+      ]
+    },
+    {
+      "id": "scripts",
+      "kind": "module",
+      "lang": "python",
+      "files": [
+        "scripts/helper.py",
+        "scripts/run.py"
+      ]
+    },
+    {
+      "id": "scripts/sub",
+      "kind": "module",
+      "lang": "python",
+      "files": [
+        "scripts/sub/tool.py"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "app",
+      "to": "app/models",
+      "kind": "imports",
+      "confidence": "exact"
+    },
+    {
+      "from": "app",
+      "to": "app/services",
+      "kind": "imports",
+      "confidence": "exact"
+    },
+    {
+      "from": "app/models",
+      "to": "app/services",
+      "kind": "imports",
+      "confidence": "exact"
+    },
+    {
+      "from": "scripts",
+      "to": "app",
+      "kind": "imports",
+      "confidence": "exact"
+    },
+    {
+      "from": "scripts/sub",
+      "to": "scripts",
+      "kind": "imports",
+      "confidence": "approximate"
+    }
+  ],
+  "unresolved": [
+    {
+      "from": "scripts/run.py",
+      "spec": "app.nonexistent",
+      "reason": "not-found"
+    }
+  ]
+}

@@ -8,4 +8,7 @@ var RepositoryExclusions = map[string]bool{
 	// can never contain its files, and mutation would run the wrong module's
 	// tests. CI builds it in its own step.
 	"examples/embedding/": true,
+	// Source files `loom index` reads as input (ADR-010). They are never
+	// compiled or run, and the Go ones sit in their own nested modules.
+	"tests/fixtures/repograph/": true,
 }

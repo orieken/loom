@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/orieken/loom/internal/repograph/graph",
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Always the SchemaVersion this build writes"
+    },
+    "git_sha": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "graph_hash": {
+      "type": "string",
+      "description": "sha256 over nodes and edges and unresolved"
+    },
+    "nodes": {
+      "items": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Directory path or dir[lang] when the directory holds several languages"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "package",
+              "module"
+            ]
+          },
+          "lang": {
+            "type": "string"
+          },
+          "files": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "description": "Repo-relative paths in sorted order"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "lang",
+          "files"
+        ]
+      },
+      "type": "array"
+    },
+    "edges": {
+      "items": {
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "imports"
+            ]
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "exact",
+              "approximate"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "from",
+          "to",
+          "kind",
+          "confidence"
+        ]
+      },
+      "type": "array"
+    },
+    "unresolved": {
+      "items": {
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "Repo-relative file containing the import"
+          },
+          "spec": {
+            "type": "string",
+            "description": "The import specifier as written"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "dynamic",
+              "not-found",
+              "alias-not-found",
+              "parse-error"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "from",
+          "spec",
+          "reason"
+        ]
+      },
+      "type": "array"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schema_version",
+    "git_sha",
+    "generated_at",
+    "graph_hash",
+    "nodes",
+    "edges",
+    "unresolved"
+  ]
+}

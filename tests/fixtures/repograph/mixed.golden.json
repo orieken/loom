@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "git_sha": "fixture",
+  "generated_at": "2000-01-01T00:00:00Z",
+  "graph_hash": "sha256:39923953200c4af05513b0ab58f03b2f55603b7b1c1a6876ca563541c55f7a3d",
+  "nodes": [
+    {
+      "id": "service",
+      "kind": "package",
+      "lang": "go",
+      "files": [
+        "service/main.go"
+      ]
+    },
+    {
+      "id": "tools[go]",
+      "kind": "package",
+      "lang": "go",
+      "files": [
+        "tools/gen.go"
+      ]
+    },
+    {
+      "id": "tools[python]",
+      "kind": "module",
+      "lang": "python",
+      "files": [
+        "tools/gen.py"
+      ]
+    },
+    {
+      "id": "web/api",
+      "kind": "module",
+      "lang": "typescript",
+      "files": [
+        "web/api/client.ts"
+      ]
+    },
+    {
+      "id": "web[python]",
+      "kind": "module",
+      "lang": "python",
+      "files": [
+        "web/client.py"
+      ]
+    },
+    {
+      "id": "web[typescript]",
+      "kind": "module",
+      "lang": "typescript",
+      "files": [
+        "web/ui.ts"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "service",
+      "to": "tools[go]",
+      "kind": "imports",
+      "confidence": "exact"
+    },
+    {
+      "from": "tools[python]",
+      "to": "web[python]",
+      "kind": "imports",
+      "confidence": "exact"
+    },
+    {
+      "from": "web[typescript]",
+      "to": "web/api",
+      "kind": "imports",
+      "confidence": "exact"
+    }
+  ],
+  "unresolved": []
+}

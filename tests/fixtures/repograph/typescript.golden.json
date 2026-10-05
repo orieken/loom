@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "git_sha": "fixture",
+  "generated_at": "2000-01-01T00:00:00Z",
+  "graph_hash": "sha256:f9c757b01a5c67e44dc4e55f774a8574919278ec1c458b08bf55a952205a4813",
+  "nodes": [
+    {
+      "id": "src",
+      "kind": "module",
+      "lang": "typescript",
+      "files": [
+        "src/app.ts",
+        "src/codegen.ts",
+        "src/helpers.ts",
+        "src/other.ts",
+        "src/shim.ts",
+        "src/types.ts"
+      ]
+    },
+    {
+      "id": "src/lib",
+      "kind": "module",
+      "lang": "typescript",
+      "files": [
+        "src/lib/format.ts"
+      ]
+    },
+    {
+      "id": "src/shared",
+      "kind": "module",
+      "lang": "typescript",
+      "files": [
+        "src/shared/constants.ts"
+      ]
+    },
+    {
+      "id": "src/util",
+      "kind": "module",
+      "lang": "typescript",
+      "files": [
+        "src/util/index.ts"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "src",
+      "to": "src/lib",
+      "kind": "imports",
+      "confidence": "exact"
+    },
+    {
+      "from": "src",
+      "to": "src/util",
+      "kind": "imports",
+      "confidence": "exact"
+    },
+    {
+      "from": "src/lib",
+      "to": "src/shared",
+      "kind": "imports",
+      "confidence": "exact"
+    },
+    {
+      "from": "src/util",
+      "to": "src/shared",
+      "kind": "imports",
+      "confidence": "exact"
+    }
+  ],
+  "unresolved": [
+    {
+      "from": "src/app.ts",
+      "spec": "./missing",
+      "reason": "not-found"
+    },
+    {
+      "from": "src/app.ts",
+      "spec": "./plugins/${name}",
+      "reason": "dynamic"
+    },
+    {
+      "from": "src/app.ts",
+      "spec": "@ghost/thing",
+      "reason": "alias-not-found"
+    }
+  ]
+}

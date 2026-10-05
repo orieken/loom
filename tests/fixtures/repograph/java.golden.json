@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "git_sha": "fixture",
+  "generated_at": "2000-01-01T00:00:00Z",
+  "graph_hash": "sha256:df0e53f0b854c00585de5b0634571088ee4006ce6bcb555f4fdd0f07b2b473c7",
+  "nodes": [
+    {
+      "id": "src/main/java/com/acme/app",
+      "kind": "package",
+      "lang": "java",
+      "files": [
+        "src/main/java/com/acme/app/Main.java"
+      ]
+    },
+    {
+      "id": "src/main/java/com/acme/core",
+      "kind": "package",
+      "lang": "java",
+      "files": [
+        "src/main/java/com/acme/core/Engine.java"
+      ]
+    },
+    {
+      "id": "src/main/java/com/acme/core/model",
+      "kind": "package",
+      "lang": "java",
+      "files": [
+        "src/main/java/com/acme/core/model/Order.java"
+      ]
+    },
+    {
+      "id": "src/main/java/com/acme/shared",
+      "kind": "package",
+      "lang": "java",
+      "files": [
+        "src/main/java/com/acme/shared/A.java"
+      ]
+    },
+    {
+      "id": "src/main/java/com/acme/util",
+      "kind": "package",
+      "lang": "java",
+      "files": [
+        "src/main/java/com/acme/util/Strings.java"
+      ]
+    },
+    {
+      "id": "src/test/java/com/acme/shared",
+      "kind": "package",
+      "lang": "java",
+      "files": [
+        "src/test/java/com/acme/shared/B.java"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "src/main/java/com/acme/app",
+      "to": "src/main/java/com/acme/core",
+      "kind": "imports",
+      "confidence": "exact"
+    },
+    {
+      "from": "src/main/java/com/acme/app",
+      "to": "src/main/java/com/acme/core/model",
+      "kind": "imports",
+      "confidence": "exact"
+    },
+    {
+      "from": "src/main/java/com/acme/app",
+      "to": "src/main/java/com/acme/shared",
+      "kind": "imports",
+      "confidence": "approximate"
+    },
+    {
+      "from": "src/main/java/com/acme/app",
+      "to": "src/main/java/com/acme/util",
+      "kind": "imports",
+      "confidence": "exact"
+    },
+    {
+      "from": "src/main/java/com/acme/app",
+      "to": "src/test/java/com/acme/shared",
+      "kind": "imports",
+      "confidence": "approximate"
+    },
+    {
+      "from": "src/main/java/com/acme/core",
+      "to": "src/main/java/com/acme/util",
+      "kind": "imports",
+      "confidence": "exact"
+    }
+  ],
+  "unresolved": [
+    {
+      "from": "src/main/java/com/acme/app/Main.java",
+      "spec": "com.acme.core.Missing",
+      "reason": "not-found"
+    }
+  ]
+}

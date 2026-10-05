@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 
 	"github.com/orieken/loom/internal/orchestrator"
+	"github.com/orieken/loom/internal/repograph"
 	"github.com/orieken/loom/internal/state"
 )
 
@@ -24,6 +25,22 @@ func main() {
 		fmt.Fprintln(os.Stderr, "gen-schemas:", err)
 		os.Exit(1)
 	}
+	if err := generateRepoGraph(repograph.SchemaDir); err != nil {
+		fmt.Fprintln(os.Stderr, "gen-schemas:", err)
+		os.Exit(1)
+	}
+}
+
+// generateRepoGraph writes the graph.json schema (ADR-010).
+func generateRepoGraph(dir string) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("create repograph schema directory: %w", err)
+	}
+	schema, err := repograph.GenerateSchema()
+	if err != nil {
+		return err
+	}
+	return writeGenerated(filepath.Join(dir, repograph.SchemaFile), schema)
 }
 
 // generateTelemetry writes the event schema and its documentation table

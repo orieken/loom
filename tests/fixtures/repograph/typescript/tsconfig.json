@@ -1,0 +1,10 @@
+{
+  // jsonc: comments and trailing commas are legal here
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@lib/*": ["src/lib/*"],
+      "@ghost/*": ["src/ghost/*"],
+    },
+  },
+}
