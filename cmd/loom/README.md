@@ -13,7 +13,7 @@ coding platforms and serves the framework's MCP tools. Install it via
 | `loom health` | Verify installed configs match the canonical `shared/` source, and report the project's agentic maturity level (see below) |
 | `loom tools status` / `loom tools install` | Report / install opt-in context tools |
 | `loom mcp serve` | Serve the framework MCP tools over stdio |
-| `loom index` | Build the repo graph of a git repository into `.loom/graph.json` — import edges per Go / TypeScript / Python / Java, each labelled `exact` or `approximate`, unresolved imports listed rather than guessed (`--root`). Local, offline and deterministic; a rerun on an unchanged repo writes nothing. Respects `.loomignore` (ADR-010) |
+| `loom index` | Build the repo graph of a git repository into `.loom/graph.json` — import edges per Go / TypeScript / Python / Java, each labelled `exact` or `approximate`, unresolved imports listed rather than guessed (`--root`). Also writes one fact sheet per directory to `.loom/facts/` (exports, imports, dependents, entrypoints, tests, an `input_hash`). Local, offline and deterministic; a rerun on an unchanged repo writes nothing. Respects `.loomignore` (ADR-010) |
 | `loom ki scan <file\|dir>...` | Flag Knowledge Item text that addresses a model instead of informing it — instruction overrides, role markers, gate bypasses, invisible characters. Exits 0 clean, 1 flagged, 2 unscannable; `scripts/sync-memory.sh` runs it on every org KI before pulling (roadmap L3.7) |
 | `loom run` | Execute the delivery pipeline for a feature spec (experimental — see below) |
 | `loom uninstall` | Remove installed framework content |

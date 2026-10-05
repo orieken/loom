@@ -1,0 +1,5 @@
+{
+  "name": "fixture",
+  "main": "./src/app.ts",
+  "bin": { "tool": "src/other.ts", "ghost": "src/not-tracked.ts" }
+}

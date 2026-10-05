@@ -2,7 +2,7 @@
   "schema_version": 1,
   "git_sha": "fixture",
   "generated_at": "2000-01-01T00:00:00Z",
-  "graph_hash": "sha256:e88327a5ebfbb06dd9e231a363788d87da1d1c5f155c20d60a6deb3661ab4588",
+  "graph_hash": "sha256:971d0e9f2e1d1a4a8bedac104d9695cd23a3a9a522b4cb4d2382f4700e282771",
   "nodes": [
     {
       "id": "app",
@@ -10,8 +10,10 @@
       "lang": "python",
       "files": [
         "app/__init__.py",
+        "app/__main__.py",
         "app/config.py",
-        "app/main.py"
+        "app/main.py",
+        "app/test_config.py"
       ]
     },
     {

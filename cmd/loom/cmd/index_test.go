@@ -15,8 +15,15 @@ func TestIndexCommandWritesGraphThenReportsUnchanged(t *testing.T) {
 	if !strings.Contains(first, "2 nodes, 1 edges (1 exact, 0 approximate), 0 unresolved: wrote .loom/graph.json") {
 		t.Errorf("unexpected first summary: %q", first)
 	}
-	if second := runIndexIn(t, root); !strings.Contains(second, "unchanged, nothing written") {
-		t.Errorf("unexpected second summary: %q", second)
+	if !strings.Contains(first, "3 fact sheets: 3 written, 0 removed") {
+		t.Errorf("fact sheets not reported: %q", first)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".loom/facts/a.json")); err != nil {
+		t.Errorf("fact sheet not written: %v", err)
+	}
+	second := runIndexIn(t, root)
+	if !strings.Contains(second, "unchanged, nothing written") || !strings.Contains(second, "3 fact sheets: 0 written, 0 removed") {
+		t.Errorf("a rerun must write nothing: %q", second)
 	}
 }
 

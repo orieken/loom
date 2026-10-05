@@ -1,0 +1,132 @@
+[
+  {
+    "path": ".",
+    "files": [
+      "go.mod"
+    ],
+    "exports": [],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [
+      "cmd",
+      "internal"
+    ],
+    "input_hash": "sha256:7c38b7ce755f15ccea673aa0c5e2ecdc869662c0450c9e09d4fcfd63e84604dc"
+  },
+  {
+    "path": "cmd",
+    "files": [],
+    "exports": [],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [
+      "cmd/app"
+    ],
+    "input_hash": "sha256:7888289271daf70b19466b636e5a739889b5d10023e6997c01160d3f1b8f6416"
+  },
+  {
+    "path": "cmd/app",
+    "files": [
+      "main.go"
+    ],
+    "exports": [],
+    "imports": [
+      "internal/service"
+    ],
+    "approximate_imports": [],
+    "dependents": [],
+    "approximate_dependents": [],
+    "entrypoints": [
+      "main.go"
+    ],
+    "tests": [],
+    "children": [],
+    "input_hash": "sha256:fcfd136360d3df6d330944f7cd85db2d825bcd1d5017c073a2b2b5dee46edb6a"
+  },
+  {
+    "path": "internal",
+    "files": [],
+    "exports": [],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [
+      "internal/service",
+      "internal/store",
+      "internal/testsupport"
+    ],
+    "input_hash": "sha256:db26a4134df5b1c53b4170d63e2b70abaf8905bd9820d0256c4b60ae62676c63"
+  },
+  {
+    "path": "internal/service",
+    "files": [
+      "legacy.go",
+      "service.go",
+      "service_test.go"
+    ],
+    "exports": [
+      "Run"
+    ],
+    "imports": [
+      "internal/store"
+    ],
+    "approximate_imports": [],
+    "dependents": [
+      "cmd/app"
+    ],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [
+      "service_test.go"
+    ],
+    "children": [],
+    "input_hash": "sha256:862baa6a7f48fb482b3d70b281e7e39861282c7f239d67154ef0bd299ef33cca"
+  },
+  {
+    "path": "internal/store",
+    "files": [
+      "store.go"
+    ],
+    "exports": [
+      "Get"
+    ],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [
+      "internal/service"
+    ],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [],
+    "input_hash": "sha256:2f48bd1cc7002cc4f6fe2a8a29efcd670c09ce22a76d8a5ea71a3606a0392a21"
+  },
+  {
+    "path": "internal/testsupport",
+    "files": [
+      "testsupport.go"
+    ],
+    "exports": [
+      "Noop"
+    ],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [],
+    "input_hash": "sha256:1d5943302557f635fe63ec4586628dc4b51a7a6d0250398ed810944a2d32603c"
+  }
+]

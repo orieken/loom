@@ -19,6 +19,7 @@ const GraphFile = "graph.json"
 // Result is what Index did.
 type Result struct {
 	Graph   Graph
+	Repo    Repo
 	Written bool
 }
 
@@ -26,7 +27,7 @@ type Result struct {
 // only when the graph's content changed, so a rerun on an unchanged repo
 // writes nothing.
 func Index(root string, lister Lister, extractors []Extractor, now func() time.Time) (Result, error) {
-	repo, err := openRepo(root, lister)
+	repo, err := OpenRepo(root, lister)
 	if err != nil {
 		return Result{}, err
 	}
@@ -39,10 +40,11 @@ func Index(root string, lister Lister, extractors []Extractor, now func() time.T
 	if err != nil {
 		return Result{}, err
 	}
-	return Result{Graph: graph, Written: written}, nil
+	return Result{Graph: graph, Repo: repo, Written: written}, nil
 }
 
-func openRepo(root string, lister Lister) (Repo, error) {
+// OpenRepo lists the repo and drops ignored, sidecar and deleted files.
+func OpenRepo(root string, lister Lister) (Repo, error) {
 	listed, err := lister.TrackedFiles(root)
 	if err != nil {
 		return nil, err

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "git_sha": "fixture",
   "generated_at": "2000-01-01T00:00:00Z",
-  "graph_hash": "sha256:df0e53f0b854c00585de5b0634571088ee4006ce6bcb555f4fdd0f07b2b473c7",
+  "graph_hash": "sha256:bd4042feb394e1ee08e2dd1d7a8061687f36a1e866eba8d56bc6985cfe57a3e5",
   "nodes": [
     {
       "id": "src/main/java/com/acme/app",
@@ -17,7 +17,8 @@
       "kind": "package",
       "lang": "java",
       "files": [
-        "src/main/java/com/acme/core/Engine.java"
+        "src/main/java/com/acme/core/Engine.java",
+        "src/main/java/com/acme/core/EngineTest.java"
       ]
     },
     {

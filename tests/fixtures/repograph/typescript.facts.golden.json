@@ -1,0 +1,131 @@
+[
+  {
+    "path": ".",
+    "files": [
+      "package.json",
+      "tsconfig.json"
+    ],
+    "exports": [],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [],
+    "approximate_dependents": [],
+    "entrypoints": [
+      "src/app.ts",
+      "src/other.ts"
+    ],
+    "tests": [],
+    "children": [
+      "src"
+    ],
+    "input_hash": "sha256:7842ee9de4bb7c2fa9559b52daf61defe4895eb9f8044fafa3527d67a972a3e8"
+  },
+  {
+    "path": "src",
+    "files": [
+      "app.test.ts",
+      "app.ts",
+      "codegen.ts",
+      "helpers.ts",
+      "other.ts",
+      "shim.ts",
+      "types.ts"
+    ],
+    "exports": [
+      "Config",
+      "emitGo",
+      "emitTs",
+      "fileName",
+      "helper",
+      "load",
+      "other"
+    ],
+    "imports": [
+      "src/lib",
+      "src/util"
+    ],
+    "approximate_imports": [],
+    "dependents": [],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [
+      "app.test.ts"
+    ],
+    "children": [
+      "src/lib",
+      "src/shared",
+      "src/util"
+    ],
+    "input_hash": "sha256:2c4d4fdda39ac761485492e60eb9c8cb6beaba5d58817acf478b8d4a226b9466"
+  },
+  {
+    "path": "src/lib",
+    "files": [
+      "format.spec.ts",
+      "format.ts"
+    ],
+    "exports": [
+      "default"
+    ],
+    "imports": [
+      "src/shared"
+    ],
+    "approximate_imports": [],
+    "dependents": [
+      "src"
+    ],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [
+      "format.spec.ts"
+    ],
+    "children": [],
+    "input_hash": "sha256:c9549f8d3e2e5f63f427f7a3878dd351e56918cb2c8bed94b8a7238b3fd9ac63"
+  },
+  {
+    "path": "src/shared",
+    "files": [
+      "constants.ts"
+    ],
+    "exports": [
+      "LIMIT",
+      "MAX",
+      "Registry",
+      "default",
+      "describe",
+      "text"
+    ],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [
+      "src/lib",
+      "src/util"
+    ],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [],
+    "input_hash": "sha256:650e930018335168da9d7e60a9ed547aec23b3cab1244a7fcc005fe3d991dc50"
+  },
+  {
+    "path": "src/util",
+    "files": [
+      "index.ts"
+    ],
+    "exports": [
+      "clamp"
+    ],
+    "imports": [
+      "src/shared"
+    ],
+    "approximate_imports": [],
+    "dependents": [
+      "src"
+    ],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [],
+    "input_hash": "sha256:2685252ec2b4bdfe7fadc2f095489c01288891b5133b68688ef8198015b09eef"
+  }
+]

@@ -1,1 +1,6 @@
+__all__ = ['charge']
+
 def charge(): ...
+
+
+def _private(): ...

@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/orieken/loom/internal/factsheet"
 	"github.com/orieken/loom/internal/orchestrator"
 	"github.com/orieken/loom/internal/repograph"
 	"github.com/orieken/loom/internal/state"
@@ -36,11 +37,18 @@ func generateRepoGraph(dir string) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("create repograph schema directory: %w", err)
 	}
-	schema, err := repograph.GenerateSchema()
+	graph, err := repograph.GenerateSchema()
 	if err != nil {
 		return err
 	}
-	return writeGenerated(filepath.Join(dir, repograph.SchemaFile), schema)
+	if err := writeGenerated(filepath.Join(dir, repograph.SchemaFile), graph); err != nil {
+		return err
+	}
+	sheet, err := factsheet.GenerateSchema()
+	if err != nil {
+		return err
+	}
+	return writeGenerated(filepath.Join(dir, factsheet.SchemaFile), sheet)
 }
 
 // generateTelemetry writes the event schema and its documentation table

@@ -30,3 +30,6 @@ docs/blog-posts/publishing.md
 *.bak
 archive/
 
+
+# Repo context index (loom index): derived and project-specific, kept local for now
+.loom/

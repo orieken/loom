@@ -2,13 +2,14 @@
   "schema_version": 1,
   "git_sha": "fixture",
   "generated_at": "2000-01-01T00:00:00Z",
-  "graph_hash": "sha256:f9c757b01a5c67e44dc4e55f774a8574919278ec1c458b08bf55a952205a4813",
+  "graph_hash": "sha256:aac48c040700e3a99261f783087d272e6801231a50d69ca070bf2ae0df1f8431",
   "nodes": [
     {
       "id": "src",
       "kind": "module",
       "lang": "typescript",
       "files": [
+        "src/app.test.ts",
         "src/app.ts",
         "src/codegen.ts",
         "src/helpers.ts",
@@ -22,6 +23,7 @@
       "kind": "module",
       "lang": "typescript",
       "files": [
+        "src/lib/format.spec.ts",
         "src/lib/format.ts"
       ]
     },

@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/orieken/loom/internal/factsheet/fact-sheet",
+  "properties": {
+    "path": {
+      "type": "string",
+      "description": "Directory path or . for the repo root"
+    },
+    "files": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "description": "Files directly in the directory with names relative to it"
+    },
+    "exports": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "description": "Exported top-level symbols of the non-test source files"
+    },
+    "imports": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "description": "Directories this one imports through exact edges"
+    },
+    "approximate_imports": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "dependents": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "description": "Directories that import this one through exact edges"
+    },
+    "approximate_dependents": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "entrypoints": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "description": "Files that start a program with names relative to the directory"
+    },
+    "tests": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "children": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "description": "Immediate subdirectories"
+    },
+    "input_hash": {
+      "type": "string",
+      "description": "sha256 over the file digests and these facts and the children's hashes"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "path",
+    "files",
+    "exports",
+    "imports",
+    "approximate_imports",
+    "dependents",
+    "approximate_dependents",
+    "entrypoints",
+    "tests",
+    "children",
+    "input_hash"
+  ]
+}

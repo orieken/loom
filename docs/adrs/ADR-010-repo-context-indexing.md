@@ -103,3 +103,18 @@ has been deleted from the working tree is skipped.
   edge was found.
 - Fitness functions: golden-graph tests per fixture repo, a byte-identical determinism test, a no-op rerun test
   (no writes), and an ignore-handling test. They live in `internal/repograph`.
+
+## Amendment 2026-10-05: Phase 2 (fact sheets)
+- **Layout.** `.loom/facts/<dir>.json` mirrors the directory path; the repo root is `_root.json`. A directory
+  holding only subdirectories still gets a sheet, so ancestors can carry a hash. Sheets of deleted directories are
+  removed, and a sheet is rewritten only when its bytes change.
+- **Approximate edges stay out of `imports` and `dependents`.** The prompt's example has one list each. Edge
+  confidence (decision 2) would be lost in it, so `approximate_imports` and `approximate_dependents` sit beside them.
+- **`input_hash`** covers the digests of the directory's direct files, every fact on the sheet and the children's
+  hashes. It includes the sheet's `dependents`, as the prompt specifies, so a change that alters a directory's imports
+  also re-stales the directories that depend on it.
+- **What counts as a fact.** Exports are top-level exported symbols of non-test source: Go identifiers, TypeScript
+  `export` declarations and lists, Python names (or `__all__`), and the Java public type named after its file. Entrypoints
+  are a Go `func main` in `package main`, a Python `__main__.py` or `__main__` guard, a Java `main` method, and the tracked
+  `main` / `bin` files of a `package.json`. A Go cobra command is not detected as an entrypoint; that needs a call graph
+  (out of scope for v1). A file is a test by its language's naming convention.

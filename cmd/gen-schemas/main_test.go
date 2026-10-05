@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/orieken/loom/internal/factsheet"
 	"github.com/orieken/loom/internal/orchestrator"
 	"github.com/orieken/loom/internal/repograph"
 	"github.com/orieken/loom/internal/state"
@@ -36,6 +37,20 @@ func TestCommittedRepoGraphSchemaMatchesTheTypes(t *testing.T) {
 	}
 	if string(committed) != string(generated) {
 		t.Error("shared/schemas/repograph/graph.schema.json drifted from internal/repograph; run go run ./cmd/gen-schemas")
+	}
+}
+
+func TestCommittedFactSheetSchemaMatchesTheType(t *testing.T) {
+	generated, err := factsheet.GenerateSchema()
+	if err != nil {
+		t.Fatal(err)
+	}
+	committed, err := os.ReadFile(filepath.Join("..", "..", factsheet.SchemaDir, factsheet.SchemaFile))
+	if err != nil {
+		t.Fatalf("read committed schema: %v (run go run ./cmd/gen-schemas)", err)
+	}
+	if string(committed) != string(generated) {
+		t.Error("fact-sheet.schema.json drifted from internal/factsheet; run go run ./cmd/gen-schemas")
 	}
 }
 

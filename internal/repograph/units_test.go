@@ -171,3 +171,17 @@ func TestGeneratedSchemaPinsTheSchemaVersion(t *testing.T) {
 		t.Errorf("schema_version must be pinned to the constant:\n%s", raw)
 	}
 }
+
+func TestIsTestFileFollowsEachLanguagesConvention(t *testing.T) {
+	cases := map[string]bool{
+		"a/store_test.go": true, "a/store.go": false,
+		"a/test_x.py": true, "a/x_test.py": true, "a/x.py": false, "a/testing.py": false,
+		"a/XTest.java": true, "a/XTests.java": true, "a/XIT.java": true, "a/X.java": false, "src/test/java/B.java": true,
+		"a/x.test.ts": true, "a/x.spec.tsx": true, "a/__tests__/x.ts": true, "a/x.ts": false, "a/x.md": false,
+	}
+	for file, want := range cases {
+		if got := IsTestFile(file); got != want {
+			t.Errorf("IsTestFile(%q) = %v, want %v", file, got, want)
+		}
+	}
+}

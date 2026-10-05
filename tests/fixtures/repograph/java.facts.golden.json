@@ -1,0 +1,285 @@
+[
+  {
+    "path": ".",
+    "files": [],
+    "exports": [],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [
+      "src"
+    ],
+    "input_hash": "sha256:17238343a51eda135486e0963486cfecb6c1b410ea961c9e2e703e79e68d02fb"
+  },
+  {
+    "path": "src",
+    "files": [],
+    "exports": [],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [
+      "src/main",
+      "src/test"
+    ],
+    "input_hash": "sha256:408b52ed1db8806a3f5dbb705746a4575f3223852aae04c63fefd045dd1c7f57"
+  },
+  {
+    "path": "src/main",
+    "files": [],
+    "exports": [],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [
+      "src/main/java"
+    ],
+    "input_hash": "sha256:de3b26a72a26ba808a86e6e713b75f0b4be703fb1589c568dcf648e727862718"
+  },
+  {
+    "path": "src/main/java",
+    "files": [],
+    "exports": [],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [
+      "src/main/java/com"
+    ],
+    "input_hash": "sha256:f39bd37430df473d6c527af7468a6bbdf3f915eda1f191ebddab665a91cb0707"
+  },
+  {
+    "path": "src/main/java/com",
+    "files": [],
+    "exports": [],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [
+      "src/main/java/com/acme"
+    ],
+    "input_hash": "sha256:2cbf484579b4ec326336ca00b4cd86beee24fa51c7b867b9ceeaa36838a09d9f"
+  },
+  {
+    "path": "src/main/java/com/acme",
+    "files": [],
+    "exports": [],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [
+      "src/main/java/com/acme/app",
+      "src/main/java/com/acme/core",
+      "src/main/java/com/acme/shared",
+      "src/main/java/com/acme/util"
+    ],
+    "input_hash": "sha256:2bcd5669fd19d8c598b040a24fd1161b8f72f958aef73a817a4cce8ebcb3d620"
+  },
+  {
+    "path": "src/main/java/com/acme/app",
+    "files": [
+      "Main.java"
+    ],
+    "exports": [
+      "Main"
+    ],
+    "imports": [
+      "src/main/java/com/acme/core",
+      "src/main/java/com/acme/core/model",
+      "src/main/java/com/acme/util"
+    ],
+    "approximate_imports": [
+      "src/main/java/com/acme/shared",
+      "src/test/java/com/acme/shared"
+    ],
+    "dependents": [],
+    "approximate_dependents": [],
+    "entrypoints": [
+      "Main.java"
+    ],
+    "tests": [],
+    "children": [],
+    "input_hash": "sha256:6c0280e7991504f82eba977a63b39a888d09ac679f6ad1b1c384c83fe9d59df8"
+  },
+  {
+    "path": "src/main/java/com/acme/core",
+    "files": [
+      "Engine.java",
+      "EngineTest.java"
+    ],
+    "exports": [
+      "Engine"
+    ],
+    "imports": [
+      "src/main/java/com/acme/util"
+    ],
+    "approximate_imports": [],
+    "dependents": [
+      "src/main/java/com/acme/app"
+    ],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [
+      "EngineTest.java"
+    ],
+    "children": [
+      "src/main/java/com/acme/core/model"
+    ],
+    "input_hash": "sha256:b7f8f738f71ccdad3c72cabe4f941217d397a3fceeaf71c7e6c14e12e6cb4780"
+  },
+  {
+    "path": "src/main/java/com/acme/core/model",
+    "files": [
+      "Order.java"
+    ],
+    "exports": [
+      "Order"
+    ],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [
+      "src/main/java/com/acme/app"
+    ],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [],
+    "input_hash": "sha256:aab4644aa8eb80475b1d2959e794a557425e60dc903bcf89f8af99180e782c70"
+  },
+  {
+    "path": "src/main/java/com/acme/shared",
+    "files": [
+      "A.java"
+    ],
+    "exports": [
+      "A"
+    ],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [],
+    "approximate_dependents": [
+      "src/main/java/com/acme/app"
+    ],
+    "entrypoints": [],
+    "tests": [],
+    "children": [],
+    "input_hash": "sha256:290e41722fbe0457bc1a6a8ad6085069dd19cb0da46db9d20bdea60c49d963e5"
+  },
+  {
+    "path": "src/main/java/com/acme/util",
+    "files": [
+      "Strings.java"
+    ],
+    "exports": [
+      "Strings"
+    ],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [
+      "src/main/java/com/acme/app",
+      "src/main/java/com/acme/core"
+    ],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [],
+    "input_hash": "sha256:7a28b9a6ae4d27cec4f2b25da4b822f13053599a1d5c8652e380bc9a38f20cd2"
+  },
+  {
+    "path": "src/test",
+    "files": [],
+    "exports": [],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [
+      "src/test/java"
+    ],
+    "input_hash": "sha256:9bda53984d71c390dc56e29590f846447407e61ccf193ad1293cc7fd9c5b9b46"
+  },
+  {
+    "path": "src/test/java",
+    "files": [],
+    "exports": [],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [
+      "src/test/java/com"
+    ],
+    "input_hash": "sha256:a9e4e79bbaa57ba693c83b1445a718f95c7b4135ab3a13a333ed8ee3a1cdc325"
+  },
+  {
+    "path": "src/test/java/com",
+    "files": [],
+    "exports": [],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [
+      "src/test/java/com/acme"
+    ],
+    "input_hash": "sha256:653a894abe2e49428343bad7ad9a1842069bd1735a2a5bfc5d799b01ab983cfe"
+  },
+  {
+    "path": "src/test/java/com/acme",
+    "files": [],
+    "exports": [],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [
+      "src/test/java/com/acme/shared"
+    ],
+    "input_hash": "sha256:fd92148b3ae4b3e0a0e41590d80c2f41cdd8997aab0a532644b83e24d7e78900"
+  },
+  {
+    "path": "src/test/java/com/acme/shared",
+    "files": [
+      "B.java"
+    ],
+    "exports": [],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [],
+    "approximate_dependents": [
+      "src/main/java/com/acme/app"
+    ],
+    "entrypoints": [],
+    "tests": [
+      "B.java"
+    ],
+    "children": [],
+    "input_hash": "sha256:ee80b47fe4c1e68c58cb7e78fa174e6ba103ba9ad2b90debb22ce1098a512b3a"
+  }
+]

@@ -1,0 +1,106 @@
+[
+  {
+    "path": ".",
+    "files": [
+      ".loomignore",
+      "go.mod"
+    ],
+    "exports": [],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [
+      "service",
+      "tools",
+      "web"
+    ],
+    "input_hash": "sha256:89cef54bda32fb8d7e670ad69e1ff5c7752de024cfcc6ff61b70a772918a34c9"
+  },
+  {
+    "path": "service",
+    "files": [
+      "main.go"
+    ],
+    "exports": [],
+    "imports": [
+      "tools"
+    ],
+    "approximate_imports": [],
+    "dependents": [],
+    "approximate_dependents": [],
+    "entrypoints": [
+      "main.go"
+    ],
+    "tests": [],
+    "children": [],
+    "input_hash": "sha256:6beacd3b3441b4416b9878594ce422cfb5ca3848a2a7c41e2259427d8bffccc1"
+  },
+  {
+    "path": "tools",
+    "files": [
+      "gen.go",
+      "gen.py"
+    ],
+    "exports": [
+      "Run"
+    ],
+    "imports": [
+      "web"
+    ],
+    "approximate_imports": [],
+    "dependents": [
+      "service"
+    ],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [],
+    "input_hash": "sha256:416914ae5c686535252c8dd525a57fd194fe9b9f09f8c0da9a46dd1a58b010e0"
+  },
+  {
+    "path": "web",
+    "files": [
+      "client.py",
+      "ui.ts"
+    ],
+    "exports": [
+      "VALUE"
+    ],
+    "imports": [
+      "web/api"
+    ],
+    "approximate_imports": [],
+    "dependents": [
+      "tools"
+    ],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [
+      "web/api"
+    ],
+    "input_hash": "sha256:14585558db50cddce9be6670694c97f2c1e5cba1c1d1c6539246e94790e3e1ed"
+  },
+  {
+    "path": "web/api",
+    "files": [
+      "client.ts"
+    ],
+    "exports": [
+      "api"
+    ],
+    "imports": [],
+    "approximate_imports": [],
+    "dependents": [
+      "web"
+    ],
+    "approximate_dependents": [],
+    "entrypoints": [],
+    "tests": [],
+    "children": [],
+    "input_hash": "sha256:30a8212f5cf871add0c5ee94cf9a86b3f15d865f46b1a35145b924cb6ddd5a5d"
+  }
+]
