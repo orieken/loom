@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/orieken/loom/internal/contextindex"
 	"github.com/orieken/loom/internal/factsheet"
 	"github.com/orieken/loom/internal/orchestrator"
 	"github.com/orieken/loom/internal/repograph"
@@ -48,7 +49,14 @@ func generateRepoGraph(dir string) error {
 	if err != nil {
 		return err
 	}
-	return writeGenerated(filepath.Join(dir, factsheet.SchemaFile), sheet)
+	if err := writeGenerated(filepath.Join(dir, factsheet.SchemaFile), sheet); err != nil {
+		return err
+	}
+	index, err := contextindex.GenerateSchema()
+	if err != nil {
+		return err
+	}
+	return writeGenerated(filepath.Join(dir, contextindex.SchemaFile), index)
 }
 
 // generateTelemetry writes the event schema and its documentation table

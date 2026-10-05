@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/orieken/loom/internal/contextindex"
 	"github.com/orieken/loom/internal/factsheet"
 	"github.com/orieken/loom/internal/orchestrator"
 	"github.com/orieken/loom/internal/repograph"
@@ -37,6 +38,20 @@ func TestCommittedRepoGraphSchemaMatchesTheTypes(t *testing.T) {
 	}
 	if string(committed) != string(generated) {
 		t.Error("shared/schemas/repograph/graph.schema.json drifted from internal/repograph; run go run ./cmd/gen-schemas")
+	}
+}
+
+func TestCommittedContextIndexSchemaMatchesTheType(t *testing.T) {
+	generated, err := contextindex.GenerateSchema()
+	if err != nil {
+		t.Fatal(err)
+	}
+	committed, err := os.ReadFile(filepath.Join("..", "..", contextindex.SchemaDir, contextindex.SchemaFile))
+	if err != nil {
+		t.Fatalf("read committed schema: %v (run go run ./cmd/gen-schemas)", err)
+	}
+	if string(committed) != string(generated) {
+		t.Error("index.schema.json drifted from internal/contextindex; run go run ./cmd/gen-schemas")
 	}
 }
 

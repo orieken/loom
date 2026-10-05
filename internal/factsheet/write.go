@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/orieken/loom/internal/repograph"
 )
 
 // rootFile is the file name of the repo root's sheet.
@@ -58,14 +60,7 @@ func writeSheet(target string, sheet FactSheet) (bool, error) {
 	if existing, readErr := os.ReadFile(target); readErr == nil && bytes.Equal(existing, raw) {
 		return false, nil
 	}
-	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-		return false, fmt.Errorf("create %s: %w", filepath.Dir(target), err)
-	}
-	temp := target + ".tmp"
-	if err := os.WriteFile(temp, raw, 0o644); err != nil {
-		return false, fmt.Errorf("write %s: %w", temp, err)
-	}
-	return true, os.Rename(temp, target)
+	return true, repograph.WriteFileAtomically(target, raw)
 }
 
 // prune deletes sheet files outside keep, then any directory left empty.

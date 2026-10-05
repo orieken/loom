@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/orieken/loom/internal/contextindex/index",
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Always the SchemaVersion this build writes"
+    },
+    "entries": {
+      "additionalProperties": {
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "description": "Empty until documented"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "layer": {
+            "type": "string",
+            "description": "Empty until the documenter assigns one"
+          },
+          "input_hash": {
+            "type": "string",
+            "description": "Fact-sheet hash this entry was documented against or empty"
+          },
+          "doc_hash": {
+            "type": "string",
+            "description": "Hash of the generated documentation or empty"
+          },
+          "generated_at": {
+            "type": "string",
+            "description": "When it was documented or empty"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "fresh",
+              "stale",
+              "undocumented"
+            ]
+          },
+          "open_questions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "purpose",
+          "tags",
+          "layer",
+          "input_hash",
+          "doc_hash",
+          "generated_at",
+          "status",
+          "open_questions"
+        ]
+      },
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schema_version",
+    "entries"
+  ]
+}

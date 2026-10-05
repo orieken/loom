@@ -118,3 +118,18 @@ has been deleted from the working tree is skipped.
   are a Go `func main` in `package main`, a Python `__main__.py` or `__main__` guard, a Java `main` method, and the tracked
   `main` / `bin` files of a `package.json`. A Go cobra command is not detected as an entrypoint; that needs a call graph
   (out of scope for v1). A file is a test by its language's naming convention.
+
+## Amendment 2026-10-05: Phase 3 (context index and freshness)
+- **Shape.** `.loom/index.json` is `{"schema_version": 1, "entries": {<path>: {...}}}`. The prompt shows a bare map;
+  the wrapper gives the file a version like every other artifact. Entries are keyed by directory path.
+- **`input_hash` is the hash the entry was documented against**, and is empty until the documenter runs (Phase 4).
+  Freshness compares it with the working tree's current fact-sheet hash. The stored `status` is a snapshot refreshed
+  by `loom index`; `loom health` recomputes from the tree and never trusts it.
+- **Indexing never overwrites recorded data.** A rerun keeps purpose, tags, layer, hashes and open questions and
+  recomputes only `status`. New directories start `undocumented`; entries for deleted directories are dropped.
+- **No timestamps yet.** `generated_at` is per entry and empty until documented, so an unchanged tree rewrites zero
+  bytes. There is no top-level timestamp, for the same reason.
+- **`loom health`.** Silent when a project has no index (opt-in). Stale, unindexed and orphaned paths each warn; a
+  warning, never a failure, since a stale index is out of date and not broken. Undocumented paths warn only once some
+  entry has been documented — otherwise every repo that ran `loom index` and never adopted generated docs would carry
+  a permanent warning. It runs even when there is no install manifest, since a project may only have run `loom index`.

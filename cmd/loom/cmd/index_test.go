@@ -12,18 +12,25 @@ import (
 func TestIndexCommandWritesGraphThenReportsUnchanged(t *testing.T) {
 	root := committedGoRepo(t)
 	first := runIndexIn(t, root)
-	if !strings.Contains(first, "2 nodes, 1 edges (1 exact, 0 approximate), 0 unresolved: wrote .loom/graph.json") {
-		t.Errorf("unexpected first summary: %q", first)
-	}
-	if !strings.Contains(first, "3 fact sheets: 3 written, 0 removed") {
-		t.Errorf("fact sheets not reported: %q", first)
-	}
+	assertContainsAll(t, first,
+		"2 nodes, 1 edges (1 exact, 0 approximate), 0 unresolved: wrote .loom/graph.json",
+		"3 fact sheets: 3 written, 0 removed",
+		"3 index entries (0 fresh, 0 stale, 3 undocumented): wrote .loom/index.json")
 	if _, err := os.Stat(filepath.Join(root, ".loom/facts/a.json")); err != nil {
 		t.Errorf("fact sheet not written: %v", err)
 	}
-	second := runIndexIn(t, root)
-	if !strings.Contains(second, "unchanged, nothing written") || !strings.Contains(second, "3 fact sheets: 0 written, 0 removed") {
-		t.Errorf("a rerun must write nothing: %q", second)
+	assertContainsAll(t, runIndexIn(t, root),
+		"unchanged, nothing written",
+		"3 fact sheets: 0 written, 0 removed",
+		"(0 fresh, 0 stale, 3 undocumented): unchanged")
+}
+
+func assertContainsAll(t *testing.T, output string, wants ...string) {
+	t.Helper()
+	for _, want := range wants {
+		if !strings.Contains(output, want) {
+			t.Errorf("output %q lacks %q", output, want)
+		}
 	}
 }
 

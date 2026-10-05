@@ -37,6 +37,9 @@ func executeHealth(request healthRequest, content platform.Content, writer io.Wr
 	check := healthCheck{request: request, content: content, output: healthOutput{writer: writer}}
 	check.output.heading(request.display)
 	if !check.verifyManifest() {
+		// The context index is independent of an install: a project may only
+		// have run `loom index`.
+		check.verifyContextIndex()
 		return check.finish()
 	}
 	check.verifyVersion()
@@ -44,5 +47,6 @@ func executeHealth(request healthRequest, content platform.Content, writer io.Wr
 	check.verifySymlinks()
 	check.verifyAgentCounts()
 	check.verifyMaturity()
+	check.verifyContextIndex()
 	return check.finish()
 }

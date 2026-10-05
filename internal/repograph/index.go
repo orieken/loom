@@ -85,7 +85,7 @@ func writeGraph(root string, graph Graph) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("encode graph: %w", err)
 	}
-	return true, writeAtomically(path, append(raw, '\n'))
+	return true, WriteFileAtomically(path, append(raw, '\n'))
 }
 
 func readGraph(path string) (Graph, bool) {
@@ -100,9 +100,9 @@ func readGraph(path string) (Graph, bool) {
 	return graph, true
 }
 
-// writeAtomically writes beside the target and renames, so a reader never
-// sees a half-written graph.
-func writeAtomically(path string, content []byte) error {
+// WriteFileAtomically writes beside the target and renames, so a reader never
+// sees a half-written file. Every .loom/ artifact is written this way.
+func WriteFileAtomically(path string, content []byte) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("create %s: %w", filepath.Dir(path), err)
 	}

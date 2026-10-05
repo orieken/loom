@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/orieken/loom/internal/contextindex"
 	"github.com/orieken/loom/internal/factsheet"
 	"github.com/orieken/loom/internal/repograph"
 	"github.com/spf13/cobra"
@@ -28,7 +29,12 @@ matched by .loomignore. A rerun on an unchanged repo writes nothing.
 
 It also writes one fact sheet per directory to .loom/facts/: files, exported
 symbols, imports, dependents, entrypoints, tests, children and an input hash
-that changes when the directory or anything beneath it changes.`,
+that changes when the directory or anything beneath it changes.
+
+Finally it keeps .loom/index.json: one entry per directory with its status
+(fresh, stale or undocumented). An entry keeps whatever was recorded about it;
+indexing recomputes only the status. 'loom health' reports entries that have
+gone stale.`,
 	Args: cobra.NoArgs,
 	RunE: runIndex,
 }
@@ -48,9 +54,27 @@ func runIndex(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("write fact sheets: %w", err)
 	}
+	index, indexWritten, err := contextindex.Refresh(indexRoot, sheets)
+	if err != nil {
+		return fmt.Errorf("write context index: %w", err)
+	}
 	fmt.Fprintln(cmd.OutOrStdout(), summarizeIndex(result))
 	fmt.Fprintf(cmd.OutOrStdout(), "%d fact sheets: %d written, %d removed\n", len(sheets), outcome.Written, outcome.Removed)
+	fmt.Fprintln(cmd.OutOrStdout(), summarizeContextIndex(index, indexWritten))
 	return nil
+}
+
+func summarizeContextIndex(index contextindex.Index, written bool) string {
+	counts := map[contextindex.Status]int{}
+	for _, entry := range index.Entries {
+		counts[entry.Status]++
+	}
+	state := "unchanged"
+	if written {
+		state = "wrote " + repograph.OutputDir + "/" + contextindex.File
+	}
+	return fmt.Sprintf("%d index entries (%d fresh, %d stale, %d undocumented): %s",
+		len(index.Entries), counts[contextindex.StatusFresh], counts[contextindex.StatusStale], counts[contextindex.StatusUndocumented], state)
 }
 
 func summarizeIndex(result repograph.Result) string {
