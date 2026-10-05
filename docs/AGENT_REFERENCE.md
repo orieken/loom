@@ -2,7 +2,7 @@
 
 Every agent in this framework produces an output that *something* checks — another agent's review, a
 structural contract, a human approval gate, an aggregate metric measured after the fact, or (stated plainly
-where true) nothing yet. This doc makes that explicit for all 39 agents, one at a time, instead of leaving
+where true) nothing yet. This doc makes that explicit for all 40 agents, one at a time, instead of leaving
 it scattered implicitly across `deliver-feature/SKILL.md`, `shared/contracts/`, and each agent's own file.
 
 This is documentation of what already exists in v2 today — it does not introduce new agents or roles. Where
@@ -13,7 +13,7 @@ actually has running today.)
 
 ## How to read "Counterbalance"
 
-Five different *kinds* of check show up across these 39 agents, and they're not interchangeable:
+Five different *kinds* of check show up across these 40 agents, and they're not interchangeable:
 
 | Kind | What it catches | Example |
 |---|---|---|
@@ -489,9 +489,26 @@ rather than redundant.
 
 ---
 
+### 40. `repo-documenter`
+**Role**: Writes what one directory is *for* — purpose, responsibilities, tags, layer, invariants and open
+questions — as typed JSON (`internal/state/repodoc_state.go`) on top of a deterministic fact sheet and its
+child directories' summaries. It receives no source by default; it may read a line range only when a fact is
+ambiguous, and must record the read. Driven by `loom document` (ADR-010), which chooses the directories whose
+input hash changed and sends them children-first. Its contract is `repo-doc-contract.md`.
+**Counterbalance**: **Structural contract, in Go** — `loom document` rejects any payload that fails the schema,
+that documents a different directory than the one sent, or whose `inputHash` is not the sheet's, and an unknown
+purpose is valid only with an open question. **Human approval gate** is planned before anything is written into a
+target repository (ADR-010, Phase 6); today results are only candidates under `.loom/runs/`.
+**Gap**: Nothing yet checks the *content* against the fact sheet — that a named symbol, dependency or tag
+actually exists. That verifier (deterministic Go checks, then a read-only auditor) is Phase 5 of ADR-010, so until it
+lands a candidate's claims are schema-valid but unverified. No golden-file baseline is committed either: the
+`tests/agents/repo-documenter/` fixture has its input, patterns and rubric, but `actual-output.md` needs a live run.
+
+---
+
 ## What this survey actually shows
 
-Reading all 39 agents together, three patterns stand out:
+Reading all 40 agents together, three patterns stand out:
 
 1. **The 14 pipeline agents are well-checked** — the fourteen the delivery plan invokes, per "What counts as
    a pipeline agent" above, which includes `visual-qa-engineer` and excludes the pre-pipeline `spec-writer`

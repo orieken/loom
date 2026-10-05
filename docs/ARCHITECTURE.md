@@ -14,7 +14,7 @@ Every agent, skill, and rule is authored exactly once, in `shared/`:
 
 ```
 shared/
-├── agents/          39 agents — .md, YAML frontmatter (name, description, tools, model, version)
+├── agents/          40 agents — .md, YAML frontmatter (name, description, tools, model, version)
 ├── skills/          69 skills — .md, YAML frontmatter (name, description, triggers)
 ├── rules/           architecture-guardrails.md, design-principles.md, approval-gates.md
 ├── contracts/       required-section contracts for pipeline agent handoffs (Epic 5)

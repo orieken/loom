@@ -1,0 +1,11 @@
+# Fuzzy patterns expected in repo-documenter's output (extended regex, case-insensitive).
+# The output is typed JSON, so these check shape, not prose.
+
+"schemaVersion"
+"path": *"internal/ledger"
+"inputHash": *"sha256:7f3a9c0d51e2b6a48f1d09c3e7b2a5d61c8f40e93b7a2d5c6e1f0a8b4d3c9e72"
+"layer": *"(domain|application|adapter|framework|shared|test|docs|config|tooling|unknown)"
+"evidence"
+"fields"
+exports:(Digest|Verify|Record|Reconcile|Ledger)
+"tags"

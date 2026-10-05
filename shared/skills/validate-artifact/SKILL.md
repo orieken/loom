@@ -28,6 +28,7 @@ field-presence checks that `scripts/health-check.sh` already runs across the who
 |---|---|---|
 | context-engineer | `.claude/feature-workspace/<feature-name>/context-manifest.md` | `shared/contracts/context-manifest-contract.md` |
 | analyst | `.claude/feature-workspace/<feature-name>/analysis.md` | `shared/contracts/analysis-contract.md` |
+| repo-documenter | `.loom/runs/<run>/docs/<dir>.json` | `shared/contracts/repo-doc-contract.md` |
 | architect | `.claude/feature-workspace/<feature-name>/architecture-notes.md` | `shared/contracts/architecture-contract.md` |
 | performance-engineer | `.claude/feature-workspace/<feature-name>/performance-report.md` | `shared/contracts/performance-contract.md` |
 | data-engineer | `.claude/feature-workspace/<feature-name>/data-engineering-notes.md` | `shared/contracts/data-engineering-contract.md` |

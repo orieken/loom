@@ -16,6 +16,12 @@ Semantic-ish, not strict SemVer:
 When you bump an agent's `version:` frontmatter field, add a row under a new dated heading here in the same
 commit — the pre-commit hook checks for exactly this.
 
+## 2026-10-05 — Repo context indexing (ADR-010)
+
+| Agent | Version | Change |
+|---|---|---|
+| repo-documenter | new -> 1.0.0 | New producer agent. Documents one directory from its fact sheet and child summaries as typed JSON (`repo-doc` state kind); read-only (`Read` only), no source by default, every claim cited, "unknown" is a valid answer. Contract: `shared/contracts/repo-doc-contract.md` |
+
 ## 2026-09-24 — KI provenance and injection flags (roadmap L3.7)
 
 | Agent | Version | Change |

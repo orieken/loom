@@ -35,8 +35,11 @@ func newClaudeProvider() (orchestrator.Provider, error) {
 // findAgentsDir locates the agent definitions in the current project:
 // shared/agents/ in a framework checkout, .claude/agents/ in an installed
 // project (a symlink to the same content).
-func findAgentsDir() (string, error) {
-	for _, candidate := range []string{filepath.Join("shared", "agents"), filepath.Join(".claude", "agents")} {
+func findAgentsDir() (string, error) { return findAgentsDirIn(".") }
+
+// findAgentsDirIn is findAgentsDir for a project root other than the cwd.
+func findAgentsDirIn(root string) (string, error) {
+	for _, candidate := range []string{filepath.Join(root, "shared", "agents"), filepath.Join(root, ".claude", "agents")} {
 		if info, err := os.Stat(candidate); err == nil && info.IsDir() {
 			return filepath.Abs(candidate)
 		}

@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/orieken/loom/internal/state/repo-doc-state",
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 2,
+      "description": "Always 2 — the schema version this build accepts."
+    },
+    "path": {
+      "type": "string",
+      "description": "The directory documented: copy it from the fact sheet"
+    },
+    "inputHash": {
+      "type": "string",
+      "description": "The fact sheet's input_hash: copy it exactly"
+    },
+    "purpose": {
+      "type": "string",
+      "description": "One sentence on what the directory is for. Empty only when the facts do not establish it; then openQuestions must say why"
+    },
+    "responsibilities": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "keyEntrypoints": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "description": "Entrypoints and exported symbols a newcomer should read first. Only names the fact sheet lists"
+    },
+    "tags": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "description": "Tags from the allowed vocabulary only"
+    },
+    "layer": {
+      "type": "string",
+      "enum": [
+        "domain",
+        "application",
+        "adapter",
+        "framework",
+        "shared",
+        "test",
+        "docs",
+        "config",
+        "tooling",
+        "unknown"
+      ]
+    },
+    "invariants": {
+      "items": {
+        "properties": {
+          "statement": {
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "description": "Fact-sheet fields or file line ranges that establish the invariant"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "statement",
+          "evidence"
+        ]
+      },
+      "type": "array"
+    },
+    "openQuestions": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "description": "What the facts could not settle"
+    },
+    "evidence": {
+      "items": {
+        "properties": {
+          "claim": {
+            "type": "string",
+            "description": "The purpose or responsibility or invariant text exactly as written elsewhere in this document"
+          },
+          "fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "description": "Fact-sheet fields the claim rests on: exports or exports:Name or imports:dir and so on"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "claim",
+          "fields"
+        ]
+      },
+      "type": "array"
+    },
+    "filesRead": {
+      "items": {
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "startLine": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "endLine": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reason": {
+            "type": "string",
+            "description": "Which fact-sheet field was ambiguous and why"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "startLine",
+          "endLine",
+          "reason"
+        ]
+      },
+      "type": "array"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "path",
+    "inputHash",
+    "purpose",
+    "responsibilities",
+    "keyEntrypoints",
+    "tags",
+    "layer",
+    "invariants",
+    "openQuestions",
+    "evidence",
+    "filesRead"
+  ]
+}

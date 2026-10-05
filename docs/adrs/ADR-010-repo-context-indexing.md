@@ -133,3 +133,27 @@ has been deleted from the working tree is skipped.
   warning, never a failure, since a stale index is out of date and not broken. Undocumented paths warn only once some
   entry has been documented — otherwise every repo that ran `loom index` and never adopted generated docs would carry
   a permanent warning. It runs even when there is no install manifest, since a project may only have run `loom index`.
+
+## Amendment 2026-10-05: Phase 4 (the repo-documenter)
+- **Typed output, registered like any other stage.** The documenter returns a `repo-doc` state kind
+  (`internal/state/repodoc_state.go`), so the existing provider inlines its generated schema and validates the reply
+  the way it does for the delivery stages. `shared/contracts/repo-doc-contract.md` describes it; there are no markdown
+  headings to check. The closed `layer` set is an enum derived from the same constants `Validate` checks.
+- **The executor drives, in Go.** `loom document` (`internal/repodoc`) plans the work: directories whose recorded
+  input hash differs from the current one, deepest first, so a parent is documented after its children and `--limit`
+  keeps leaves rather than a parent without them. One invocation per directory; it receives the fact sheet, its
+  children's summaries and the allowed tags, never source. A child that fails is recorded and its parent is told it
+  is undocumented rather than blocked.
+- **The executor, not the agent, checks the echo.** A reply that documents another directory, or a stale hash, is
+  rejected. Structural validation lives in `Validate`; whether a cited symbol or tag *exists* needs the sheet and is
+  Phase 5.
+- **Results are candidates.** They are written under `.loom/runs/<run>/` with a run record (outcomes, reported usage,
+  source reads) and **never to the index**. Until verification (Phase 5) and the approval gate (Phase 6) exist,
+  nothing becomes `fresh`, so rerunning `loom document` re-sends every non-fresh directory. That is deliberate: the
+  alternative is an index entry that says "documented" about unverified text. Reruns are bounded by `--limit` and
+  `--path`.
+- **Tag vocabulary.** `shared/vocabulary/context-tags.yaml` (embedded in the binary), extended but never reduced by
+  `.loom/tags.yaml`. The prompt did not specify its contents; the initial 30 tags are a proposal.
+- **No golden baseline yet.** `tests/agents/repo-documenter/` has the input (with planted traps), patterns and a rubric
+  that penalizes every unsupported claim. `actual-output.md` needs a live run and is not committed, so the agent suite
+  reports a SKIP rather than a pass for it.

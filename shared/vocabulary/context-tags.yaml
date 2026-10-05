@@ -1,0 +1,68 @@
+# Controlled tag vocabulary for the context index (ADR-010).
+#
+# The repo-documenter may assign only these tags, so `find_files` and CODEMAP
+# do not fragment across synonyms ("auth", "authn", "login"). A project adds its
+# own in `.loom/tags.yaml`, which has the same shape and is merged over this
+# list. A tag named here is never removed by a project file.
+version: 1
+tags:
+  - name: api
+    description: Defines or serves a network API surface (HTTP, RPC, GraphQL)
+  - name: auth
+    description: Authentication, authorization, sessions or credentials
+  - name: build
+    description: Build, packaging, release or dependency management
+  - name: caching
+    description: Caches or memoises results
+  - name: cli
+    description: Command-line entrypoints, flags and output
+  - name: concurrency
+    description: Goroutines, threads, queues, locks or scheduling
+  - name: config
+    description: Reads, validates or defines configuration
+  - name: persistence
+    description: Stores or retrieves data (database, filesystem, repository)
+  - name: docs
+    description: Documentation, prose or generated reference material
+  - name: domain-model
+    description: Core business entities, value objects and rules
+  - name: errors
+    description: Error types, handling or reporting
+  - name: fixtures
+    description: Test fixtures, factories or sample data
+  - name: integrity
+    description: Hashing, checksums, verification or tamper detection
+  - name: io
+    description: Reading and writing files, streams or processes
+  - name: logging
+    description: Structured logging
+  - name: messaging
+    description: Events, queues, pub/sub or notifications
+  - name: migrations
+    description: Schema or data migrations
+  - name: networking
+    description: Network clients, transport or timeouts
+  - name: orchestration
+    description: Coordinates multi-step workflows or pipelines
+  - name: parsing
+    description: Parses or scans source text or documents
+  - name: pipeline
+    description: Staged processing of work from input to output
+  - name: rendering
+    description: Turns data into a human-readable view
+  - name: schema
+    description: Defines or validates data shapes and contracts
+  - name: security
+    description: Hardening, scanning or threat handling
+  - name: state
+    description: Holds, records or transitions durable state
+  - name: telemetry
+    description: Traces, metrics or other observability output
+  - name: testing
+    description: Test code, harnesses or test tooling
+  - name: tooling
+    description: Developer or maintenance tooling and scripts
+  - name: ui
+    description: User-interface components and views
+  - name: validation
+    description: Checks inputs or invariants
