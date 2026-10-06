@@ -59,12 +59,16 @@ const (
 // what it cost. Only verified results are candidates for the index; nothing
 // here is in it yet.
 type RunRecord struct {
-	RunID       string              `json:"runId"`
-	StartedAt   string              `json:"startedAt"`
-	Agent       string              `json:"agent"`
-	Interrupted bool                `json:"interrupted,omitempty"`
-	Outcomes    []Outcome           `json:"outcomes"`
-	TotalUsage  *orchestrator.Usage `json:"totalUsage,omitempty"`
+	RunID       string `json:"runId"`
+	StartedAt   string `json:"startedAt"`
+	Agent       string `json:"agent"`
+	Interrupted bool   `json:"interrupted,omitempty"`
+	// StoppedBecause says why a run ended before its last directory when the
+	// cause was the provider, not a cancellation. The directories it never
+	// reached are not in Outcomes: they are undocumented, not failed.
+	StoppedBecause string              `json:"stoppedBecause,omitempty"`
+	Outcomes       []Outcome           `json:"outcomes"`
+	TotalUsage     *orchestrator.Usage `json:"totalUsage,omitempty"`
 }
 
 // Count returns how many directories ended in a status.

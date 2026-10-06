@@ -73,7 +73,9 @@ func (r Runner) rounds() int {
 // and records a run. A directory that fails or stays unverified is recorded
 // and skipped: its parent is told the child is undocumented rather than being
 // blocked or being handed unverified text. Run stops early, and says so in the
-// record, when ctx is cancelled.
+// record, when ctx is cancelled. It also stops when the provider is unavailable
+// (a usage limit): every remaining call would fail the same way, so the
+// directory that hit it and those after it stay undocumented for a later run.
 func (r Runner) Run(ctx context.Context, tasks []Task) (RunRecord, error) {
 	started := r.Now().UTC()
 	runID := r.RunID
@@ -91,12 +93,16 @@ func (r Runner) Run(ctx context.Context, tasks []Task) (RunRecord, error) {
 			record.Interrupted = true
 			break
 		}
-		outcome, verified := r.document(ctx, task, known, runDir, index+1)
+		outcome, verified, halt := r.document(ctx, task, known, runDir, index+1)
+		tally.add(outcome.Usage)
+		if halt != nil {
+			record.StoppedBecause = halt.Error()
+			break
+		}
 		record.Outcomes = append(record.Outcomes, outcome)
 		if verified != nil {
 			known.thisRun[task.Path] = *verified
 		}
-		tally.add(outcome.Usage)
 	}
 	record.TotalUsage = tally.result()
 	runSpan.End(runOutcome(record, tally.result()))

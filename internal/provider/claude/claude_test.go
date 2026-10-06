@@ -372,3 +372,37 @@ func TestInvokeSetsNoTraceParentWhenUntraced(t *testing.T) {
 		}
 	}
 }
+
+// A usage limit is not this stage's fault and will repeat for every stage.
+func TestInvokeReportsAUsageLimitAsProviderUnavailable(t *testing.T) {
+	binary := writeFakeClaude(t, t.TempDir(), `cat <<'ENVELOPE'
+{"type":"result","subtype":"success","is_error":true,"api_error_status":429,
+ "result":"You've hit your session limit"}
+ENVELOPE
+exit 1`)
+	provider, stage, input := newTestProvider(t, binary)
+	_, err := provider.Invoke(context.Background(), stage, input)
+	if !errors.Is(err, orchestrator.ErrProviderUnavailable) || !strings.Contains(err.Error(), "session limit") {
+		t.Errorf("a non-zero exit carrying a 429 envelope is unavailability, got %v", err)
+	}
+}
+
+func TestInvokeReportsAUsageLimitOnACleanExitToo(t *testing.T) {
+	binary := writeFakeClaude(t, t.TempDir(), `cat <<'ENVELOPE'
+{"type":"result","is_error":true,"api_error_status":429,"result":"limit reached"}
+ENVELOPE`)
+	provider, stage, input := newTestProvider(t, binary)
+	if _, err := provider.Invoke(context.Background(), stage, input); !errors.Is(err, orchestrator.ErrProviderUnavailable) {
+		t.Errorf("got %v", err)
+	}
+}
+
+func TestInvokeKeepsOtherFailuresAsOrdinaryErrors(t *testing.T) {
+	binary := writeFakeClaude(t, t.TempDir(), `echo '{"type":"result","is_error":true,"api_error_status":500,"result":"boom"}'
+exit 1`)
+	provider, stage, input := newTestProvider(t, binary)
+	_, err := provider.Invoke(context.Background(), stage, input)
+	if err == nil || errors.Is(err, orchestrator.ErrProviderUnavailable) {
+		t.Errorf("a 500 is this call's failure, not the end of the run: %v", err)
+	}
+}

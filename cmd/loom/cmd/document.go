@@ -178,6 +178,9 @@ func summarizeDocumentRun(record repodoc.RunRecord, root string) string {
 	if record.Interrupted {
 		line += " (interrupted)"
 	}
+	if record.StoppedBecause != "" {
+		line += "\nstopped early, the rest are undocumented — run `loom document` again once this clears: " + record.StoppedBecause
+	}
 	if record.TotalUsage != nil {
 		line += fmt.Sprintf(" — reported cost $%.4f", record.TotalUsage.CostUSD)
 	}

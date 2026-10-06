@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -259,4 +260,35 @@ func TestAnInvocationWithNoConfiguredTimeoutGetsTheDefault(t *testing.T) {
 
 func TestAnInvocationGetsTheConfiguredTimeout(t *testing.T) {
 	assertBoundedBy(t, runWithTimeout(t, 90*time.Second), 90*time.Second)
+}
+
+// Found by the full run: a session limit made every remaining directory fail
+// with the same 429, and 177 of them were recorded as failed.
+func TestRunnerStopsWhenTheProviderIsUnavailableAndLeavesTheRestUndocumented(t *testing.T) {
+	provider := scriptedProvider(t, tree())
+	limit := fmt.Errorf("%w: You've hit your session limit", orchestrator.ErrProviderUnavailable)
+	provider.SetScript(stageID("svc/store"), mock.Script{Err: limit})
+	record, err := newRunner(provider, t.TempDir()).Run(context.Background(), tasksFor(tree()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record.Count(StatusVerified) != 1 || record.Failed() != 0 || len(record.Outcomes) != 1 {
+		t.Errorf("only the directory before the limit is recorded, and none as failed: %+v", record.Outcomes)
+	}
+	if !strings.Contains(record.StoppedBecause, "session limit") {
+		t.Errorf("the record must say why it stopped: %q", record.StoppedBecause)
+	}
+	if got := documenterCalls(provider); len(got) != 2 {
+		t.Errorf("no call may be made after the limit, got %v", got)
+	}
+}
+
+func TestRunnerStopsWhenTheAuditorHitsTheLimit(t *testing.T) {
+	provider := scriptedProvider(t, tree())
+	limit := fmt.Errorf("%w: limit", orchestrator.ErrProviderUnavailable)
+	provider.SetScript(auditStageID("svc/api"), mock.Script{Err: limit})
+	record, _ := newRunner(provider, t.TempDir()).Run(context.Background(), tasksFor(tree()))
+	if record.StoppedBecause == "" || len(record.Outcomes) != 0 {
+		t.Errorf("a limit during the audit stops the run with nothing recorded: %+v", record)
+	}
 }

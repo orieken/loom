@@ -186,6 +186,9 @@ func (p *Provider) finish(ctx context.Context, waitErr error, stage orchestrator
 		waitErr = nil
 	}
 	if waitErr != nil {
+		if reason, unavailable := unavailableIn(stdout.Bytes()); unavailable {
+			return orchestrator.StageOutput{}, fmt.Errorf("stage %q: %w: %s", stage.ID, orchestrator.ErrProviderUnavailable, truncate(reason, 500))
+		}
 		return orchestrator.StageOutput{}, fmt.Errorf("stage %q agent exited with error: %w%s",
 			stage.ID, waitErr, failureDetail(stdout, stderr))
 	}

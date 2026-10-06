@@ -2,6 +2,7 @@ package repodoc
 
 import (
 	"context"
+	"errors"
 
 	"github.com/orieken/loom/internal/orchestrator"
 	"github.com/orieken/loom/internal/state"
@@ -20,16 +21,26 @@ type session struct {
 	last    *state.RepoDocState
 	// sequence is the directory's place in the run, for its spans.
 	sequence int
+	// halt is set when the provider cannot serve any call, so the run should stop.
+	halt error
 }
 
 // document runs the loop and returns the outcome plus the verified document,
 // or nil when the directory did not verify.
-func (r Runner) document(ctx context.Context, task Task, known summaries, runDir string, sequence int) (Outcome, *state.RepoDocState) {
+func (r Runner) document(ctx context.Context, task Task, known summaries, runDir string, sequence int) (Outcome, *state.RepoDocState, error) {
 	outcome := Outcome{Path: task.Path, InputHash: task.Sheet.InputHash, Status: StatusFailed}
 	s := &session{runner: r, task: task, known: known, runDir: runDir, outcome: &outcome, sequence: sequence}
 	verified := s.run(ctx)
 	outcome.Usage = s.tally.result()
-	return outcome, verified
+	return outcome, verified, s.halt
+}
+
+// failed records a provider error and notes whether it ends the whole run.
+func (s *session) failed(prefix string, err error) {
+	s.outcome.Error = prefix + err.Error()
+	if errors.Is(err, orchestrator.ErrProviderUnavailable) {
+		s.halt = err
+	}
 }
 
 func (s *session) run(ctx context.Context) *state.RepoDocState {
@@ -78,7 +89,7 @@ func (s *session) auditAttempt(ctx context.Context, round int, doc *state.RepoDo
 	violations, verdict, usage, err := s.runner.audit(ctx, s.task, s.known, s.runDir, position{s.sequence, round}, *doc)
 	s.tally.add(usage)
 	if err != nil {
-		s.outcome.Error = "audit: " + err.Error()
+		s.failed("audit: ", err)
 		return attemptResult{fatal: true}
 	}
 	record.Audited, record.Verdict, record.Violations = true, verdict, violations
@@ -98,7 +109,7 @@ func (s *session) askDocumenter(ctx context.Context, round int, feedback *Feedba
 	output, err := s.runner.invoke(ctx, stage, s.task, s.runDir, input, position{s.sequence, round})
 	s.tally.add(output.Usage)
 	if err != nil {
-		s.outcome.Error = err.Error()
+		s.failed("", err)
 		return nil, "", true
 	}
 	doc, err := accept(s.task, output.Payload)

@@ -35,6 +35,28 @@ type envelope struct {
 	// with a terminal_reason of "completed".
 	StopReason     string `json:"stop_reason"`
 	TerminalReason string `json:"terminal_reason"`
+	// APIErrorStatus is the HTTP status of the API failure behind an error result.
+	APIErrorStatus int `json:"api_error_status"`
+}
+
+// statusTooManyRequests is the API's answer to an exhausted limit.
+const statusTooManyRequests = 429
+
+// isUnavailable reports whether an error result says the account cannot make
+// calls right now — a usage or session limit — rather than that this call was
+// wrong. Every later call fails the same way until the limit resets.
+func (e *envelope) isUnavailable() bool {
+	return e.IsError && e.APIErrorStatus == statusTooManyRequests
+}
+
+// unavailableIn reads a failed process's stdout for an unavailable result.
+// The CLI exits non-zero and still writes the envelope there.
+func unavailableIn(stdout []byte) (string, bool) {
+	var decoded envelope
+	if json.Unmarshal(stdout, &decoded) != nil || !decoded.isUnavailable() {
+		return "", false
+	}
+	return decoded.Result, true
 }
 
 type envelopeUsage struct {
@@ -54,6 +76,9 @@ func parseEnvelope(stdout []byte) (*envelope, error) {
 	if err := json.Unmarshal(stdout, &decoded); err != nil {
 		return nil, fmt.Errorf("claude CLI did not return a JSON result envelope "+
 			"(--output-format json): %w — output: %s", err, truncate(string(stdout), 2000))
+	}
+	if decoded.isUnavailable() {
+		return nil, fmt.Errorf("%w: %s", orchestrator.ErrProviderUnavailable, truncate(decoded.Result, 2000))
 	}
 	if decoded.IsError {
 		return nil, fmt.Errorf("claude CLI reported an error result (subtype %q): %s",

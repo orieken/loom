@@ -23,7 +23,7 @@ func runOutcome(record RunRecord, usage *orchestrator.Usage) orchestrator.SpanOu
 		Reason: fmt.Sprintf("%d verified, %d unverified, %d failed", record.Count(StatusVerified), record.Unverified(), record.Failed()),
 	}
 	switch {
-	case record.Interrupted:
+	case record.Interrupted, record.StoppedBecause != "":
 		outcome.Status = orchestrator.StageStatusInterrupted
 	case record.Failed()+record.Unverified() > 0:
 		outcome.Status = orchestrator.StageStatusFailed

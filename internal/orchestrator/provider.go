@@ -1,5 +1,7 @@
 package orchestrator
 
+import "errors"
+
 import "context"
 
 // StageInput is what every stage invocation receives: the feature spec being
@@ -47,3 +49,9 @@ type StageOutput struct {
 type Provider interface {
 	Invoke(ctx context.Context, stage Stage, input StageInput) (StageOutput, error)
 }
+
+// ErrProviderUnavailable marks a failure that will repeat for every call until
+// something outside the run changes: an exhausted usage or session limit, a rate
+// limit. A caller with more work queued stops instead of failing each item in
+// turn, and leaves that work undone so a later run picks it up.
+var ErrProviderUnavailable = errors.New("provider unavailable")
