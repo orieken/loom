@@ -74,6 +74,11 @@ type ContextState struct {
 	ADRs           []string     `json:"adrs,omitempty"`
 	Pruned         []string     `json:"pruned,omitempty" jsonschema:"description=Files considered and deliberately left out"`
 
+	// BlastRadius records what the change reaches, from the repo graph. Supply
+	// only the seeds and depth; the executor computes the rest. Omit it when the
+	// repo has no graph.
+	BlastRadius *BlastRadius `json:"blastRadius,omitempty" jsonschema:"description=What the change reaches. Give only seeds and depth: loom computes the rest from the repo graph and replaces anything else you write. Omit if the repository has no graph"`
+
 	// Budget is filled by the executor from the pinned files on disk. Any
 	// value an agent supplies here is discarded (roadmap L3.25).
 	Budget *ContextBudget `json:"budget,omitempty" jsonschema:"description=Computed by loom from the pinned files. Do not supply this — anything you write here is replaced by measurement"`
@@ -86,6 +91,7 @@ func (c ContextState) Validate() error {
 		requireText("feature", c.Feature),
 		requireText("tier", c.Tier),
 		requireItems("pinnedFiles", len(c.PinnedFiles)),
+		c.BlastRadius.validate(),
 	)
 }
 

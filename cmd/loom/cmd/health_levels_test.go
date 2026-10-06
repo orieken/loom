@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	loom "github.com/orieken/loom"
 	"github.com/orieken/loom/cmd/loom/internal/levels"
 )
 
@@ -12,6 +13,7 @@ type fakeLevelProbe struct {
 	mcpAnswering     bool
 	telemetryPresent bool
 	policiesFound    bool
+	repoIndexBuilt   bool
 }
 
 func (probe fakeLevelProbe) pathBundleInstalled(bundle levels.Bundle) (bool, string) {
@@ -33,6 +35,13 @@ func (probe fakeLevelProbe) telemetryStreamPresent() (bool, string) {
 		return true, "telemetry stream present"
 	}
 	return false, "telemetry stream absent"
+}
+
+func (probe fakeLevelProbe) repoIndexPresent() (bool, string) {
+	if probe.repoIndexBuilt {
+		return true, "repo graph present"
+	}
+	return false, "repo graph not built: run `loom index`"
 }
 
 func (probe fakeLevelProbe) policiesPresent() (bool, string) {
@@ -183,5 +192,87 @@ func assertGapsContain(t *testing.T, gaps, wanted []string) {
 		if !strings.Contains(joined, want) {
 			t.Errorf("gaps %v missing %q", gaps, want)
 		}
+	}
+}
+
+func repoIndexProfile() levels.Profile {
+	return levels.Profile{Version: 1, Landed: []string{"L3.63"}, Levels: []levels.Level{
+		{Level: 1, Name: "L1", Bundles: []levels.Bundle{{ID: "agents", Paths: []string{"shared/agents"}}}},
+		{Level: 2, Name: "L2", Bundles: []levels.Bundle{
+			{ID: "repo-index", Requires: "L3.63", Action: "repo-index"},
+			{ID: "repo-docs", Requires: "L3.63", OptIn: true, Action: "repo-docs"},
+		}},
+		{Level: 3, Name: "L3", Bundles: []levels.Bundle{{ID: "later", Requires: "L9.9"}}},
+		{Level: 4, Name: "L4", Bundles: []levels.Bundle{{ID: "later", Requires: "L9.9"}}},
+	}}
+}
+
+// Level 2 needs the repo graph: without it the MCP repo tools answer "run loom index".
+func TestLevelTwoNeedsTheRepoGraphToExist(t *testing.T) {
+	without := assessLevels(repoIndexProfile(), fakeLevelProbe{installedBundles: map[string]bool{"agents": true}})
+	if without[1].isAttained() {
+		t.Error("a project that never ran `loom index` has not attained level 2")
+	}
+	report := inferMaturity(without)
+	if report.level != 1 || len(report.gaps) != 1 || !strings.Contains(report.gaps[0], "loom index") {
+		t.Errorf("the gap must say what to run: %+v", report)
+	}
+	with := assessLevels(repoIndexProfile(), fakeLevelProbe{installedBundles: map[string]bool{"agents": true}, repoIndexBuilt: true})
+	if !with[1].isAttained() {
+		t.Errorf("%+v", with[1])
+	}
+}
+
+// An opt-in bundle is a choice. Declining it must never lower a level, and
+// adopting it must never raise one.
+func TestAnOptInBundleIsNeverLevelEvidence(t *testing.T) {
+	assessments := assessLevels(repoIndexProfile(), fakeLevelProbe{installedBundles: map[string]bool{"agents": true}, repoIndexBuilt: true})
+	if len(assessments[1].evidence) != 1 {
+		t.Errorf("only repo-index is evidence at level 2: %+v", assessments[1].evidence)
+	}
+	for _, item := range assessments[1].evidence {
+		if strings.Contains(item.detail, "repo-docs") {
+			t.Errorf("repo-docs leaked into the evidence: %+v", item)
+		}
+	}
+}
+
+func TestTheRealProbeLooksForTheGraphUnderLoom(t *testing.T) {
+	target := t.TempDir()
+	probe := healthLevelProbe{target: target}
+	if ok, detail := probe.repoIndexPresent(); ok || !strings.Contains(detail, "run `loom index`") {
+		t.Errorf("%v %q", ok, detail)
+	}
+	writeRepoFile(t, target, ".loom/graph.json", "{}")
+	if ok, detail := probe.repoIndexPresent(); !ok || !strings.Contains(detail, ".loom") {
+		t.Errorf("%v %q", ok, detail)
+	}
+}
+
+func shippedLevelTwoBundles(t *testing.T) (levels.Profile, map[string]levels.Bundle) {
+	t.Helper()
+	profile, err := levels.Load(loom.FrameworkFS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := map[string]levels.Bundle{}
+	for _, bundle := range profile.Levels[1].Bundles {
+		found[bundle.ID] = bundle
+	}
+	return profile, found
+}
+
+func TestTheShippedProfileMakesRepoIndexLevelTwoEvidence(t *testing.T) {
+	profile, found := shippedLevelTwoBundles(t)
+	index := found["repo-index"]
+	if index.Action != "repo-index" || index.OptIn || index.Requires != "L3.63" || !profile.IsLanded("L3.63") {
+		t.Errorf("%+v", index)
+	}
+}
+
+func TestTheShippedProfileMakesRepoDocsOptIn(t *testing.T) {
+	_, found := shippedLevelTwoBundles(t)
+	if docs := found["repo-docs"]; !docs.OptIn || docs.Action != "repo-docs" {
+		t.Errorf("%+v", docs)
 	}
 }

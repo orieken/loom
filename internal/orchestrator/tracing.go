@@ -122,6 +122,16 @@ type noopSpan struct{}
 
 func (noopSpan) End(SpanOutcome) {}
 
+// OrNoop returns tracer, or a tracer that records nothing when tracer is nil.
+// Code outside the executor that emits spans — indexing and documentation runs
+// (ADR-010) — uses it so it never branches on whether tracing is on.
+func OrNoop(tracer Tracer) Tracer {
+	if tracer == nil {
+		return noopTracer{}
+	}
+	return tracer
+}
+
 // WithTracer registers the tracer the run loop opens spans on. Passing nil
 // restores the no-op tracer.
 func (e *Executor) WithTracer(tracer Tracer) {

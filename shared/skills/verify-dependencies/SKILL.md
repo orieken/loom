@@ -21,6 +21,20 @@ Do NOT use when modifying UI code or end-to-end testing frameworks.
    - What to do: Find the root folder of the application or the specific domain directory being modified.
    - What to produce: A list of target directories.
    - What to check: Verify targets exist.
+1b. Query the repo graph (when available).
+   - What to do: If the `loom` MCP server is registered and the repo was indexed (`loom index`), call
+     `mcp__loom__dependencies_of` for each target directory. Every edge carries `confidence` (`exact` or
+     `approximate`) and the `layer` the context index recorded for its target (empty when undocumented).
+     Layers run innermost to outermost: `domain` → `application` → `adapter` → `framework`; `shared`, `test`,
+     `docs`, `config`, `tooling` and `unknown` are neutral.
+   - What to produce: a violation for each `exact` edge from a `domain` directory to an `application`,
+     `adapter` or `framework` one, or from an `application` directory to an `adapter` or `framework` one. An
+     `approximate` crossing is reported as a *possible* violation to confirm, never as a certain one.
+   - What to check: `fresh` on every answer. `false` means the graph predates the working tree, so confirm
+     with step 2 before reporting. An edge into an undocumented directory has no layer and cannot be judged:
+     list it as unclassified instead of passing it.
+   - This replaces reading imports in prose; step 2 remains the check for third-party libraries imported into
+     the domain, which the graph does not cover.
 2. Run dependency analysis.
    - What to do: Run `./.claude/skills/verify-dependencies/check.sh [target]`
    - What to produce: The console output of dependency-cruiser or equivalent checking tool.
@@ -47,7 +61,7 @@ Do NOT use when modifying UI code or end-to-end testing frameworks.
 - The dependency rule (dependencies point ONLY inward) is rigid and non-negotiable.
 
 ## Standalone Mode
-If `check.sh` is unavailable (e.g., `dependency-cruiser` is not installed), manually read the `import` statements at the top of all modified files. Flag any imports in `src/domain/` that reference `src/infrastructure/`, `src/adapters/`, or specific vendor libraries (like React, TypeORM, Axios).
+If the repo-graph tools are unavailable, or `check.sh` is unavailable (e.g., `dependency-cruiser` is not installed), manually read the `import` statements at the top of all modified files. Flag any imports in `src/domain/` that reference `src/infrastructure/`, `src/adapters/`, or specific vendor libraries (like React, TypeORM, Axios).
 
 ---
 *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*

@@ -1359,6 +1359,38 @@ already on disk reaches a model through `search_ki` only as a path, a title and 
 4. **Done when**: a KI containing "ignore your previous instructions" is flagged by
    `sync-memory.sh` before it can be pulled.
 
+### L3.63 — Give agents a mechanically true map of the repository
+**Workstream**: MEMORY · **Effort**: XL · **Blocked by**: L3.4 · **Blocks**: none · *(raised 2026-10-05; decisions in ADR-010)*
+
+**SHIPPED** 2026-10-05, in eight phases. `CODEMAP.md` took each directory's purpose from its README, and target
+repositories rarely have one, so the map was mostly `TODO` exactly where an agent needs orientation and agents rebuilt
+structure with grep on every task. This replaces guessed structure with extracted structure and limits the model to
+writing intent on top of facts it cannot contradict.
+
+1. **Problem**: no machine-readable map of a repository's structure, so every agent re-derives it, differently, from
+   prose.
+2. **Architectural Fix**:
+   - `loom index` — a deterministic repo graph (import edges labelled `exact` or `approximate`, unresolved imports
+     listed rather than guessed), per-directory fact sheets, and a context index with freshness. Pure Go, offline, no
+     model; `CGO_ENABLED=0` ruled out tree-sitter and `go list`.
+   - `repo-documenter` + `repo-doc-auditor` — typed output where every claim cites fact-sheet fields; a Go verifier checks
+     existence, the auditor checks support, in a loop bounded at three rounds; "unknown" is a valid answer.
+   - `loom docs plan|approve|apply` — one changeset, an approval bound to the digest of every staged file, and
+     `loom:generated` blocks so a human's text is never touched.
+   - Six read-only MCP tools — `dependencies_of`, `dependents_of`, `impact`, `entrypoints`, `find_files`, `describe` —
+     each returning `graphSha` and `fresh`.
+   - Integration — `context-engineer` pins by blast radius (computed by the executor, not transcribed by the agent),
+     `architect` and `verify-dependencies` check layers as graph queries, `refactor-engineer` and `unit-tester` order
+     characterization tests by dependents, and indexing and documentation emit the same spans `loom run` does.
+3. **Target Files**: `internal/{repograph,factsheet,contextindex,repodoc,docchange,genblock,repoquery,repoindex}/`,
+   `cmd/loom/cmd/{index,document,docs}.go`, `shared/mcp/internal/tools/repo_tool*.go`,
+   `shared/agents/{repo-documenter,repo-doc-auditor}.md`, `shared/levels.yaml`.
+4. **Done when**: a repository can be indexed with no network; a rerun is a no-op; no documenter claim survives without
+   evidence; nothing is written to a target repository before a human approves it; and an agent can ask what a change
+   reaches and be told whether the answer is current.
+- **Not done**: no call graph or symbol-level edges, no embeddings, no cross-repo graphs, no regeneration on every
+  commit (ADR-010, "out of scope for v1"). Neither agent has a live golden baseline yet — it needs a real model run.
+
 ## Workstream: OBSERVE — Governance & Auditing
 
 ### L3.8 — Emit OpenTelemetry with GenAI semantic conventions

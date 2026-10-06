@@ -200,3 +200,11 @@ To confirm context is well-managed on an active run:
 
 ---
 *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+
+## Pinning by dependency, not by guess (ADR-010)
+
+When a repository has been indexed (`loom index`) and the `loom` MCP server is registered, `context-engineer` asks the
+repo graph what a change reaches (`mcp__loom__impact`) instead of guessing which files depend on it, and records the
+question — only the paths and depth — in the manifest's `blastRadius`. `loom` computes the answer from the graph and
+writes it over anything the agent put there, as it does the token budget. Without a graph the agent falls back to grep
+and says so. See [repo-context-indexing.md](repo-context-indexing.md).

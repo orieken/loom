@@ -248,3 +248,49 @@ has been deleted from the working tree is skipped.
   reach a documenter through names in its facts. `query` is never in the telemetry allowlist (guardrail #9).
 - **`find_files` is lexical** (paths, tags and purposes, weighted 3/2/1, ties by path), deterministic, with no embeddings:
   the prompt's v1 constraint. A graph with no context index is a `not_found` error for it and for `describe`.
+
+## Amendment 2026-10-05: Phase 8 (integration)
+- **Blast radius is computed by the executor, not transcribed by the agent.** `context-engineer` calls
+  `mcp__loom__impact` to choose what to pin, but the context manifest records only the *question* — `blastRadius.seeds`
+  and `depth`. The executor resolves it from the repo graph and writes the result over whatever the agent put there,
+  exactly as it does the token budget (roadmap L3.25), through an injected `BlastRadiusResolver` so the state package
+  stays free of the graph (guardrail #1). The prompt asked only that the radius be recorded; a model copying a tool's
+  output can mis-copy it, and a wrong "nothing depends on this" is the error the section exists to prevent. A graph that
+  is missing or fails is recorded as *unresolved*, with the reason, never as an empty radius. The list is capped at 50
+  and reports its true total. The section is optional, so existing manifests and the contract's required headings are
+  unchanged.
+- **Layer checks are one graph query.** `dependencies_of` and `dependents_of` edges now carry the `layer` the index
+  records for the other end (omitted when undocumented). With the documenter's closed layer set — `domain` →
+  `application` → `adapter` → `framework`, the rest neutral — `architect` and `verify-dependencies` check a boundary by
+  asking for a directory's dependencies and reading the layers. An `exact` crossing is a violation; an `approximate` one is
+  a *possible* violation; an edge into an undocumented directory is unclassified, not passed. `verify-dependencies` keeps
+  its standalone mode and its `check.sh`, which still covers third-party libraries imported into the domain.
+- **Agents may now declare MCP tools in frontmatter** (`mcp__<server>__<tool>`). The schema and the frontmatter contract
+  allowed only built-in tool names; without this the headless allowlist `loom run` builds from that line could never
+  include a graph tool. Each of the four agents declares exactly the tools its prompt uses, and says what to do — fall
+  back and say so — when the server is not registered or the tool answers `not_found`. A test pins both directions:
+  every `mcp__loom__*` name an agent or skill mentions is a registered tool, and each agent's declared set equals what its
+  prompt uses. The Roo mode generators (Go and Python) file any `mcp__` tool under Roo's `mcp` group.
+- **Telemetry reuses the executor's span vocabulary.** A documentation run emits a root span (plan `repo-context-index`),
+  a stage span per attempt — `Iteration` is the revision round, as in the review loop — and inside it a provider span
+  carrying the tokens and cost the provider reported, exported to `.loom/runs/<run>/traces.jsonl` and, when
+  `OTEL_EXPORTER_OTLP_ENDPOINT` is set, over OTLP (`--no-telemetry` stops the file). An indexing run is a root span with
+  one internal stage whose reason carries the counts; it records no tokens because there are none. The prompt said "loom
+  run": indexing and documentation are not stages of the delivery plan, so they are traced as their own runs rather than
+  by inserting them into it.
+- **Where it lands in `shared/levels.yaml`.** Level 2 gains `repo-index` — required evidence is that
+  `.loom/graph.json` exists, since without it the MCP repo tools answer "run loom index"; nothing is installed, because the
+  binary is the install, and the installer says what to run. It also gains `repo-docs`, `optIn: true`: never installed as
+  part of a level and never evidence, so declining it cannot lower a level and adopting it cannot raise one. The
+  deterministic tools were already in Level 2 through the MCP registration. Consequence worth knowing: a project at
+  Level 2 that never ran `loom index` now reports a gap naming the command. The two documenter agents ship in Level 1's
+  `agents` bundle because bundles are directory-granular; they are inert until `loom document` is run on purpose.
+  Roadmap item L3.63 is recorded as landed.
+- **Registered as a memory source** (`repo-context-index`, lexical, optional path `.loom/`), so the registry and
+  `query-memory` know it exists. It is regenerated rather than curated, so `memory-engineer` does not expire it.
+- **No live golden baseline for context-engineer.** The prompt asked for a golden-file test where `context-engineer` uses
+  `impact()`. A baseline is a recorded model run, which is not something to hand-write, and adding a pattern to
+  `tests/agents/context-engineer/expected-patterns.txt` without re-recording would fail the existing suite. Instead the
+  rendered manifest with a blast radius is a golden file (`internal/state/testdata/`), and prompt/frontmatter tests pin that
+  the agent is told to use `impact()`, to record only the question, and to fall back. Re-recording the agent baseline
+  is a live run still owed.

@@ -18,13 +18,15 @@ type session struct {
 	outcome *Outcome
 	tally   usageTally
 	last    *state.RepoDocState
+	// sequence is the directory's place in the run, for its spans.
+	sequence int
 }
 
 // document runs the loop and returns the outcome plus the verified document,
 // or nil when the directory did not verify.
-func (r Runner) document(ctx context.Context, task Task, known summaries, runDir string) (Outcome, *state.RepoDocState) {
+func (r Runner) document(ctx context.Context, task Task, known summaries, runDir string, sequence int) (Outcome, *state.RepoDocState) {
 	outcome := Outcome{Path: task.Path, InputHash: task.Sheet.InputHash, Status: StatusFailed}
-	s := &session{runner: r, task: task, known: known, runDir: runDir, outcome: &outcome}
+	s := &session{runner: r, task: task, known: known, runDir: runDir, outcome: &outcome, sequence: sequence}
 	verified := s.run(ctx)
 	outcome.Usage = s.tally.result()
 	return outcome, verified
@@ -67,13 +69,13 @@ func (s *session) attempt(ctx context.Context, round int, feedback *Feedback) at
 	s.last = doc
 	record.Violations = Verify(s.task.Sheet, *doc, s.runner.Vocabulary)
 	if len(record.Violations) == 0 && !s.runner.SkipAudit {
-		return s.auditAttempt(ctx, doc, record)
+		return s.auditAttempt(ctx, round, doc, record)
 	}
 	return attemptResult{doc: doc, record: record}
 }
 
-func (s *session) auditAttempt(ctx context.Context, doc *state.RepoDocState, record RoundRecord) attemptResult {
-	violations, verdict, usage, err := s.runner.audit(ctx, s.task, s.known, s.runDir, *doc)
+func (s *session) auditAttempt(ctx context.Context, round int, doc *state.RepoDocState, record RoundRecord) attemptResult {
+	violations, verdict, usage, err := s.runner.audit(ctx, s.task, s.known, s.runDir, position{s.sequence, round}, *doc)
 	s.tally.add(usage)
 	if err != nil {
 		s.outcome.Error = "audit: " + err.Error()
@@ -93,7 +95,7 @@ func (s *session) askDocumenter(ctx context.Context, round int, feedback *Feedba
 		return nil, "", true
 	}
 	stage := orchestrator.Stage{ID: stageID(s.task.Path), Agent: AgentName, StateKind: string(state.KindRepoDoc), Timeout: s.runner.timeout()}
-	output, err := s.runner.invoke(ctx, stage, s.task, s.runDir, input)
+	output, err := s.runner.invoke(ctx, stage, s.task, s.runDir, input, position{s.sequence, round})
 	s.tally.add(output.Usage)
 	if err != nil {
 		s.outcome.Error = err.Error()

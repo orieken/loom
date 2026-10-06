@@ -229,3 +229,48 @@ func TestDocumentExitsNonZeroWhenADirectoryStaysUnverified(t *testing.T) {
 }
 
 func emptyFS() fstest.MapFS { return fstest.MapFS{} }
+
+func traceFilesUnder(root string) []string {
+	matches, _ := filepath.Glob(filepath.Join(root, ".loom", "runs", "*", "traces.jsonl"))
+	return matches
+}
+
+func TestDocumentRecordsAnOTLPTraceBesideTheRunWithTokensAndCost(t *testing.T) {
+	root := committedGoRepo(t)
+	provider := answerEverything(t, root)
+	sheets, _ := contextindex.CurrentSheets(root, repograph.GitLister{})
+	usage := &orchestrator.Usage{InputTokens: 321, OutputTokens: 45, CostUSD: 0.123}
+	for _, sheet := range sheets {
+		script := provider.ScriptFor(documenterStage(sheet.Path))
+		script.Usage = usage
+		provider.SetScript(documenterStage(sheet.Path), script)
+	}
+	useDocumentFixtures(t, provider)
+	if output, err := runDocumentWith(t, documentFlags{root: root}); err != nil {
+		t.Fatalf("%v\n%s", err, output)
+	}
+	traces := traceFilesUnder(root)
+	if len(traces) != 1 {
+		t.Fatalf("one trace per run, beside its record: %v", traces)
+	}
+	raw, err := os.ReadFile(traces[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"repo-context-index", "repo-documenter", "repo-doc-auditor", "gen_ai.usage.input_tokens", "loom.usage.cost_usd"} {
+		if !strings.Contains(string(raw), want) {
+			t.Errorf("the trace lacks %q", want)
+		}
+	}
+}
+
+func TestDocumentNoTelemetryWritesNoTrace(t *testing.T) {
+	root := committedGoRepo(t)
+	useDocumentFixtures(t, answerEverything(t, root))
+	if output, err := runDocumentWith(t, documentFlags{root: root, noTelemetry: true}); err != nil {
+		t.Fatalf("%v\n%s", err, output)
+	}
+	if traces := traceFilesUnder(root); len(traces) != 0 {
+		t.Errorf("--no-telemetry must write nothing: %v", traces)
+	}
+}

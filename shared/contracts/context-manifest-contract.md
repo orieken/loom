@@ -13,6 +13,17 @@ own "Context To Load First" sections)
 - `## 6. Prune Recommendations (To Close)`
 - `## 7. Token Budget`
 
+## Optional Section: Blast Radius
+When the repo graph is available (`loom index`), `context-engineer` records what the change reaches under an
+**unnumbered** `## Blast Radius` heading, before `## 7. Token Budget`. It is optional, so existing manifests stay
+valid, and absent when the repository has no graph.
+
+Under `loom run` the section is typed: the agent supplies only `blastRadius.seeds` and `depth`, and the executor
+computes the rest (`graphSha`, `fresh`, `total`, `impacted`) from the graph and replaces anything the agent wrote
+there, as it does the token budget. It lists each reached directory with its distance and whether the chain of
+edges is `exact` or `approximate`, says when the graph was stale, and says why when it could not be resolved. Outside
+`loom run` the agent copies the output of `mcp__loom__impact` and marks it as not executor-verified.
+
 ## Validation Rule
 - `## 7. Token Budget` must contain a `**Status**` line with value `OK` or `WARNING` — never blank and
   never any other value. If `WARNING`, a `**Cut recommendations**` line must also be present (per

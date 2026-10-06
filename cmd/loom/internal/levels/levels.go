@@ -36,6 +36,10 @@ type Bundle struct {
 	// DocsOnly marks documentation content that installs normally but never
 	// counts as maturity-level evidence for `loom health` (roadmap D.4).
 	DocsOnly bool `yaml:"docsOnly"`
+	// OptIn marks a bundle a project asks for rather than receives: it never
+	// installs as part of a level and is never level evidence, so choosing not
+	// to use it cannot lower a project's reported maturity.
+	OptIn bool `yaml:"optIn"`
 }
 
 // Level is one maturity level profile.

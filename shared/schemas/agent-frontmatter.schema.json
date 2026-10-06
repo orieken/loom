@@ -19,8 +19,8 @@
     },
     "tools": {
       "type": "string",
-      "description": "Comma-separated list of Claude Code tool names. Use least-privilege, and declare every capability the prompt actually uses: an agent told to produce an artifact needs Write, one told to fix source needs Edit. Bash is a write and egress channel, not a read tool. Read-only counter agents are Read, Glob, Grep with no Bash. Recognized tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, Task, Skill, WebFetch, WebSearch.",
-      "pattern": "^(Read|Write|Edit|MultiEdit|Bash|Glob|Grep|Task|Skill|WebFetch|WebSearch)(,\\s*(Read|Write|Edit|MultiEdit|Bash|Glob|Grep|Task|Skill|WebFetch|WebSearch))*$"
+      "description": "Comma-separated list of Claude Code tool names. Use least-privilege, and declare every capability the prompt actually uses: an agent told to produce an artifact needs Write, one told to fix source needs Edit. Bash is a write and egress channel, not a read tool. Read-only counter agents are Read, Glob, Grep with no Bash. Recognized tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, Task, Skill, WebFetch, WebSearch, and MCP tools named mcp__<server>__<tool> (for example mcp__loom__impact, which needs the loom MCP server registered).",
+      "pattern": "^(Read|Write|Edit|MultiEdit|Bash|Glob|Grep|Task|Skill|WebFetch|WebSearch|mcp__[A-Za-z0-9_-]+__[A-Za-z0-9_-]+)(,\\s*(Read|Write|Edit|MultiEdit|Bash|Glob|Grep|Task|Skill|WebFetch|WebSearch|mcp__[A-Za-z0-9_-]+__[A-Za-z0-9_-]+))*$"
     },
     "model_tier": {
       "type": "string",

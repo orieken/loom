@@ -62,6 +62,17 @@ deliberately independent of recency — a same-area feature from 20 deliveries a
 scale a direct grep is fine; once the archive grows past ~15-20 features, see
 `docs/runbooks/scaling-cross-feature-learning.md`.
 
+### 4a. Pin by Blast Radius (when the repo graph is available)
+Once the files the task changes are known, ask the graph rather than guessing who depends on them. If the
+`loom` MCP server is registered (`loom mcp serve`) and the repo was indexed (`loom index`), call
+`mcp__loom__impact` with those paths and a depth of 2–3: it returns every directory that transitively imports
+them, nearest first, each labelled `exact` or `approximate`. Pin the changed files, then their distance-1
+`exact` dependents, then tests; treat `approximate` as something to verify. In the typed manifest record only
+`blastRadius.seeds` and `depth` — `loom` computes the rest from the graph and replaces anything else, so never
+transcribe the result. A `fresh: false` answer predates the working tree: confirm importers with Grep. With no
+graph, pin by grep over imports, omit `blastRadius`, and say the radius was not graph-derived. Full guidance:
+`shared/agents/context-engineer.md` step 7.
+
 ### 4b. Prefer High-Fidelity References
 When choosing what to pin, prefer references Claude can inspect directly over prose paraphrases:
 - Interfaces, schemas, tests, fixtures, generated golden outputs, and prior implementation files.

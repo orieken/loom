@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/orieken/loom/internal/policy"
+	typedstate "github.com/orieken/loom/internal/state"
 )
 
 // Executor runs a Plan's stages in order against a Provider, persisting
@@ -42,6 +43,18 @@ type Executor struct {
 	// default and the safe one.
 	policies []policy.Policy
 	onPolicy func(policy.Decision)
+	// blastResolver computes a context manifest's blast radius from the repo
+	// graph (ADR-010). Nil when the run has no graph, which the manifest then
+	// says rather than presenting an empty radius.
+	blastResolver typedstate.BlastRadiusResolver
+}
+
+// WithBlastRadiusResolver supplies the function the executor uses to compute a
+// context manifest's blast radius. It is the executor's, not the agent's, to
+// compute: whatever the agent wrote there is replaced.
+func (e *Executor) WithBlastRadiusResolver(resolve typedstate.BlastRadiusResolver) *Executor {
+	e.blastResolver = resolve
+	return e
 }
 
 // NewExecutor wires a provider and a state store into an executor.

@@ -14,6 +14,7 @@ type levelProbe interface {
 	mcpServerAnswering() (bool, string)
 	telemetryStreamPresent() (bool, string)
 	policiesPresent() (bool, string)
+	repoIndexPresent() (bool, string)
 }
 
 type levelEvidence struct {
@@ -55,7 +56,7 @@ func assessLevels(profile levels.Profile, probe levelProbe) []levelAssessment {
 func assessLevel(profile levels.Profile, level levels.Level, probe levelProbe) levelAssessment {
 	assessment := levelAssessment{level: level.Level, name: level.Name}
 	for _, bundle := range level.Bundles {
-		if bundle.DocsOnly {
+		if bundle.DocsOnly || bundle.OptIn {
 			continue
 		}
 		if bundle.Requires != "" && !profile.IsLanded(bundle.Requires) {
@@ -73,6 +74,7 @@ func checkBundle(bundle levels.Bundle, probe levelProbe) (bool, string) {
 		"mcp-config": probe.mcpServerAnswering,
 		"telemetry":  probe.telemetryStreamPresent,
 		"policies":   probe.policiesPresent,
+		"repo-index": probe.repoIndexPresent,
 	}
 	if bundle.Action == "" {
 		return probe.pathBundleInstalled(bundle)

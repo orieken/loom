@@ -64,6 +64,10 @@ func installLevel(request installRequest, level levels.Level, files *frameworkfs
 			output.line(fmt.Sprintf("  ! level %d bundle %q skipped — requires roadmap item %s, which has not landed", level.Level, bundle.ID, bundle.Requires))
 			continue
 		}
+		if bundle.OptIn {
+			output.line(fmt.Sprintf("  · opt-in bundle %q is not installed by default — see `loom %s`", bundle.ID, optInCommand(bundle.ID)))
+			continue
+		}
 		bundlePaths, err := installBundle(bundle, files, output)
 		if err != nil {
 			return nil, fmt.Errorf("install level %d bundle %s: %w", level.Level, bundle.ID, err)
@@ -88,7 +92,20 @@ func installBundle(bundle levels.Bundle, files *frameworkfs.Writer, output insta
 	return paths, nil
 }
 
+// optInCommand names the command that uses an opt-in bundle.
+func optInCommand(bundleID string) string {
+	if bundleID == "repo-docs" {
+		return "document --help"
+	}
+	return "help"
+}
+
 func installBundleAction(bundle levels.Bundle, files *frameworkfs.Writer, output installOutput) ([]string, error) {
+	if bundle.Action == "repo-index" {
+		// Nothing to install: the binary is the install. Say what to do next.
+		output.line("  · repo-index: run `loom index` in the project to build the repo graph the MCP repo tools read")
+		return nil, nil
+	}
 	if bundle.Action != "mcp-config" {
 		output.line(fmt.Sprintf("  ! bundle %q action %q is not implemented yet — skipped", bundle.ID, bundle.Action))
 		return nil, nil

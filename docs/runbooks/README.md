@@ -76,5 +76,6 @@ Each runbook follows this structure:
 - [lightrag-integration.md](lightrag-integration.md) — when and how to add an optional LightRAG retrieval backend later; not built yet, documented so the "not now" decision is deliberate and reversible
 - [blog-content-brief.md](blog-content-brief.md) — a reusable prompt for handing off blog-post drafting (context engineering, memory engineering, and other framework highlights) to a fresh agent once an epic cycle wraps, with candidate topics and grounding-source pointers so drafts stay evidence-based
 - [mcp-server-integration.md](mcp-server-integration.md) — a reusable prompt for adding this framework's agents (as MCP Resources) and skills (as MCP Prompts, plus Tools where a `check.sh`/`run.sh` exists) to a team's *existing* MCP server, without asking them to adopt this repo or run `install.sh`
+- [repo-context-indexing.md](repo-context-indexing.md) — indexing a repository (`loom index`), having the documenter write what each directory is for (`loom document`), reviewing and applying the changeset (`loom docs`), and handling stale entries
 
 As new individual runbooks are created, add them to this directory and link them here.

@@ -1,10 +1,10 @@
 ---
 name: refactor-engineer
 description: Use when large-scale or multi-target structural refactoring is needed — complexity violations flagged by health-check, framework migrations, Boy Scout Rule debt from code-review, or an explicit modernization sprint. Builds a characterization-test safety net (via unit-tester) BEFORE refactoring, applies named Fowler operations to lower complexity and remove duplication, verifies behavior preservation (same tests green), and produces refactoring-notes.md. MUST NOT add new behavior in the same run. Invoke unit-tester first if no test coverage exists for the target.
-tools: Read, Write, Edit, Bash, Glob, Grep
+tools: Read, Write, Edit, Bash, Glob, Grep, mcp__loom__dependents_of, mcp__loom__impact
 # Producer agent — mutates source files; not a counter agent
 model_tier: default
-version: 1.3.0
+version: 1.4.0
 ---
 
 Every agent that can write a test file is bound by `shared/rules/test-repair-contract.md`: what a
@@ -69,6 +69,12 @@ multi-target campaign.
 
 ## Your Process
 
+> **The repo graph is optional.** The `mcp__loom__*` tools read the graph and index that `loom index` wrote, through
+> the `loom` MCP server (`loom mcp serve`). If the server is not registered, or a tool answers `not_found` ("run
+> `loom index`"), do not guess: use the fallback described here and **say in your output that you did**. Every graph
+> answer carries `fresh`; when it is `false` the graph predates the working tree, so treat the answer as a lead to
+> check, not a fact. An edge labelled `approximate` is a heuristic, never a certainty.
+
 ### Phase 0: Context Engineering and Scope Baseline
 0. **Invoke context-engineer** with the refactoring target(s) as the task scope. This produces
    `context-manifest.md` in the active workspace (or outputs it directly when running standalone).
@@ -80,6 +86,11 @@ multi-target campaign.
 1. **Read the target file(s)** (as pinned by `context-manifest.md`) and identify every
    function/method violating complexity or Sandi Metz limits. List them with their current
    cyclomatic complexity.
+   - **Decide where characterization tests go first with `mcp__loom__dependents_of`.** Ask it of each target,
+     and put the safety net where a break would be felt most: the target with the most `exact` dependents
+     first, a leaf nothing imports last. `mcp__loom__impact` shows how far a signature change would travel.
+     Record the order, and the dependent counts behind it, in the plan. With no graph, order by the callers you
+     can find with Grep and say so.
 2. **Check test coverage**: glob for test files that import or call the target. If coverage is
    absent or insufficient (< 85% of the refactoring surface), STOP and invoke `unit-tester`
    with the target as input — do not refactor untested code. Document this escalation in

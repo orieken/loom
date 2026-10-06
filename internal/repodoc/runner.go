@@ -3,12 +3,16 @@ package repodoc
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/orieken/loom/internal/contextindex"
 	"github.com/orieken/loom/internal/orchestrator"
 	"github.com/orieken/loom/internal/state"
 )
+
+// PlanName is the plan name recorded on a documentation run's root span.
+const PlanName = "repo-context-index"
 
 // AgentName is the agent that writes each directory's document.
 const AgentName = "repo-documenter"
@@ -35,7 +39,17 @@ type Runner struct {
 	MaxRounds int
 	// SkipAudit runs only the deterministic verifier.
 	SkipAudit bool
+	// Tracer receives spans for the run, each attempt and each model call, with
+	// the usage the provider reported (roadmap L3.8). Nil traces nothing.
+	Tracer orchestrator.Tracer
+	// RunID names the run. Empty derives it from Now, which is what a caller
+	// that needs the id before the run starts (to place a trace file) overrides.
+	RunID string
 }
+
+// RunIDAt is the run id for a start time. Ids are timestamps, so the lexically
+// greatest is the newest.
+func RunIDAt(started time.Time) string { return started.UTC().Format("20060102T150405Z") }
 
 func (r Runner) timeout() time.Duration {
 	if r.Timeout == 0 {
@@ -58,16 +72,22 @@ func (r Runner) rounds() int {
 // record, when ctx is cancelled.
 func (r Runner) Run(ctx context.Context, tasks []Task) (RunRecord, error) {
 	started := r.Now().UTC()
-	record := RunRecord{RunID: started.Format("20060102T150405Z"), StartedAt: started.Format(time.RFC3339), Agent: AgentName, Outcomes: []Outcome{}}
+	runID := r.RunID
+	if runID == "" {
+		runID = RunIDAt(started)
+	}
+	record := RunRecord{RunID: runID, StartedAt: started.Format(time.RFC3339), Agent: AgentName, Outcomes: []Outcome{}}
 	runDir := RunDir(r.Root, record.RunID)
+	ctx, runSpan := orchestrator.OrNoop(r.Tracer).StartRun(ctx, orchestrator.RunSpan{
+		Plan: PlanName, SpecPath: r.Root, StateFile: filepath.Join(runDir, "run.json")})
 	known := summaries{thisRun: map[string]state.RepoDocState{}, recorded: r.Recorded}
 	var tally usageTally
-	for _, task := range tasks {
+	for index, task := range tasks {
 		if ctx.Err() != nil {
 			record.Interrupted = true
 			break
 		}
-		outcome, verified := r.document(ctx, task, known, runDir)
+		outcome, verified := r.document(ctx, task, known, runDir, index+1)
 		record.Outcomes = append(record.Outcomes, outcome)
 		if verified != nil {
 			known.thisRun[task.Path] = *verified
@@ -75,6 +95,7 @@ func (r Runner) Run(ctx context.Context, tasks []Task) (RunRecord, error) {
 		tally.add(outcome.Usage)
 	}
 	record.TotalUsage = tally.result()
+	runSpan.End(runOutcome(record, tally.result()))
 	return record, writeRecord(runDir, record)
 }
 
@@ -101,13 +122,29 @@ func (t *usageTally) result() *orchestrator.Usage {
 	return &total
 }
 
-// invoke calls the provider under the stage's own deadline.
-func (r Runner) invoke(ctx context.Context, stage orchestrator.Stage, task Task, runDir string, input map[string][]byte) (orchestrator.StageOutput, error) {
+// invoke calls the provider under the stage's own deadline, inside a stage span
+// and a provider span: the stage is one attempt (Iteration is the round), the
+// provider span is the model call and carries the usage it reported.
+func (r Runner) invoke(ctx context.Context, stage orchestrator.Stage, task Task, runDir string, input map[string][]byte, at position) (orchestrator.StageOutput, error) {
+	tracer := orchestrator.OrNoop(r.Tracer)
+	ctx, stageSpan := tracer.StartStage(ctx, orchestrator.StageSpan{ID: stage.ID, Agent: stage.Agent, Sequence: at.sequence, Iteration: at.round})
+	ctx, providerSpan := tracer.StartProvider(ctx, orchestrator.ProviderSpan{Stage: stage.ID, Agent: stage.Agent, Operation: orchestrator.GenAIOperationName})
 	stageCtx, cancel := context.WithTimeout(ctx, stage.Timeout)
 	defer cancel()
-	return r.Provider.Invoke(stageCtx, stage, orchestrator.StageInput{
+	output, err := r.Provider.Invoke(stageCtx, stage, orchestrator.StageInput{
 		SpecPath: ".loom/facts/" + task.Path, WorkspaceDir: runDir, ProjectRoot: r.Root, UpstreamState: input,
 	})
+	outcome := callOutcome(output, err)
+	providerSpan.End(outcome)
+	stageSpan.End(outcome)
+	return output, err
+}
+
+// position says where a call sits in the run: which directory it is, and which
+// attempt at it.
+type position struct {
+	sequence int
+	round    int
 }
 
 // accept decodes a payload against the schema and checks it documents the

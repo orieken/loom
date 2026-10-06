@@ -104,3 +104,32 @@ func TestLevelTwoRespectsExistingMCPConfig(t *testing.T) {
 		t.Errorf("expected manual-merge warning, got:\n%s", output.String())
 	}
 }
+
+// ADR-010: a level 2 install says what to run to build the repo graph, installs
+// nothing for it, and leaves the opt-in docs bundle for the person to choose.
+func TestLevelTwoTellsYouToIndexAndLeavesRepoDocsOptIn(t *testing.T) {
+	target, output := executeLevelInstall(t, 2)
+	if !strings.Contains(output, "repo-index: run `loom index`") {
+		t.Errorf("the installer must say what to run next:\n%s", output)
+	}
+	if !strings.Contains(output, `opt-in bundle "repo-docs" is not installed by default`) || !strings.Contains(output, "document --help") {
+		t.Errorf("an opt-in bundle is named, not installed:\n%s", output)
+	}
+	for _, absent := range []string{".loom", ".loomignore"} {
+		if _, err := os.Stat(filepath.Join(target, absent)); !os.IsNotExist(err) {
+			t.Errorf("installing must not create %s: indexing is the person's command to run", absent)
+		}
+	}
+}
+
+func TestLevelOneDoesNotMentionTheRepoBundles(t *testing.T) {
+	if _, output := executeLevelInstall(t, 1); strings.Contains(output, "repo-index") || strings.Contains(output, "repo-docs") {
+		t.Errorf("the repo bundles belong to level 2:\n%s", output)
+	}
+}
+
+func TestOptInCommandNamesTheDocsCommandAndFallsBackToHelp(t *testing.T) {
+	if optInCommand("repo-docs") != "document --help" || optInCommand("anything-else") != "help" {
+		t.Error("optInCommand")
+	}
+}

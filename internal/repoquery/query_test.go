@@ -154,3 +154,31 @@ func TestAnEntrypointInTheRootHasNoDirectoryPrefix(t *testing.T) {
 		t.Errorf("%v", got)
 	}
 }
+
+func TestEdgesCarryTheLayerTheIndexRecordsSoABoundaryCheckIsOneQuery(t *testing.T) {
+	root := indexedRepo(t, layered)
+	document(t, root, "store", "Persists.", "adapter")
+	document(t, root, "svc", "Coordinates.", "application")
+	snapshot := snapshotOf(t, root)
+	deps, _ := snapshot.DependenciesOf("svc")
+	if len(deps) != 1 || deps[0].Path != "store" || deps[0].Layer != "adapter" {
+		t.Errorf("an application directory depending on an adapter is visible in one call: %+v", deps)
+	}
+	dependents, _ := snapshot.DependentsOf("store")
+	layers := map[string]string{}
+	for _, edge := range dependents {
+		layers[edge.Path] = edge.Layer
+	}
+	if layers["svc"] != "application" || layers["api"] != "" {
+		t.Errorf("an undocumented directory has no layer, not a guessed one: %v", layers)
+	}
+}
+
+func TestEdgesHaveNoLayerWithoutAnIndex(t *testing.T) {
+	snapshot := snapshotOf(t, indexedRepo(t, layered))
+	snapshot.HasIndex = false
+	deps, _ := snapshot.DependenciesOf("svc")
+	if len(deps) != 1 || deps[0].Layer != "" {
+		t.Errorf("%+v", deps)
+	}
+}

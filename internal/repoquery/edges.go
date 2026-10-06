@@ -1,6 +1,7 @@
 package repoquery
 
 import (
+	"path"
 	"sort"
 
 	"github.com/orieken/loom/internal/repograph"
@@ -11,6 +12,10 @@ import (
 type Edge struct {
 	Path       string `json:"path"`
 	Confidence string `json:"confidence" jsonschema:"enum=exact,enum=approximate"`
+	// Layer is the architectural layer the context index records for the other
+	// end of the edge, when it has been documented. It makes a layer-boundary
+	// check one query: ask for a directory's dependencies and read the layers.
+	Layer string `json:"layer,omitempty"`
 }
 
 // DependenciesOf lists what a path imports.
@@ -40,7 +45,31 @@ func (s Snapshot) related(raw string, outgoing bool) ([]Edge, error) {
 			best[to] = strongest(best[to], string(edge.Confidence))
 		}
 	}
-	return sortedEdges(best), nil
+	return s.withLayers(sortedEdges(best)), nil
+}
+
+// withLayers fills each edge's layer from the index. An undocumented directory
+// has none, and an edge says so by omitting it rather than guessing.
+func (s Snapshot) withLayers(edges []Edge) []Edge {
+	if !s.HasIndex {
+		return edges
+	}
+	layers := s.layersByNode()
+	for index := range edges {
+		edges[index].Layer = layers[edges[index].Path]
+	}
+	return edges
+}
+
+// layersByNode maps a node id to the layer recorded for its directory.
+func (s Snapshot) layersByNode() map[string]string {
+	layers := make(map[string]string, len(s.Graph.Nodes))
+	for _, node := range s.Graph.Nodes {
+		if len(node.Files) > 0 {
+			layers[node.ID] = s.Index.Entries[path.Dir(node.Files[0])].Layer
+		}
+	}
+	return layers
 }
 
 // strongest keeps exact over approximate when two edges reach the same node.

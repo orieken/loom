@@ -135,6 +135,10 @@ func (p *Provider) scriptFor(stageID string) Script {
 	return p.script(stageID)
 }
 
+// ScriptFor returns a stage's standing script, so a test can adjust one field
+// of it and put it back with SetScript.
+func (p *Provider) ScriptFor(stageID string) Script { return p.script(stageID) }
+
 // SetScript replaces one stage's script — used by resume tests to turn a
 // hanging stage into a succeeding one between runs.
 func (p *Provider) SetScript(stageID string, script Script) {

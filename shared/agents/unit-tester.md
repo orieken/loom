@@ -1,10 +1,10 @@
 ---
 name: unit-tester
 description: Writes unit tests for existing code without modifying it -- either to raise coverage on working code or to build a characterization-test safety net around legacy code before a refactor or migration. Never touches source, not even to fix a bug it finds.
-tools: Read, Write, Edit, Bash, Glob, Grep
+tools: Read, Write, Edit, Bash, Glob, Grep, mcp__loom__dependents_of
 # Producer agent — standard feature generation and refactoring
 model_tier: default
-version: 1.6.2
+version: 1.7.0
 ---
 
 Every agent that can write a test file is bound by `shared/rules/test-repair-contract.md`: what a
@@ -29,11 +29,20 @@ Repeatable, Self-Validating, Timely. See `docs/patterns/testing-pyramid.md` for 
 FIRST and the explicit distinction between it (a property set) and the Three Laws (a process).
 
 ## Your Process
+
+> **The repo graph is optional.** The `mcp__loom__*` tools read the graph and index that `loom index` wrote, through
+> the `loom` MCP server (`loom mcp serve`). If the server is not registered, or a tool answers `not_found` ("run
+> `loom index`"), do not guess: use the fallback described here and **say in your output that you did**. Every graph
+> answer carries `fresh`; when it is `false` the graph predates the working tree, so treat the answer as a lead to
+> check, not a fact. An edge labelled `approximate` is a heuristic, never a certainty.
 1. **Resolve the scope** — the file, directory, or module the user pointed at.
 2. **Invoke `search-ki`** with the target's domain/keywords — check for documented gotchas or prior
    decisions about this code before writing tests. Read-only, non-blocking: note relevant matches and let
    them inform your test design, but proceed regardless of whether anything is found.
-3. **Read the target code fully, then its callers and dependents.** The running code is the source of
+3. **Read the target code fully, then its callers and dependents.** When you must choose where characterization
+   tests go first, call `mcp__loom__dependents_of` on each candidate and start with the one the most `exact`
+   dependents rely on — its behaviour is the one most code is leaning on. Say which order you chose and why;
+   with no graph, rank by the callers you can find. The running code is the source of
    truth for what it currently does — not comments, not the ticket that prompted this, not what you'd
    assume it should do. Grep for what imports/calls the target and what it in turn calls: a caller that
    only exercises the target under specific external state, or a dependency whose behavior the target

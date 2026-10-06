@@ -102,7 +102,7 @@ func (e *Executor) validateAndWrite(stage Stage, input StageInput, raw []byte) (
 	if err != nil {
 		return "", fmt.Errorf("stage %q returned invalid state: %w", stage.ID, err)
 	}
-	payload, err := measureTypedOutput(decoded, input, raw)
+	payload, err := measureTypedOutput(decoded, input, raw, e.blastResolver)
 	if err != nil {
 		return "", fmt.Errorf("stage %q: %w", stage.ID, err)
 	}
@@ -136,12 +136,15 @@ func keepingPayload(stage Stage, input StageInput, payload []byte, cause error) 
 // arithmetic over file sizes, an agent asserted it and was 7x under, and
 // nothing downstream checks it. A document that measures nothing passes
 // through untouched.
-func measureTypedOutput(decoded state.Validatable, input StageInput, payload []byte) ([]byte, error) {
+func measureTypedOutput(decoded state.Validatable, input StageInput, payload []byte, blast state.BlastRadiusResolver) ([]byte, error) {
 	measurable, needsMeasuring := decoded.(state.Measurable)
 	if !needsMeasuring {
 		return payload, nil
 	}
 	measurable.Measure(workspaceFileSizer(input))
+	if resolvable, ok := decoded.(state.BlastResolvable); ok {
+		resolvable.ResolveBlastRadius(blast)
+	}
 	measured, err := json.Marshal(decoded)
 	if err != nil {
 		return nil, fmt.Errorf("re-encode measured state: %w", err)

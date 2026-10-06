@@ -2,7 +2,8 @@
   "optionalPaths": [
     ".claude/knowledge/",
     "docs/features/*/summary.md",
-    ".claude/exemplars.yaml"
+    ".claude/exemplars.yaml",
+    ".loom/"
   ],
   "sources": [
     {
@@ -153,6 +154,19 @@
       "retrievalBackend": "lexical",
       "format": "yaml manifest pointing at real test files in the project's own suite",
       "notes": "Project-local by design: an exemplar is this project's proof it follows the conventions, so nothing here is portable between repositories. The manifest carries the metadata (language, level, demonstrates) because the retrieval pre-filter has no frontmatter to read \u2014 a test file is source code, not markdown. Declared in optionalPaths because most projects have none and a missing manifest must not fail health-check. See shared/contracts/exemplar-contract.md."
+    },
+    {
+      "name": "repo-context-index",
+      "type": "Repo Context Index",
+      "paths": [
+        ".loom/"
+      ],
+      "owner": "loom index (graph, fact sheets and index structure \u2014 deterministic) + repo-documenter (purposes and tags, verified before acceptance, gated by loom docs approve)",
+      "portable": false,
+      "indexable": true,
+      "retrievalBackend": "lexical",
+      "format": "json (graph.json, facts/<dir>.json, index.json, changes/, runs/) and markdown (docs/<dir>/README.md)",
+      "notes": "A derived, project-local map of one repository (ADR-010): import edges labelled exact or approximate, per-directory fact sheets, and an index of purpose/tags/layer with freshness. Queried through the dependencies_of, dependents_of, impact, entrypoints, find_files and describe MCP tools, which report whether the graph still matches the working tree. find_files is lexical by design (no embeddings). Not curated by memory-engineer: it is regenerated, never expired. Absent until `loom index` has run, hence an optional path."
     }
   ],
   "retrievalBackends": {

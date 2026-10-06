@@ -152,6 +152,7 @@ func executeRun(cmd *cobra.Command, setup runSetup) error {
 	executor.OnPostureError(reportPostureErrorOnce(cmd))
 	executor.OnClaimWarning(reportClaimWarning(cmd))
 	executor.WithPolicies(setup.policies)
+	executor.WithBlastRadiusResolver(blastRadiusResolverFor(input.ProjectRoot))
 	executor.OnPolicyDecision(func(decision policy.Decision) { reportPolicyDecision(cmd, decision) })
 	stopTelemetry, err := startTelemetry(cmd, executor, input.WorkspaceDir)
 	if err != nil {

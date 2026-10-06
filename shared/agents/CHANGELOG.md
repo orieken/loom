@@ -22,6 +22,10 @@ commit — the pre-commit hook checks for exactly this.
 |---|---|---|
 | repo-documenter | new -> 1.0.0 | New producer agent. Documents one directory from its fact sheet and child summaries as typed JSON (`repo-doc` state kind); read-only (`Read` only), no source by default, every claim cited, "unknown" is a valid answer. Contract: `shared/contracts/repo-doc-contract.md` |
 | repo-documenter | 1.0.0 -> 1.1.0 | Minor: new `revision-feedback` input block and a revise-don't-argue rule; backticks are now reserved for names the fact sheet contains (the verifier checks them); evidence claims must repeat the claim text exactly; never cite an empty fact-sheet field |
+| context-engineer | 2.2.0 -> 2.3.0 | Minor: new step 7 — pin by blast radius. Declares `mcp__loom__impact`, `mcp__loom__dependents_of` and `mcp__loom__find_files` (tool-list change); records only `blastRadius.seeds` and `depth`, since `loom` computes the answer from the repo graph; falls back to grep and says so when the graph is unavailable. Skill updated to match |
+| architect | 2.0.0 -> 2.1.0 | Minor: layer boundaries are checked as repo-graph queries (`mcp__loom__dependencies_of`, whose edges carry the target's layer) instead of by reading imports; an `approximate` crossing is only a possible violation. Declares the three graph tools |
+| refactor-engineer | 1.3.0 -> 1.4.0 | Minor: decides where characterization tests go first from `mcp__loom__dependents_of` (most exact dependents first), and records the order. Declares `mcp__loom__dependents_of` and `mcp__loom__impact` |
+| unit-tester | 1.6.2 -> 1.7.0 | Minor: orders characterization tests by `mcp__loom__dependents_of`. Declares that tool |
 | repo-doc-auditor | new -> 1.0.0 | New read-only counter agent to repo-documenter. Judges whether cited facts support each claim, after the Go verifier passes; typed `repo-doc-audit` verdict. Contract: `shared/contracts/repo-doc-audit-contract.md` |
 
 ## 2026-09-24 — KI provenance and injection flags (roadmap L3.7)

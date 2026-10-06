@@ -33,6 +33,10 @@ func addToolGroup(groups map[string]bool, tool string) {
 	if group := toolGroups[tool]; group != "" {
 		groups[group] = true
 	}
+	// An MCP tool is mcp__<server>__<tool>; Roo files all of them under "mcp".
+	if strings.HasPrefix(tool, "mcp__") {
+		groups["mcp"] = true
+	}
 }
 
 func sortedGroups(groups map[string]bool) []string {

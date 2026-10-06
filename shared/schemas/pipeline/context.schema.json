@@ -64,6 +64,78 @@
       "type": "array",
       "description": "Files considered and deliberately left out"
     },
+    "blastRadius": {
+      "properties": {
+        "seeds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "minItems": 1,
+          "description": "The repo-relative paths the change touches"
+        },
+        "depth": {
+          "type": "integer",
+          "maximum": 10,
+          "minimum": 1,
+          "description": "How many imports to follow (default 3)"
+        },
+        "graphSha": {
+          "type": "string",
+          "description": "Computed by loom. Do not supply"
+        },
+        "fresh": {
+          "type": "boolean",
+          "description": "Computed by loom. Do not supply"
+        },
+        "total": {
+          "type": "integer",
+          "description": "Computed by loom. Do not supply"
+        },
+        "impacted": {
+          "items": {
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "distance": {
+                "type": "integer"
+              },
+              "confidence": {
+                "type": "string",
+                "enum": [
+                  "exact",
+                  "approximate"
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "path",
+              "distance",
+              "confidence"
+            ]
+          },
+          "type": "array",
+          "description": "Computed by loom. Do not supply"
+        },
+        "truncated": {
+          "type": "boolean",
+          "description": "Computed by loom. Do not supply"
+        },
+        "unresolved": {
+          "type": "string",
+          "description": "Computed by loom. Do not supply"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "seeds"
+      ],
+      "description": "What the change reaches. Give only seeds and depth: loom computes the rest from the repo graph and replaces anything else you write. Omit if the repository has no graph"
+    },
     "budget": {
       "properties": {
         "files": {

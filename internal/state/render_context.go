@@ -11,6 +11,9 @@ func (c ContextState) render() string {
 	out.title("Context Manifest: " + c.Feature)
 	out.section("## Scope", c.headerLines())
 	out.section("## Pinned Files", c.pinnedLines())
+	if c.BlastRadius != nil {
+		out.section("## Blast Radius", c.BlastRadius.blastLines())
+	}
 	out.section("## Token Budget", c.budgetLines())
 	out.section("## Knowledge Items", codeBullets(c.KnowledgeItems))
 	out.section("## ADRs", codeBullets(c.ADRs))

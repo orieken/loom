@@ -123,3 +123,13 @@ func (probe healthLevelProbe) policiesPresent() (bool, string) {
 	}
 	return true, fmt.Sprintf("%d policy file(s) in .claude/policies", len(matches))
 }
+
+// repoIndexPresent is the evidence that the repo graph has been built: the
+// MCP repo tools read it, and without it they answer "run loom index".
+func (probe healthLevelProbe) repoIndexPresent() (bool, string) {
+	graph := filepath.Join(".loom", "graph.json")
+	if !pathExistsIn(probe.target, graph) {
+		return false, "repo graph not built (" + graph + "): run `loom index`"
+	}
+	return true, "repo graph present (" + graph + ")"
+}

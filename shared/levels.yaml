@@ -22,6 +22,7 @@ landed:
   - M0.4 # executor skeleton (epic 76, ba78f21 + cab0156, shipped 2026-08-29)
   - L3.9 # telemetry schema generated from one Go enum (epic 86, shipped 2026-09-01)
   - L2.16 # typed policy evaluator and audit trail (epic 87, shipped 2026-09-02)
+  - L3.63 # repo context indexing: graph, fact sheets, index, documenter, gate, MCP tools (ADR-010, shipped 2026-10-05)
 
 # Context budget for the level 1 core rules bundle.
 #
@@ -135,6 +136,25 @@ levels:
       - id: executor
         requires: M0.4
         action: executor
+      # Repo context indexing (ADR-010). The graph, fact sheets and context index
+      # are written by `loom index` — deterministic, local and offline, no model
+      # involved — and the six repo tools of the MCP server registered above read
+      # them. Nothing is installed: the loom binary is the install. The evidence
+      # is that the index exists, because without it those tools answer
+      # "run loom index".
+      - id: repo-index
+        requires: L3.63
+        action: repo-index
+      # Generated documentation, opt-in. `loom document` has an agent write what
+      # each directory is for, verified before it is accepted, and `loom docs`
+      # gates every write into the repository. It spends model calls, so it is
+      # never part of a level and never lowers one. Its two agents ship in the
+      # level 1 `agents` bundle — bundles are directory-granular — and are inert
+      # until `loom document` is run on purpose.
+      - id: repo-docs
+        requires: L3.63
+        optIn: true
+        action: repo-docs
 
   - level: 3
     name: Observed and governed

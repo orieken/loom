@@ -10,7 +10,6 @@ import (
 
 	"github.com/orieken/loom/internal/contextindex"
 	"github.com/orieken/loom/internal/repograph"
-	"github.com/orieken/loom/internal/repoindex"
 	"github.com/spf13/cobra"
 )
 
@@ -45,7 +44,9 @@ func init() {
 }
 
 func runIndex(cmd *cobra.Command, _ []string) error {
-	run, err := repoindex.Run(indexRoot, repograph.GitLister{}, time.Now)
+	tracer, stop := startToolTelemetry(cmd.ErrOrStderr(), "")
+	defer stop()
+	run, err := tracedIndex(cmd.Context(), tracer, indexRoot)
 	if err != nil {
 		return fmt.Errorf("index %s: %w", indexRoot, err)
 	}
@@ -83,3 +84,6 @@ func summarizeIndex(result repograph.Result) string {
 	return fmt.Sprintf("%d nodes, %d edges (%d exact, %d approximate), %d unresolved: %s",
 		len(graph.Nodes), len(graph.Edges), exact, len(graph.Edges)-exact, len(graph.Unresolved), state)
 }
+
+// nowFunc is the clock indexing stamps its graph with.
+var nowFunc = time.Now

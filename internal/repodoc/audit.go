@@ -34,13 +34,13 @@ func auditInput(task Task, known summaries, vocabulary Vocabulary, candidate sta
 
 // audit runs the auditor on a candidate that already passed the verifier.
 // Only blocking findings become violations: a suggestion does not cost a round.
-func (r Runner) audit(ctx context.Context, task Task, known summaries, runDir string, candidate state.RepoDocState) ([]Violation, string, *orchestrator.Usage, error) {
+func (r Runner) audit(ctx context.Context, task Task, known summaries, runDir string, at position, candidate state.RepoDocState) ([]Violation, string, *orchestrator.Usage, error) {
 	input, err := auditInput(task, known, r.Vocabulary, candidate)
 	if err != nil {
 		return nil, "", nil, err
 	}
 	stage := orchestrator.Stage{ID: auditStageID(task.Path), Agent: AuditorName, StateKind: string(state.KindRepoDocAudit), Timeout: r.timeout()}
-	output, err := r.invoke(ctx, stage, task, runDir, input)
+	output, err := r.invoke(ctx, stage, task, runDir, input, at)
 	if err != nil {
 		return nil, "", output.Usage, err
 	}

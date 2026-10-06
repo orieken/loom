@@ -28,7 +28,7 @@ def infer_groups(tools_raw: str) -> list:
         groups.append("edit")
     if tools & COMMAND_TOOLS:
         groups.append("command")
-    if tools & MCP_TOOLS:
+    if tools & MCP_TOOLS or any(t.startswith("mcp__") for t in tools):
         groups.append("mcp")
     return groups or ["read"]
 
