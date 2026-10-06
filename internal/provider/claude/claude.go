@@ -44,6 +44,11 @@ type Config struct {
 	// Logger receives structured logs; nil means JSON to os.Stderr. Logs
 	// never go to stdout (that belongs to the user).
 	Logger *slog.Logger
+	// IsolateProjectContext starts each stage without the project's CLAUDE.md,
+	// settings, hooks and rules (--setting-sources ""). A stage whose whole
+	// input is in its prompt gains nothing from them, and they were measured at
+	// about 40k extra tokens per call. Auth is unaffected, unlike --bare.
+	IsolateProjectContext bool
 }
 
 // Provider spawns the claude CLI once per stage.
@@ -51,6 +56,7 @@ type Provider struct {
 	binaryName string
 	agentsDir  string
 	logger     *slog.Logger
+	isolated   bool
 }
 
 // New builds a Provider from config, defaulting the binary name and logger.
@@ -63,7 +69,7 @@ func New(config Config) *Provider {
 	if logger == nil {
 		logger = slog.New(slog.NewJSONHandler(os.Stderr, nil))
 	}
-	return &Provider{binaryName: binaryName, agentsDir: config.AgentsDir, logger: logger}
+	return &Provider{binaryName: binaryName, agentsDir: config.AgentsDir, logger: logger, isolated: config.IsolateProjectContext}
 }
 
 // Invoke runs one stage's agent headless and writes its output to the
@@ -106,6 +112,14 @@ func (p *Provider) buildPrompt(stage orchestrator.Stage, input orchestrator.Stag
 	return prompt + instruction, allowed, nil
 }
 
+// contextArgs are the flags that decide how much project context a stage loads.
+func contextArgs(isolated bool) []string {
+	if !isolated {
+		return nil
+	}
+	return []string{"--setting-sources", ""}
+}
+
 // subprocessWaitDelay bounds how long Wait will keep waiting for output
 // after the process is gone or its context has ended. Long enough for a
 // well-behaved child to flush its last write, short enough that a deadline
@@ -131,6 +145,7 @@ func (p *Provider) runSubprocess(ctx context.Context, binaryPath, prompt string,
 	// them `claude -p` denies every Write and Edit and the run fails
 	// silently (roadmap L2.22).
 	args := append([]string{"-p", "--output-format", "json"}, permissionArgs(allowed)...)
+	args = append(args, contextArgs(p.isolated)...)
 	command := exec.CommandContext(ctx, binaryPath, args...)
 	command.Stdin = strings.NewReader(prompt)
 	command.Stdout = stdout

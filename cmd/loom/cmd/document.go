@@ -85,7 +85,7 @@ var documentProvider = func(root string) (orchestrator.Provider, error) {
 	if err != nil {
 		return nil, err
 	}
-	return claude.New(claude.Config{AgentsDir: agentsDir}), nil
+	return claude.New(claude.Config{AgentsDir: agentsDir, IsolateProjectContext: true}), nil
 }
 
 func runDocument(cmd *cobra.Command, _ []string) error {

@@ -76,3 +76,13 @@ func TestThePostureNeverBypassesPermissions(t *testing.T) {
 		t.Errorf("permission args do not carry the allowlist: %s", args)
 	}
 }
+
+func TestProjectContextIsOnlyIsolatedWhenAskedFor(t *testing.T) {
+	if got := contextArgs(false); len(got) != 0 {
+		t.Errorf("a default stage keeps the project's context, got %v", got)
+	}
+	got := contextArgs(true)
+	if len(got) != 2 || got[0] != "--setting-sources" || got[1] != "" {
+		t.Errorf("isolation must pass an empty --setting-sources, got %q", got)
+	}
+}
