@@ -131,7 +131,7 @@ loom install --copy
 # Verify everything is healthy
 loom health
 
-# Serve the six framework MCP tools over stdio (register with: claude mcp add loom -- loom mcp serve)
+# Serve the framework MCP tools over stdio (register with: claude mcp add loom -- loom mcp serve)
 loom mcp serve
 
 # Execute the delivery pipeline for a spec, halting at each approval gate

@@ -92,3 +92,30 @@ func removeEmptyDirectories(facts string) {
 		_ = os.Remove(directories[i]) // fails, harmlessly, when not empty
 	}
 }
+
+// LoadAll reads every fact sheet under .loom/facts, keyed by directory path. A
+// sheet that cannot be read or parsed is an error: a partial map would answer
+// questions confidently from half the facts.
+func LoadAll(root string) (map[string]FactSheet, error) {
+	facts := filepath.Join(root, OutputDir)
+	sheets := map[string]FactSheet{}
+	err := filepath.WalkDir(facts, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".json") {
+			return err
+		}
+		raw, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		var sheet FactSheet
+		if parseErr := json.Unmarshal(raw, &sheet); parseErr != nil {
+			return fmt.Errorf("parse %s: %w", path, parseErr)
+		}
+		sheets[sheet.Path] = sheet
+		return nil
+	})
+	if os.IsNotExist(err) {
+		return sheets, nil
+	}
+	return sheets, err
+}

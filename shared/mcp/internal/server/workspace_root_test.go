@@ -31,8 +31,15 @@ var pathArguments = map[string]struct {
 	"validate_artifact":         {paths: []string{"artifactPath"}, valid: map[string]any{"artifactPath": "DOMAIN_DICTIONARY.md"}},
 }
 
-// Tools that take no filesystem path from the model.
-var pathlessTools = map[string]bool{"search_ki": true}
+// Tools that take no filesystem path from the model. The repo tools (ADR-010)
+// take a repo-relative path, but only as a key into the stored graph: it is
+// looked up, never opened, and a key that is not in the graph is refused, so
+// there is no path to confine. repo_tools_test.go proves "/" and "../../etc"
+// are refused.
+var pathlessTools = map[string]bool{
+	"search_ki": true, "dependencies_of": true, "dependents_of": true, "entrypoints": true,
+	"impact": true, "find_files": true, "describe": true,
+}
 
 // The L2.3 done-when, through the real registry: every tool that reads the
 // filesystem refuses "/" and "../../etc".

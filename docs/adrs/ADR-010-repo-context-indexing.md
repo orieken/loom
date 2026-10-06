@@ -219,3 +219,32 @@ has been deleted from the working tree is skipped.
   sheets (the graph per directory) and the index.
 - **A `.loomignore` was added to this repository** for `tests/fixtures/`, which are inputs to the indexer's own tests and
   otherwise show up as entrypoints.
+
+## Amendment 2026-10-05: Phase 7 (MCP tools)
+- **Six read-only tools in `loom mcp serve`:** `dependencies_of`, `dependents_of`, `impact`, `entrypoints`, `find_files`,
+  `describe`. The logic lives in `internal/repoquery` over the stored graph, fact sheets and index; the tools are thin
+  wrappers sharing one `repoTool` base. The server's tool count goes from 8 to 14, and the fitness tests that pin the
+  list, the safe-argument allowlist and argument validation were extended deliberately.
+- **A path is a key, not a file.** Arguments are repo-relative paths looked up in the graph (a source file resolves to its
+  directory's node). They are never opened, so the workspace root has nothing to confine; `/`, `../../etc` and the like
+  are refused as unknown keys, with up to five near-miss suggestions. The six tools are therefore listed as "pathless" in
+  the root-confinement test, and a separate test proves the escapes are refused through the real registry.
+- **`fresh` means the stored graph matches the working tree now.** It compares the stored `graph_hash` with a freshly
+  extracted one. Extraction reads every tracked file, so it runs at most once per 30 seconds and at once when a new graph
+  is written; a change in the last half minute may not show. This is a deliberate trade against re-reading the tree on
+  every call. A check that cannot run (not a git repo) reports `fresh: false` rather than failing the question. Each
+  result also carries `graphSha` (the commit; the prompt's "graph SHA") and `graphHash` (the content identity).
+- **Stale answers are still answers.** A graph that no longer matches is served with `fresh: false` and a hint naming
+  `loom index`; refusing would leave an agent with nothing, and the flag already says not to trust it.
+- **`impact` labels confidence along the whole chain.** Breadth-first over importers; a directory keeps its shortest
+  distance and is `exact` only if some shortest path uses exact edges throughout, so one approximate edge makes it and
+  everything beyond it approximate. An unknown path is an error that names every unknown one, never a quietly smaller
+  radius.
+- **Small outputs.** Lists are capped (`limit`, default 50; 20 for `find_files`; hard ceilings 200 and 50), report the true
+  `total`, and say when `truncated`. `describe` caps its summary at 3000 bytes and says so. Typical answers are a few
+  hundred bytes.
+- **Model-written text is reference, not instruction.** A `purpose`, open question or summary that trips the injection
+  scan is withheld and listed under `injectionFlags`, as `search_ki` treats a Knowledge Item — a repository's own text can
+  reach a documenter through names in its facts. `query` is never in the telemetry allowlist (guardrail #9).
+- **`find_files` is lexical** (paths, tags and purposes, weighted 3/2/1, ties by path), deterministic, with no embeddings:
+  the prompt's v1 constraint. A graph with no context index is a `not_found` error for it and for `describe`.

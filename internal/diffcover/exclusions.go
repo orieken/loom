@@ -11,4 +11,8 @@ var RepositoryExclusions = map[string]bool{
 	// Source files `loom index` reads as input (ADR-010). They are never
 	// compiled or run, and the Go ones sit in their own nested modules.
 	"tests/fixtures/repograph/": true,
+	// Test support: builds committed, indexed git repositories for tests of
+	// code that reads the context index. Nothing in production imports it, so
+	// no profile of this module's own tests can reach it.
+	"internal/repoquery/fixture/": true,
 }

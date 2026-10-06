@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/orieken/loom/internal/contextindex"
-	"github.com/orieken/loom/internal/factsheet"
 	"github.com/orieken/loom/internal/repograph"
+	"github.com/orieken/loom/internal/repoindex"
 	"github.com/spf13/cobra"
 )
 
@@ -45,22 +45,13 @@ func init() {
 }
 
 func runIndex(cmd *cobra.Command, _ []string) error {
-	result, err := repograph.Index(indexRoot, repograph.GitLister{}, repograph.DefaultExtractors(), time.Now)
+	run, err := repoindex.Run(indexRoot, repograph.GitLister{}, time.Now)
 	if err != nil {
 		return fmt.Errorf("index %s: %w", indexRoot, err)
 	}
-	sheets := factsheet.Build(result.Repo, result.Graph)
-	outcome, err := factsheet.Write(indexRoot, sheets)
-	if err != nil {
-		return fmt.Errorf("write fact sheets: %w", err)
-	}
-	index, indexWritten, err := contextindex.Refresh(indexRoot, sheets)
-	if err != nil {
-		return fmt.Errorf("write context index: %w", err)
-	}
-	fmt.Fprintln(cmd.OutOrStdout(), summarizeIndex(result))
-	fmt.Fprintf(cmd.OutOrStdout(), "%d fact sheets: %d written, %d removed\n", len(sheets), outcome.Written, outcome.Removed)
-	fmt.Fprintln(cmd.OutOrStdout(), summarizeContextIndex(index, indexWritten))
+	fmt.Fprintln(cmd.OutOrStdout(), summarizeIndex(run.Graph))
+	fmt.Fprintf(cmd.OutOrStdout(), "%d fact sheets: %d written, %d removed\n", len(run.Sheets), run.Facts.Written, run.Facts.Removed)
+	fmt.Fprintln(cmd.OutOrStdout(), summarizeContextIndex(run.Index, run.IndexWritten))
 	return nil
 }
 

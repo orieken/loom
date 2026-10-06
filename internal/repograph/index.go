@@ -2,6 +2,7 @@ package repograph
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -86,6 +87,25 @@ func writeGraph(root string, graph Graph) (bool, error) {
 		return false, fmt.Errorf("encode graph: %w", err)
 	}
 	return true, WriteFileAtomically(path, append(raw, '\n'))
+}
+
+// LoadGraph reads .loom/graph.json. found is false when none has been written,
+// which is not an error: indexing is opt-in.
+func LoadGraph(root string) (graph Graph, found bool, err error) {
+	raw, err := os.ReadFile(filepath.Join(root, OutputDir, GraphFile))
+	if errors.Is(err, os.ErrNotExist) {
+		return Graph{}, false, nil
+	}
+	if err != nil {
+		return Graph{}, false, fmt.Errorf("read graph: %w", err)
+	}
+	if err := json.Unmarshal(raw, &graph); err != nil {
+		return Graph{}, false, fmt.Errorf("parse graph: %w", err)
+	}
+	if graph.SchemaVersion != SchemaVersion {
+		return Graph{}, false, fmt.Errorf("graph.json has schema_version %d; this build reads %d", graph.SchemaVersion, SchemaVersion)
+	}
+	return graph, true, nil
 }
 
 func readGraph(path string) (Graph, bool) {

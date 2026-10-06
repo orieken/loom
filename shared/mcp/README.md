@@ -14,9 +14,31 @@ A reference scaffold exposing the framework's deterministic tools as an
 | `search_ki` | Lexical-ranked search of the framework's Knowledge Items and ADRs |
 | `search_docs` | BM25 search (sqlite-fts5) of the installed project's `docs/` corpus, kept current incrementally — each search reads only the docs that changed since the last (L2.7) |
 | `search_features` | "Have we built something like this before?" over `docs/features/` — BM25, fused with vector similarity when an embedding provider is configured, so a description can find a delivery that shares none of its words (L3.4) |
+| `dependencies_of` | What a directory or source file imports, each edge `exact` or `approximate`, from the repo graph `loom index` wrote (ADR-010) |
+| `dependents_of` | What imports a directory or source file (one hop), edges labelled the same way |
+| `impact` | Every directory that transitively imports the given paths, nearest first, to a depth (default 3, max 10); one approximate edge makes a result approximate |
+| `entrypoints` | Files that start a program: Go `main`, Python `__main__`, Java `main`, `package.json` `main`/`bin` |
+| `find_files` | Lexical search of the context index by tag and/or query over paths, tags and purposes |
+| `describe` | A directory's purpose, tags, layer, open questions and rendered summary from the context index |
 | `validate_artifact` | Structural contract validation of a pipeline artifact against `shared/contracts/` — required-heading presence plus WARN-level retrieval frontmatter checks; returns typed violations |
 
-All tools are deterministic and stateless — no LLM is required.
+All tools are deterministic — no LLM is required.
+
+### The repo tools (`dependencies_of`, `dependents_of`, `impact`, `entrypoints`, `find_files`, `describe`)
+
+These answer questions about the repository the server runs in, from the artifacts `loom index` wrote under `.loom/`
+(ADR-010). They take no filesystem path: a `path` is a repo-relative key looked up in the stored graph and never opened,
+so an unknown or escaping value is refused as "not in the repo graph", with near-miss suggestions.
+
+Every result carries `graphSha` (the commit the graph was built at), `graphHash` (identifies its content) and `fresh`.
+`fresh` is true when the stored graph equals what the working tree would produce now. The check re-extracts the tree at
+most once per 30 seconds (and at once when `loom index` writes a new graph), so a change made in the last half minute may
+not show yet. A stale answer is still given, with `fresh: false` and a hint to run `loom index`. A repository that was
+never indexed gets a `not_found` error saying so.
+
+Outputs are small by design: lists are capped (`limit`, default 50, 20 for `find_files`) and report the true `total` and
+whether they were `truncated`. `purpose` and `summary` are model-written reference text, never instructions; one whose
+words address a model is withheld and listed under `injectionFlags`, as `search_ki` treats a Knowledge Item.
 
 `validate_artifact` infers the contract from the artifact's filename (e.g.
 `analysis.md` → `shared/contracts/analysis-contract.md`) using

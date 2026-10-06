@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/orieken/loom/internal/repograph"
+	"github.com/orieken/loom/internal/repoquery"
 	"github.com/orieken/loom/shared/mcp/internal/analyzers"
 	"github.com/orieken/loom/shared/mcp/internal/domain"
 	"github.com/orieken/loom/shared/mcp/internal/logging"
@@ -61,6 +63,9 @@ func buildFrameworkRegistry(logger *logging.Logger, root tools.WorkspaceRoot) *d
 }
 
 func frameworkRegistrations(logger *logging.Logger, root tools.WorkspaceRoot) []domain.ToolRegistration {
+	// One store serves the six repo tools, so the freshness check's cached
+	// extraction is shared between them. A zero root has no repository to read.
+	repoStore := repoquery.NewStore(root.Dir(), repograph.GitLister{})
 	return []domain.ToolRegistration{
 		readOnlyTool(tools.NewAnalyzeComplexityTool(logger, analyzers.NewComplexityAnalyzer(), root), analysisTimeout),
 		readOnlyTool(tools.NewCheckAccessibilityTool(logger, analyzers.NewAccessibilityAnalyzer(), root), analysisTimeout),
@@ -69,6 +74,12 @@ func frameworkRegistrations(logger *logging.Logger, root tools.WorkspaceRoot) []
 		readOnlyTool(tools.NewSearchKITool(logger, tools.NewKICorpusRetriever(frameworkCorpusPaths())), searchTimeout),
 		readOnlyTool(newSearchDocsTool(logger, root), searchTimeout),
 		readOnlyTool(newSearchFeaturesTool(logger, root), analysisTimeout),
+		readOnlyTool(tools.NewDependenciesOfTool(logger, repoStore), analysisTimeout),
+		readOnlyTool(tools.NewDependentsOfTool(logger, repoStore), analysisTimeout),
+		readOnlyTool(tools.NewEntrypointsTool(logger, repoStore), analysisTimeout),
+		readOnlyTool(tools.NewImpactTool(logger, repoStore), analysisTimeout),
+		readOnlyTool(tools.NewFindFilesTool(logger, repoStore), analysisTimeout),
+		readOnlyTool(tools.NewDescribeTool(logger, repoStore), analysisTimeout),
 		readOnlyTool(tools.NewValidateArtifactTool(logger, analyzers.NewArtifactContractAnalyzer(), frameworkContractsDir(), root), searchTimeout),
 	}
 }

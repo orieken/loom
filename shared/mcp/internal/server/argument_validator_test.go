@@ -28,7 +28,16 @@ var mainArgument = map[string]struct {
 	"search_features":           {"query", map[string]any{"query": "anything"}},
 	"search_ki":                 {"query", map[string]any{"query": "anything"}},
 	"validate_artifact":         {"artifactPath", map[string]any{"artifactPath": "analysis.md"}},
+	"dependencies_of":           {"path", map[string]any{"path": "internal/state"}},
+	"dependents_of":             {"path", map[string]any{"path": "internal/state"}},
+	"describe":                  {"path", map[string]any{"path": "internal/state"}},
+	"find_files":                {"tag", map[string]any{"tag": "state"}},
 }
+
+// Tools whose arguments do not fit mainArgument's "one required string": impact
+// takes an array and entrypoints requires nothing. repo_tools_test.go checks
+// their arguments directly.
+var bespokeArgumentTools = map[string]bool{"impact": true, "entrypoints": true}
 
 // callTool runs one call through the same handler the MCP server registers.
 func callTool(t *testing.T, name string, args map[string]any) (*mcp.CallToolResult, argumentReport) {
@@ -106,8 +115,8 @@ func TestAMalformedCallNamesTheFieldForEveryTool(t *testing.T) {
 
 func TestAMissingRequiredArgumentIsReportedAgainstThatArgument(t *testing.T) {
 	for name, spec := range mainArgument {
-		if name == "check_accessibility" {
-			continue // one of two is required; covered below
+		if name == "check_accessibility" || name == "find_files" {
+			continue // one of several is required; covered below and in repo_tools_test.go
 		}
 		t.Run(name, func(t *testing.T) {
 			args := copyArgs(spec.valid)
@@ -167,8 +176,9 @@ func TestEveryFrameworkSchemaCompiles(t *testing.T) {
 			t.Errorf("%s: %v", registration.Tool.Name(), err)
 		}
 	}
-	if len(mainArgument) != len(pathArguments)+len(pathlessTools) {
-		t.Errorf("mainArgument covers %d tools, the registry has %d", len(mainArgument), len(pathArguments)+len(pathlessTools))
+	covered := len(mainArgument) + len(bespokeArgumentTools)
+	if covered != len(pathArguments)+len(pathlessTools) {
+		t.Errorf("mainArgument and bespokeArgumentTools cover %d tools, the registry has %d", covered, len(pathArguments)+len(pathlessTools))
 	}
 }
 

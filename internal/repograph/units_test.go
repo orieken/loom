@@ -1,6 +1,8 @@
 package repograph
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -183,5 +185,42 @@ func TestIsTestFileFollowsEachLanguagesConvention(t *testing.T) {
 		if got := IsTestFile(file); got != want {
 			t.Errorf("IsTestFile(%q) = %v, want %v", file, got, want)
 		}
+	}
+}
+
+func TestLoadGraphReadsWhatIndexWrote(t *testing.T) {
+	root := gitRepo(t, goRepoFiles)
+	written, err := Index(root, GitLister{}, DefaultExtractors(), fixedNow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, found, err := LoadGraph(root)
+	if err != nil || !found || loaded.GraphHash != written.Graph.GraphHash || len(loaded.Nodes) == 0 {
+		t.Errorf("%+v %v %v", loaded, found, err)
+	}
+}
+
+func TestLoadGraphOfAnUnindexedRepoIsNotFoundNotAnError(t *testing.T) {
+	if _, found, err := LoadGraph(t.TempDir()); found || err != nil {
+		t.Errorf("found=%v err=%v", found, err)
+	}
+}
+
+func TestLoadGraphRejectsACorruptOrUnreadableOrWrongVersionGraph(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, ".loom/graph.json", "{broken")
+	if _, _, err := LoadGraph(root); err == nil {
+		t.Error("corrupt graph.json must be an error")
+	}
+	writeFile(t, root, ".loom/graph.json", `{"schema_version": 99}`)
+	if _, _, err := LoadGraph(root); err == nil || !strings.Contains(err.Error(), "99") {
+		t.Errorf("an unknown version must be refused: %v", err)
+	}
+	unreadable := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(unreadable, ".loom", "graph.json"), 0o755); err != nil { // a directory where the file belongs
+		t.Fatal(err)
+	}
+	if _, _, err := LoadGraph(unreadable); err == nil {
+		t.Error("an unreadable graph.json must be an error, not 'not found'")
 	}
 }

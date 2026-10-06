@@ -23,6 +23,12 @@ func frameworkToolsForTest(t *testing.T) []tools.Tool {
 		&CheckAccessibilityTool{},
 		&VerifyDependenciesTool{},
 		&ValidateArtifactTool{},
+		NewDependenciesOfTool(nil, nil),
+		NewDependentsOfTool(nil, nil),
+		NewEntrypointsTool(nil, nil),
+		NewImpactTool(nil, nil),
+		NewFindFilesTool(nil, nil),
+		NewDescribeTool(nil, nil),
 	}
 }
 
@@ -42,6 +48,14 @@ var declaredSafeArguments = map[string][]string{
 	"check_accessibility":       {"filePath", "projectPath"},
 	"verify_dependencies":       {"projectPath"},
 	"validate_artifact":         {"artifactPath", "contractPath"},
+	// The repo tools (ADR-010). `query` is absent from find_files for the same
+	// reason it is absent everywhere: it is free text.
+	"dependencies_of": {"limit", "path"},
+	"dependents_of":   {"limit", "path"},
+	"entrypoints":     {"limit"},
+	"impact":          {"depth", "limit", "paths"},
+	"find_files":      {"limit", "tag"},
+	"describe":        {"path"},
 }
 
 func TestFrameworkToolsDeclareTheExpectedSafeArguments(t *testing.T) {

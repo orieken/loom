@@ -426,8 +426,9 @@ Agentic maturity (shared/levels.yaml):
 
 `loom mcp serve` exposes the deterministic framework tools
 (`analyze_complexity`, `check_accessibility`, `check_ubiquitous_language`,
-`verify_dependencies`, `search_ki`, `search_docs`, `search_features`, `validate_artifact`)
-over MCP stdio transport.
+`verify_dependencies`, `search_ki`, `search_docs`, `search_features`, `validate_artifact`, and the
+repo tools `dependencies_of`, `dependents_of`, `impact`, `entrypoints`, `find_files`, `describe`, which read the graph and
+index `loom index` wrote — see `shared/mcp/README.md`) over MCP stdio transport.
 Structured JSON logs go to stderr, or to a file with `--log-file <path>` —
 never stdout, which carries the MCP wire protocol. The server runs until the
 client closes stdin or the process receives SIGINT.
