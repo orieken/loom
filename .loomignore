@@ -1,0 +1,4 @@
+# Tracked paths `loom index` skips (see ADR-010). These are inputs to the indexer's own
+# tests, not part of the product: indexed, they would show up as entrypoints in CODEMAP.md.
+tests/fixtures/
+tests/platform-verification/fixtures/

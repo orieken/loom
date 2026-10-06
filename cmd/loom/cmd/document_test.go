@@ -227,3 +227,5 @@ func TestDocumentExitsNonZeroWhenADirectoryStaysUnverified(t *testing.T) {
 		t.Errorf("%v\n%s", err, output)
 	}
 }
+
+func emptyFS() fstest.MapFS { return fstest.MapFS{} }

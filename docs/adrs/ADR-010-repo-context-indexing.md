@@ -180,3 +180,42 @@ has been deleted from the working tree is skipped.
   `--limit`, `--path` and `--max-rounds` bound the rest.
 - **The auditor's model tier is `default`, not `light`.** Read-only counter agents are usually `light`, but this
   one's value is a judgement a lax model would waste. That is a cost decision worth revisiting with real data.
+
+## Amendment 2026-10-05: Phase 6 (rendering and the approval gate)
+- **Three steps, one gate.** `loom docs plan` stages a **Documentation Changeset** under `.loom/changes/<id>/` — the final content of every
+  file it would write, a `change.json` listing them, and nothing else. `loom docs approve` records a human decision;
+  `loom docs apply` writes. Approval is asked for on a terminal, or asserted with `--yes`; with neither it refuses, since
+  silence is not consent. Nothing an agent returns creates an approval.
+- **The approval binds to digests.** It records the SHA-256 of `change.json` and of every staged file. Editing any of
+  them — or deleting one — resets it: the record is kept, naming what changed, and the changeset must be approved again,
+  as a `loom run` gate is (roadmap L2.14). A human may edit a staged file *before* approving; the approval then binds to
+  the edited content.
+- **Apply is all-or-nothing up front.** Before writing a byte it checks the approval, every digest, and that each target
+  is still what it was when planned (`BaseDigest`); a target edited since fails the whole apply with a message to
+  re-plan. A target already holding the staged content (an interrupted earlier apply) is skipped, so apply is
+  repeatable. A changeset applies once.
+- **Generated blocks (`internal/genblock`).** Everything written in-tree sits between `loom:generated:start hash=…` and
+  `loom:generated:end` in the file's own comment syntax. A file with no block keeps all its text and gains one at the end.
+  The recorded hash is of the literal text between the markers; a mismatch means the block was edited by hand and is a
+  **conflict**: not overwritten, shown at the gate, withheld on apply. A start marker with no end is also a conflict, not
+  a guess.
+- **What the model wrote and what was computed are visibly separate.** A rendered document is the typed result
+  followed by a "Facts (computed from source)" section listing dependencies, dependents, entrypoints and tests, with
+  approximate edges labelled as such.
+- **Results are re-verified at plan time**, against the tree as it is then: a candidate whose directory changed since,
+  or that no longer passes `Verify` (say the vocabulary shrank), is left out and listed. Accepted results are recorded in
+  the index with `input_hash`, `doc_hash` (the digest of the written sidecar) and a timestamp, so `loom health` reports
+  them fresh — and stale the moment the directory changes.
+- **Doc comments never overwrite human documentation.** Go gets a `doc.go`, Java a `package-info.java`; both only if
+  absent or already generated, and Go only when no other file documents the package. Python gets a docstring at the top
+  of an *existing* `__init__.py` with none, TypeScript/JavaScript a JSDoc `@module` block on an *existing* `index.*` with
+  no leading doc comment. No file is created that could change semantics (a namespace package), and a skip is recorded
+  at the gate with its reason. The markers appear in the rendered doc text; that is the price of the same marker
+  semantics in every language.
+- **`CODEMAP.md` is a changeset artifact** (entrypoints, highest fan-in, layers, directories with one-line purposes;
+  a directory without a purpose reads `_undocumented_`, never a placeholder). A file written by the retired script is
+  wholly generated and replaced; any other file keeps its human text and gets a block. `scripts/generate-codemap.sh`
+  now runs `loom index` and plans the change; `--codemap-only` needs no documenter run. It is derived from the fact
+  sheets (the graph per directory) and the index.
+- **A `.loomignore` was added to this repository** for `tests/fixtures/`, which are inputs to the indexer's own tests and
+  otherwise show up as entrypoints.

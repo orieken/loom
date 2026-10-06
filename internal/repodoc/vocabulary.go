@@ -101,3 +101,13 @@ func (v Vocabulary) Contains(name string) bool {
 	}
 	return false
 }
+
+// NewVocabularyForTest builds a vocabulary of the named tags, for tests in
+// other packages.
+func NewVocabularyForTest(names ...string) Vocabulary {
+	tags := make([]Tag, 0, len(names))
+	for _, name := range names {
+		tags = append(tags, Tag{Name: name, Description: name})
+	}
+	return newVocabulary(tags)
+}

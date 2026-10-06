@@ -3,6 +3,8 @@ package repodoc
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -153,3 +155,56 @@ func writeDocument(target string, doc state.RepoDocState) error {
 	}
 	return writePayload(target, raw)
 }
+
+// LatestRun returns the id of the newest run under .loom/runs, or "" when
+// there is none. Run ids are timestamps, so the lexically greatest is newest.
+func LatestRun(root string) (string, error) {
+	entries, err := os.ReadDir(filepath.Join(root, repograph.OutputDir, RunsDir))
+	if os.IsNotExist(err) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("read runs: %w", err)
+	}
+	latest := ""
+	for _, entry := range entries {
+		if entry.IsDir() && entry.Name() > latest {
+			latest = entry.Name()
+		}
+	}
+	return latest, nil
+}
+
+// Candidates lists a run's verified documents as directory -> file path.
+func Candidates(runDir string) (map[string]string, error) {
+	docs := filepath.Join(runDir, "docs")
+	found := map[string]string{}
+	err := filepath.WalkDir(docs, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".json") {
+			return err
+		}
+		relative, _ := filepath.Rel(docs, path)
+		found[candidateDir(filepath.ToSlash(relative))] = path
+		return nil
+	})
+	if os.IsNotExist(err) {
+		return found, nil
+	}
+	return found, err
+}
+
+// candidateDir inverts mirrored: the directory a candidate file documents.
+func candidateDir(relative string) string {
+	dir := strings.TrimSuffix(relative, ".json")
+	if dir == "_root" {
+		return factsheet.RootPath
+	}
+	return dir
+}
+
+// StageID names the documenter's stage for a directory. Exported for tests of
+// packages that script the documenter.
+func StageID(dir string) string { return stageID(dir) }
+
+// AuditStageID names the auditor's stage for a directory.
+func AuditStageID(dir string) string { return auditStageID(dir) }

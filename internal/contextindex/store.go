@@ -35,13 +35,21 @@ func Load(root string) (index Index, found bool, err error) {
 	return index, true, nil
 }
 
-// Write stores the index when its bytes changed and reports whether it did.
-func Write(root string, index Index) (bool, error) {
+// Marshal renders an index exactly as Write stores it.
+func Marshal(index Index) ([]byte, error) {
 	raw, err := json.MarshalIndent(index, "", "  ")
 	if err != nil {
-		return false, fmt.Errorf("encode index: %w", err)
+		return nil, fmt.Errorf("encode index: %w", err)
 	}
-	raw = append(raw, '\n')
+	return append(raw, '\n'), nil
+}
+
+// Write stores the index when its bytes changed and reports whether it did.
+func Write(root string, index Index) (bool, error) {
+	raw, err := Marshal(index)
+	if err != nil {
+		return false, err
+	}
 	if existing, readErr := os.ReadFile(Path(root)); readErr == nil && bytes.Equal(existing, raw) {
 		return false, nil
 	}

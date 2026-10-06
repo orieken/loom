@@ -143,6 +143,23 @@ loom state record --spec docs/features/user-auth/spec.md --stage analyst --artif
 loom state verify --spec docs/features/user-auth/spec.md
 ```
 
+```bash
+# Map a repository so agents stop re-deriving its structure with grep (local, offline, no model)
+loom index                       # import graph + per-directory fact sheets + context index, in .loom/
+loom docs plan --codemap-only    # stage a regenerated CODEMAP.md; nothing is written yet
+loom docs approve && loom docs apply
+
+# Optionally have an agent write what each directory is for, verified before it is accepted
+loom document --dry-run          # see what would be sent; every directory is a model call
+loom document --limit 20         # document the deepest 20 changed directories, children first
+loom docs plan                   # stage the verified results as one changeset
+loom docs approve && loom docs apply
+```
+
+Everything `loom index` produces stays under `.loom/`. Nothing is written to your source tree until you approve a
+changeset, and anything written in-tree sits inside `loom:generated` markers so text you wrote is never touched.
+See [ADR-010](docs/adrs/ADR-010-repo-context-indexing.md).
+
 `loom run` and `loom state` are documented in full in
 [cmd/loom/README.md](cmd/loom/README.md) — approval gates, state integrity, typed
 pipeline state, and the run event timeline.
