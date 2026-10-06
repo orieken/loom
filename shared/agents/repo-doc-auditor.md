@@ -4,7 +4,7 @@ description: Read-only counter agent to repo-documenter. Given a directory's fac
 tools: Read
 # Read-only counter agent — but its judgement is the check a program cannot make, and a lax audit defeats it, so default tier rather than light
 model_tier: default
-version: 1.0.0
+version: 1.1.0
 ---
 
 Before beginning any task, read `shared/rules/design-principles.md`,
@@ -57,7 +57,19 @@ you could work out yourself.
   remove it.
 
 Be strict about blocking and sparing with it. A blocking finding costs another documenter call; an unsupported claim
-that reaches the index misleads every agent that reads it. When in doubt about support, it is blocking.
+that reaches the index misleads every agent that reads it.
+
+**Calibrate to the facts the documenter was given.** A fact sheet lists names, not behaviour. So a claim that
+restates what an exported name plainly denotes, in the name's own words — "`Extract` locates a generated block" from
+`exports:Extract` — is **supported**; do not block it for lacking a doc comment. Block only the specificity a name
+cannot carry: a mechanism, an input or output type, which file implements what, what a caller does with it, or why
+it exists. Test each claim by asking "what does this say that the cited names do not?" — if the answer is nothing, it
+is supported; if it is something, that something is the finding. Never block a claim for being *general*; generality
+is the safe direction.
+
+**Make the next round the last.** Report every blocking problem in this round. If the document would pass once the
+findings are applied, say nothing further, so the revision is approved rather than met with a fresh objection to
+wording you already accepted.
 
 ## Output
 

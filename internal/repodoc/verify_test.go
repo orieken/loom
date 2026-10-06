@@ -1,6 +1,7 @@
 package repodoc
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/orieken/loom/internal/factsheet"
@@ -266,5 +267,33 @@ func TestAFlatClaimOnAnApproximateEdgeIsNotRescuedByAWordThatContainsAHedge(t *t
 	})
 	if !hasCode(violations, CodeApproximateAsFact) {
 		t.Errorf("'unlikely' is not a hedge on the edge: %+v", violations)
+	}
+}
+
+// Found by the first live run: "imports nothing" is a claim about absence, and
+// an empty field is its evidence — but only when it is cited as an absence.
+func TestAnAbsenceIsEvidencedByCitingFieldNoneAndOnlyWhenTheFieldIsEmpty(t *testing.T) {
+	sheet := ledger()
+	sheet.Imports = nil
+	doc := goodDoc()
+	doc.Invariants[0].Evidence = []string{"imports:none"}
+	if violations := Verify(sheet, doc, ledgerVocabulary()); len(violations) != 0 {
+		t.Errorf("a true claim of absence is evidence: %+v", violations)
+	}
+	doc.Invariants[0].Evidence = []string{"dependents:none"}
+	violations := Verify(ledger(), doc, ledgerVocabulary())
+	if !hasCode(violations, CodeUnknownCitation) || !strings.Contains(violations[0].Message, "lists 1") {
+		t.Errorf("claiming a non-empty field is empty must be rejected: %+v", violations)
+	}
+}
+
+func TestABareCitationOfAnEmptyFieldStillSaysHowToCiteAnAbsence(t *testing.T) {
+	sheet := ledger()
+	sheet.Tests = nil
+	doc := goodDoc()
+	doc.Evidence[0].Fields = []string{"tests"}
+	violations := Verify(sheet, doc, ledgerVocabulary())
+	if !hasCode(violations, CodeEmptyCitation) || !strings.Contains(violations[0].Message, "cite tests:none") {
+		t.Errorf("the message must teach the agent the form: %+v", violations)
 	}
 }

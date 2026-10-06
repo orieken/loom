@@ -4,7 +4,7 @@ description: Use under `loom index` documentation runs, one directory at a time,
 tools: Read
 # Producer agent — interprets extracted facts; read-only, and may read source only to settle an ambiguity
 model_tier: default
-version: 1.1.1
+version: 1.1.2
 ---
 
 Before beginning any task, read `shared/rules/design-principles.md`,
@@ -56,7 +56,9 @@ You do **not** receive source code. That is deliberate.
    name against the sheet; one it cannot find is an error. A name in backticks that is not in the sheet is a defect,
    and a name you leave bare is a name nobody can check, so do not use bare names for things the sheet lists.
 6. **Cite only what the sheet holds.** `tests` as evidence when the sheet lists no tests supports nothing and is an
-   error. A `fields` value like `exports:Verify` must name an export the sheet actually lists.
+   error. A `fields` value like `exports:Verify` must name an export the sheet actually lists. To evidence an
+   **absence** — "imports nothing", "has no tests" — cite the field with `:none`: `imports:none`, `tests:none`. It is
+   accepted only if the sheet really lists none.
 7. **Quote each claim exactly in `evidence`.** The `claim` of an evidence entry must be the exact text of the
    purpose, responsibility or invariant it supports, character for character.
 8. **Stay inside the vocabulary.** `tags` come only from the allowed list given in the task; `layer` is one of the

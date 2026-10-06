@@ -69,7 +69,7 @@ func TestAgentPromptNamesEveryFactSheetFieldAnEvidenceCitationMayUse(t *testing.
 func TestAgentIsReadOnlyAndNamedLikeItsFile(t *testing.T) {
 	prompt := readRepoFile(t, "shared/agents/repo-documenter.md")
 	frontmatter := strings.SplitN(prompt, "---", 3)[1]
-	for _, want := range []string{"name: repo-documenter", "tools: Read\n", "model_tier: default", "version: 1.1.1"} {
+	for _, want := range []string{"name: repo-documenter", "tools: Read\n", "model_tier: default", "version: 1.1.2"} {
 		if !strings.Contains(frontmatter, want) {
 			t.Errorf("frontmatter lacks %q:\n%s", want, frontmatter)
 		}
@@ -167,7 +167,7 @@ func TestAuditorPromptNamesEveryOutputField(t *testing.T) {
 func TestAuditorPromptDescribesItsInputsAndIsReadOnly(t *testing.T) {
 	prompt := readRepoFile(t, "shared/agents/repo-doc-auditor.md")
 	frontmatter := strings.SplitN(prompt, "---", 3)[1]
-	for _, want := range []string{"name: repo-doc-auditor", "tools: Read\n", "model_tier:", "version: 1.0.0"} {
+	for _, want := range []string{"name: repo-doc-auditor", "tools: Read\n", "model_tier:", "version: 1.1.0"} {
 		if !strings.Contains(frontmatter, want) {
 			t.Errorf("frontmatter lacks %q", want)
 		}

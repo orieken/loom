@@ -21,6 +21,7 @@ commit — the pre-commit hook checks for exactly this.
 | Agent | Version | Change |
 |---|---|---|
 | repo-documenter | new -> 1.0.0 | New producer agent. Documents one directory from its fact sheet and child summaries as typed JSON (`repo-doc` state kind); read-only (`Read` only), no source by default, every claim cited, "unknown" is a valid answer. Contract: `shared/contracts/repo-doc-contract.md` |
+| repo-documenter | 1.1.1 -> 1.1.2 | Patch: evidence of an absence is cited as `field:none` (`imports:none`). Found by the first live run: the agent claimed "imports nothing" and cited the empty `imports` field, which the verifier rejects as supporting nothing |
 | repo-documenter | 1.1.0 -> 1.1.1 | Patch: a child summary can now also be `stale` (its recorded documentation predates the directory's latest change); its old text is withheld rather than shown as current |
 | repo-documenter | 1.0.0 -> 1.1.0 | Minor: new `revision-feedback` input block and a revise-don't-argue rule; backticks are now reserved for names the fact sheet contains (the verifier checks them); evidence claims must repeat the claim text exactly; never cite an empty fact-sheet field |
 | context-engineer | 2.2.0 -> 2.3.0 | Minor: new step 7 — pin by blast radius. Declares `mcp__loom__impact`, `mcp__loom__dependents_of` and `mcp__loom__find_files` (tool-list change); records only `blastRadius.seeds` and `depth`, since `loom` computes the answer from the repo graph; falls back to grep and says so when the graph is unavailable. Skill updated to match |
@@ -28,6 +29,7 @@ commit — the pre-commit hook checks for exactly this.
 | refactor-engineer | 1.3.0 -> 1.4.0 | Minor: decides where characterization tests go first from `mcp__loom__dependents_of` (most exact dependents first), and records the order. Declares `mcp__loom__dependents_of` and `mcp__loom__impact` |
 | unit-tester | 1.6.2 -> 1.7.0 | Minor: orders characterization tests by `mcp__loom__dependents_of`. Declares that tool |
 | repo-doc-auditor | new -> 1.0.0 | New read-only counter agent to repo-documenter. Judges whether cited facts support each claim, after the Go verifier passes; typed `repo-doc-audit` verdict. Contract: `shared/contracts/repo-doc-audit-contract.md` |
+| repo-doc-auditor | 1.0.0 -> 1.1.0 | Minor: calibrate to name-level fact sheets. A claim restating what an exported name plainly denotes is supported; block only specificity a name cannot carry; report every problem in one round. Found by the first live run: "when in doubt, block" made the auditor raise a fresh objection each round until the document was vacuous and left unverified after three rounds |
 
 ## 2026-09-24 — KI provenance and injection flags (roadmap L3.7)
 

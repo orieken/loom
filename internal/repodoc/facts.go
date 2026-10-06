@@ -77,6 +77,9 @@ func (f factIndex) checkCitation(citation string) *Violation {
 	if !hasValue {
 		return emptyCitation(root, citation, values)
 	}
+	if value == AbsenceValue {
+		return absenceCitation(root, citation, values)
+	}
 	if !contains(values, value) && (root != "files" || !f.hasFile(value)) {
 		return &Violation{Source: SourceVerifier, Code: CodeUnknownCitation,
 			Message: fmt.Sprintf("%q cites %q, which the fact sheet's %s does not list", citation, value, root)}
@@ -84,12 +87,28 @@ func (f factIndex) checkCitation(citation string) *Violation {
 	return nil
 }
 
+// AbsenceValue is the citation value that asserts a field is empty:
+// `imports:none` is the evidence for "this directory imports nothing". A bare
+// `imports` citing an empty field supports nothing and is rejected; this form
+// says what the author means, and is true only if the sheet agrees.
+const AbsenceValue = "none"
+
+// absenceCitation accepts `root:none` only when the field really is empty, so a
+// claim of absence cannot be made about something the sheet lists.
+func absenceCitation(root, citation string, values []string) *Violation {
+	if len(values) == 0 {
+		return nil
+	}
+	return &Violation{Source: SourceVerifier, Code: CodeUnknownCitation,
+		Message: fmt.Sprintf("%q claims %s is empty, but the fact sheet lists %d", citation, root, len(values))}
+}
+
 func emptyCitation(root, citation string, values []string) *Violation {
 	if len(values) > 0 {
 		return nil
 	}
 	return &Violation{Source: SourceVerifier, Code: CodeEmptyCitation,
-		Message: fmt.Sprintf("%q cites %s, but the fact sheet lists none — that supports nothing", citation, root)}
+		Message: fmt.Sprintf("%q cites %s, but the fact sheet lists none — that supports nothing. To evidence an absence, cite %s:none", citation, root, root)}
 }
 
 // checkName judges one backticked token inside a claim.

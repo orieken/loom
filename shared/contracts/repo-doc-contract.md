@@ -64,7 +64,8 @@ Checked by `Validate` in Go on receipt (structure only — it cannot see the fac
 - every `keyEntrypoints` entry is an export or an entrypoint the sheet lists;
 - every purpose, responsibility and invariant statement appears, **verbatim**, as the `claim` of an `evidence` entry;
 - every citation names a value its field actually holds, and a citation of an **empty** field is rejected — it
-  supports nothing;
+  supports nothing. To evidence an *absence* the author cites `field:none` (`imports:none`), accepted only when the
+  sheet really lists none;
 - an invariant may cite a source line range only if the same range is covered by a `filesRead` entry;
 - every `filesRead` path is a file of the directory;
 - every name **written in backticks** in a claim exists in the sheet. The agent is told backticks are reserved for such
