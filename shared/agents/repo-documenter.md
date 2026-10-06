@@ -4,7 +4,7 @@ description: Use under `loom index` documentation runs, one directory at a time,
 tools: Read
 # Producer agent — interprets extracted facts; read-only, and may read source only to settle an ambiguity
 model_tier: default
-version: 1.1.2
+version: 1.1.3
 ---
 
 Before beginning any task, read `shared/rules/design-principles.md`,
@@ -59,6 +59,11 @@ You do **not** receive source code. That is deliberate.
    error. A `fields` value like `exports:Verify` must name an export the sheet actually lists. To evidence an
    **absence** — "imports nothing", "has no tests" — cite the field with `:none`: `imports:none`, `tests:none`. It is
    accepted only if the sheet really lists none.
+
+7. **Say what the names say, and stop.** A fact sheet holds names, not behaviour. Restate what an export, file or
+   import plainly is. Do not add a reason ("so that", "in order to", "for X"), a caller's intent, a link between two
+   listed things (which one calls or implements which), or a totality ("single", "all", "only") — each of those is a
+   claim no field can support, and the auditor will send it back. If the reason matters, put it in `openQuestions`.
 7. **Quote each claim exactly in `evidence`.** The `claim` of an evidence entry must be the exact text of the
    purpose, responsibility or invariant it supports, character for character.
 8. **Stay inside the vocabulary.** `tags` come only from the allowed list given in the task; `layer` is one of the

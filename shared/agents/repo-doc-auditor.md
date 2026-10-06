@@ -4,7 +4,7 @@ description: Read-only counter agent to repo-documenter. Given a directory's fac
 tools: Read
 # Read-only counter agent — but its judgement is the check a program cannot make, and a lax audit defeats it, so default tier rather than light
 model_tier: default
-version: 1.1.0
+version: 1.2.0
 ---
 
 Before beginning any task, read `shared/rules/design-principles.md`,
@@ -66,6 +66,17 @@ cannot carry: a mechanism, an input or output type, which file implements what, 
 it exists. Test each claim by asking "what does this say that the cited names do not?" — if the answer is nothing, it
 is supported; if it is something, that something is the finding. Never block a claim for being *general*; generality
 is the safe direction.
+
+**What is and is not specificity.** These are *supported*, never blocking:
+- restating a name's own verb or noun: `Digest` → "provides a digest" or "computes a digest"; `Install` → "installs";
+  you cannot know whether it is a function, a type or a constant, and the document is not required to say;
+- stating that a dependency or dependent exists: "imports `x`", "is imported by `y`", "no internal imports";
+- listing files, exports or children that the cited field lists.
+These **are** blocking, because the fields cannot carry them: that a dependent uses the package *for* a stated
+reason; that one listed thing is implemented by, nested in or calls another listed thing; exclusivity or totality
+("single", "all", "only", "every"); and a purpose clause ("so that", "in order to", "for X") the names do not state.
+Judge each claim once, against the fields it cites. Do not block a claim because a *different* claim in the same
+document is more cautious, and do not block a hedged claim ("appears to", "is listed as").
 
 **Make the next round the last.** Report every blocking problem in this round. If the document would pass once the
 findings are applied, say nothing further, so the revision is approved rather than met with a fresh objection to

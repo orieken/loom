@@ -29,6 +29,8 @@ commit — the pre-commit hook checks for exactly this.
 | refactor-engineer | 1.3.0 -> 1.4.0 | Minor: decides where characterization tests go first from `mcp__loom__dependents_of` (most exact dependents first), and records the order. Declares `mcp__loom__dependents_of` and `mcp__loom__impact` |
 | unit-tester | 1.6.2 -> 1.7.0 | Minor: orders characterization tests by `mcp__loom__dependents_of`. Declares that tool |
 | repo-doc-auditor | new -> 1.0.0 | New read-only counter agent to repo-documenter. Judges whether cited facts support each claim, after the Go verifier passes; typed `repo-doc-audit` verdict. Contract: `shared/contracts/repo-doc-audit-contract.md` |
+| repo-doc-auditor | 1.1.0 -> 1.2.0 | Minor: names what is and is not specificity. Restating a name's verb or noun and stating that an import or dependent exists are supported; usage purpose, links between listed things, totalities and purpose clauses are blocking. Found by the full run: the auditor blocked "Computes a `Digest`" and "imports X", leaving 9 directories unverified |
+| repo-documenter | 1.1.2 -> 1.1.3 | Patch: say what the names say and stop — no reasons, intents, links between listed things or totalities; those go in openQuestions |
 | repo-doc-auditor | 1.0.0 -> 1.1.0 | Minor: calibrate to name-level fact sheets. A claim restating what an exported name plainly denotes is supported; block only specificity a name cannot carry; report every problem in one round. Found by the first live run: "when in doubt, block" made the auditor raise a fresh objection each round until the document was vacuous and left unverified after three rounds |
 
 ## 2026-09-24 — KI provenance and injection flags (roadmap L3.7)
