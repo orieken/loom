@@ -84,6 +84,13 @@ func vocabulary() repodoc.Vocabulary {
 // directory, producing real, verified candidates under .loom/runs/.
 func documentedRun(t *testing.T, root string, mutate func(*state.RepoDocState)) string {
 	t.Helper()
+	return documentedRunOf(t, root, "", mutate)
+}
+
+// documentedRunOf is documentedRun limited to a directory and everything below
+// it ("" means all), as one batch of `loom document --path` would be.
+func documentedRunOf(t *testing.T, root, prefix string, mutate func(*state.RepoDocState)) string {
+	t.Helper()
 	sheets, err := contextindex.CurrentSheets(root, repograph.GitLister{})
 	if err != nil {
 		t.Fatal(err)
@@ -107,7 +114,7 @@ func documentedRun(t *testing.T, root string, mutate func(*state.RepoDocState)) 
 		scripts[repodoc.AuditStageID(sheet.Path)] = mock.Script{Payload: approved}
 	}
 	runner := repodoc.Runner{Provider: mock.New(scripts), Root: root, Vocabulary: vocabulary(), Recorded: contextindex.Index{Entries: map[string]contextindex.Entry{}}, Now: runClock()}
-	tasks := repodoc.Plan(runner.Recorded, sheets, repodoc.Options{})
+	tasks := repodoc.Plan(runner.Recorded, sheets, repodoc.Options{PathPrefix: prefix})
 	record, err := runner.Run(context.Background(), tasks)
 	if err != nil || record.Failed()+record.Unverified() != 0 {
 		t.Fatalf("documenting: %+v %v", record, err)

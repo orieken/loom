@@ -7,6 +7,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/orieken/loom/internal/factsheet"
@@ -87,13 +88,18 @@ func upsertWhole(target, text string, syntax genblock.Syntax, body string) *sour
 }
 
 // goDoc writes a package comment into doc.go, but only when the package has no
-// documentation yet or doc.go is already ours.
+// documentation yet or doc.go is already ours, and only when the directory holds
+// exactly one package: a doc.go naming the wrong one would not compile.
 func goDoc(root string, sheet factsheet.FactSheet, body string) *sourceEdit {
-	name, otherDoc := goPackageFacts(root, sheet)
-	if name == "" {
+	names, otherDoc := goPackageFacts(root, sheet)
+	if len(names) == 0 {
 		return nil
 	}
 	target, text, found := existing(root, sheet.Path, "doc.go")
+	if len(names) > 1 {
+		return skipped(target, "the directory holds several packages ("+strings.Join(names, ", ")+"), so no single package comment applies")
+	}
+	name := names[0]
 	syntax := genblock.LineComment("//")
 	if found {
 		if _, _, owned := genblock.Extract(text); !owned {
@@ -108,23 +114,39 @@ func goDoc(root string, sheet factsheet.FactSheet, body string) *sourceEdit {
 	return &sourceEdit{target: target, content: created + "package " + name + "\n", status: genblock.Created}
 }
 
-// goPackageFacts returns the package name and the first non-doc.go file that
-// already carries a package comment.
-func goPackageFacts(root string, sheet factsheet.FactSheet) (name, documentedIn string) {
+// goPackageFacts returns the distinct package names of the directory's
+// non-test Go files, sorted, and the first non-doc.go file that already carries
+// a package comment.
+func goPackageFacts(root string, sheet factsheet.FactSheet) (names []string, documentedIn string) {
+	seen := map[string]bool{}
 	for _, file := range sheet.Files {
 		if !isGoSource(file) {
 			continue
 		}
 		packageName, hasDoc := parseGoPackage(filepath.Join(root, filepath.FromSlash(sheet.Path), file))
-		if packageName == "" {
-			continue
-		}
-		name = packageName
-		if documentedIn == "" && hasDoc && file != "doc.go" {
+		seen[packageName] = packageName != ""
+		if isFirstPackageDoc(documentedIn, hasDoc, file) {
 			documentedIn = file
 		}
 	}
-	return name, documentedIn
+	return sortedPresent(seen), documentedIn
+}
+
+// isFirstPackageDoc says file is the first, other than doc.go, to carry a
+// package comment.
+func isFirstPackageDoc(already string, hasDoc bool, file string) bool {
+	return already == "" && hasDoc && file != "doc.go"
+}
+
+func sortedPresent(set map[string]bool) []string {
+	var names []string
+	for name, present := range set {
+		if present {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	return names
 }
 
 func isGoSource(file string) bool {
@@ -176,9 +198,11 @@ func javaPackageName(root string, sheet factsheet.FactSheet) string {
 	return ""
 }
 
-// pythonDoc puts a module docstring at the top of an existing __init__.py. It
-// never creates the file (that would turn a namespace package into a regular
-// one) and never touches a docstring a human wrote.
+// pythonDoc puts a module docstring into an existing __init__.py. It never
+// creates the file (that would turn a namespace package into a regular one) and
+// never touches a docstring a human wrote. A docstring may follow comments, so
+// a shebang, an encoding cookie and a license header stay where they are, ahead
+// of it, and a human docstring that comes after them is still recognised.
 func pythonDoc(root string, sheet factsheet.FactSheet, body string) *sourceEdit {
 	target, text, found := existing(root, sheet.Path, "__init__.py")
 	if !found || !hasFile(sheet, "__init__.py") {
@@ -188,11 +212,25 @@ func pythonDoc(root string, sheet factsheet.FactSheet, body string) *sourceEdit 
 	if _, _, owned := genblock.Extract(text); owned {
 		return upsertWhole(target, text, syntax, body)
 	}
-	if startsWithString(text) {
+	preamble, code := splitPythonPreamble(text)
+	if startsWithString(code) {
 		return skipped(target, "__init__.py already has a docstring")
 	}
-	block := syntax.Render(body)
-	return &sourceEdit{target: target, content: "\"\"\"\n" + block + "\n\"\"\"\n" + text, status: genblock.Appended}
+	return &sourceEdit{target: target, content: preamble + "\"\"\"\n" + syntax.Render(body) + "\n\"\"\"\n" + code, status: genblock.Appended}
+}
+
+// splitPythonPreamble separates the leading blank and comment lines from the
+// first statement.
+func splitPythonPreamble(text string) (preamble, code string) {
+	end := 0
+	for _, line := range strings.SplitAfter(text, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed != "" && !strings.HasPrefix(trimmed, "#") {
+			break
+		}
+		end += len(line)
+	}
+	return text[:end], text[end:]
 }
 
 func startsWithString(text string) bool {
@@ -224,8 +262,22 @@ func scriptEdit(target, text, body string) *sourceEdit {
 	if _, _, owned := genblock.Extract(text); owned {
 		return upsertWhole(target, text, syntax, body)
 	}
-	if strings.HasPrefix(strings.TrimLeft(text, " \t\r\n"), "/**") {
+	shebang, rest := splitShebang(text)
+	if strings.HasPrefix(strings.TrimLeft(rest, " \t\r\n"), "/**") {
 		return skipped(target, "the file already starts with a doc comment")
 	}
-	return &sourceEdit{target: target, content: "/**\n" + syntax.Render(body) + "\n * @module\n */\n" + text, status: genblock.Appended}
+	return &sourceEdit{target: target, content: shebang + "/**\n" + syntax.Render(body) + "\n * @module\n */\n" + rest, status: genblock.Appended}
+}
+
+// splitShebang keeps a leading `#!` line first: an interpreter line is only a
+// shebang on line one, so nothing may be inserted above it.
+func splitShebang(text string) (shebang, rest string) {
+	if !strings.HasPrefix(text, "#!") {
+		return "", text
+	}
+	end := strings.Index(text, "\n")
+	if end < 0 {
+		return text + "\n", ""
+	}
+	return text[:end+1], text[end+1:]
 }

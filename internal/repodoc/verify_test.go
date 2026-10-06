@@ -245,3 +245,26 @@ func TestAReadThatCoversExactlyTheCitedRangeCounts(t *testing.T) {
 		}
 	}
 }
+
+func TestHedgesAreWholeWordsNotSubstrings(t *testing.T) {
+	for text, want := range map[string]bool{
+		"Possibly depends on it": true, "It may use it": true, "might be used": true, "an approximate edge": true,
+		"this is likely": true, "appears to import it": true, "an unconfirmed link": true, "a heuristic guess": true,
+		"It is unlikely to change": false, "That is impossible to avoid": false, "To dismay everyone": false,
+		"A mighty dependency": false, "Depends on it": false, "mayor of the repo": false,
+	} {
+		if got := hasHedge(text); got != want {
+			t.Errorf("hasHedge(%q) = %v, want %v", text, got, want)
+		}
+	}
+}
+
+func TestAFlatClaimOnAnApproximateEdgeIsNotRescuedByAWordThatContainsAHedge(t *testing.T) {
+	violations := verifyWith(func(d *state.RepoDocState) {
+		d.Purpose = "Depends on `internal/legacy`, which is unlikely to change."
+		d.Evidence[0].Claim = d.Purpose
+	})
+	if !hasCode(violations, CodeApproximateAsFact) {
+		t.Errorf("'unlikely' is not a hedge on the edge: %+v", violations)
+	}
+}

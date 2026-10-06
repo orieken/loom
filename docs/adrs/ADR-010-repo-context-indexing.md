@@ -294,3 +294,22 @@ has been deleted from the working tree is skipped.
   rendered manifest with a blast radius is a golden file (`internal/state/testdata/`), and prompt/frontmatter tests pin that
   the agent is told to use `impact()`, to record only the question, and to fall back. Re-recording the agent baseline
   is a live run still owed.
+
+## Amendment 2026-10-05: review fixes
+A review of phases 1–8 found ten defects, all fixed:
+- **Doc comments.** A directory with several Go packages gets no `doc.go` (a wrong package name would not compile). A Python
+  docstring goes after a shebang, encoding cookie and license comment, and a human docstring that follows them is
+  recognised; a JS `index.*` keeps its shebang on line one.
+- **`genblock`.** Markers must be a whole line (an optional comment opener, the token, nothing else), and lines inside a
+  markdown code fence are never markers, so a document that explains the syntax is not mistaken for a block. A marker
+  line with an unreadable hash is a conflict. CRLF text is read as LF so its hash matches, and written back as CRLF.
+- **Documenter input.** A recorded child summary written against an older version of the child is withheld and shown as
+  `stale`, not handed to its parent as `documented` (`repo-documenter` 1.1.1).
+- **Changesets.** An id already in use is suffixed (`-2`, `-3`), so a second plan in the same second inherits no approval.
+  `plan` draws on every run, newest first, and a directory takes the newest valid result — it previously read only the
+  latest run, silently dropping earlier batches.
+- **Approval.** `--yes` requires the changeset id, and approval is refused when an agent harness's environment
+  (`CLAUDECODE`) is present. This guards the ordinary case, not a determined one; the digest binding and the summary are
+  what remain when it is bypassed.
+- **Efficiency and precision.** Fact sheets are cached across tool calls (reloaded on a new graph and at most once per 30
+  seconds, the freshness bound). Hedge words in a claim are matched as whole words, so "unlikely" is not "likely".

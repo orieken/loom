@@ -84,10 +84,13 @@ type Options struct {
 
 // Change is `.loom/changes/<id>/change.json`.
 type Change struct {
-	ID        string  `json:"id"`
-	RunID     string  `json:"runId"`
-	CreatedAt string  `json:"createdAt"`
-	Options   Options `json:"options"`
+	ID string `json:"id"`
+	// RunID is the newest run the changeset draws on; Runs lists every one, newest
+	// first. A directory takes its result from the newest run with a valid one.
+	RunID     string   `json:"runId"`
+	Runs      []string `json:"runs"`
+	CreatedAt string   `json:"createdAt"`
+	Options   Options  `json:"options"`
 	// Documented counts the directories whose results are in this change.
 	Documented    int                `json:"documented"`
 	Artifacts     []Artifact         `json:"artifacts"`

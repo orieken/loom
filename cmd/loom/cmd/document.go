@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/orieken/loom/internal/contextindex"
+	"github.com/orieken/loom/internal/factsheet"
 	"github.com/orieken/loom/internal/orchestrator"
 	"github.com/orieken/loom/internal/provider/claude"
 	"github.com/orieken/loom/internal/repodoc"
@@ -124,7 +125,8 @@ func documentRepo(ctx context.Context, out io.Writer, flags documentFlags) error
 		printDocumentPlan(out, tasks)
 		return nil
 	}
-	runner := repodoc.Runner{Recorded: recorded, Vocabulary: vocabulary, Now: time.Now, MaxRounds: flags.maxRounds, SkipAudit: flags.noAudit}
+	runner := repodoc.Runner{Recorded: recorded, Vocabulary: vocabulary, Now: time.Now, MaxRounds: flags.maxRounds, SkipAudit: flags.noAudit,
+		CurrentHashes: currentHashes(sheets)}
 	return executeDocument(ctx, out, flags, runner, tasks)
 }
 
@@ -189,4 +191,13 @@ func traceFileForDocument(flags documentFlags, root, runID string) string {
 		return ""
 	}
 	return telemetry.TraceFileFor(repodoc.RunDir(root, runID))
+}
+
+// currentHashes maps each directory to its present fact-sheet hash.
+func currentHashes(sheets []factsheet.FactSheet) map[string]string {
+	hashes := make(map[string]string, len(sheets))
+	for _, sheet := range sheets {
+		hashes[sheet.Path] = sheet.InputHash
+	}
+	return hashes
 }

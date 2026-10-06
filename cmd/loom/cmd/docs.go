@@ -8,8 +8,10 @@ package cmd
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -79,7 +81,7 @@ func init() {
 	docsPlanCmd.Flags().BoolVar(&docsArgs.docComments, "doc-comments", false, "also write native doc comments (doc.go, package-info.java, module docstrings, JSDoc @module), inside generated-block markers")
 	docsPlanCmd.Flags().BoolVar(&docsArgs.noCodemap, "no-codemap", false, "do not regenerate CODEMAP.md")
 	docsPlanCmd.Flags().BoolVar(&docsArgs.codemapOnly, "codemap-only", false, "plan only CODEMAP.md from the graph and index; needs no documenter run")
-	docsApproveCmd.Flags().BoolVar(&docsArgs.yes, "yes", false, "approve without the interactive prompt (required when stdin is not a terminal)")
+	docsApproveCmd.Flags().BoolVar(&docsArgs.yes, "yes", false, "approve without the interactive prompt; requires the changeset id, and is refused inside an agent session")
 	docsCmd.AddCommand(docsPlanCmd, docsApproveCmd, docsApplyCmd)
 	rootCmd.AddCommand(docsCmd)
 }
@@ -119,6 +121,9 @@ func resolveChange(args []string) (string, error) {
 }
 
 func runDocsApprove(cmd *cobra.Command, args []string) error {
+	if err := requireAPerson(docsArgs.yes, args); err != nil {
+		return err
+	}
 	id, err := resolveChange(args)
 	if err != nil {
 		return err
@@ -129,15 +134,8 @@ func runDocsApprove(cmd *cobra.Command, args []string) error {
 	}
 	out := cmd.OutOrStdout()
 	fmt.Fprint(out, docchange.Summary(change))
-	if !docsArgs.yes {
-		approved, err := confirmApproval(cmd.InOrStdin(), out, id)
-		if err != nil {
-			return err
-		}
-		if !approved {
-			fmt.Fprintln(out, "not approved")
-			return nil
-		}
+	if approved, err := confirmUnlessYes(cmd.InOrStdin(), out, id); err != nil || !approved {
+		return err
 	}
 	if _, err := docchange.Approve(docsArgs.root, id, time.Now()); err != nil {
 		return err
@@ -146,8 +144,49 @@ func runDocsApprove(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// confirmUnlessYes asks for approval on a terminal, or takes --yes as the answer.
+// It reports whether to go ahead; a declined prompt is not an error.
+func confirmUnlessYes(in io.Reader, out io.Writer, id string) (bool, error) {
+	if docsArgs.yes {
+		return true, nil
+	}
+	approved, err := confirmApproval(in, out, id)
+	if err == nil && !approved {
+		fmt.Fprintln(out, "not approved")
+	}
+	return approved, err
+}
+
 // errApprovalNeedsTerminal is returned when approval cannot be asked for.
 var errApprovalNeedsTerminal = fmt.Errorf("approval needs a person: run this in a terminal, or pass --yes to say you reviewed the changeset")
+
+// agentEnvVars are set by agent harnesses in the shell they give a model. The
+// approval gate is a person's decision (ADR-010), and a model with a shell must
+// not be able to take it for them by running this command.
+var agentEnvVars = []string{"CLAUDECODE"}
+
+// errApprovalFromAgent is returned when approval is attempted from inside an
+// agent's shell.
+var errApprovalFromAgent = errors.New("approval must come from a person: this shell belongs to an agent session — run `loom docs approve` in your own terminal")
+
+// errYesNeedsAnID is returned when --yes is used without naming the changeset.
+var errYesNeedsAnID = errors.New("--yes needs the changeset id (loom docs approve <id> --yes): approving without a prompt must name exactly what you reviewed")
+
+// requireAPerson refuses approval that an agent could give itself. It is a
+// guard against the ordinary case, not a lock: a process determined to approve
+// can unset its environment, which is why the gate also binds to digests and
+// shows the summary first.
+func requireAPerson(yes bool, args []string) error {
+	for _, name := range agentEnvVars {
+		if os.Getenv(name) != "" {
+			return errApprovalFromAgent
+		}
+	}
+	if yes && len(args) == 0 {
+		return errYesNeedsAnID
+	}
+	return nil
+}
 
 // approvalIsInteractive says a person can be asked. A variable so tests can
 // stand in for a terminal.

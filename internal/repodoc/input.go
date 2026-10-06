@@ -31,6 +31,10 @@ type ChildSummary struct {
 const (
 	summaryDocumented   = "documented"
 	summaryUndocumented = "undocumented"
+	// summaryStale marks a child whose recorded documentation predates its
+	// latest change. Its old text is withheld: a parent must not be written
+	// from a description of code that no longer exists.
+	summaryStale = "stale"
 )
 
 // summaries gathers child summaries, preferring what this run produced over
@@ -39,6 +43,11 @@ const (
 type summaries struct {
 	thisRun  map[string]state.RepoDocState
 	recorded contextindex.Index
+	// current maps a directory to its present fact-sheet hash. A recorded
+	// summary is trusted only if it was written against that hash. When a
+	// directory is absent from the map its recorded summary is trusted as
+	// written, which is what callers with no sheets get.
+	current map[string]string
 }
 
 func (s summaries) forChildren(children []string) []ChildSummary {
@@ -55,6 +64,9 @@ func (s summaries) one(child string) ChildSummary {
 			Layer: string(doc.Layer), OpenQuestions: doc.OpenQuestions}
 	}
 	if entry, ok := s.recorded.Entries[child]; ok && entry.InputHash != "" {
+		if current, known := s.current[child]; known && entry.InputHash != current {
+			return ChildSummary{Path: child, Status: summaryStale}
+		}
 		return ChildSummary{Path: child, Status: summaryDocumented, Purpose: entry.Purpose, Tags: entry.Tags,
 			Layer: entry.Layer, OpenQuestions: entry.OpenQuestions}
 	}

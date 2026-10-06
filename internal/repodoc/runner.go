@@ -33,8 +33,12 @@ type Runner struct {
 	// Recorded is the index as last written; its summaries stand in for
 	// children this run does not re-document.
 	Recorded contextindex.Index
-	Now      func() time.Time
-	Timeout  time.Duration
+	// CurrentHashes maps every directory to its present fact-sheet hash, so a
+	// recorded child summary that predates the child's latest change is
+	// recognised as stale rather than handed to its parent as current.
+	CurrentHashes map[string]string
+	Now           func() time.Time
+	Timeout       time.Duration
 	// MaxRounds caps attempts per directory; zero means DefaultMaxRounds.
 	MaxRounds int
 	// SkipAudit runs only the deterministic verifier.
@@ -80,7 +84,7 @@ func (r Runner) Run(ctx context.Context, tasks []Task) (RunRecord, error) {
 	runDir := RunDir(r.Root, record.RunID)
 	ctx, runSpan := orchestrator.OrNoop(r.Tracer).StartRun(ctx, orchestrator.RunSpan{
 		Plan: PlanName, SpecPath: r.Root, StateFile: filepath.Join(runDir, "run.json")})
-	known := summaries{thisRun: map[string]state.RepoDocState{}, recorded: r.Recorded}
+	known := summaries{thisRun: map[string]state.RepoDocState{}, recorded: r.Recorded, current: r.CurrentHashes}
 	var tally usageTally
 	for index, task := range tasks {
 		if ctx.Err() != nil {

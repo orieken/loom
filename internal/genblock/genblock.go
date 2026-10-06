@@ -109,6 +109,23 @@ func (s Syntax) Upsert(existing string, exists bool, body string) (string, Statu
 	if !exists {
 		return s.Render(body) + "\n", Created, ""
 	}
+	// A file with CRLF line endings (Windows, or core.autocrlf) is read as LF so
+	// its hash matches the one recorded when the block was written, and written
+	// back with CRLF so the file keeps its line endings.
+	crlf := strings.Contains(existing, "\r\n")
+	text, status, reason := s.upsertNormalized(normalizeLineEndings(existing), body)
+	if crlf && status != Conflict && status != Unchanged {
+		text = strings.ReplaceAll(text, "\n", "\r\n")
+	}
+	if status == Conflict || status == Unchanged {
+		return existing, status, reason
+	}
+	return text, status, reason
+}
+
+func normalizeLineEndings(text string) string { return strings.ReplaceAll(text, "\r\n", "\n") }
+
+func (s Syntax) upsertNormalized(existing, body string) (string, Status, string) {
 	located, err := locate(existing)
 	if err != "" {
 		return existing, Conflict, err
@@ -129,6 +146,7 @@ func (s Syntax) Upsert(existing string, exists bool, body string) (string, Statu
 // Extract returns the literal text between the markers and the hash recorded
 // for it, for callers that need to compare a block without changing it.
 func Extract(existing string) (literal, recorded string, found bool) {
+	existing = normalizeLineEndings(existing)
 	located, err := locate(existing)
 	if err != "" || !located.found {
 		return "", "", false

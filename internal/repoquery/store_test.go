@@ -2,6 +2,8 @@ package repoquery
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -154,5 +156,51 @@ func TestSuggestionsAreCappedAndSorted(t *testing.T) {
 	var unknown *UnknownPathError
 	if !errors.As(err, &unknown) || len(unknown.Suggestions) != maxSuggestions || unknown.Suggestions[0] != "pkga" {
 		t.Errorf("%v", unknown)
+	}
+}
+
+func TestFactSheetsAreReadOncePerGraphNotOncePerCall(t *testing.T) {
+	root := indexedRepo(t, layered)
+	store := newTestStore(root)
+	first, _ := store.Snapshot()
+	sheets, err := first.Facts()
+	if err != nil || len(sheets) == 0 {
+		t.Fatalf("%v %v", sheets, err)
+	}
+	// Remove the sheets on disk. A second snapshot answering from them proves the
+	// cache, not the disk, served it.
+	if err := os.RemoveAll(filepath.Join(root, ".loom", "facts")); err != nil {
+		t.Fatal(err)
+	}
+	second, _ := store.Snapshot()
+	again, err := second.Facts()
+	if err != nil || len(again) != len(sheets) {
+		t.Errorf("a later call reuses the parsed sheets: %d of %d, %v", len(again), len(sheets), err)
+	}
+}
+
+func TestFactSheetsAreReloadedAfterTheIntervalAndWhenTheGraphChanges(t *testing.T) {
+	root := indexedRepo(t, layered)
+	store := newTestStore(root)
+	clock := time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)
+	store.now = func() time.Time { return clock }
+	snapshot, _ := store.Snapshot()
+	if _, err := snapshot.Facts(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(filepath.Join(root, ".loom", "facts")); err != nil {
+		t.Fatal(err)
+	}
+	clock = clock.Add(DefaultFreshnessTTL)
+	expired, _ := store.Snapshot()
+	if facts, _ := expired.Facts(); len(facts) != 0 {
+		t.Errorf("after the interval the sheets are read again, and these are gone: %d", len(facts))
+	}
+	writeFile(t, root, "api/api.go", "package api\n\nimport \"example.com/x/svc\"\n\nfunc Serve() { svc.Run() }\n")
+	git(t, root, "add", "-A")
+	reindex(t, root)
+	changed, _ := store.Snapshot()
+	if facts, _ := changed.Facts(); len(facts) == 0 {
+		t.Error("a new graph reloads the sheets at once, without waiting out the interval")
 	}
 }

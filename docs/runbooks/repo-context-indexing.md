@@ -69,10 +69,17 @@ Read the summary. In order of importance:
 
 ### 5. Approve and apply
 ```bash
-loom docs approve        # interactive y/N, or --yes to assert you reviewed it
+loom docs approve        # interactive y/N; or: loom docs approve <id> --yes (the id is required with --yes)
 loom docs apply
 ```
 `apply` refuses if a staged file or any target changed since. Re-plan in that case.
+
+`approve` is refused inside an agent session (it checks for the `CLAUDECODE` environment variable): run it in your own
+terminal. This guards against a model with a shell approving its own changeset; it is not a lock, which is why the
+approval also binds to digests and shows you the summary first.
+
+`plan` draws on **every** documenter run, newest first, so documenting in batches (`--limit`, `--path`) does not lose
+earlier batches. A directory takes its result from the newest run that has a valid one. `--run <id>` plans from one run only.
 
 ## Handling stale entries
 `loom health` lists paths whose documentation predates the directory's latest change.

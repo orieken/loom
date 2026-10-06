@@ -24,8 +24,11 @@ func Summary(c Change) string {
 	var out strings.Builder
 	counts := c.Counts()
 	source := "from run " + c.RunID
-	if c.RunID == "" {
+	switch {
+	case c.RunID == "":
 		source = "no documenter run"
+	case len(c.Runs) > 1:
+		source = fmt.Sprintf("from %d runs, newest %s", len(c.Runs), c.RunID)
 	}
 	fmt.Fprintf(&out, "changeset %s (%s): %d directories documented\n", c.ID, source, c.Documented)
 	fmt.Fprintf(&out, "  %d to create, %d to update, %d unchanged, %d conflicts, %d skipped\n",

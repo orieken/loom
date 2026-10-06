@@ -151,8 +151,10 @@ func checkReads(doc state.RepoDocState, facts factIndex) []Violation {
 
 var backticked = regexp.MustCompile("`([^`\n]+)`")
 
-// hedges mark a sentence that treats a heuristic edge as uncertain.
-var hedges = []string{"approximate", "possible", "possibly", "may ", "might", "likely", "unconfirmed", "heuristic", "appears to"}
+// hedgeWords mark a sentence that treats a heuristic edge as uncertain. They
+// are matched as whole words: "unlikely" is not "likely", "impossible" is not
+// "possible", and "dismay" does not contain "may".
+var hedgeWords = regexp.MustCompile(`(?i)\b(?:approximate|approximately|possible|possibly|may|might|likely|unconfirmed|heuristic|appears to)\b`)
 
 // checkNames verifies every backticked name in the prose claims against the
 // fact sheet, and that a name known only through a heuristic edge is not
@@ -169,15 +171,7 @@ func checkNames(doc state.RepoDocState, facts factIndex) []Violation {
 	return violations
 }
 
-func hasHedge(text string) bool {
-	lower := strings.ToLower(text)
-	for _, hedge := range hedges {
-		if strings.Contains(lower, hedge) {
-			return true
-		}
-	}
-	return false
-}
+func hasHedge(text string) bool { return hedgeWords.MatchString(text) }
 
 func isFactRoot(root string) bool {
 	for _, known := range state.FactFieldRoots() {

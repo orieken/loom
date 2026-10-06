@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/orieken/loom/internal/factsheet"
@@ -173,6 +174,25 @@ func LatestRun(root string) (string, error) {
 		}
 	}
 	return latest, nil
+}
+
+// Runs returns every run id under .loom/runs, newest first.
+func Runs(root string) ([]string, error) {
+	entries, err := os.ReadDir(filepath.Join(root, repograph.OutputDir, RunsDir))
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read runs: %w", err)
+	}
+	var runs []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			runs = append(runs, entry.Name())
+		}
+	}
+	sort.Sort(sort.Reverse(sort.StringSlice(runs)))
+	return runs, nil
 }
 
 // Candidates lists a run's verified documents as directory -> file path.

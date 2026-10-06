@@ -1,6 +1,7 @@
 package docchange
 
 import (
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -114,5 +115,99 @@ func TestPlanFromANamedRunIgnoresNewerOnes(t *testing.T) {
 	staged := readFile(t, root, ".loom/changes/"+change.ID+"/files/.loom/docs/lib/README.md")
 	if strings.Contains(staged, "second run says") {
 		t.Error("planned from the wrong run")
+	}
+}
+
+func twoPlansInOneSecond(t *testing.T) (root string, first, second Change) {
+	t.Helper()
+	root = newRepo(t, goRepo)
+	documentedRun(t, root, nil)
+	input := PlanInput{Root: root, Vocabulary: vocabulary(), Lister: gitLister(), Now: fixedNow}
+	first, err := Plan(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	approveAndApply(t, root, first.ID)
+	second, err = Plan(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return root, first, second
+}
+
+// Two plans in one second must not share a directory: the second would inherit
+// the first's approval and applied record.
+func TestTwoPlansInTheSameSecondGetDistinctChangesetIds(t *testing.T) {
+	_, first, second := twoPlansInOneSecond(t)
+	if second.ID != first.ID+"-2" {
+		t.Errorf("ids = %q and %q", first.ID, second.ID)
+	}
+}
+
+func TestASecondPlanInTheSameSecondInheritsNeitherApprovalNorAppliedState(t *testing.T) {
+	root, _, second := twoPlansInOneSecond(t)
+	if _, approved, _ := LoadApproval(root, second.ID); approved {
+		t.Error("the second changeset inherited the first's approval")
+	}
+	if _, err := Apply(root, second.ID, clock); !errors.Is(err, ErrNotApproved) {
+		t.Errorf("it must not read as applied or approved: %v", err)
+	}
+}
+
+func TestASuffixedChangesetIdStillSortsNewest(t *testing.T) {
+	root, first, _ := twoPlansInOneSecond(t)
+	third, _ := Plan(PlanInput{Root: root, Vocabulary: vocabulary(), Lister: gitLister(), Now: fixedNow})
+	if third.ID != first.ID+"-3" {
+		t.Errorf("third = %q", third.ID)
+	}
+	if latest, _ := LatestChange(root); latest != third.ID {
+		t.Errorf("latest = %q", latest)
+	}
+}
+
+// Documenting in batches leaves one run per batch; a changeset draws on all of them.
+func TestPlanDrawsOnEveryRunNewestFirstSoBatchesAreNotDropped(t *testing.T) {
+	root := newRepo(t, goRepo)
+	documentedRunOf(t, root, "cmd", nil)
+	newest := documentedRunOf(t, root, "lib", func(d *stateDoc) {
+		d.Purpose = "batch two says " + d.Path
+		d.Evidence[0].Claim = d.Purpose
+	})
+	change := plan(t, root, Options{})
+	if change.Documented != 3 || len(change.Runs) != 2 || change.RunID != newest {
+		t.Fatalf("documented=%d runs=%v newest=%s", change.Documented, change.Runs, change.RunID)
+	}
+	if !strings.Contains(readFile(t, root, ".loom/changes/"+change.ID+"/files/.loom/docs/lib/README.md"), "batch two says lib") ||
+		!exists(root, ".loom/changes/"+change.ID+"/files/.loom/docs/cmd/app/README.md") {
+		t.Error("lib from the newest batch, cmd/app from the earlier one")
+	}
+	if summary := Summary(change); !strings.Contains(summary, "from 2 runs, newest "+newest) {
+		t.Errorf("%s", summary)
+	}
+}
+
+func TestADirectoryTakesTheNewestRunThatHasAValidResultForIt(t *testing.T) {
+	root := newRepo(t, goRepo)
+	documentedRunOf(t, root, "lib", func(d *stateDoc) {
+		d.Purpose = "older but valid for " + d.Path
+		d.Evidence[0].Claim = d.Purpose
+	})
+	broken := documentedRunOf(t, root, "lib", nil)
+	writeFile(t, root, ".loom/runs/"+broken+"/docs/lib.json", "{broken")
+	change := plan(t, root, Options{})
+	if !strings.Contains(readFile(t, root, ".loom/changes/"+change.ID+"/files/.loom/docs/lib/README.md"), "older but valid for lib") {
+		t.Error("a corrupt newest candidate falls back to the older valid one")
+	}
+	if reason := skipReasonFor(change, "lib"); reason != "" {
+		t.Errorf("a directory with a valid result is not skipped: %q", reason)
+	}
+}
+
+func TestADirectoryWhoseEveryCandidateFailsIsSkippedWithTheNewestReason(t *testing.T) {
+	root := newRepo(t, goRepo)
+	only := documentedRunOf(t, root, "lib", nil)
+	writeFile(t, root, ".loom/runs/"+only+"/docs/lib.json", "{broken")
+	if reason := skipReasonFor(plan(t, root, Options{}), "lib"); !strings.HasPrefix(reason, "invalid:") {
+		t.Errorf("reason = %q", reason)
 	}
 }

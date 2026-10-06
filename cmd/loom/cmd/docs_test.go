@@ -15,6 +15,9 @@ import (
 // documentedRepo is a git repo whose directories have verified candidates.
 func documentedRepo(t *testing.T) string {
 	t.Helper()
+	// Tests of the approval flow run as a person would; the agent-session tests
+	// set this themselves afterwards. (These tests often run inside an agent.)
+	t.Setenv("CLAUDECODE", "")
 	root := committedGoRepo(t)
 	provider := answerEverything(t, root)
 	useDocumentFixtures(t, provider)
@@ -157,12 +160,13 @@ func TestDocsPlanFailsOnAMissingVocabulary(t *testing.T) {
 }
 
 func TestDocsApproveAndApplyOfAnUnknownChangesetFailWithAClearError(t *testing.T) {
+	t.Setenv("CLAUDECODE", "")
 	root := t.TempDir()
 	for name, run := range map[string]func(*cobra.Command, []string) error{"approve": runDocsApprove, "apply": runDocsApply} {
 		if _, err := runDocsCommand(t, run, docsFlags{root: root, yes: true}, "", "nope"); !errors.Is(err, docchange.ErrNoSuchChange) {
 			t.Errorf("%s: %v", name, err)
 		}
-		if _, err := runDocsCommand(t, run, docsFlags{root: root, yes: true}, ""); !errors.Is(err, docchange.ErrNoSuchChange) {
+		if _, err := runDocsCommand(t, run, docsFlags{root: root}, ""); !errors.Is(err, docchange.ErrNoSuchChange) {
 			t.Errorf("%s with no changeset at all: %v", name, err)
 		}
 	}
@@ -182,5 +186,39 @@ func TestDocsApplyReportsAResetApprovalToThePerson(t *testing.T) {
 	var reset *docchange.ResetError
 	if !errors.As(err, &reset) || !strings.Contains(err.Error(), "CODEMAP.md") {
 		t.Errorf("err = %v", err)
+	}
+}
+
+func TestYesWithoutAChangesetIdIsRefused(t *testing.T) {
+	root := documentedRepo(t)
+	planChange(t, root, docsFlags{})
+	if _, err := runDocsCommand(t, runDocsApprove, docsFlags{root: root, yes: true}, ""); !errors.Is(err, errYesNeedsAnID) {
+		t.Errorf("approving without a prompt must name what was reviewed: %v", err)
+	}
+	if _, err := runDocsCommand(t, runDocsApprove, docsFlags{root: root, yes: true}, "", "some-id"); errors.Is(err, errYesNeedsAnID) {
+		t.Error("naming the changeset satisfies the rule")
+	}
+}
+
+func TestApprovalIsRefusedInsideAnAgentSession(t *testing.T) {
+	root := documentedRepo(t)
+	id := planChange(t, root, docsFlags{})
+	t.Setenv("CLAUDECODE", "1")
+	for name, flags := range map[string]docsFlags{"with --yes": {root: root, yes: true}, "interactive": {root: root}} {
+		if _, err := runDocsCommand(t, runDocsApprove, flags, "y\n", id); !errors.Is(err, errApprovalFromAgent) {
+			t.Errorf("%s: an agent must not approve its own changeset: %v", name, err)
+		}
+	}
+	if _, found, _ := docchange.LoadApproval(root, id); found {
+		t.Error("no approval may be recorded from an agent session")
+	}
+}
+
+func TestApprovalOutsideAnAgentSessionIsUnaffected(t *testing.T) {
+	root := documentedRepo(t)
+	id := planChange(t, root, docsFlags{})
+	t.Setenv("CLAUDECODE", "")
+	if _, err := runDocsCommand(t, runDocsApprove, docsFlags{root: root, yes: true}, "", id); err != nil {
+		t.Errorf("%v", err)
 	}
 }

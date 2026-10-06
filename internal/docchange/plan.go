@@ -72,15 +72,11 @@ func Plan(input PlanInput) (Change, error) {
 }
 
 func (p *planner) begin() error {
-	runID := p.input.RunID
-	if runID == "" {
-		latest, err := repodoc.LatestRun(p.input.Root)
-		if err != nil {
-			return err
-		}
-		runID = latest
+	runs, err := p.runsToPlanFrom()
+	if err != nil {
+		return err
 	}
-	if runID == "" && !p.input.Options.CodemapOnly {
+	if len(runs) == 0 && !p.input.Options.CodemapOnly {
 		return ErrNoRun
 	}
 	sheets, err := contextindex.CurrentSheets(p.input.Root, p.input.Lister)
@@ -89,35 +85,94 @@ func (p *planner) begin() error {
 	}
 	p.sheets = sheets
 	now := p.input.Now().UTC()
-	p.change = Change{ID: now.Format("20060102T150405Z"), RunID: runID, CreatedAt: now.Format(time.RFC3339),
+	p.change = Change{ID: p.freshID(now), Runs: runs, CreatedAt: now.Format(time.RFC3339),
 		Options: p.input.Options, Artifacts: []Artifact{}, OpenQuestions: []OpenQuestion{}, Skipped: []SkippedCandidate{}}
+	if len(runs) > 0 {
+		p.change.RunID = runs[0]
+	}
 	return nil
+}
+
+// runsToPlanFrom is the named run, or every run, newest first: documenting in
+// batches leaves one run per batch, and a changeset must not silently drop the
+// earlier ones.
+func (p *planner) runsToPlanFrom() ([]string, error) {
+	if p.input.RunID != "" {
+		return []string{p.input.RunID}, nil
+	}
+	return repodoc.Runs(p.input.Root)
+}
+
+// freshID is the timestamp id, suffixed when a changeset already holds it. Two
+// plans in one second must not share a directory: the second would inherit the
+// first's approval and applied record.
+func (p *planner) freshID(now time.Time) string {
+	base := now.Format("20060102T150405Z")
+	id := base
+	for attempt := 2; changeExists(p.input.Root, id); attempt++ {
+		id = fmt.Sprintf("%s-%d", base, attempt)
+	}
+	return id
 }
 
 // acceptCandidates keeps the run's verified results that are still true. A
 // result is re-verified here, against the tree as it is now: the tree may have
 // changed since the run, and a file under .loom/runs is only a file.
 func (p *planner) acceptCandidates() {
-	if p.change.RunID == "" {
-		return
-	}
-	files, err := repodoc.Candidates(repodoc.RunDir(p.input.Root, p.change.RunID))
+	byDir, err := p.candidatesByDirectory()
 	if err != nil {
 		p.skip(".", "could not read the run's candidates: "+err.Error())
 		return
 	}
-	byPath := map[string]factsheet.FactSheet{}
+	bySheet := map[string]factsheet.FactSheet{}
 	for _, sheet := range p.sheets {
-		byPath[sheet.Path] = sheet
+		bySheet[sheet.Path] = sheet
 	}
-	for _, dir := range sortedKeys(files) {
-		if doc, reason := p.checkCandidate(dir, files[dir], byPath); reason != "" {
-			p.skip(dir, reason)
+	dirs := make([]string, 0, len(byDir))
+	for dir := range byDir {
+		dirs = append(dirs, dir)
+	}
+	sort.Strings(dirs)
+	for _, dir := range dirs {
+		if item, reason := p.firstValid(dir, byDir[dir], bySheet); item != nil {
+			p.accepted = append(p.accepted, *item)
 		} else {
-			p.accepted = append(p.accepted, *doc)
+			p.skip(dir, reason)
 		}
 	}
 	p.change.Documented = len(p.accepted)
+}
+
+// candidatesByDirectory gathers each directory's candidate files across the
+// runs, newest first.
+func (p *planner) candidatesByDirectory() (map[string][]string, error) {
+	byDir := map[string][]string{}
+	for _, runID := range p.change.Runs {
+		files, err := repodoc.Candidates(repodoc.RunDir(p.input.Root, runID))
+		if err != nil {
+			return nil, err
+		}
+		for dir, file := range files {
+			byDir[dir] = append(byDir[dir], file)
+		}
+	}
+	return byDir, nil
+}
+
+// firstValid takes the newest candidate that is still true of the tree. If none
+// is, the reason given is the newest one's.
+func (p *planner) firstValid(dir string, files []string, bySheet map[string]factsheet.FactSheet) (*accepted, string) {
+	firstReason := ""
+	for _, file := range files {
+		item, reason := p.checkCandidate(dir, file, bySheet)
+		if item != nil {
+			return item, ""
+		}
+		if firstReason == "" {
+			firstReason = reason
+		}
+	}
+	return nil, firstReason
 }
 
 func (p *planner) checkCandidate(dir, file string, byPath map[string]factsheet.FactSheet) (*accepted, string) {
@@ -145,15 +200,6 @@ func (p *planner) checkCandidate(dir, file string, byPath map[string]factsheet.F
 
 func (p *planner) skip(dir, reason string) {
 	p.change.Skipped = append(p.change.Skipped, SkippedCandidate{Path: dir, Reason: reason})
-}
-
-func sortedKeys(m map[string]string) []string {
-	keys := make([]string, 0, len(m))
-	for key := range m {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	return keys
 }
 
 // planDocuments stages each accepted result's sidecar README, and the opt-in

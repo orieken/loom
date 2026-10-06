@@ -151,8 +151,8 @@ func TestADocCommentEditThatCannotBeStagedFailsThePlan(t *testing.T) {
 func TestAGoFileThatDoesNotParseIsIgnoredWhenFindingThePackage(t *testing.T) {
 	root := t.TempDir()
 	seed(t, root, "lib", map[string]string{"bad.go": "this is not go", "ok.go": "package lib\n"})
-	name, documentedIn := goPackageFacts(root, sheetOf("lib", "bad.go", "ok.go"))
-	if name != "lib" || documentedIn != "" {
-		t.Errorf("%q %q", name, documentedIn)
+	names, documentedIn := goPackageFacts(root, sheetOf("lib", "bad.go", "ok.go"))
+	if len(names) != 1 || names[0] != "lib" || documentedIn != "" {
+		t.Errorf("%v %q", names, documentedIn)
 	}
 }

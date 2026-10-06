@@ -105,3 +105,38 @@ func TestExportedStageIDsMatchTheInternalOnes(t *testing.T) {
 		t.Errorf("%v", names(vocabulary))
 	}
 }
+
+func TestRunsOfARepoWithNoRunsIsNil(t *testing.T) {
+	if got, err := Runs(t.TempDir()); got != nil || err != nil {
+		t.Errorf("no runs yet: %v %v", got, err)
+	}
+}
+
+func TestRunsListsEveryRunNewestFirstAndIgnoresFiles(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"20260101T000000Z", "20261005T120000Z", "20260601T000000Z"} {
+		if err := os.MkdirAll(filepath.Join(root, ".loom", "runs", name), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(root, ".loom", "runs", "stray.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Runs(root)
+	if err != nil || !reflect.DeepEqual(got, []string{"20261005T120000Z", "20260601T000000Z", "20260101T000000Z"}) {
+		t.Errorf("%v %v", got, err)
+	}
+}
+
+func TestRunsReportsAnUnreadableRunsDirectory(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".loom"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".loom", "runs"), []byte("a file"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Runs(root); err == nil {
+		t.Error("expected an error")
+	}
+}

@@ -252,3 +252,76 @@ func TestApplyingDocCommentsWritesOnlyNewFilesAndLeavesSourceUntouched(t *testin
 		t.Errorf("existing source must be untouched: %q", got)
 	}
 }
+
+// A doc.go naming the wrong package would not compile, so a directory with more
+// than one package gets none.
+func TestGoDocIsSkippedWhenTheDirectoryHoldsSeveralPackages(t *testing.T) {
+	root := t.TempDir()
+	seed(t, root, "tools", map[string]string{"lib.go": "package lib\n", "gen.go": "//go:build ignore\n\npackage main\n"})
+	edit := goDoc(root, sheetOf("tools", "gen.go", "lib.go"), "x")
+	if edit == nil || edit.skip == "" || !strings.Contains(edit.skip, "several packages (lib, main)") {
+		t.Errorf("%+v", edit)
+	}
+}
+
+func TestGoPackageFactsReturnsEveryDistinctNameSorted(t *testing.T) {
+	root := t.TempDir()
+	seed(t, root, "d", map[string]string{"b.go": "package zeta\n", "a.go": "package alpha\n", "c.go": "package zeta\n"})
+	names, _ := goPackageFacts(root, sheetOf("d", "a.go", "b.go", "c.go"))
+	if len(names) != 2 || names[0] != "alpha" || names[1] != "zeta" {
+		t.Errorf("%v", names)
+	}
+}
+
+func TestPythonDocKeepsAShebangAndALicenseCommentAheadOfTheDocstring(t *testing.T) {
+	root := t.TempDir()
+	seed(t, root, "pkg", map[string]string{"__init__.py": "#!/usr/bin/env python\n# -*- coding: utf-8 -*-\n# Copyright Example\n\nimport os\n"})
+	edit := pythonDoc(root, sheetOf("pkg", "__init__.py"), "A package.")
+	if edit == nil || !strings.HasPrefix(edit.content, "#!/usr/bin/env python\n# -*- coding: utf-8 -*-\n# Copyright Example\n\n\"\"\"\nloom:generated:start") || !strings.HasSuffix(edit.content, "\"\"\"\nimport os\n") {
+		t.Errorf("the interpreter line and encoding cookie must stay first:\n%+v", edit)
+	}
+}
+
+func TestPythonDocRecognisesAHumanDocstringThatFollowsALicenseComment(t *testing.T) {
+	root := t.TempDir()
+	seed(t, root, "pkg", map[string]string{"__init__.py": "# Copyright Example\n\"\"\"The real package docs.\"\"\"\nimport os\n"})
+	edit := pythonDoc(root, sheetOf("pkg", "__init__.py"), "A package.")
+	if edit == nil || !strings.Contains(edit.skip, "already has a docstring") {
+		t.Errorf("a human docstring after a comment header must not be demoted: %+v", edit)
+	}
+}
+
+func TestSplitPythonPreambleHandlesNoCodeAndNoNewline(t *testing.T) {
+	if preamble, code := splitPythonPreamble("# only a comment"); preamble != "# only a comment" || code != "" {
+		t.Errorf("%q %q", preamble, code)
+	}
+	if preamble, code := splitPythonPreamble("x = 1\n"); preamble != "" || code != "x = 1\n" {
+		t.Errorf("%q %q", preamble, code)
+	}
+}
+
+func TestScriptDocKeepsAShebangOnLineOne(t *testing.T) {
+	root := t.TempDir()
+	seed(t, root, "cli", map[string]string{"index.js": "#!/usr/bin/env node\nconsole.log(1);\n"})
+	edit := scriptDoc(root, sheetOf("cli", "index.js"), "A CLI.")
+	if edit == nil || !strings.HasPrefix(edit.content, "#!/usr/bin/env node\n/**\n * loom:generated:start") || !strings.HasSuffix(edit.content, " */\nconsole.log(1);\n") {
+		t.Errorf("%+v", edit)
+	}
+}
+
+func TestScriptDocRecognisesAHumanDocCommentAfterAShebang(t *testing.T) {
+	root := t.TempDir()
+	seed(t, root, "cli", map[string]string{"index.js": "#!/usr/bin/env node\n/** My docs. */\nconsole.log(1);\n"})
+	if edit := scriptDoc(root, sheetOf("cli", "index.js"), "x"); edit == nil || edit.skip == "" {
+		t.Errorf("%+v", edit)
+	}
+}
+
+func TestSplitShebangWithoutANewline(t *testing.T) {
+	if shebang, rest := splitShebang("#!/bin/node"); shebang != "#!/bin/node\n" || rest != "" {
+		t.Errorf("%q %q", shebang, rest)
+	}
+	if shebang, rest := splitShebang("code\n"); shebang != "" || rest != "code\n" {
+		t.Errorf("%q %q", shebang, rest)
+	}
+}

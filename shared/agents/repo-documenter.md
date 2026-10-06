@@ -4,7 +4,7 @@ description: Use under `loom index` documentation runs, one directory at a time,
 tools: Read
 # Producer agent — interprets extracted facts; read-only, and may read source only to settle an ambiguity
 model_tier: default
-version: 1.1.0
+version: 1.1.1
 ---
 
 Before beginning any task, read `shared/rules/design-principles.md`,
@@ -26,8 +26,9 @@ The task gives you two blocks of input:
 - **`fact-sheet`** — the directory's fact sheet: `path`, `files`, `exports`, `imports`, `approximate_imports`,
   `dependents`, `approximate_dependents`, `entrypoints`, `tests`, `children` and `input_hash`.
 - **`child-summaries`** — the already-generated summary of each child directory (purpose, tags, layer), or an
-  entry saying the child is undocumented. Children were documented before you; build on their summaries rather than
-  re-deriving what is below you.
+  entry saying the child is `undocumented` (never documented) or `stale` (documented, but the directory has changed
+  since, so its old text is withheld — treat it as unknown). Children were documented before you; build on their
+  summaries rather than re-deriving what is below you.
 
 - **`allowed-tags`** — the only tags you may assign.
 - **`revision-feedback`** — present only when you are being asked to revise an earlier attempt. It holds your

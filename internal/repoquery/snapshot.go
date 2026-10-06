@@ -41,6 +41,7 @@ type Snapshot struct {
 	root   string
 	facts  map[string]factsheet.FactSheet
 	loaded bool
+	cache  *factsCache
 }
 
 // GraphSHA is the commit the graph was built at.
@@ -51,12 +52,47 @@ func (s *Snapshot) Facts() (map[string]factsheet.FactSheet, error) {
 	if s.loaded {
 		return s.facts, nil
 	}
-	facts, err := factsheet.LoadAll(s.root)
+	var facts map[string]factsheet.FactSheet
+	var err error
+	if s.cache != nil {
+		facts, err = s.cache.get(s.root, s.Graph.GraphHash)
+	} else {
+		facts, err = factsheet.LoadAll(s.root)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("read fact sheets: %w", err)
 	}
 	s.facts, s.loaded = facts, true
 	return facts, nil
+}
+
+// factsCache keeps the parsed fact sheets between calls. A snapshot is built per
+// call, and without this every entrypoints or describe call re-read and parsed
+// every sheet in .loom/facts. It is reloaded when the graph changes and at most
+// once per interval otherwise — the same bound the freshness check has, so a
+// sheet edited by a body-only change can lag by that long.
+type factsCache struct {
+	ttl time.Duration
+	now func() time.Time
+
+	mu        sync.Mutex
+	graphHash string
+	loadedAt  time.Time
+	sheets    map[string]factsheet.FactSheet
+}
+
+func (c *factsCache) get(root, graphHash string) (map[string]factsheet.FactSheet, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.sheets != nil && c.graphHash == graphHash && c.now().Sub(c.loadedAt) < c.ttl {
+		return c.sheets, nil
+	}
+	sheets, err := factsheet.LoadAll(root)
+	if err != nil {
+		return nil, err
+	}
+	c.sheets, c.graphHash, c.loadedAt = sheets, graphHash, c.now()
+	return sheets, nil
 }
 
 // Store loads snapshots for one repository.
@@ -65,6 +101,8 @@ type Store struct {
 	lister repograph.Lister
 	ttl    time.Duration
 	now    func() time.Time
+
+	facts *factsCache
 
 	mu         sync.Mutex
 	checkedAt  time.Time
@@ -76,7 +114,9 @@ type Store struct {
 
 // NewStore returns a Store for a repository root.
 func NewStore(root string, lister repograph.Lister) *Store {
-	return &Store{root: root, lister: lister, ttl: DefaultFreshnessTTL, now: time.Now}
+	store := &Store{root: root, lister: lister, ttl: DefaultFreshnessTTL, now: time.Now}
+	store.facts = &factsCache{ttl: store.ttl, now: func() time.Time { return store.now() }}
+	return store
 }
 
 // Snapshot reads the stored graph and index and checks them against the
@@ -98,7 +138,7 @@ func (s *Store) Snapshot() (Snapshot, error) {
 	if err != nil {
 		return Snapshot{}, err
 	}
-	return Snapshot{Graph: graph, Index: index, HasIndex: hasIndex, Fresh: s.matchesWorkingTree(graph), root: s.root}, nil
+	return Snapshot{Graph: graph, Index: index, HasIndex: hasIndex, Fresh: s.matchesWorkingTree(graph), root: s.root, cache: s.sharedFacts()}, nil
 }
 
 // matchesWorkingTree compares the stored graph's hash with a freshly extracted
@@ -125,4 +165,11 @@ func (s *Store) extractHash() (string, error) {
 		return "", err
 	}
 	return graph.GraphHash, nil
+}
+
+// sharedFacts is the store's cache, with the store's current interval: tests
+// and callers that change ttl after construction are honoured.
+func (s *Store) sharedFacts() *factsCache {
+	s.facts.ttl = s.ttl
+	return s.facts
 }

@@ -129,13 +129,62 @@ func TestAMarkerWhoseHashIsUnreadableIsAConflictNotASecondBlock(t *testing.T) {
 	}
 }
 
-func TestALineEndingInHashEqualsWithNothingAfterItIsNotAStartMarker(t *testing.T) {
+func TestAMarkerLineEndingAtHashEqualsIsAlsoDamagedNotProse(t *testing.T) {
 	text := "intro\n// loom:generated:start hash=\nbody\n"
-	if _, _, found := Extract(text); found {
-		t.Error("nothing follows hash=, so there is no hash to verify")
-	}
 	updated, status, _ := Markdown.Upsert(text, true, "new")
-	if status != Appended || !strings.HasPrefix(updated, text) {
-		t.Errorf("the human's text is kept and a real block appended: %v", status)
+	if status != Conflict || updated != text {
+		t.Errorf("an anchored marker with nothing after hash= is damaged: %v", status)
+	}
+}
+
+// A README that explains the marker syntax must not be read as holding a block.
+func TestProseAndCodeFencesThatQuoteTheMarkerAreNotBlocks(t *testing.T) {
+	doc := "# Markers\n\nA block starts with `<!-- loom:generated:start hash=sha256:abc -->` and ends with\n`<!-- loom:generated:end -->`.\n\n```html\n<!-- loom:generated:start hash=sha256:abc -->\nexample\n<!-- loom:generated:end -->\n```\n"
+	if _, _, found := Extract(doc); found {
+		t.Fatal("quoted markers are not blocks")
+	}
+	updated, status, _ := Markdown.Upsert(doc, true, "real")
+	if status != Appended || !strings.HasPrefix(updated, doc) {
+		t.Errorf("the document is kept whole and a real block appended: %v", status)
+	}
+	if again, status, _ := Markdown.Upsert(updated, true, "real v2"); status != Replaced || !strings.Contains(again, "```html\n<!-- loom:generated:start hash=sha256:abc -->\nexample") {
+		t.Errorf("only the real block is replaced; the quoted example survives: %v\n%s", status, again)
+	}
+}
+
+func TestEveryRealMarkerFormStillLocates(t *testing.T) {
+	for name, syntax := range map[string]Syntax{"markdown": Markdown, "go": LineComment("//"), "block": BlockComment(), "docstring": Docstring()} {
+		text := "human\n" + syntax.Render("x") + "\nmore human\n"
+		if _, status, _ := syntax.Upsert(text, true, "x"); status != Unchanged {
+			t.Errorf("%s: %v", name, status)
+		}
+	}
+}
+
+// Windows and core.autocrlf checkouts turn LF into CRLF. The block must still
+// verify, still be replaceable, and the file must stay CRLF.
+func TestAFileWithCRLFLineEndingsVerifiesAndKeepsItsLineEndings(t *testing.T) {
+	lf, _, _ := Markdown.Upsert(human, true, "version one")
+	crlf := strings.ReplaceAll(lf, "\n", "\r\n")
+	if same, status, _ := Markdown.Upsert(crlf, true, "version one"); status != Unchanged || same != crlf {
+		t.Fatalf("a CRLF checkout of an unedited block is not a hand edit: %v", status)
+	}
+	updated, status, _ := Markdown.Upsert(crlf, true, "version two")
+	if status != Replaced || !strings.Contains(updated, "version two") {
+		t.Fatalf("%v", status)
+	}
+	if strings.Contains(strings.ReplaceAll(updated, "\r\n", ""), "\n") {
+		t.Errorf("the file must stay CRLF throughout: %q", updated)
+	}
+	if _, _, found := Extract(crlf); !found {
+		t.Error("Extract must read CRLF text")
+	}
+}
+
+func TestAHandEditedBlockInACRLFFileIsStillAConflict(t *testing.T) {
+	lf, _, _ := Markdown.Upsert(human, true, "generated")
+	edited := strings.ReplaceAll(strings.Replace(lf, "\ngenerated\n", "\ngenerated, edited\n", 1), "\n", "\r\n")
+	if text, status, _ := Markdown.Upsert(edited, true, "new"); status != Conflict || text != edited {
+		t.Errorf("%v", status)
 	}
 }

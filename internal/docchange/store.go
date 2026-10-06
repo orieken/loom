@@ -84,3 +84,9 @@ func LatestChange(root string) (string, error) {
 	}
 	return latest, nil
 }
+
+// changeExists says a changeset directory already holds this id.
+func changeExists(root, id string) bool {
+	_, err := os.Stat(Dir(root, id))
+	return err == nil
+}
