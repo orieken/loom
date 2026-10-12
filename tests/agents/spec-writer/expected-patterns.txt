@@ -4,4 +4,4 @@ acceptance.criteria|Acceptance Criteria
 persist|localStorage|preference|remember
 system.*preference|prefers-color-scheme|OS.*preference
 out.of.scope|Out of Scope
-definition.of.done|Definition of Done
+Spec Readiness Critique|Verdict
