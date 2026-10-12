@@ -105,7 +105,8 @@ collect_rules() {
       "$SHARED_DIR/rules/design-principles.md" \
       "$SHARED_DIR/rules/memory-trust-boundary.md" \
       "$SHARED_DIR/rules/test-repair-contract.md" \
-      "$SHARED_DIR/rules/testing-conventions.md"; do
+      "$SHARED_DIR/rules/testing-conventions.md" \
+      "$SHARED_DIR/rules/writing-style.md"; do
       [[ -f "$rule_file" ]] || continue
       result+=$'\n'"$(cat "$rule_file")"$'\n'
     done

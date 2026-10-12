@@ -69,6 +69,7 @@ This file is the single source of truth for the **Ubiquitous Language** in the a
 
 | Term | Domain | Description | Example |
 |---|---|---|---|
+| **Simplified Technical English** | `Craftsmanship Governance` | The controlled writing style (ASD-STE100) that `spec-writer`, `analyst` and `tech-writer` use: short active sentences, imperative steps, no more than 3 consecutive nouns, and RFC 2119 modals (`MUST`, `SHOULD`, `MAY`) for requirements. It does not apply to Ubiquitous Language terms defined in this file or to native software engineering terms. Defined in `shared/rules/writing-style.md`. | `plain English`, `style guide` |
 | **Delivery Summary** | `Feature Delivery` | The final synthesis artifact produced by the orchestrator after all agents complete. | `docs/features/<name>/delivery-summary.md` |
 | **Readiness Critique** | `Feature Delivery` | The spec-writer's structured evaluation of whether a feature spec is ready for the pipeline. | Verdict: READY or NEEDS WORK |
 | **Human Checkpoint** | `Feature Delivery` | A pause point in the pipeline where explicit user confirmation is required before proceeding. | After analyst, after architect RFC |

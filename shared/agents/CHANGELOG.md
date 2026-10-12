@@ -16,6 +16,16 @@ Semantic-ish, not strict SemVer:
 When you bump an agent's `version:` frontmatter field, add a row under a new dated heading here in the same
 commit — the pre-commit hook checks for exactly this.
 
+## 2026-10-11 — Simplified Technical English for the writers (ASD-STE100)
+
+| Agent | Version | Change |
+|---|---|---|
+| analyst | 2.1.0 -> 2.2.0 | Minor: new rule — acceptance criteria, tasks and edge cases follow `shared/rules/writing-style.md`, so the spec's language survives the first handoff; preamble now reads that rule |
+| spec-writer | 1.2.0 -> 1.2.1 | Patch: the STE rules move to the shared rule `shared/rules/writing-style.md`; the agent keeps a short application of them and reads the rule in its preamble |
+| tech-writer | 1.4.0 -> 1.4.1 | Patch: the STE bullet now points at `shared/rules/writing-style.md` (single source of truth); preamble reads it |
+| spec-writer | 1.1.1 -> 1.2.0 | Minor: new "Writing Style & Simplified Technical English (ASD-STE100)" section — sentence caps (20 words for steps, 25 for descriptions, 3–4 sentences per paragraph), active voice for acceptance criteria, noun clusters of at most 3, RFC 2119 modals, and an exception for `DOMAIN_DICTIONARY.md` terms and native engineering vocabulary |
+| tech-writer | 1.3.0 -> 1.4.0 | Minor: Writing Style Rules gain an ASD-STE100 bullet — >90% active voice, 20/25-word caps, noun stacks of at most 3, plain vocabulary, consistent terminology |
+
 ## 2026-10-05 — Repo context indexing (ADR-010)
 
 | Agent | Version | Change |

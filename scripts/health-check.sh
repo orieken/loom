@@ -232,7 +232,8 @@ echo "--- Token Footprint Budget (static baseline overhead) ---"
 # the always-included rules plus the agent roster. Stack modules are reported
 # separately, because they are the part --stack actually removes.
 ALWAYS_RULES=(approval-gates architecture-guardrails design-principles
-              memory-trust-boundary test-repair-contract testing-conventions)
+              memory-trust-boundary test-repair-contract testing-conventions
+              writing-style)
 # Mirrors collect_rules()'s stack-scoped branch in generate-configs.sh. The two
 # lists must match: this one describes what that one always emits, so a rule
 # added there and not here shows up as unexplained weight.

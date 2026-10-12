@@ -83,6 +83,12 @@ levels:
           - shared/rules/design-principles.md
           - shared/rules/memory-trust-boundary.md
           - shared/rules/testing-conventions.md
+      # Read only by the agents that write prose (spec-writer, analyst, tech-writer).
+      # Kept out of core-rules on purpose: that bundle is loaded on every stage and
+      # is held to coreRulesCeilingBytes.
+      - id: writing-rules
+        paths:
+          - shared/rules/writing-style.md
       - id: agents
         paths: [shared/agents]
       - id: skills
