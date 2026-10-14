@@ -293,7 +293,7 @@ has been deleted from the working tree is skipped.
   `tests/agents/context-engineer/expected-patterns.txt` without re-recording would fail the existing suite. Instead the
   rendered manifest with a blast radius is a golden file (`internal/state/testdata/`), and prompt/frontmatter tests pin that
   the agent is told to use `impact()`, to record only the question, and to fall back. Re-recording the agent baseline
-  is a live run still owed.
+  was a live run still owed; it was recorded on 2026-10-11 (see the closing amendment).
 
 ## Amendment 2026-10-05: review fixes
 A review of phases 1–8 found ten defects, all fixed:
@@ -313,3 +313,20 @@ A review of phases 1–8 found ten defects, all fixed:
   what remain when it is bypassed.
 - **Efficiency and precision.** Fact sheets are cached across tool calls (reloaded on a new graph and at most once per 30
   seconds, the freshness bound). Hedge words in a claim are matched as whole words, so "unlikely" is not "likely".
+
+## Amendment 2026-10-14: live run, open decisions settled
+- **Live baseline.** A real model run over the whole repo (286 directories, about $85 across the reruns) verified 280.
+  Six stayed unverified because the auditor rejected links between listed names and totalities ("only", "loads them back")
+  that a name-only fact sheet cannot support; that is the intended outcome, so they remain open questions. Findings from
+  the run, all fixed: absence is evidenced by a `field:none` citation (`repo-documenter` 1.1.2); the auditor now says what
+  is and is not specificity (`repo-doc-auditor` 1.2.0); a usage or rate limit (HTTP 429) stops the run and leaves the rest
+  undocumented instead of recording each as failed (`orchestrator.ErrProviderUnavailable`); and `claude -p` loads no
+  project context for documenter calls (`--setting-sources ""`), cutting a call from about $1.50 to $0.25. `--bare` was
+  rejected because it drops OAuth login. Golden baselines for `repo-documenter`, `repo-doc-auditor` and `context-engineer`
+  are recorded from real runs.
+- **Resumability.** Verified candidates in `.loom/runs/` do not count as documented: only an applied changeset updates the
+  index, so a rerun before `loom docs apply` redoes the work. Apply first, then rerun.
+- **Level 2 evidence (decided).** The repo graph stays required evidence for Level 2. When it is missing, health and the
+  installer say so and name the command: `run loom index`. No change was needed; this records the decision.
+- **Freshness bound (decided).** 30 seconds stays.
+- **`--yes` (decided).** Stays as hardened: the changeset id is required and an agent session is refused.

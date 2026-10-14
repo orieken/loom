@@ -1,5 +1,10 @@
 # 🤖 Feature Team — Claude Code Multi-Agent Setup
 
+> **This kit is a standalone snapshot (March 2026), not generated from `shared/`.** Its 17 agents, 3 rules and skills
+> work without the `loom` CLI and have drifted from `shared/agents/`, which now assumes the `loom` CLI, contracts,
+> templates and the repo graph. For the current agents, install with `loom install`. Do not copy files between the two
+> by hand: the references differ.
+
 A fully automated feature delivery pipeline for Claude Code. Define a feature in markdown, and your AI team of Analyst, Developer, QA Engineer, Tech Writer, and DevOps Engineer will implement it end-to-end.
 
 ## Directory Structure
