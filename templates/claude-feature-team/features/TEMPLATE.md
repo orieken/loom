@@ -19,6 +19,15 @@ created: YYYY-MM-DD
 - [Thing explicitly not in this iteration]
 <!-- or "None identified" -->
 
+## Hypothesis and Target Metric
+<!-- Write this before the work starts. "We believe [change] will move [metric] by [amount], measured by [source], by [date]." -->
+- We believe [change] will move [metric] by [amount], measured by [source], by [date].
+
+## Edge Cases and Failure Modes
+<!-- What was considered, including security and privacy -->
+- [Case]: [Expected behavior]
+<!-- or "None identified" -->
+
 ## Domain Language
 <!-- New business terms this feature introduces, defined the way the business understands them -->
 - **[Term]**: [Definition]

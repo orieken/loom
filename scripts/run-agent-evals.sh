@@ -97,7 +97,7 @@ contract_for_agent() {
     visual-qa-engineer)   echo "visual-qa-contract.md" ;;
     developer)            echo "implementation-contract.md" ;;
     context-engineer)     echo "context-manifest-contract.md" ;;
-    spec-writer)          echo "spec-contract.md" ;;
+    spec-writer)          echo "delivery-template-contract.md" ;;
     product-owner)        echo "product-review-contract.md" ;;
     release-manager)      echo "release-plan-contract.md" ;;
     unit-tester)          echo "unit-test-contract.md" ;;

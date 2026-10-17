@@ -26,6 +26,7 @@ field-presence checks that `scripts/health-check.sh` already runs across the who
 ## Contract Mapping
 | Agent | Artifact | Contract |
 |---|---|---|
+| spec-writer | `features/<kebab-title>.md` | `shared/contracts/delivery-template-contract.md` |
 | context-engineer | `.claude/feature-workspace/<feature-name>/context-manifest.md` | `shared/contracts/context-manifest-contract.md` |
 | analyst | `.claude/feature-workspace/<feature-name>/analysis.md` | `shared/contracts/analysis-contract.md` |
 | repo-documenter | `.loom/runs/<run>/docs/<dir>.json` | `shared/contracts/repo-doc-contract.md` |

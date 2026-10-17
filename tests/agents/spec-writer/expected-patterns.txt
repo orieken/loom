@@ -5,3 +5,5 @@ persist|localStorage|preference|remember
 system.*preference|prefers-color-scheme|OS.*preference
 out.of.scope|Out of Scope
 Spec Readiness Critique|Verdict
+hypothesis|target.metric|Hypothesis and Target Metric
+edge.cases|Edge Cases and Failure Modes

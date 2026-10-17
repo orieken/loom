@@ -34,7 +34,7 @@ contract_for_agent() {
     # Delivery-role agents
     developer) echo "implementation-contract.md" ;;
     context-engineer) echo "context-manifest-contract.md" ;;
-    spec-writer) echo "spec-contract.md" ;;
+    spec-writer) echo "delivery-template-contract.md" ;;
     product-owner) echo "product-review-contract.md" ;;
     release-manager) echo "release-plan-contract.md" ;;
     unit-tester) echo "unit-test-contract.md" ;;

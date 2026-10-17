@@ -16,6 +16,12 @@ Semantic-ish, not strict SemVer:
 When you bump an agent's `version:` frontmatter field, add a row under a new dated heading here in the same
 commit — the pre-commit hook checks for exactly this.
 
+## 2026-10-17 — Delivery template: hypothesis and edge cases
+
+| Agent | Version | Change |
+|---|---|---|
+| spec-writer | 1.2.1 -> 1.3.0 | Minor: new output sections `## Hypothesis and Target Metric` and `## Edge Cases and Failure Modes` (omitted for spikes and chores), two new interview questions (Q11, Q12), and two new readiness checks. The matching contract `shared/contracts/delivery-template-contract.md` makes both sections required. The golden fixture and `expected-patterns.txt` are re-recorded in the same change |
+
 ## 2026-10-11 — Simplified Technical English for the writers (ASD-STE100)
 
 | Agent | Version | Change |

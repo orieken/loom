@@ -1,17 +1,19 @@
 <!--
 FIXTURE MODE NOTES:
-This is a simulated run of the spec-writer agent. No real interview was possible, so I did not
-invent answers to questions a real user would need to answer. Instead:
+This is a simulated run of the spec-writer agent (version 1.3.0), recorded by hand in-session, not by
+the headless harness. No real interview was possible, so I did not invent answers to questions a
+real user would need to answer. Instead:
 1. I classified the request as a Feature (new user-observable capability).
 2. I extracted only what the request actually states: a toggle on the settings page, and that
    the app remembers the user's choice.
 3. Everything the interview would normally surface but the request is silent on (storage
    mechanism, default theme, accessibility/contrast requirements, scope of "the app", OS-level
-   theme detection, edge cases) is captured as explicit Open Questions or marked unresolved in
-   the relevant section — never filled in with a guess.
+   theme detection, the success metric, edge cases) is captured as explicit Open Questions or marked
+   unresolved in the relevant section — never filled in with a guess. This includes the hypothesis:
+   the request names no metric, so the draft says so instead of inventing one (interview Q11).
 4. I then ran Review Mode's full readiness critique against this draft, exactly as the agent
    would against a user-submitted spec. The critique correctly surfaces NEEDS WORK, because the
-   unanswered interview questions above are exactly the gaps that block Architect/QA/DevOps.
+   unanswered interview questions above are exactly the gaps that block Analyst/Architect/QA/DevOps.
 No files were written, per fixture instructions.
 -->
 
@@ -21,7 +23,7 @@ No files were written, per fixture instructions.
 ---
 type: feature
 status: draft
-created: 2026-10-11
+created: 2026-10-17
 ---
 
 # Add dark mode toggle to settings
@@ -40,6 +42,13 @@ remembers this choice so it applies every time the user returns.
 - Automatically switching theme based on the operating system's dark mode setting
 - Customizing individual colors beyond a single dark/light theme pair
 - Syncing the theme preference across multiple devices
+
+## Hypothesis and Target Metric
+- We believe a dark theme will [metric — unresolved, see Open Questions] by [amount — unresolved], measured by [source — unresolved], by [date — unresolved].
+
+## Edge Cases and Failure Modes
+- Saving the preference fails (for example, storage is blocked in a private browsing session): [observable outcome — unresolved, see Open Questions]
+- A user has no saved preference: covered by the fourth acceptance criterion once the default theme is decided.
 
 ## Domain Language
 - **Dark mode**: Theme that shows dark backgrounds with light text.
@@ -62,6 +71,7 @@ Auto-detect
 - Does "all screens" mean every page and component in the app, or is there a bounded subset for this iteration?
 - Is there a minimum contrast/accessibility requirement for the dark theme?
 - What should happen if saving the preference fails (e.g. storage blocked in a private browsing session)?
+- How will you know the dark theme worked? Which measure should move (for example, the share of users who enable it, or settings-page exits without a change), by how much, and by when?
 
 ## Infrastructure / Deploy Notes
 Unknown — depends on resolution of the storage-location open question above. If stored server-side, a profile field and migration are needed. If stored client-side only, none are needed.
@@ -78,10 +88,10 @@ NEEDS WORK
 
 | Agent | Status | Gap (if any) |
 |---|---|---|
-| Analyst | FAIL | Bounded context is unclear — "all screens" spans the whole app, which reads as a cross-cutting concern rather than a single bounded slice. |
+| Analyst | FAIL | Bounded context is unclear — "all screens" spans the whole app, which reads as a cross-cutting concern rather than a single bounded slice. The hypothesis names no metric, amount or date. |
 | Architect | FAIL | No measurable NFRs; storage mechanism (client vs. server) is undecided, so cross-service impact can't be assessed. |
 | Developer | FAIL | Scope of "all screens" isn't bounded, and the interface can't be designed without knowing where the preference is stored. |
-| QA | FAIL | No performance or accessibility thresholds; no edge cases (storage failure, private browsing, default-theme behavior). |
+| QA | FAIL | No performance or accessibility thresholds. The edge case "saving fails" has no matching acceptance criterion, and the default-theme behavior is undefined. |
 | Security | PASS | Input surface is a single binary toggle; preference is explicitly non-sensitive. |
 | DevOps | FAIL | Migration need cannot be confirmed "None" — contingent on the unresolved storage-location question. |
 
@@ -102,13 +112,18 @@ Current: "the app MUST show all screens using the dark theme"
 Problem: Developer cannot identify task boundaries, and Analyst cannot confirm this is a thin vertical slice rather than an app-wide horizontal change, without knowing which screens or components are in scope.
 Fix: Name the specific pages/components this iteration covers, or state explicitly that it covers every screen in the app.
 
+**The hypothesis has no metric, amount or date**
+Current: "We believe a dark theme will [metric — unresolved] by [amount — unresolved]..."
+Problem: Nobody can say later whether the feature worked, and the weekly outcome report has nothing to read.
+Fix: Name one measure, a target amount and a date, for example the share of active users who enable dark mode within 30 days.
+
 **No measurable non-functional requirements**
 Current: "None specified."
 Problem: Architect and QA have nothing to design or test against for switch latency or visual correctness (e.g. flash of the wrong theme on load, contrast ratio).
 Fix: State a MUST/SHOULD threshold for theme-switch latency and any required contrast ratio, or explicitly confirm none apply.
 
-**No edge cases or negative paths**
-Current: Only happy-path criteria (toggle on, toggle off, persists on reopen) are present.
+**An edge case has no matching acceptance criterion**
+Current: "Saving the preference fails ... [observable outcome — unresolved]" appears under Edge Cases and Failure Modes, and no criterion covers it.
 Problem: QA cannot test failure behavior — e.g. what the user sees if the preference fails to save.
 Fix: Add a criterion describing observable behavior when saving the preference fails.
 
@@ -116,7 +131,8 @@ Fix: Add a criterion describing observable behavior when saving the preference f
 - The three happy-path acceptance criteria are phrased as clean, falsifiable Given/When/Then statements with no implementation language.
 - Domain terms (dark mode, light mode, theme preference) are defined precisely enough to use consistently downstream.
 - The core user journey — toggle in settings, persists across sessions — is unambiguous and gives the analyst a solid starting point even with the open questions unresolved.
+- Unknowns are written down as Open Questions, including the success metric, instead of being guessed.
 
 ---
 
-I can fix these gaps once the storage mechanism, default theme, and scope are answered — those three decisions resolve most of the Required Changes above. Since this is a simulated run, I'm stopping here rather than inventing those answers; type 'fix' with real answers to continue, or edit the draft yourself and re-run `/spec-writer` on it.
+I can fix these gaps once the storage mechanism, default theme, scope and success metric are answered — those four decisions resolve most of the Required Changes above. Since this is a simulated run, I'm stopping here rather than inventing those answers; type 'fix' with real answers to continue, or edit the draft yourself and re-run `/spec-writer` on it.

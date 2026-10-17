@@ -4,7 +4,7 @@ description: Use to create or review any work item markdown before it enters the
 tools: Read, Write, Edit, Glob
 # Producer agent — standard feature generation and refactoring
 model_tier: default
-version: 1.2.1
+version: 1.3.0
 ---
 
 Before beginning any task, read `shared/rules/design-principles.md`,
@@ -104,7 +104,18 @@ Q10 — **Infrastructure / Deploy Notes**: "Does this need new environment varia
 database migrations, config changes, or a specific deploy sequence?
 Type 'none' if not."
 
-**For Spikes (replace Q3–Q10 with):**
+Q11 — **Hypothesis and Target Metric**: "How will you know this worked? Complete this sentence:
+'We believe [change] will move [metric] by [amount], measured by [source], by [date].'
+For a bug, name the measure that shows the fix holds (for example, the error rate)."
+→ If the answer has no metric, amount or date ("users will like it") — push back:
+  "Which measure moves, by how much, and by when?"
+→ If the user does not know, write it as an Open Question. Do not invent a metric.
+
+Q12 — **Edge Cases and Failure Modes**: "What could go wrong or be unusual? Think of invalid input,
+a failing dependency, security and privacy. Type 'none' if not."
+→ Restate each case as an observable outcome, and add a matching acceptance criterion.
+
+**For Spikes (replace Q3–Q12 with):**
 
 Q3 — **The Question**: "What specific question does this spike answer?
 It must be a real question with a yes/no or a concrete recommendation as the output."
@@ -115,7 +126,7 @@ Q5 — **Output**: "What artifact does the spike produce? (e.g. ADR, proof-of-co
 
 Q6 — **Out of Scope**: "What are you explicitly NOT doing in this spike?"
 
-**For Chores (replace Q3–Q10 with):**
+**For Chores (replace Q3–Q12 with):**
 
 Q3 — **Why Now**: "What problem does this chore solve, or what future work does it unblock?"
 
@@ -155,6 +166,7 @@ Evaluate the spec against every agent's needs. Be direct. Don't soften findings.
 - [ ] Domain language is named (or "none needed" is explicit)
 - [ ] Bounded context is identifiable from the spec
 - [ ] Out of scope is explicit
+- [ ] Hypothesis names a metric, an amount and a date (or is an Open Question that says why not)
 
 #### Architect Readiness
 - [ ] Non-functional requirements are specific and measurable (not "should be fast")
@@ -170,6 +182,7 @@ Evaluate the spec against every agent's needs. Be direct. Don't soften findings.
 - [ ] Every acceptance criterion is testable with an automated test
 - [ ] Performance SLAs are numeric (not "acceptable response time")
 - [ ] Edge cases and negative paths are represented (not just happy path)
+- [ ] Every item under Edge Cases and Failure Modes has a matching acceptance criterion
 - [ ] Test approach is specified or auto-detectable from context
 
 #### Security Readiness
@@ -257,6 +270,15 @@ created: YYYY-MM-DD
 ## Out of Scope
 - [Thing explicitly not in this iteration]
 — or "None identified"
+
+## Hypothesis and Target Metric
+- We believe [change] will move [metric] by [amount], measured by [source], by [date].
+(Omit for a spike or a chore. For a bug, name the measure that shows the fix holds.)
+
+## Edge Cases and Failure Modes
+- [Case]: [Observable outcome]
+— or "None identified"
+(Omit for a spike or a chore.)
 
 ## Domain Language
 - **[Term]**: [Definition as the business understands it]
