@@ -22,6 +22,14 @@ For tasks that require a human (not a fireable agent prompt), see [../human-task
 | [loom-alignment-todo-2026-09-16.md](loom-alignment-todo-2026-09-16.md) | Running record for the two-way alignment audit against the Zero to Agent SDET curriculum, shipped as L3.47–L3.56. Each item records what verifying its premise changed — six of eleven were wrong as written — plus the two places the audit and the next-items handoff intersect (L2.19's precondition, L3.36's mechanism). Read it before trusting an audit item's proposed fix | Small — reference, not a work queue |
 
 
+### Runtime prompt libraries
+
+Prompts an agent runs repeatedly, not one-off handoffs.
+
+| File | Scope |
+|---|---|
+| [weekly-engineering-report.md](weekly-engineering-report.md) | Collector builder, weekly analyst and auditor prompts for `shared/templates/weekly-engineering-report.template.md`. Needs a schedule you supply; loom has no runner |
+
 ### Documentation cleanup (from docs/TODO.md audit — 2026-08-15)
 
 Run in order where dependencies exist: `docs-cleanup-legacy-install-decision.md` before

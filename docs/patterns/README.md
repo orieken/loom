@@ -74,6 +74,14 @@ structure, a concrete example, and the trade-offs each pattern brings, not just 
   result on the change — coverage, tests that can fail, mutants killed (ADR-008, ADR-009) — with the
   design lever elsewhere (complexity thresholds, SOLID, `code-reviewer`). References Saturday and Sunday patterns for the top two levels
   rather than restating them.
+- [engineering-metrics.md](engineering-metrics.md) — which numbers to track for a team that ships with
+  agents (DORA, flow, quality, agentic pipeline, outcomes, developer experience), which of them loom
+  counts today and which live in systems it does not read, and why PR and feature counts are not on
+  the list. Layout in `shared/templates/weekly-engineering-report.template.md`.
+- [delivery-template.md](delivery-template.md) — the brief an agent starts from: `spec-writer` for
+  features, `five-whys` for bugs, plus the hypothesis section, the validator-driven gap-filling loop,
+  and recording which template section was weak on each gate rejection. Judgment-only until a contract
+  exists.
 - [agent-skill-pair-convention.md](agent-skill-pair-convention.md) — when the same `name` appears in
   both `shared/agents/` and `shared/skills/`: two intentional sub-patterns (**Delegation Wrapper**
   where the skill is a thin routing shell that invokes the agent, and **Parallel Implementation**
