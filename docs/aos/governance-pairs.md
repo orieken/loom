@@ -4,6 +4,10 @@ This document maps the **15 Producer / Counter Governance Pairs** established in
 
 > **Core Rule**: Every producer role (an agent generating an artifact or a human authoring a markdown specification) is paired with an independent counter role (an auditor agent or opposing-force skill) that inspects and reports findings without mutating the producer's artifact.
 
+> **Terms and pattern**: the dictionary calls these **Producer / Counter Pairs** and the checking role a
+> **Counter Agent**. Pairs 1–11 are audit pairs and pairs 12–15 are opposing-force pairs. The structure,
+> trade-offs and how to add a pair are in `docs/patterns/producer-counter-pairs.md`.
+
 ---
 
 ## The 15 Governance Pairs Inventory

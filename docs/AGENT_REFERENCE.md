@@ -337,7 +337,8 @@ regressions over time.
 
 ## AOS Counter-Auditor Agents (v3.0 - v3.1)
 
-The following 11 read-only counter-auditor agents implement the opposing-force checks in
+The following 11 read-only counter-auditor agents (**Counter Agents** in `DOMAIN_DICTIONARY.md`; the
+pattern is `docs/patterns/producer-counter-pairs.md`) implement the checks in
 `docs/aos/governance-pairs.md`. All 11 are `light` model tier, read-only (`Read`, `Glob`, `Grep`), and
 never mutate files — each produces an audit findings report for a human or upstream agent to act on.
 (`memory-auditor`, the counter to `memory-engineer`, is documented at §22 under Standalone Agents above.)

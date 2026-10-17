@@ -78,6 +78,11 @@ structure, a concrete example, and the trade-offs each pattern brings, not just 
   agents (DORA, flow, quality, agentic pipeline, outcomes, developer experience), which of them loom
   counts today and which live in systems it does not read, and why PR and feature counts are not on
   the list. Layout in `shared/templates/weekly-engineering-report.template.md`.
+- [producer-counter-pairs.md](producer-counter-pairs.md) — every producer paired with an independent,
+  read-only counter agent that reports findings and never edits the work (maker/checker). Separates
+  audit pairs from opposing-force pairs, places the counter agent between deterministic checks and
+  human approval, and says plainly where independence is partial and what is not measured yet.
+  Inventory of the 15 pairs in `docs/aos/governance-pairs.md`.
 - [delivery-template.md](delivery-template.md) — the brief an agent starts from: `spec-writer` for
   features, `five-whys` for bugs, plus the hypothesis section, the validator-driven gap-filling loop,
   and recording which template section was weak on each gate rejection. Judgment-only until a contract
