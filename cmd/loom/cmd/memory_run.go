@@ -15,25 +15,56 @@ func runMemoryIngest(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	defer func() { _ = store.Close() }()
-	dirs, err := ingestTargets()
+	sources, err := collectIngestSources(newDaySessionSource(sessionLayout()))
 	if err != nil {
 		return err
 	}
-	if len(dirs) == 0 {
+	if sources.isEmpty() {
 		cmd.Printf("No archived runs found under %s — nothing to ingest.\n", featuresDir())
 		return nil
 	}
-	return ingestAll(cmd, store, dirs)
+	return ingestSources(cmd, store, sources)
 }
 
-// ingestTargets is either the one directory asked for, or every archived
-// run. Rebuilding from the archive is the reason those records are
-// committed.
-func ingestTargets() ([]string, error) {
+// ingestSourceSet holds the two independent things that `loom memory ingest`
+// can rebuild from: archived runs and session day files.
+type ingestSourceSet struct {
+	runDirs     []string
+	hasDayFiles bool
+}
+
+func (s ingestSourceSet) isEmpty() bool { return len(s.runDirs) == 0 && !s.hasDayFiles }
+
+// collectIngestSources is either the one directory asked for, or every
+// archived run plus the day files. Rebuilding from the archive is the
+// reason those records are committed. A project with day files and no
+// archived run still has something to ingest. With --dir, sessions are
+// skipped.
+func collectIngestSources(sessions memory.SessionSource) (ingestSourceSet, error) {
 	if memoryArgs.dir != "" {
-		return []string{memoryArgs.dir}, nil
+		return ingestSourceSet{runDirs: []string{memoryArgs.dir}}, nil
 	}
-	return memory.ArchivedRunDirs(featuresDir())
+	dirs, err := memory.ArchivedRunDirs(featuresDir())
+	if err != nil {
+		return ingestSourceSet{}, err
+	}
+	hasDayFiles, err := sessions.HasDayFiles()
+	if err != nil {
+		return ingestSourceSet{}, fmt.Errorf("look for session day files: %w", err)
+	}
+	return ingestSourceSet{runDirs: dirs, hasDayFiles: hasDayFiles}, nil
+}
+
+func ingestSources(cmd *cobra.Command, store *memory.Store, sources ingestSourceSet) error {
+	if len(sources.runDirs) > 0 {
+		if err := ingestAll(cmd, store, sources.runDirs); err != nil {
+			return err
+		}
+	}
+	if sources.hasDayFiles {
+		return ingestSessions(cmd, store)
+	}
+	return nil
 }
 
 // ingestAll reports each failure and continues. One unreadable archive
@@ -172,14 +203,43 @@ func runMemoryCorrections(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	defer func() { _ = store.Close() }()
+	if memoryArgs.asJSON {
+		return emitCorrections(cmd, store)
+	}
+	return printCorrectionReport(cmd, store)
+}
+
+// emitCorrections keeps the bare-array shape that the agent-scorecard skill
+// reads. Session Corrections have their own object, behind --sessions.
+func emitCorrections(cmd *cobra.Command, store *memory.Store) error {
+	if memoryArgs.sessions {
+		report, _, err := buildSessionReport(store)
+		if err != nil {
+			return err
+		}
+		return emit(cmd, report)
+	}
+	if hasSessionFilterFlags() {
+		return fmt.Errorf("--since, --glob and --tool filter Session Corrections: add --sessions to use them with --json")
+	}
 	rows, err := store.Corrections()
 	if err != nil {
 		return err
 	}
-	if memoryArgs.asJSON {
-		return emit(cmd, rows)
+	return emit(cmd, rows)
+}
+
+func printCorrectionReport(cmd *cobra.Command, store *memory.Store) error {
+	rows, err := store.Corrections()
+	if err != nil {
+		return err
 	}
 	printAgentCorrections(cmd, rows)
+	report, cfg, err := buildSessionReport(store)
+	if err != nil {
+		return err
+	}
+	printSessionCorrections(cmd, report, cfg)
 	return nil
 }
 

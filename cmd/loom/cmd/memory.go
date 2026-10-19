@@ -23,6 +23,10 @@ type memoryFlags struct {
 	moreThan int
 	limit    int
 	dir      string
+	since    string
+	glob     string
+	tool     string
+	sessions bool
 }
 
 var memoryArgs memoryFlags
@@ -116,6 +120,13 @@ func init() {
 		"limit to one agent (default: every agent)")
 	memoryRetriesCmd.Flags().IntVar(&memoryArgs.moreThan, "more-than", 2,
 		"report stages whose iteration count exceeds this")
+	memoryCorrectionsCmd.Flags().StringVar(&memoryArgs.since, "since", "",
+		"Session Corrections at or after this date or RFC 3339 time")
+	memoryCorrectionsCmd.Flags().StringVar(&memoryArgs.glob, "glob", "",
+		"Session Corrections whose stored project-relative path matches (a redacted path never matches)")
+	memoryCorrectionsCmd.Flags().StringVar(&memoryArgs.tool, "tool", "", "Session Corrections of one tool")
+	memoryCorrectionsCmd.Flags().BoolVar(&memoryArgs.sessions, "sessions", false,
+		"with --json, emit the Session Corrections object instead of the agent array")
 	memoryRunsCmd.Flags().IntVar(&memoryArgs.limit, "limit", 20, "how many runs to list")
 	memoryPoliciesCmd.Flags().IntVar(&memoryArgs.limit, "limit", 100, "how many decisions to list")
 }

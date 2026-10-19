@@ -177,6 +177,7 @@ const versionTable = `CREATE TABLE IF NOT EXISTS schema_meta (version INTEGER NO
 // dropAll is applied when the version does not match. Order matters only in
 // that children go before parents.
 const dropAll = `
+DROP TABLE IF EXISTS session_corrections;
 DROP TABLE IF EXISTS policy_outcomes;
 DROP TABLE IF EXISTS gate_approvals;
 DROP TABLE IF EXISTS policy_decisions;
