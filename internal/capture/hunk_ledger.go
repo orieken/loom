@@ -40,11 +40,19 @@ func (l *HunkLedger) open(hunk openHunk) {
 	l.byPath[hunk.pathRef] = append(l.byPath[hunk.pathRef], hunk)
 }
 
-// dropPath forgets every hunk on a path. A later agent write on the path
-// explains any change after it, so older hunks stop being human-edit
-// candidates.
-func (l *HunkLedger) dropPath(pathRef string) {
-	delete(l.byPath, pathRef)
+// dropPath forgets the hunks on a path that were written before the given
+// instant. A later agent write on the path explains any change after it, so
+// older hunks stop being human-edit candidates. A hunk written at the same
+// instant belongs to the same tool call (a MultiEdit writes several ranges
+// in one call), so it stays.
+func (l *HunkLedger) dropPath(pathRef string, before time.Time) {
+	kept := l.byPath[pathRef][:0]
+	for _, hunk := range l.byPath[pathRef] {
+		if !hunk.writtenAt.Before(before) {
+			kept = append(kept, hunk)
+		}
+	}
+	l.store(pathRef, kept)
 }
 
 // expire forgets the hunks whose window ended before now. A hunk written at

@@ -53,12 +53,23 @@ func (h *Hasher) Hash(kind HashKind, value string) string {
 // formatter change counts as a change. It reports false when the range does
 // not lie inside the content.
 func (h *Hasher) HashLineRange(content []byte, start, end int) (string, bool) {
-	lines := splitLines(content)
+	return h.HashSplitLines(SplitLines(content), start, end)
+}
+
+// HashSplitLines is HashLineRange for content that SplitLines already
+// split. A caller that hashes several ranges of one file splits it once.
+func (h *Hasher) HashSplitLines(lines [][]byte, start, end int) (string, bool) {
 	if start < 1 || end < start || end > len(lines) {
 		return "", false
 	}
 	joined := bytes.Join(lines[start-1:end], []byte{'\n'})
 	return h.Hash(HashLines, string(joined)), true
+}
+
+// SplitLines splits content into lines. One final newline does not start an
+// extra empty line, and each line loses a trailing "\r".
+func SplitLines(content []byte) [][]byte {
+	return splitLines(content)
 }
 
 func splitLines(content []byte) [][]byte {

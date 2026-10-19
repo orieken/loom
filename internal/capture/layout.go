@@ -2,6 +2,7 @@ package capture
 
 import (
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -49,6 +50,18 @@ func (l Layout) SessionsDir() string {
 func (l Layout) DayFile(at time.Time) string {
 	name := at.UTC().Format(dayFileDateLayout) + dayFileExtension
 	return filepath.Join(l.SessionsDir(), name)
+}
+
+// DayFileDate returns the UTC date that a day-file name stands for. It is
+// the inverse of DayFile and reports false for any other name, so a foreign
+// file in the sessions directory is never taken for a day file.
+func DayFileDate(name string) (time.Time, bool) {
+	stem, hasExtension := strings.CutSuffix(name, dayFileExtension)
+	date, err := time.Parse(dayFileDateLayout, stem)
+	if !hasExtension || err != nil || date.Format(dayFileDateLayout) != stem {
+		return time.Time{}, false
+	}
+	return date, true
 }
 
 // SaltPath is the Capture salt file.

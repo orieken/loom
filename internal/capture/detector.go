@@ -76,23 +76,13 @@ func (d *Detector) noteToolResult(event SessionEvent) {
 	case IsShell(event.Tool):
 		d.lastBashSeen = d.position
 	case IsFileWriter(event.Tool) && event.PathRef != "":
-		d.ledger.dropPath(event.PathRef)
+		d.ledger.dropPath(event.PathRef, event.At)
 		d.openHunkFrom(event)
 	}
 }
 
 func (d *Detector) openHunkFrom(event SessionEvent) {
-	if !event.HasHunk() {
-		return
-	}
-	d.ledger.open(openHunk{
-		facts:         hunkFacts(event),
-		writtenAt:     event.At,
-		writePosition: d.position,
-		tool:          event.Tool,
-		path:          event.Path,
-		pathRef:       event.PathRef,
-	})
+	d.ledger.openFrom(event, d.position)
 }
 
 func hunkFacts(event SessionEvent) HunkFacts {
