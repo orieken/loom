@@ -50,6 +50,14 @@ func executeUninstall(request uninstallRequest, writer io.Writer) error {
 	if err != nil {
 		return err
 	}
+	capturePaths, didRunCapture, err := uninstallCapture(request, installed, output)
+	if err != nil {
+		return err
+	}
+	removed += capturePaths
+	if didRunCapture {
+		installed.Capture = nil
+	}
 	return finishUninstall(request, installed, remaining, removed, output)
 }
 

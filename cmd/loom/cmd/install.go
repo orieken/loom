@@ -15,6 +15,8 @@ type installFlags struct {
 	withConfig bool
 	withMCP    bool
 	isDryRun   bool
+	// withCapture registers the session capture hooks. It never turns on by level.
+	withCapture bool
 }
 
 var (
@@ -50,5 +52,6 @@ func registerInstallFlags() {
 	installCmd.Flags().BoolVar(&installArgs.withConfig, "with-configs", false, "write linter configs to the target")
 	installCmd.Flags().BoolVar(&installArgs.withMCP, "with-mcp", false, "copy the MCP reference source into the target (deprecated — use 'loom mcp serve')")
 	installCmd.Flags().BoolVar(&installArgs.isDryRun, "dry-run", false, "print actions without writing files")
+	installCmd.Flags().BoolVar(&installArgs.withCapture, "capture", false, "register the session capture hooks in .claude/settings.local.json (Claude Code only; off by default)")
 	installCmd.Flags().StringVar(&installArgs.target, "target", ".", "project root to install into")
 }

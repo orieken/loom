@@ -25,7 +25,7 @@ func writeManifest(request installRequest, results []platform.Result, extras []s
 		records = mergePlatformRecords(previous.Platforms, records)
 	}
 	records = recordOwnership(records, previous, written)
-	installed := manifest.Manifest{Version: request.frameworkVersion, InstalledAt: time.Now().UTC(), Platforms: records}
+	installed := manifest.Manifest{Version: request.frameworkVersion, InstalledAt: time.Now().UTC(), Platforms: records, Capture: previous.Capture}
 	return manifest.Write(request.target, installed)
 }
 

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 
 	frameworkfs "github.com/orieken/loom/cmd/loom/internal/fs"
 	"github.com/orieken/loom/cmd/loom/internal/manifest"
@@ -10,6 +11,13 @@ import (
 )
 
 func runInstall(command *cobra.Command, _ []string) error {
+	return installProject(installArgs, command.OutOrStdout())
+}
+
+// installProject runs one install. The capture stage brackets the platform
+// install: its refusals come first, before anything is written, and its
+// writes come last.
+func installProject(flags installFlags, writer io.Writer) error {
 	if frameworkFS == nil {
 		return fmt.Errorf("embedded framework content is not configured")
 	}
@@ -17,16 +25,23 @@ func runInstall(command *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	request, err := prepareInstall(installArgs, embeddedVersion, frameworkFS)
+	request, err := prepareInstall(flags, embeddedVersion, frameworkFS)
 	if err != nil {
 		return err
 	}
-	output := installOutput{command.OutOrStdout(), request.isDryRun}
+	captureStage := newCaptureInstall(request, flags)
+	if err := captureStage.preflight(); err != nil {
+		return err
+	}
+	output := installOutput{writer, request.isDryRun}
 	files, err := ownedWriter(request, output)
 	if err != nil {
 		return err
 	}
-	return executeInstall(request, frameworkFS, mcpFS, files, output)
+	if err := executeInstall(request, frameworkFS, mcpFS, files, output); err != nil {
+		return err
+	}
+	return captureStage.apply(output)
 }
 
 // ownedWriter builds the writer already loaded with what a previous install
