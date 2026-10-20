@@ -5,11 +5,12 @@
 // PRECONDITION: the hook event names (PreToolUse, PostToolUse,
 // UserPromptSubmit, Stop) and the payload field names (session_id,
 // tool_name, tool_input, file_path, prompt) match the installed Claude Code.
-// They are UNVERIFIED in this repository. How a permission denial is
-// reported is also UNVERIFIED, so no hook event maps to capture.EventToolDenied
-// yet and the denied-call signal stays off.
 // ENFORCED-BY: judgment-only (manual verification against installed Claude
 // Code before release; open question 1 in analysis.md).
+//
+// These names are UNVERIFIED in this repository. How a permission denial is
+// reported is also UNVERIFIED, so no hook event maps to capture.EventToolDenied
+// yet and the denied-call signal stays off.
 package claudehook
 
 import (
