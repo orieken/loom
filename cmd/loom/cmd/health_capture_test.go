@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/orieken/loom/internal/capture"
 )
 
 const megabyte = 1 << 20
@@ -62,28 +64,95 @@ func TestHealthIsOffAgainAfterTheHooksAreRemovedByHandButReportsTheLeftovers(t *
 	assertContains(t, output, "capture: off", "capture: store")
 }
 
-func TestHealthReportsTheFailureCount(t *testing.T) {
-	world := liveWorld(t)
-	world.write(".claude/memory/capture.failures", "dda", 0o600)
+var healthNow = time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC)
 
-	assertContains(t, world.health(), "⚠ capture: 3 hook failures recorded")
+// failureLog is a failure log text with one line per (age, cause) pair.
+func failureLog(entries ...failureAge) string {
+	var text strings.Builder
+	for _, entry := range entries {
+		text.WriteString(capture.NewFailureEntry(healthNow.Add(-entry.age), entry.cause).Line())
+	}
+	return text.String()
+}
+
+type failureAge struct {
+	age   time.Duration
+	cause capture.FailureCause
+}
+
+func TestHealthReportsTheFailuresOfTheLast24HoursWithTheMostCommonCauseAndTheHistory(t *testing.T) {
+	world := liveWorld(t)
+	world.write(".claude/memory/capture.failures.log", failureLog(
+		failureAge{time.Hour, capture.CauseDecode}, failureAge{2 * time.Hour, capture.CauseDecode}, failureAge{3 * time.Hour, capture.CauseSalt},
+	), 0o600)
+
+	output := world.healthAt(healthNow)
+
+	assertContains(t, output, "⚠ capture: 3 failures in the last 24 h, most common: decode", "history: .claude/memory/capture.failures.log")
+}
+
+func TestHealthCountsAFailureAt23h59mAndNotOneAt24h01m(t *testing.T) {
+	world := liveWorld(t)
+	world.write(".claude/memory/capture.failures.log", failureLog(
+		failureAge{24*time.Hour + time.Minute, capture.CauseSalt}, failureAge{23*time.Hour + 59*time.Minute, capture.CausePanic},
+	), 0o600)
+
+	output := world.healthAt(healthNow)
+
+	assertContains(t, output, "capture: 1 failure in the last 24 h, most common: panic")
+}
+
+// Zero failures in 24 h is a pass line. An old failure is history and must
+// not warn forever.
+func TestHealthDoesNotWarnAboutAnOldFailure(t *testing.T) {
+	world := liveWorld(t)
+	world.write(".claude/memory/capture.failures.log", failureLog(failureAge{25 * time.Hour, capture.CauseSalt}), 0o600)
+
+	output := world.healthAt(healthNow)
+
+	assertContains(t, output, "✓ capture: 0 failures in the last 24 h (history: .claude/memory/capture.failures.log)")
+	if strings.Contains(output, "⚠ capture: 1 failure") || strings.Contains(output, "⚠ capture: 0") {
+		t.Fatalf("an old failure warned:\n%s", output)
+	}
+}
+
+func TestHealthPassesWithoutAHistoryNoteWhenThereIsNoLog(t *testing.T) {
+	output := liveWorld(t).healthAt(healthNow)
+
+	assertContains(t, output, "capture: 0 failures in the last 24 h")
+	if strings.Contains(output, "history:") {
+		t.Fatalf("health named a log that does not exist:\n%s", output)
+	}
+}
+
+// The file of an earlier install holds one byte per failure and no time.
+func TestHealthDoesNotCrashOnTheFailureFileOfTheOldFormat(t *testing.T) {
+	for _, relative := range []string{".claude/memory/capture.failures", ".claude/memory/capture.failures.log"} {
+		t.Run(relative, func(t *testing.T) {
+			world := liveWorld(t)
+			world.write(relative, "dda\x00\xfft", 0o600)
+
+			output := world.healthAt(healthNow)
+
+			assertContains(t, output, "capture: 0 failures in the last 24 h", "capture: live")
+			if strings.Contains(output, "stall marker set") {
+				t.Fatalf("an old stall byte tripped the marker:\n%s", output)
+			}
+		})
+	}
 }
 
 func TestHealthReportsAStallMarkerOnlyWhileItIsYoungerThanTheWindow(t *testing.T) {
 	cases := map[string]struct {
 		age       time.Duration
 		wantStall bool
-	}{"fresh": {10 * time.Second, true}, "expired": {2 * time.Minute, false}}
+	}{"fresh": {10 * time.Second, true}, "at the window": {capture.StallWindow, false}, "expired": {2 * time.Minute, false}}
 	for name, tt := range cases {
 		t.Run(name, func(t *testing.T) {
 			world := liveWorld(t)
-			path := world.write(".claude/memory/capture.failures", "t", 0o600)
-			stamp := time.Now().Add(-tt.age)
-			if err := os.Chtimes(path, stamp, stamp); err != nil {
-				t.Fatal(err)
-			}
+			world.write(".claude/memory/capture.failures.log", failureLog(failureAge{tt.age, capture.CauseStall}), 0o600)
 
-			got := strings.Contains(world.health(), "stall marker set")
+			got := strings.Contains(world.healthAt(healthNow), "stall marker set")
 
 			if got != tt.wantStall {
 				t.Fatalf("stall reported = %v, want %v", got, tt.wantStall)

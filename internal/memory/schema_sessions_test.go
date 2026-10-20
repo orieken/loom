@@ -30,16 +30,12 @@ func sessionSchemaText(t *testing.T, store *memory.Store) string {
 	return text.String()
 }
 
-func TestEnsureSessionSchemaTwiceLeavesTheSameSchema(t *testing.T) {
+func TestIngestingTwiceLeavesTheSameSessionSchema(t *testing.T) {
 	store := newSessionStore(t)
-	if err := store.EnsureSessionSchema(); err != nil {
-		t.Fatalf("first: %v", err)
-	}
+	ingestSessions(t, store, &fakeSessionSource{})
 	first := sessionSchemaText(t, store)
 
-	if err := store.EnsureSessionSchema(); err != nil {
-		t.Fatalf("second: %v", err)
-	}
+	ingestSessions(t, store, &fakeSessionSource{})
 
 	if second := sessionSchemaText(t, store); second != first {
 		t.Errorf("schema changed on the second run:\n%s\nvs\n%s", first, second)
@@ -128,12 +124,10 @@ func forceVersion(t *testing.T, path string, version int) {
 	}
 }
 
-func TestEnsureSessionSchemaLimitsTheDatabaseToItsOwner(t *testing.T) {
+func TestIngestLimitsTheDatabaseToItsOwner(t *testing.T) {
 	store := newSessionStore(t)
 
-	if err := store.EnsureSessionSchema(); err != nil {
-		t.Fatal(err)
-	}
+	ingestSessions(t, store, &fakeSessionSource{})
 
 	mode, _ := fileMode(t, store.Path())
 	if mode != 0o600 {
@@ -146,9 +140,7 @@ func TestEnsureSessionSchemaLimitsTheDatabaseToItsOwner(t *testing.T) {
 // is open to group or others.
 func TestSidecarsOfAWriteTransactionAreLimitedToTheOwner(t *testing.T) {
 	store := newSessionStore(t)
-	if err := store.EnsureSessionSchema(); err != nil {
-		t.Fatal(err)
-	}
+	ingestSessions(t, store, &fakeSessionSource{})
 	db := openReadOnly(t, store)
 	tx, err := db.BeginTx(context.Background(), nil)
 	if err != nil {

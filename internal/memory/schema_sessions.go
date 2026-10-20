@@ -93,18 +93,9 @@ func openSessionDB(path string) (*sql.DB, error) {
 	return db, nil
 }
 
-// EnsureSessionSchema creates the session table and its indexes. It is safe
-// to run twice. Only session ingest calls it: the report and `loom health`
-// never do. The file is limited to its owner (mode 0600).
-func (s *Store) EnsureSessionSchema() error {
-	db, err := openSessionDB(s.path)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = db.Close() }()
-	return ensureSessionSchema(context.Background(), db, s.path)
-}
-
+// ensureSessionSchema creates the session table and its indexes. It is safe
+// to run twice. Only session ingest calls it (IngestSessions): the report and
+// `loom health` never do. The file is limited to its owner (mode 0600).
 func ensureSessionSchema(ctx context.Context, db *sql.DB, path string) error {
 	if err := restrictToOwner(path); err != nil {
 		return err

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
@@ -11,6 +12,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	loom "github.com/orieken/loom"
 	"github.com/orieken/loom/cmd/loom/internal/manifest"
@@ -139,6 +141,19 @@ func (w *captureWorld) health() string {
 	return output.String()
 }
 
+// healthAt runs health with a clock that the test sets.
+func (w *captureWorld) healthAt(now time.Time) string {
+	w.t.Helper()
+	var output bytes.Buffer
+	request := healthRequest{target: w.target, display: w.target, timeSource: healthClock{now: now}}
+	_ = executeHealth(request, healthContent(), &output)
+	return output.String()
+}
+
+type healthClock struct{ now time.Time }
+
+func (c healthClock) Now() time.Time { return c.now }
+
 func (w *captureWorld) layout() capture.Layout { return capture.NewLayout(w.target) }
 
 func (w *captureWorld) manifest() manifest.Manifest {
@@ -151,10 +166,10 @@ func (w *captureWorld) manifest() manifest.Manifest {
 }
 
 // simulateHookActivity makes what the running hooks leave behind: a day
-// file, a failure byte, the purge stamp.
+// file, a failure log line, the purge stamp.
 func (w *captureWorld) simulateHookActivity() {
 	w.write(".claude/memory/sessions/2026-10-18.jsonl", `{"v":1}`+"\n", 0o600)
-	w.write(".claude/memory/capture.failures", "d", 0o600)
+	w.write(".claude/memory/capture.failures.log", capture.NewFailureEntry(time.Now(), capture.CauseDecode).Line(), 0o600)
 	w.write(".claude/memory/capture.purge", "", 0o600)
 }
 
@@ -177,7 +192,8 @@ func (w *captureWorld) withSessionTable() {
 		w.t.Fatal(err)
 	}
 	defer func() { _ = store.Close() }()
-	if err := store.EnsureSessionSchema(); err != nil {
+	_, err = store.IngestSessions(context.Background(), newDaySessionSource(w.layout()), capture.DefaultConfig())
+	if err != nil {
 		w.t.Fatal(err)
 	}
 }

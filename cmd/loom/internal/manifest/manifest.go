@@ -38,27 +38,19 @@ type PlatformRecord struct {
 // not a platform: it edits a shared settings file and creates a salt, a
 // directory and database tables, none of which a platform record can hold.
 //
-// The record holds paths and command strings only. The manifest is written
-// with mode 0644, so it MUST NOT hold the salt, a hash or any config
-// content. The paths are relative to the project root.
+// The record holds command strings and one flag only. The manifest is
+// written with mode 0644, so it MUST NOT hold the salt, a hash or any config
+// content. Uninstall finds the capture files through capture.Layout, not
+// through the record. An older manifest may still hold path keys; the decoder
+// ignores them.
 type CaptureRecord struct {
 	// HookCommands are the exact commands the install added to the settings
 	// file. Uninstall removes an entry when its command is listed here or
 	// starts with the capture command prefix.
 	HookCommands []string `json:"hookCommands"`
-	// SettingsPath is the settings file that holds the hook entries.
-	SettingsPath string `json:"settingsPath"`
 	// SettingsCreated is true when the install created the settings file,
 	// so uninstall may delete it once no key is left.
 	SettingsCreated bool `json:"settingsCreated"`
-	// SessionsDir holds the day files.
-	SessionsDir string `json:"sessionsDir"`
-	// SaltPath is the Capture salt file (the path only).
-	SaltPath string `json:"saltPath"`
-	// FailuresPath is the failure counter file.
-	FailuresPath string `json:"failuresPath"`
-	// PurgeStampPath is the retention purge stamp file.
-	PurgeStampPath string `json:"purgeStampPath"`
 }
 
 // Manifest describes one completed loom installation.

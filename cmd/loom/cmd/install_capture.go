@@ -141,7 +141,7 @@ func (c captureInstall) recordInManifest(hooks []settings.Hook, merged settings.
 	if merged.Created || (installed.Capture != nil && installed.Capture.SettingsCreated) {
 		origin = settings.CreatedByLoom
 	}
-	installed.Capture = newCaptureRecord(c.layout, commands, origin)
+	installed.Capture = newCaptureRecord(commands, origin)
 	if installed.Version == "" {
 		installed.Version = c.version
 	}

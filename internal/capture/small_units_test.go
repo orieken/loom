@@ -97,14 +97,15 @@ func TestToolCatalogShellAndOthers(t *testing.T) {
 func TestLayoutPaths(t *testing.T) {
 	layout := NewLayout("/proj")
 	tests := map[string]string{
-		layout.SessionsDir():       "/proj/.claude/memory/sessions",
-		layout.SaltPath():          "/proj/.claude/memory/capture.salt",
-		layout.FailuresPath():      "/proj/.claude/memory/capture.failures",
-		layout.PurgeStampPath():    "/proj/.claude/memory/capture.purge",
-		layout.DatabasePath():      "/proj/.claude/memory/episodes.db",
-		layout.ConfigPath():        "/proj/.claude/capture.yaml",
-		layout.SettingsLocalPath(): "/proj/.claude/settings.local.json",
-		layout.Root():              "/proj",
+		layout.SessionsDir():        "/proj/.claude/memory/sessions",
+		layout.SaltPath():           "/proj/.claude/memory/capture.salt",
+		layout.FailureLogPath():     "/proj/.claude/memory/capture.failures.log",
+		layout.LegacyFailuresPath(): "/proj/.claude/memory/capture.failures",
+		layout.PurgeStampPath():     "/proj/.claude/memory/capture.purge",
+		layout.DatabasePath():       "/proj/.claude/memory/episodes.db",
+		layout.ConfigPath():         "/proj/.claude/capture.yaml",
+		layout.SettingsLocalPath():  "/proj/.claude/settings.local.json",
+		layout.Root():               "/proj",
 	}
 	for got, want := range tests {
 		if got != want {
@@ -195,7 +196,9 @@ func TestLimitsArePinned(t *testing.T) {
 		{"PurgeInterval min", int64(PurgeInterval.Minutes()), 60},
 		{"ClockAnomalyThreshold s", int64(ClockAnomalyThreshold.Seconds()), 5},
 		{"DefaultCorrectionWindow min", int64(DefaultCorrectionWindow.Minutes()), 10},
-		{"StallCause", int64(StallCause), int64('t')},
+		{"FailureTailBytes", FailureTailBytes, 1 << 10},
+		{"MaxFailureLogBytes", MaxFailureLogBytes, 256 << 10},
+		{"FailureWindow h", int64(FailureWindow.Hours()), 24},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -247,14 +250,17 @@ func TestMinutesEstimator(t *testing.T) {
 	}
 }
 
-func TestMinutesEstimatorTotalSkipsUnknownAndUsesConfiguredWeights(t *testing.T) {
-	counts := map[CorrectionKind]int{KindHunkEdit: 2, KindRevert: 1, KindUnknown: 10}
+// The configured weights still reach EstimateKind after EstimateTotal, which
+// only tests called, was removed.
+func TestMinutesEstimatorUsesConfiguredWeights(t *testing.T) {
+	custom := NewMinutesEstimator(Weights{HunkEdit: 10, Revert: 20})
 
-	defaults := NewMinutesEstimator(DefaultWeights()).EstimateTotal(counts)
-	custom := NewMinutesEstimator(Weights{HunkEdit: 10, Revert: 20}).EstimateTotal(counts)
+	hunkEdits := custom.EstimateKind(KindHunkEdit, 2)
+	reverts := custom.EstimateKind(KindRevert, 1)
+	unknown := custom.EstimateKind(KindUnknown, 10)
 
-	if defaults != 7 || custom != 40 {
-		t.Errorf("totals = %d and %d, want 7 and 40", defaults, custom)
+	if hunkEdits != 20 || reverts != 20 || unknown != 0 {
+		t.Errorf("estimates = %d, %d, %d, want 20, 20, 0", hunkEdits, reverts, unknown)
 	}
 }
 

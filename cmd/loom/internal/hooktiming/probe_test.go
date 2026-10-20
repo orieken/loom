@@ -41,11 +41,11 @@ func (p *project) probeObservations(t *testing.T, reseed func(), event string, c
 	}
 	runOnce(t, loomBinary(t), call{args: p.hookArgs(event), stdin: promptPayload()})
 	if got := p.observationCount(); got != want {
-		failures, _ := os.ReadFile(p.layout.FailuresPath())
+		failures, _ := os.ReadFile(p.layout.FailureLogPath())
 		day, _ := os.ReadFile(p.layout.DayFile(time.Now()))
 		lines := strings.Split(strings.TrimSpace(string(day)), "\n")
 		t.Logf("last lines:\n%s", strings.Join(lines[max(0, len(lines)-8):], "\n"))
-		t.Fatalf("probe wrote %d observations, want %d (failure counter %q): the scenario does not do the work it names", got, want, failures)
+		t.Fatalf("probe wrote %d observations, want %d (failure log %q): the scenario does not do the work it names", got, want, failures)
 	}
 	for relative, content := range originals {
 		p.writeRaw(relative, content)

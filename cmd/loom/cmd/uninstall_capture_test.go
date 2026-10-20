@@ -49,7 +49,7 @@ func TestUninstallRemovesEachCaptureArtifact(t *testing.T) {
 
 	world.uninstall(uninstallRequest{})
 
-	for _, gone := range []string{".claude/memory/sessions", ".claude/memory/capture.salt", ".claude/memory/capture.failures", ".claude/memory/capture.purge"} {
+	for _, gone := range []string{".claude/memory/sessions", ".claude/memory/capture.salt", ".claude/memory/capture.failures.log", ".claude/memory/capture.purge"} {
 		if world.exists(gone) {
 			t.Errorf("%s stayed behind", gone)
 		}
@@ -103,7 +103,7 @@ func TestUninstallDryRunChangesNothingAndListsEverything(t *testing.T) {
 	if strings.Join(world.tables(), ",") != strings.Join(tablesBefore, ",") {
 		t.Fatal("a dry run dropped a table")
 	}
-	for _, listed := range []string{"would remove 4 capture hook entries", "would remove .claude/memory/sessions", "would remove .claude/memory/capture.salt", "would remove table session_corrections", "left in place .claude/capture.yaml"} {
+	for _, listed := range []string{"would remove 4 capture hook entries", "would remove .claude/memory/sessions", "would remove .claude/memory/capture.salt", "would remove .claude/memory/capture.failures.log", "would remove table session_corrections", "left in place .claude/capture.yaml"} {
 		if !strings.Contains(output, listed) {
 			t.Errorf("dry run does not list %q:\n%s", listed, output)
 		}
@@ -215,4 +215,38 @@ func TestUninstallKeepsTheOtherTablesOfEpisodesDatabase(t *testing.T) {
 	if _, err := os.Stat(world.layout().DatabasePath()); err != nil {
 		t.Fatalf("episodes.db was deleted: %v", err)
 	}
+}
+
+// An install of an earlier loom left a one-byte-per-failure file. Uninstall
+// must still remove it, and a dry run must list it.
+func TestUninstallRemovesTheFailureFileOfTheOldFormat(t *testing.T) {
+	world := userProject(t)
+	world.installCapture()
+	world.write(".claude/memory/capture.failures", "ddt", 0o600)
+	dryRun := world.uninstall(uninstallRequest{isDryRun: true})
+	if !world.exists(".claude/memory/capture.failures") || !strings.Contains(dryRun, "would remove .claude/memory/capture.failures\n") {
+		t.Fatalf("a dry run must list the old file and keep it:\n%s", dryRun)
+	}
+
+	world.uninstall(uninstallRequest{})
+
+	if world.exists(".claude/memory/capture.failures") {
+		t.Fatal("the old-format failure file stayed behind")
+	}
+}
+
+// A crash between the failure-log trim's write and its rename leaves a
+// scratch file. It must not stay behind or keep .claude/memory alive.
+func TestUninstallRemovesAStaleFailureLogScratchFile(t *testing.T) {
+	world := userProject(t)
+	before := world.snapshot()
+	world.installCapture()
+	world.write(".claude/memory/capture.failures.log.tmp", "stale scratch\n", 0o600)
+
+	world.uninstall(uninstallRequest{})
+
+	if world.exists(".claude/memory/capture.failures.log.tmp") {
+		t.Fatal("the stale scratch file stayed behind")
+	}
+	world.assertTreeUnchangedSince(before)
 }

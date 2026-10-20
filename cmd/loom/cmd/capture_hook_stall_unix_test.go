@@ -14,7 +14,7 @@ import (
 )
 
 // A named pipe with no reader blocks every open for writing. It models a
-// disk that stalls: the day file and the failure counter can both be one.
+// disk that stalls: the day file and the failure log can both be one.
 
 func makePipe(t *testing.T, path string) {
 	t.Helper()
@@ -29,7 +29,7 @@ func makePipe(t *testing.T, path string) {
 func TestCaptureHookExitsZeroInsideTheLimitWhenTheSinkAndTheCounterBothBlock(t *testing.T) {
 	project := newCaptureProject(t)
 	makePipe(t, project.layout.DayFile(time.Now().UTC()))
-	makePipe(t, project.layout.FailuresPath())
+	makePipe(t, project.layout.FailureLogPath())
 
 	result := project.runHook("UserPromptSubmit", promptPayload("s", "hello"))
 
@@ -50,24 +50,22 @@ func TestCaptureHookStallThenBreakerThenExpiry(t *testing.T) {
 
 	assertSilentSuccess(t, stalled)
 	assertSilentSuccess(t, tripped)
-	if project.failures() != "t" {
-		t.Fatalf("failure counter = %q, want the one stall byte", project.failures())
+	if project.failures() != "stall" {
+		t.Fatalf("failure log = %q, want one stall line", project.failures())
 	}
 	if tripped.elapsed >= capture.HookStopAfter {
 		t.Fatalf("the call with the breaker open took %v, want far less than %v", tripped.elapsed, capture.HookStopAfter)
 	}
 
 	old := time.Now().Add(-capture.StallWindow - time.Second)
-	if err := os.Chtimes(project.layout.FailuresPath(), old, old); err != nil {
-		t.Fatal(err)
-	}
+	project.write(".claude/memory/capture.failures.log", capture.NewFailureEntry(old, capture.CauseStall).Line(), 0o600)
 	probe := project.runHook("UserPromptSubmit", promptPayload("s", "third"))
 	assertSilentSuccess(t, probe)
 	if probe.elapsed < capture.HookStopAfter {
 		t.Fatalf("after the window the hook takes the normal path again and stalls on the pipe; took %v", probe.elapsed)
 	}
-	if project.failures() != "tt" {
-		t.Fatalf("failure counter = %q, want a second stall byte from the half-open probe", project.failures())
+	if project.failures() != "stall stall" {
+		t.Fatalf("failure log = %q, want a second stall line from the half-open probe", project.failures())
 	}
 }
 
@@ -87,7 +85,7 @@ func TestCaptureHookStopsAfterTheLimitWhenStdinNeverCloses(t *testing.T) {
 	waitForExit(t, command, capture.HookStopAfter+capture.CounterWriteWait+startupSlack)
 
 	equal(t, "exited after the watchdog time", time.Since(start) >= capture.HookStopAfter, true)
-	equal(t, "failure counter", project.failures(), "t")
+	equal(t, "failure log", project.failures(), "stall")
 }
 
 // waitForExit fails the test when the process does not exit with code 0

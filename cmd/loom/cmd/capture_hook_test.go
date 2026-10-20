@@ -5,12 +5,15 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/orieken/loom/internal/capture"
+	"github.com/orieken/loom/internal/capture/jsonlstore"
 	"github.com/spf13/cobra"
 )
 
@@ -62,11 +65,11 @@ func (c *causeLog) Record(cause capture.FailureCause) {
 func (c *causeLog) seen() string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	var out strings.Builder
-	for _, cause := range c.causes {
-		out.WriteByte(byte(cause))
+	codes := make([]string, len(c.causes))
+	for i, cause := range c.causes {
+		codes[i] = string(cause)
 	}
-	return out.String()
+	return strings.Join(codes, " ")
 }
 
 type fixedStall bool
@@ -120,8 +123,8 @@ func TestHookHardStopExitsZeroWhenTheSinkAndTheCounterBothBlock(t *testing.T) {
 	if elapsed < capture.HookStopAfter || elapsed > limit+startupSlack {
 		t.Fatalf("exited after %v, want between %v and %v", elapsed, capture.HookStopAfter, limit+startupSlack)
 	}
-	if probe.codes[0] != 0 || counter.seen() != "t" {
-		t.Fatalf("exit codes %v, counted %q; want exit 0 and one stall byte", probe.codes, counter.seen())
+	if probe.codes[0] != 0 || counter.seen() != "stall" {
+		t.Fatalf("exit codes %v, counted %q; want exit 0 and one stall line", probe.codes, counter.seen())
 	}
 }
 
@@ -139,8 +142,8 @@ func TestHookWatchdogIsArmedBeforeStdinIsRead(t *testing.T) {
 	if !probe.exitedWithin(time.Second) {
 		t.Fatal("a stdin that never closes must not hang the hook")
 	}
-	if counter.seen() != "t" {
-		t.Fatalf("counted %q, want the stall byte", counter.seen())
+	if counter.seen() != "stall" {
+		t.Fatalf("counted %q, want the stall cause", counter.seen())
 	}
 }
 
@@ -155,7 +158,7 @@ func TestHookExitWaitsForTheCounterWriteWhenItIsFast(t *testing.T) {
 	defer run.disarm()
 	go run.execute()
 
-	if !probe.exitedWithin(time.Second) || counter.seen() != "t" {
+	if !probe.exitedWithin(time.Second) || counter.seen() != "stall" {
 		t.Fatalf("counted %q: the fast counter write must land before the exit", counter.seen())
 	}
 }
@@ -189,17 +192,17 @@ func TestHookRunTable(t *testing.T) {
 			record: func(context.Context, string, []byte) error {
 				return &capture.RecordError{Cause: capture.CauseSalt, Err: errors.New("x")}
 			},
-			wantCauses: "s", wantRecords: 1},
-		{name: "an error with no cause counts as append", stdin: strings.NewReader("{}"),
+			wantCauses: "salt", wantRecords: 1},
+		{name: "an error with no cause counts as write", stdin: strings.NewReader("{}"),
 			record:     func(context.Context, string, []byte) error { return errors.New("plain") },
-			wantCauses: "a", wantRecords: 1},
+			wantCauses: "write", wantRecords: 1},
 		{name: "stdin over the cap counts a decode failure", stdin: strings.NewReader(bigPayload),
-			record: func(context.Context, string, []byte) error { return nil }, wantCauses: "d"},
+			record: func(context.Context, string, []byte) error { return nil }, wantCauses: "decode"},
 		{name: "a stdin read error counts a decode failure", stdin: errReader{},
-			record: func(context.Context, string, []byte) error { return nil }, wantCauses: "d"},
+			record: func(context.Context, string, []byte) error { return nil }, wantCauses: "decode"},
 		{name: "a panic is counted and swallowed", stdin: strings.NewReader("{}"),
 			record:     func(context.Context, string, []byte) error { panic("boom") },
-			wantCauses: "p", wantRecords: 1},
+			wantCauses: "panic", wantRecords: 1},
 		{name: "an open breaker does no work", stdin: strings.NewReader("{}"), stall: true,
 			record: func(context.Context, string, []byte) error { return nil }},
 	}
@@ -343,7 +346,7 @@ func TestHookExecuteWithoutPartsDoesNothing(t *testing.T) {
 	}
 }
 
-func TestSwallowFlagErrorCountsADecodeFailureAndReturnsNil(t *testing.T) {
+func TestSwallowFlagErrorLogsAFlagFailureAndReturnsNil(t *testing.T) {
 	root := t.TempDir()
 	project := &captureProject{t: t, root: root, layout: capture.NewLayout(root)}
 	project.write(".claude/memory/placeholder", "", 0o600)
@@ -352,7 +355,36 @@ func TestSwallowFlagErrorCountsADecodeFailureAndReturnsNil(t *testing.T) {
 
 	err := swallowFlagError(command, errors.New("flag needs an argument"))
 
-	if err != nil || project.failures() != "d" {
-		t.Fatalf("err = %v, counter = %q, want nil and one decode failure", err, project.failures())
+	if err != nil || project.failures() != "flag" {
+		t.Fatalf("err = %v, failure log = %q, want nil and one flag failure", err, project.failures())
+	}
+}
+
+// The failure log holds a time and a code from the closed set, and nothing
+// else (guardrail #9). The error text and the payload carry a canary; it must
+// never reach the log, whatever path the failure took.
+func TestHookFailureLogNeverHoldsTheTextOfAnError(t *testing.T) {
+	const canary = "CANARY-7f3a /home/someone/secret.env"
+	root := t.TempDir()
+	layout := capture.NewLayout(root)
+	_ = os.MkdirAll(filepath.Join(root, ".claude", "memory"), 0o700)
+	log := jsonlstore.NewFailureLog(layout, fixedClock{})
+	record := func(context.Context, string, []byte) error {
+		return &capture.RecordError{Cause: capture.CauseConfig, Err: errors.New(canary)}
+	}
+	env := liveHookEnv(strings.NewReader(canary))
+	env.exit = func(int) { t.Error("the hook must not be stopped") }
+	run := startHookRun(env, newParts(record, log, false), "PostToolUse")
+	defer run.disarm()
+
+	run.execute()
+
+	content, err := os.ReadFile(layout.FailureLogPath())
+	if err != nil || strings.Contains(string(content), "CANARY") || strings.Contains(string(content), "/home") {
+		t.Fatalf("failure log = %q, err = %v: error text reached the log", content, err)
+	}
+	entry, isParsed := capture.ParseFailureLine(strings.TrimSuffix(string(content), "\n"))
+	if !isParsed || entry.Cause != capture.CauseConfig || strings.Count(string(content), "\n") != 1 {
+		t.Fatalf("failure log = %q, want exactly one config line in the log format", content)
 	}
 }

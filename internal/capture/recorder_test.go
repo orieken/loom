@@ -185,7 +185,7 @@ func TestRecorderFailureCauses(t *testing.T) {
 		{name: "decode", damage: func(r *rig) { r.deps.Decoder = scriptedDecoder{err: errors.New("bad")} }, want: CauseDecode},
 		{name: "config", damage: func(r *rig) { r.deps.Config = staticConfig{err: errors.New("bad")} }, want: CauseConfig},
 		{name: "salt", damage: func(r *rig) { r.deps.Salts = staticSalt{err: errors.New("none")} }, want: CauseSalt},
-		{name: "append", damage: func(r *rig) { r.sink.failWith = errors.New("full") }, want: CauseAppend},
+		{name: "append", damage: func(r *rig) { r.sink.failWith = errors.New("full") }, want: CauseWrite},
 		{name: "bad redaction glob", damage: func(r *rig) {
 			r.deps.Config = staticConfig{cfg: Config{Window: time.Minute, RedactionGlobs: []string{"[bad"}}}
 		}, want: CauseConfig},
@@ -267,7 +267,7 @@ func TestRecorderPurgeFailureIsCounted(t *testing.T) {
 
 	err := r.call(t, stop)
 
-	if err == nil || CauseOf(err) != CauseAppend {
+	if err == nil || CauseOf(err) != CauseWrite {
 		t.Fatalf("err = %v, want an append-cause failure", err)
 	}
 	if len(r.sink.events) != 1 {
@@ -282,7 +282,7 @@ func TestRecorderAssembleErrorIsCountedAsAppend(t *testing.T) {
 
 	err := r.recorder.Record(t.Context(), "event", nil)
 
-	if CauseOf(err) != CauseAppend {
+	if CauseOf(err) != CauseWrite {
 		t.Fatalf("cause = %q, want append", CauseOf(err))
 	}
 }
@@ -302,7 +302,7 @@ func TestRecorderUsesOneInstantForAllEvents(t *testing.T) {
 }
 
 func TestCauseOfDefaultsToAppend(t *testing.T) {
-	if CauseOf(errors.New("plain")) != CauseAppend {
+	if CauseOf(errors.New("plain")) != CauseWrite {
 		t.Fatal("an error with no cause must count as an append failure")
 	}
 	wrapped := fmt.Errorf("outer: %w", failed(CauseSalt, errors.New("inner")))

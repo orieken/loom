@@ -26,12 +26,12 @@ func TestStoreFilesAreCreatedPrivateEvenWithAnOpenUmask(t *testing.T) {
 	at := time.Now().UTC()
 
 	_ = NewDaySink(layout).Append(t.Context(), []capture.SessionEvent{event("a", at, capture.EventStop, 0)})
-	NewFailureLog(layout).Record(capture.CauseDecode)
+	NewFailureLog(layout, fixedClock{}).Record(capture.CauseDecode)
 	_ = NewPurger(layout).PurgeIfDue(t.Context(), time.Now(), capture.DefaultConfig().Retention)
 
 	assertMode(t, layout.SessionsDir(), 0o700)
 	assertMode(t, layout.DayFile(at), 0o600)
-	assertMode(t, layout.FailuresPath(), 0o600)
+	assertMode(t, layout.FailureLogPath(), 0o600)
 	assertMode(t, layout.PurgeStampPath(), 0o600)
 }
 
@@ -70,10 +70,10 @@ func TestTailSkipsADayFileThatIsAPipeWithoutBlocking(t *testing.T) {
 
 func TestFailureLogIgnoresAPipeInsteadOfBlocking(t *testing.T) {
 	layout := newLayout(t)
-	makePipe(t, layout.FailuresPath())
+	makePipe(t, layout.FailureLogPath())
 	done := make(chan bool, 1)
 
-	go func() { done <- NewFailureLog(layout).IsStalled(time.Now()) }()
+	go func() { done <- NewFailureLog(layout, fixedClock{}).IsStalled(time.Now()) }()
 
 	select {
 	case isStalled := <-done:
@@ -82,5 +82,22 @@ func TestFailureLogIgnoresAPipeInsteadOfBlocking(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("the breaker check blocked on a pipe")
+	}
+}
+
+func TestTrimIgnoresALogThatIsAPipe(t *testing.T) {
+	layout := newLayout(t)
+	makePipe(t, layout.FailureLogPath())
+	done := make(chan error, 1)
+
+	go func() { done <- trimFailureLog(layout, logNow, trimRetention) }()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("err = %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("the trim blocked on a pipe")
 	}
 }

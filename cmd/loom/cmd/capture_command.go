@@ -15,7 +15,6 @@ import (
 
 	"github.com/orieken/loom/cmd/loom/internal/manifest"
 	"github.com/orieken/loom/cmd/loom/internal/settings"
-	"github.com/orieken/loom/internal/capture"
 	"github.com/orieken/loom/internal/capture/claudehook"
 )
 
@@ -86,15 +85,9 @@ func relativeSlash(root, path string) string {
 }
 
 // newCaptureRecord builds the manifest record for a project.
-func newCaptureRecord(layout capture.Layout, commands []string, origin settings.FileOrigin) *manifest.CaptureRecord {
-	root := layout.Root()
+func newCaptureRecord(commands []string, origin settings.FileOrigin) *manifest.CaptureRecord {
 	return &manifest.CaptureRecord{
 		HookCommands:    commands,
-		SettingsPath:    relativeSlash(root, layout.SettingsLocalPath()),
 		SettingsCreated: origin == settings.CreatedByLoom,
-		SessionsDir:     relativeSlash(root, layout.SessionsDir()),
-		SaltPath:        relativeSlash(root, layout.SaltPath()),
-		FailuresPath:    relativeSlash(root, layout.FailuresPath()),
-		PurgeStampPath:  relativeSlash(root, layout.PurgeStampPath()),
 	}
 }

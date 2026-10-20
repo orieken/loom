@@ -30,9 +30,7 @@ func TestOldManifestWithoutCaptureStillDecodesAndRoundTripsWithoutTheKey(t *test
 func TestCaptureRecordRoundTrips(t *testing.T) {
 	target := t.TempDir()
 	record := &CaptureRecord{
-		HookCommands: []string{"loom capture hook Stop --root '/p'"}, SettingsPath: ".claude/settings.local.json", SettingsCreated: true,
-		SessionsDir: ".claude/memory/sessions", SaltPath: ".claude/memory/capture.salt",
-		FailuresPath: ".claude/memory/capture.failures", PurgeStampPath: ".claude/memory/capture.purge",
+		HookCommands: []string{"loom capture hook Stop --root '/p'"}, SettingsCreated: true,
 	}
 	if err := Write(target, Manifest{Version: "v1", Capture: record}); err != nil {
 		t.Fatal(err)
@@ -41,7 +39,7 @@ func TestCaptureRecordRoundTrips(t *testing.T) {
 	if err != nil || got.Capture == nil {
 		t.Fatalf("capture record = %+v, err = %v", got.Capture, err)
 	}
-	if got.Capture.SaltPath != record.SaltPath || !got.Capture.SettingsCreated || got.Capture.HookCommands[0] != record.HookCommands[0] {
+	if !got.Capture.SettingsCreated || got.Capture.HookCommands[0] != record.HookCommands[0] {
 		t.Fatalf("capture record = %+v, want %+v", got.Capture, record)
 	}
 }
@@ -50,7 +48,7 @@ func TestCaptureRecordRoundTrips(t *testing.T) {
 // The record MUST NOT break that decode.
 func TestAnOlderBinaryIgnoresTheCaptureKey(t *testing.T) {
 	target := t.TempDir()
-	if err := Write(target, Manifest{Version: "v1", Capture: &CaptureRecord{SaltPath: "x"}}); err != nil {
+	if err := Write(target, Manifest{Version: "v1", Capture: &CaptureRecord{HookCommands: []string{"x"}}}); err != nil {
 		t.Fatal(err)
 	}
 	content, _ := os.ReadFile(filepath.Join(target, Filename))
@@ -61,5 +59,25 @@ func TestAnOlderBinaryIgnoresTheCaptureKey(t *testing.T) {
 	var older olderManifest
 	if err := json.Unmarshal(content, &older); err != nil || older.Version != "v1" {
 		t.Fatalf("older decode: %v %+v", err, older)
+	}
+}
+
+// An install of an earlier loom wrote five path keys into the record. They
+// are gone from the struct. encoding/json ignores unknown keys, so that
+// manifest must still decode and keep the fields that are still read.
+func TestAManifestWithTheRemovedPathKeysStillDecodes(t *testing.T) {
+	target := t.TempDir()
+	old := `{"version":"v1","installedAt":"2026-08-16T12:00:00Z","platforms":[],"capture":{` +
+		`"hookCommands":["loom capture hook Stop --root '/p'"],"settingsPath":".claude/settings.local.json",` +
+		`"settingsCreated":true,"sessionsDir":".claude/memory/sessions","saltPath":".claude/memory/capture.salt",` +
+		`"failuresPath":".claude/memory/capture.failures","purgeStampPath":".claude/memory/capture.purge"}}`
+	if err := os.WriteFile(filepath.Join(target, Filename), []byte(old), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := Read(target)
+
+	if err != nil || got.Capture == nil || !got.Capture.SettingsCreated || len(got.Capture.HookCommands) != 1 {
+		t.Fatalf("manifest = %+v, err = %v", got.Capture, err)
 	}
 }

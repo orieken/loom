@@ -61,10 +61,10 @@ func (r *Recorder) recordEvents(ctx context.Context, obs Observation, payload []
 	}
 	events, err := call.events()
 	if err != nil {
-		return failed(CauseAppend, err)
+		return failed(CauseWrite, err)
 	}
 	if err := r.deps.Sink.Append(ctx, events); err != nil {
-		return failed(CauseAppend, err)
+		return failed(CauseWrite, err)
 	}
 	return nil
 }
@@ -97,7 +97,7 @@ func (r *Recorder) purgeOnStop(ctx context.Context, obs Observation) error {
 		return failed(CauseConfig, err)
 	}
 	if err := r.deps.Purger.PurgeIfDue(ctx, r.deps.Clock.Now(), cfg.Retention); err != nil {
-		return failed(CauseAppend, err)
+		return failed(CauseWrite, err)
 	}
 	return nil
 }

@@ -11,13 +11,19 @@ import "time"
 const (
 	// HookStopAfter is the watchdog time, counted from main().
 	HookStopAfter = 500 * time.Millisecond
-	// CounterWriteWait is the longest wait for the failure-counter write
+	// CounterWriteWait is the longest wait for the failure-log write
 	// before the hook exits (mandate A).
 	CounterWriteWait = 50 * time.Millisecond
 	// StallWindow is the fast-fail window after a stall (decision 15).
 	StallWindow = 60 * time.Second
-	// StallCause is the failure-counter byte that marks a stall.
-	StallCause byte = 't'
+	// FailureTailBytes caps the read of the failure log by the fast-fail
+	// check, which needs the last line only.
+	FailureTailBytes = 1 << 10
+	// MaxFailureLogBytes caps the failure log. The Stop-time purge trims a
+	// log above the cap to its newest lines.
+	MaxFailureLogBytes = 256 << 10
+	// FailureWindow is the span that `loom health` counts failures over.
+	FailureWindow = 24 * time.Hour
 
 	// MaxStdinBytes caps the hook payload read from standard input.
 	MaxStdinBytes = 4 << 20

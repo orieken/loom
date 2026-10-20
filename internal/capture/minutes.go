@@ -51,12 +51,3 @@ func (MinutesEstimator) Method() string { return MinutesMethod }
 func (e MinutesEstimator) EstimateKind(kind CorrectionKind, count int) int {
 	return count * e.weights.MinutesFor(kind)
 }
-
-// EstimateTotal sums the estimate over a count per kind.
-func (e MinutesEstimator) EstimateTotal(counts map[CorrectionKind]int) int {
-	total := 0
-	for kind, count := range counts {
-		total += e.EstimateKind(kind, count)
-	}
-	return total
-}

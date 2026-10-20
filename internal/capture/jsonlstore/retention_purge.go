@@ -15,8 +15,9 @@ const hoursPerDay = 24
 
 var _ capture.RetentionPurger = Purger{}
 
-// Purger deletes old day files (architecture-notes.md decision 10). It takes
-// no lock. A double purge is harmless, and a file that vanished is ignored.
+// Purger deletes old day files (architecture-notes.md decision 10) and trims
+// the failure log in the same hourly run. It takes no lock. A double purge is
+// harmless, and a file that vanished is ignored.
 type Purger struct {
 	layout capture.Layout
 }
@@ -38,7 +39,8 @@ type dayFile struct {
 // the check together purge twice at most. It deletes by age first. It then
 // deletes the oldest files while the store is over the cap. The files of
 // today and yesterday (UTC) are never deleted, because another session may
-// still append to them.
+// still append to them. The trim of the failure log runs first, so an error
+// of the day-file purge does not stop it.
 func (p Purger) PurgeIfDue(ctx context.Context, now time.Time, retention capture.Retention) error {
 	if !p.isDue(now) {
 		return nil
@@ -46,6 +48,11 @@ func (p Purger) PurgeIfDue(ctx context.Context, now time.Time, retention capture
 	if err := p.touchStamp(now); err != nil {
 		return err
 	}
+	trimErr := trimFailureLog(p.layout, now, retention)
+	return errors.Join(trimErr, p.purgeDayFiles(ctx, now, retention))
+}
+
+func (p Purger) purgeDayFiles(ctx context.Context, now time.Time, retention capture.Retention) error {
 	files, err := p.dayFiles()
 	if err != nil {
 		return err

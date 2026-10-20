@@ -168,12 +168,24 @@ func assertSilentSuccess(t *testing.T, result hookResult) {
 	}
 }
 
+// failures returns the causes in the failure log, one per line, joined by
+// a space. A line that is not "UTC time, space, cause from the closed set"
+// fails the test, so a comparison also proves the line format.
 func (p *captureProject) failures() string {
-	content, err := os.ReadFile(p.layout.FailuresPath())
+	p.t.Helper()
+	content, err := os.ReadFile(p.layout.FailureLogPath())
 	if err != nil {
 		return ""
 	}
-	return string(content)
+	var causes []string
+	for _, line := range strings.Split(strings.TrimSuffix(string(content), "\n"), "\n") {
+		entry, isParsed := capture.ParseFailureLine(line)
+		if !isParsed {
+			p.t.Fatalf("failure log line %q is not in the log format", line)
+		}
+		causes = append(causes, string(entry.Cause))
+	}
+	return strings.Join(causes, " ")
 }
 
 // dayEvents reads every event of today's day file with the ingest reader.

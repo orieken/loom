@@ -47,8 +47,8 @@ func liveHookEnv(stdin io.Reader) hookEnv {
 // opens its file when it is used.
 func liveHookParts(root string) hookParts {
 	layout := capture.NewLayout(root)
-	failures := jsonlstore.NewFailureLog(layout)
 	clock := localfs.SystemClock{}
+	failures := jsonlstore.NewFailureLog(layout, clock)
 	home, _ := os.UserHomeDir()
 	recorder := capture.NewRecorder(capture.RecorderDeps{
 		Layout:  layout,
@@ -95,7 +95,7 @@ func livePartsOfFlags(cmd *cobra.Command) (hookParts, bool) {
 	return liveHookParts(root), true
 }
 
-// swallowFlagError makes a flag error silent. It counts the error as a decode
+// swallowFlagError makes a flag error silent. It logs the error as a flag
 // failure in the project of the --root flag, or of the working directory when
 // the flag has no value, and it lets the command end with exit 0.
 func swallowFlagError(cmd *cobra.Command, _ error) error {
@@ -103,7 +103,7 @@ func swallowFlagError(cmd *cobra.Command, _ error) error {
 	if root == "" {
 		root = "."
 	}
-	jsonlstore.NewFailureLog(capture.NewLayout(root)).Record(capture.CauseDecode)
+	jsonlstore.NewFailureLog(capture.NewLayout(root), localfs.SystemClock{}).Record(capture.CauseFlag)
 	return nil
 }
 
@@ -143,7 +143,7 @@ func (h *hookRun) supply(parts hookParts) { h.parts.Store(&parts) }
 
 func (h *hookRun) disarm() { h.timer.Stop() }
 
-// stopHard counts the stall in a separate goroutine and waits for it at most
+// stopHard logs the stall in a separate goroutine and waits for it at most
 // counterWait. It then exits 0 whether or not the write finished, because a
 // blocked disk must not block the exit (mandate A). When the parts are not
 // ready, there is no counter to write to, and the exit comes at once.
@@ -157,7 +157,7 @@ func (h *hookRun) stopHard() {
 func (h *hookRun) countStall(counter capture.FailureCounter) {
 	written := make(chan struct{})
 	go func() {
-		counter.Record(capture.CauseTimeout)
+		counter.Record(capture.CauseStall)
 		close(written)
 	}()
 	select {
@@ -166,7 +166,7 @@ func (h *hookRun) countStall(counter capture.FailureCounter) {
 	}
 }
 
-// execute does the work of the hook. Every failure is counted and nothing
+// execute does the work of the hook. Every failure is logged and nothing
 // is printed.
 func (h *hookRun) execute() {
 	parts := h.parts.Load()

@@ -11,7 +11,7 @@ package cmd
 //   - any other --platform: no, capture stays.
 //
 // The stage removes the hook entries, the sessions directory, the salt, the
-// failure counter, the purge stamp and the session table in episodes.db.
+// failure log, the purge stamp and the session table in episodes.db.
 // It leaves a capture.yaml that the user wrote, and says so.
 
 import (
@@ -53,12 +53,18 @@ func uninstallCapture(request uninstallRequest, installed manifest.Manifest, out
 	return removed, true, err
 }
 
+// ownedCapturePaths lists the files and directories that capture creates.
+// The failure log and the counter of an earlier install are both listed, so
+// uninstall removes either format.
+func ownedCapturePaths(layout capture.Layout) []string {
+	return []string{layout.SessionsDir(), layout.SaltPath(), layout.FailureLogPath(), layout.FailureLogTempPath(), layout.LegacyFailuresPath(), layout.PurgeStampPath()}
+}
+
 func (r captureRemoval) selector() settings.Selector { return captureSelector(r.record) }
 
 // hasArtifacts looks for capture leftovers when the manifest has no record.
 func (r captureRemoval) hasArtifacts() bool {
-	paths := []string{r.layout.SessionsDir(), r.layout.SaltPath(), r.layout.FailuresPath(), r.layout.PurgeStampPath()}
-	for _, path := range paths {
+	for _, path := range ownedCapturePaths(r.layout) {
 		if _, err := os.Lstat(path); err == nil {
 			return true
 		}
@@ -73,7 +79,7 @@ func (r captureRemoval) run() (int, error) {
 	if err != nil {
 		return removed, err
 	}
-	for _, path := range []string{r.layout.SessionsDir(), r.layout.SaltPath(), r.layout.FailuresPath(), r.layout.PurgeStampPath()} {
+	for _, path := range ownedCapturePaths(r.layout) {
 		didRemove, removeErr := r.removePath(path)
 		if removeErr != nil {
 			return removed, removeErr

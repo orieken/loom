@@ -8,18 +8,25 @@ import (
 
 // These names are the only place these strings appear in non-test code
 // (architecture-notes.md decision 12).
+// FailureLogTempSuffix names the scratch file of the failure-log trim. The
+// trim and Layout.FailureLogTempPath both use it, so they cannot drift apart.
+const FailureLogTempSuffix = ".tmp"
+
 const (
 	claudeDirName      = ".claude"
 	memoryDirName      = "memory"
 	sessionsDirName    = "sessions"
 	saltFileName       = "capture.salt"
-	failuresFileName   = "capture.failures"
-	purgeStampFileName = "capture.purge"
-	configFileName     = "capture.yaml"
-	settingsLocalName  = "settings.local.json"
-	databaseFileName   = "episodes.db"
-	dayFileExtension   = ".jsonl"
-	dayFileDateLayout  = "2006-01-02"
+	failureLogFileName = "capture.failures.log"
+	// legacyFailuresFileName is the one-byte-per-failure counter of an earlier
+	// install. Nothing writes it. Purge and uninstall remove it.
+	legacyFailuresFileName = "capture.failures"
+	purgeStampFileName     = "capture.purge"
+	configFileName         = "capture.yaml"
+	settingsLocalName      = "settings.local.json"
+	databaseFileName       = "episodes.db"
+	dayFileExtension       = ".jsonl"
+	dayFileDateLayout      = "2006-01-02"
 )
 
 // Layout is the single source of truth for capture paths. It is a value
@@ -67,8 +74,19 @@ func DayFileDate(name string) (time.Time, bool) {
 // SaltPath is the Capture salt file.
 func (l Layout) SaltPath() string { return filepath.Join(l.memoryDir(), saltFileName) }
 
-// FailuresPath is the append-only failure counter file.
-func (l Layout) FailuresPath() string { return filepath.Join(l.memoryDir(), failuresFileName) }
+// FailureLogPath is the append-only failure log: one line per hook failure.
+func (l Layout) FailureLogPath() string { return filepath.Join(l.memoryDir(), failureLogFileName) }
+
+// FailureLogTempPath is the scratch file that the failure-log trim writes
+// before it renames it over the log. A crash between the write and the rename
+// leaves it behind, so uninstall removes it too.
+func (l Layout) FailureLogTempPath() string { return l.FailureLogPath() + FailureLogTempSuffix }
+
+// LegacyFailuresPath is the old counter file of an earlier install. The hook
+// and health never read it; the purge and uninstall remove it.
+func (l Layout) LegacyFailuresPath() string {
+	return filepath.Join(l.memoryDir(), legacyFailuresFileName)
+}
 
 // PurgeStampPath is the retention purge rate-limit stamp.
 func (l Layout) PurgeStampPath() string { return filepath.Join(l.memoryDir(), purgeStampFileName) }

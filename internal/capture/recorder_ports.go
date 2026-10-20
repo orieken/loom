@@ -22,8 +22,8 @@ type StallMarker interface {
 	IsStalled(now time.Time) bool
 }
 
-// FailureCounter counts one failure. An implementation never returns an
-// error: a counter that fails must not fail the hook.
+// FailureCounter logs one failure. An implementation never returns an
+// error: a log that fails must not fail the hook.
 type FailureCounter interface {
 	Record(cause FailureCause)
 }
@@ -54,19 +54,6 @@ var (
 	ErrNotRegularFile = errors.New("capture: target is not a regular file")
 )
 
-// FailureCause is the byte that the failure counter appends.
-type FailureCause byte
-
-// The failure causes (architecture-notes.md decision 3).
-const (
-	CauseSalt    FailureCause = 's'
-	CauseDecode  FailureCause = 'd'
-	CauseAppend  FailureCause = 'a'
-	CauseTimeout FailureCause = FailureCause(StallCause)
-	CausePanic   FailureCause = 'p'
-	CauseConfig  FailureCause = 'c'
-)
-
 // RecordError tells the caller which failure cause to count. It wraps the
 // reason and never holds payload text.
 type RecordError struct {
@@ -87,11 +74,11 @@ func failed(cause FailureCause, err error) error {
 }
 
 // CauseOf returns the failure cause of an error. An error without a cause
-// counts as an append failure.
+// counts as a write failure.
 func CauseOf(err error) FailureCause {
 	var recordErr *RecordError
 	if errors.As(err, &recordErr) {
 		return recordErr.Cause
 	}
-	return CauseAppend
+	return CauseWrite
 }

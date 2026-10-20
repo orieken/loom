@@ -39,7 +39,7 @@ func TestInstallCaptureRecordsEverythingInTheManifest(t *testing.T) {
 	output := world.installCapture()
 
 	record := world.manifest().Capture
-	if record == nil || len(record.HookCommands) != 4 || !record.SettingsCreated || record.SaltPath != ".claude/memory/capture.salt" {
+	if record == nil || len(record.HookCommands) != 4 || !record.SettingsCreated {
 		t.Fatalf("manifest capture record = %+v", record)
 	}
 	if !strings.Contains(output, "salt created") || !strings.Contains(output, "4 hook entries added") {

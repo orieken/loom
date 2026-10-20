@@ -22,21 +22,21 @@ func TestCaptureHookFailurePathsExitZeroSilentlyAndCountTheFailure(t *testing.T)
 		wantCount string
 		rawArgs   []string // when set, the binary runs these arguments in the project root
 	}{
-		{name: "bad json", event: "PostToolUse", stdin: "{not json", wantCount: "d"},
-		{name: "empty stdin", event: "PostToolUse", stdin: "", wantCount: "d"},
-		{name: "unknown event", event: "Bogus", stdin: "{}", wantCount: "d"},
-		{name: "stdin over the cap", event: "UserPromptSubmit", stdin: overCapPayload, wantCount: "d"},
+		{name: "bad json", event: "PostToolUse", stdin: "{not json", wantCount: "decode"},
+		{name: "empty stdin", event: "PostToolUse", stdin: "", wantCount: "decode"},
+		{name: "unknown event", event: "Bogus", stdin: "{}", wantCount: "decode"},
+		{name: "stdin over the cap", event: "UserPromptSubmit", stdin: overCapPayload, wantCount: "decode"},
 		{name: "missing salt", event: "UserPromptSubmit", stdin: promptPayload("s", "hi"),
-			prepare: func(p *captureProject) { _ = os.Remove(p.layout.SaltPath()) }, wantCount: "s"},
+			prepare: func(p *captureProject) { _ = os.Remove(p.layout.SaltPath()) }, wantCount: "salt"},
 		{name: "salt readable by others", event: "UserPromptSubmit", stdin: promptPayload("s", "hi"),
-			prepare: func(p *captureProject) { _ = os.Chmod(p.layout.SaltPath(), 0o644) }, wantCount: "s"},
+			prepare: func(p *captureProject) { _ = os.Chmod(p.layout.SaltPath(), 0o644) }, wantCount: "salt"},
 		{name: "salt of the wrong size", event: "UserPromptSubmit", stdin: promptPayload("s", "hi"),
-			prepare: func(p *captureProject) { p.write(".claude/memory/capture.salt", "short", 0o600) }, wantCount: "s"},
+			prepare: func(p *captureProject) { p.write(".claude/memory/capture.salt", "short", 0o600) }, wantCount: "salt"},
 		{name: "invalid settings file", event: "UserPromptSubmit", stdin: promptPayload("s", "hi"),
-			prepare: func(p *captureProject) { p.write(".claude/capture.yaml", "unknownKey: 1\n", 0o600) }, wantCount: "c"},
+			prepare: func(p *captureProject) { p.write(".claude/capture.yaml", "unknownKey: 1\n", 0o600) }, wantCount: "config"},
 		{name: "bad redaction glob", event: "UserPromptSubmit", stdin: promptPayload("s", "hi"),
-			prepare: func(p *captureProject) { p.write(".claude/capture.yaml", "redact: [\"[bad\"]\n", 0o600) }, wantCount: "c"},
-		{name: "root flag without a value", rawArgs: []string{"capture", "hook", "PreToolUse", "--root"}, wantCount: "d"},
+			prepare: func(p *captureProject) { p.write(".claude/capture.yaml", "redact: [\"[bad\"]\n", 0o600) }, wantCount: "config"},
+		{name: "root flag without a value", rawArgs: []string{"capture", "hook", "PreToolUse", "--root"}, wantCount: "flag"},
 		{name: "help flag of the hook", rawArgs: []string{"capture", "hook", "--help"}},
 		{name: "short help flag of the hook", rawArgs: []string{"capture", "hook", "-h"}},
 		{name: "capture parent alone", rawArgs: []string{"capture"}},
@@ -54,7 +54,7 @@ func TestCaptureHookFailurePathsExitZeroSilentlyAndCountTheFailure(t *testing.T)
 
 			assertSilentSuccess(t, result)
 			if got := project.failures(); got != tt.wantCount {
-				t.Fatalf("failure counter = %q, want %q", got, tt.wantCount)
+				t.Fatalf("failure log = %q, want exactly one line with %q", got, tt.wantCount)
 			}
 			if _, err := os.Stat(project.layout.SessionsDir()); err == nil {
 				t.Fatal("a failed call must write no day file")
@@ -80,8 +80,8 @@ func TestCaptureHookWithoutAnEventOrARootStillExitsZeroSilently(t *testing.T) {
 
 	assertSilentSuccess(t, noEvent)
 	assertSilentSuccess(t, noRoot)
-	if project.failures() != "d" {
-		t.Fatalf("failure counter = %q, want one decode failure for the missing event", project.failures())
+	if project.failures() != "decode" {
+		t.Fatalf("failure log = %q, want one decode failure for the missing event", project.failures())
 	}
 }
 
@@ -126,7 +126,7 @@ func TestCaptureHookRecordsAFileOverTheCapAsUnknownAndAFileAtTheCapWithARange(t 
 				t.Fatalf("events = %+v, want one event, range = %v", events, tt.wantRange)
 			}
 			if project.failures() != "" {
-				t.Fatalf("failure counter = %q: a large file is recorded, not a failure", project.failures())
+				t.Fatalf("failure log = %q: a large file is recorded, not a failure", project.failures())
 			}
 		})
 	}
@@ -134,33 +134,29 @@ func TestCaptureHookRecordsAFileOverTheCapAsUnknownAndAFileAtTheCapWithARange(t 
 
 func TestCaptureHookStallBreakerTripsAndExpires(t *testing.T) {
 	tests := []struct {
-		name      string
-		age       time.Duration
-		wantWork  bool
-		wantBytes string
+		name     string
+		age      time.Duration
+		wantWork bool
 	}{
-		{name: "marker 30 s old: no work", age: 30 * time.Second, wantWork: false, wantBytes: "t"},
-		{name: "marker 61 s old: normal path", age: 61 * time.Second, wantWork: true, wantBytes: "t"},
+		{name: "marker 30 s old: no work", age: 30 * time.Second, wantWork: false},
+		{name: "marker 61 s old: normal path", age: 61 * time.Second, wantWork: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			project := newCaptureProject(t)
-			project.write(".claude/memory/capture.failures", "t", 0o600)
-			stamp := time.Now().Add(-tt.age)
-			if err := os.Chtimes(project.layout.FailuresPath(), stamp, stamp); err != nil {
-				t.Fatal(err)
-			}
-			before, _ := os.Stat(project.layout.FailuresPath())
+			stall := capture.NewFailureEntry(time.Now().Add(-tt.age), capture.CauseStall).Line()
+			project.write(".claude/memory/capture.failures.log", stall, 0o600)
+			before, _ := os.Stat(project.layout.FailureLogPath())
 
 			result := project.runHook("UserPromptSubmit", promptPayload("s", "hello"))
 
 			assertSilentSuccess(t, result)
-			after, _ := os.Stat(project.layout.FailuresPath())
+			after, _ := os.Stat(project.layout.FailureLogPath())
 			if got := len(project.dayEvents()) == 1; got != tt.wantWork {
 				t.Fatalf("recorded = %v, want %v", got, tt.wantWork)
 			}
 			if after.Size() != before.Size() || !after.ModTime().Equal(before.ModTime()) {
-				t.Fatal("a successful or skipped call must leave the failure file as it was")
+				t.Fatal("a successful or skipped call must leave the failure log as it was")
 			}
 		})
 	}
@@ -346,4 +342,44 @@ func readText(t *testing.T, path string) string {
 		t.Fatal(err)
 	}
 	return string(content)
+}
+
+// A file of an earlier install holds one byte per failure and no time. The
+// hook must neither trip on it nor touch it: a stall byte there is no marker.
+func TestCaptureHookIgnoresAFailureFileOfTheOldFormat(t *testing.T) {
+	tests := map[string]string{
+		"old file name":         ".claude/memory/capture.failures",
+		"old bytes in new file": ".claude/memory/capture.failures.log",
+	}
+	for name, relative := range tests {
+		t.Run(name, func(t *testing.T) {
+			project := newCaptureProject(t)
+			path := project.write(relative, "dsdt", 0o600)
+
+			result := project.runHook("UserPromptSubmit", promptPayload("s", "hello"))
+
+			assertSilentSuccess(t, result)
+			if len(project.dayEvents()) != 1 {
+				t.Fatal("old bytes tripped the breaker: the hook did no work")
+			}
+			if content, _ := os.ReadFile(path); string(content) != "dsdt" {
+				t.Fatalf("the hook rewrote the old file: %q", content)
+			}
+		})
+	}
+}
+
+// The payload is untrusted and may hold secrets. A payload that fails to
+// decode must leave a code in the log and none of its text.
+func TestCaptureHookFailureLogHoldsNoPayloadText(t *testing.T) {
+	project := newCaptureProject(t)
+
+	result := project.runHook("UserPromptSubmit", "{CANARY-91c2 /home/someone/secret.env")
+
+	assertSilentSuccess(t, result)
+	content, err := os.ReadFile(project.layout.FailureLogPath())
+	if err != nil || strings.Contains(string(content), "CANARY") || strings.Contains(string(content), "/home") {
+		t.Fatalf("failure log = %q, err = %v: payload text reached the log", content, err)
+	}
+	equal(t, "failure log", project.failures(), "decode")
 }

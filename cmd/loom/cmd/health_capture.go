@@ -54,7 +54,7 @@ func (check *healthCheck) reportCaptureState(entries int) {
 // captureLeftovers tells whether data or a salt remains while the hooks are
 // off, for example after a hand edit of the settings file.
 func captureLeftovers(layout capture.Layout) bool {
-	for _, path := range []string{layout.SessionsDir(), layout.SaltPath(), layout.FailuresPath()} {
+	for _, path := range []string{layout.SessionsDir(), layout.SaltPath(), layout.FailureLogPath(), layout.LegacyFailuresPath()} {
 		if _, err := os.Lstat(path); err == nil {
 			return true
 		}
@@ -91,14 +91,32 @@ func saltProblem(err error) string {
 	}
 }
 
+// verifyCaptureFailures reports the failures of the last 24 hours. An older
+// failure is history, not a warning: the full log stays on disk. The check
+// reads the failure log only (at most capture.MaxFailureLogBytes), never a
+// day file and never episodes.db.
 func (check *healthCheck) verifyCaptureFailures(layout capture.Layout) {
-	info, err := os.Stat(layout.FailuresPath())
-	if err == nil && info.Size() > 0 {
-		check.warn(fmt.Sprintf("capture: %s recorded (last at %s)", countLabel(int(info.Size()), "hook failure"), info.ModTime().UTC().Format(utcStampLayout)))
+	now := check.request.now()
+	log := jsonlstore.NewFailureLog(layout, check.request.clock())
+	summary := log.Summarize(now, capture.FailureWindow)
+	history := relativeSlash(layout.Root(), layout.FailureLogPath())
+	if summary.Count == 0 {
+		check.output.success("capture: 0 failures in the last 24 h" + historyNote(layout, history))
+	} else {
+		check.warn(fmt.Sprintf("capture: %s in the last 24 h, most common: %s, last at %s (history: %s)",
+			countLabel(summary.Count, "failure"), summary.MostCommon, summary.Last.Format(utcStampLayout), history))
 	}
-	if jsonlstore.NewFailureLog(layout).IsStalled(localfs.SystemClock{}.Now()) {
+	if log.IsStalled(now) {
 		check.warn(fmt.Sprintf("capture: stall marker set; the hooks skip recording for up to %d s", int(capture.StallWindow.Seconds())))
 	}
+}
+
+// historyNote names the failure log when there is one to read.
+func historyNote(layout capture.Layout, history string) string {
+	if _, err := os.Lstat(layout.FailureLogPath()); err != nil {
+		return ""
+	}
+	return " (history: " + history + ")"
 }
 
 func (check *healthCheck) verifyCaptureStore(layout capture.Layout) {
