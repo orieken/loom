@@ -21,8 +21,6 @@ var ErrInvalidConfig = errors.New("localfs: invalid capture settings")
 // maxConfigBytes caps the settings file. A larger file is invalid.
 const maxConfigBytes = 64 << 10
 
-const bytesPerMegabyte = 1 << 20
-
 var _ capture.ConfigSource = ConfigFile{}
 
 // ConfigFile loads .claude/capture.yaml. Defaults are compiled in, and a
@@ -115,9 +113,9 @@ func (d settingsDocument) applyRetention(cfg capture.Config) (capture.Config, er
 		cfg.Retention.MaxAgeDays = *d.RetentionDays
 	}
 	if d.CapMegabytes != nil {
-		cfg.Retention.MaxBytes = *d.CapMegabytes * bytesPerMegabyte
+		cfg.Retention.MaxBytes = *d.CapMegabytes * capture.BytesPerMegabyte
 	}
-	if cfg.Retention.MaxAgeDays < 1 || cfg.Retention.MaxBytes < bytesPerMegabyte {
+	if cfg.Retention.MaxAgeDays < 1 || cfg.Retention.MaxBytes < capture.BytesPerMegabyte {
 		return cfg, errors.New("retentionDays and capMegabytes must be at least 1")
 	}
 	return cfg, nil

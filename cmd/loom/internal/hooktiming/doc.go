@@ -5,11 +5,12 @@
 // costs under test (architecture-notes.md decision 3, performance-report.md
 // "What MUST be measured").
 //
-// Run them with:
+// The suite is opt-in. It takes minutes and gates on wall-clock time, so a
+// plain `go test ./...` skips it. Run it with:
 //
-//	go test -v -timeout 30m ./cmd/loom/internal/hooktiming/
+//	LOOM_HOOK_TIMING=1 go test -v -timeout 30m ./cmd/loom/internal/hooktiming/
 //
-// They skip under -short. The environment variable HOOK_TIMING_CALLS lowers
+// It also skips under -short. The environment variable HOOK_TIMING_CALLS lowers
 // the measured calls per batch while a person tunes a scenario. The gate
 // needs the default of 1000.
 package hooktiming

@@ -43,6 +43,10 @@ const (
 	// MaxNameBytes caps an argument key name or a tool name.
 	MaxNameBytes = 64
 
+	// BytesPerMegabyte converts the megabyte figures of the settings and the
+	// health report to bytes.
+	BytesPerMegabyte = 1 << 20
+
 	// PurgeInterval is the retention purge rate limit.
 	PurgeInterval = time.Hour
 	// ClockAnomalyThreshold is the backward step that ingest reports.

@@ -1,6 +1,7 @@
 package capture
 
 import (
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"strings"
@@ -279,5 +280,17 @@ func TestRandomIDIsHexAndUnique(t *testing.T) {
 
 	if err1 != nil || err2 != nil || len(first) != 16 || first == second {
 		t.Errorf("ids = %q and %q (errors %v, %v)", first, second, err1, err2)
+	}
+	assertLowercaseHex(t, first)
+	assertLowercaseHex(t, second)
+}
+
+// assertLowercaseHex fails unless the id decodes as hex and encodes back to
+// the same text, which holds for lowercase digits only.
+func assertLowercaseHex(t *testing.T, id string) {
+	t.Helper()
+	decoded, err := hex.DecodeString(id)
+	if err != nil || hex.EncodeToString(decoded) != id {
+		t.Errorf("id %q is not lowercase hex (decode error %v)", id, err)
 	}
 }

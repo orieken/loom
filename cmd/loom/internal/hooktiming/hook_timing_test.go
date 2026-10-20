@@ -23,15 +23,26 @@ const (
 	triggerInitMillis = 10.0
 )
 
-func skipUnderShort(t *testing.T) {
+// optInEnvName switches the timing suite on. A wall-clock gate on a shared
+// runner is a CI job, and a CI job needs the human's "approve fitness
+// function" (approval-gates.md gate #7). Until then the suite is opt-in.
+const optInEnvName = "LOOM_HOOK_TIMING"
+
+// isTimingSuiteWanted says whether the suite runs: never under -short, and
+// otherwise only when the opt-in variable is exactly "1".
+func isTimingSuiteWanted(isShort bool, optIn string) bool {
+	return !isShort && optIn == "1"
+}
+
+func skipUnlessOptedIn(t *testing.T) {
 	t.Helper()
-	if testing.Short() {
-		t.Skip("hook timing runs the built binary thousands of times; skipped under -short")
+	if !isTimingSuiteWanted(testing.Short(), os.Getenv(optInEnvName)) {
+		t.Skipf("hook timing is opt-in and skips under -short; set %s=1 to run it", optInEnvName)
 	}
 }
 
 func TestHookTimingHarnessFloor(t *testing.T) {
-	skipUnderShort(t)
+	skipUnlessOptedIn(t)
 
 	floor := measureHarnessFloor(t)
 
@@ -41,7 +52,7 @@ func TestHookTimingHarnessFloor(t *testing.T) {
 // S0: start-up floor. An unknown event in an empty root decodes, fails and
 // exits. It reads no file.
 func TestHookTimingS0StartupFloor(t *testing.T) {
-	skipUnderShort(t)
+	skipUnlessOptedIn(t)
 	empty := t.TempDir()
 	args := []string{"capture", "hook", "NoSuchEvent", "--root", empty}
 
@@ -53,7 +64,7 @@ func TestHookTimingS0StartupFloor(t *testing.T) {
 
 // S0b: the per-package init cost, from GODEBUG=inittrace=1.
 func TestHookTimingS0InitTrace(t *testing.T) {
-	skipUnderShort(t)
+	skipUnlessOptedIn(t)
 	command := exec.Command(loomBinary(t), "--version")
 	command.Env = append(os.Environ(), "GODEBUG=inittrace=1")
 	output, err := command.CombinedOutput()
@@ -78,7 +89,7 @@ func TestHookTimingS0InitTrace(t *testing.T) {
 
 // S1: typical. An Edit result on a 50 KB file, a small tail, one append.
 func TestHookTimingS1Typical(t *testing.T) {
-	skipUnderShort(t)
+	skipUnlessOptedIn(t)
 	p := newProject(t)
 	p.writeSource("app/small.go", 50<<10, uniqueLine)
 	file := p.root + "/app/small.go"
@@ -105,7 +116,7 @@ func TestHookTimingS1Typical(t *testing.T) {
 // S2: busy. A day file of 10,000 events. The last 256 KB holds 5 open hunks
 // on 3 files of 100 KB. The call is a prompt, which sees every path.
 func TestHookTimingS2Busy(t *testing.T) {
-	skipUnderShort(t)
+	skipUnlessOptedIn(t)
 	p := newProject(t)
 	contents := map[string]string{}
 	for _, name := range []string{"app/a.go", "app/b.go", "app/c.go"} {
@@ -147,7 +158,7 @@ func TestHookTimingS2Busy(t *testing.T) {
 // S3: worst case. A prompt with 20 open hunks on 20 files of 1 MB. The 4 MB
 // read budget trips and the call must still end inside p99.
 func TestHookTimingS3WorstCase(t *testing.T) {
-	skipUnderShort(t)
+	skipUnlessOptedIn(t)
 	p := newProject(t)
 	const files = capture.MaxRehashedHunks
 	contents := make([]string, files)
@@ -178,7 +189,7 @@ func TestHookTimingS3WorstCase(t *testing.T) {
 // one day file. Before each call the worker changes its files and records
 // fresh agent writes, so every call finds changed hunks and writes a batch.
 func TestHookTimingS6Concurrency(t *testing.T) {
-	skipUnderShort(t)
+	skipUnlessOptedIn(t)
 	const workers, filesPerWorker = 4, 5
 	p := newProject(t)
 	binary := loomBinary(t)

@@ -20,6 +20,10 @@ import (
 // runBinaryLimit fails a hook that hangs instead of waiting for the test timeout.
 const runBinaryLimit = 15 * time.Second
 
+// startupSlack covers process start-up and a loaded machine. The test
+// asserts the limit plus this slack, and reports the measured time.
+const startupSlack = 700 * time.Millisecond
+
 const captureSalt = "0123456789abcdef0123456789abcdef"
 
 var (
@@ -122,13 +126,28 @@ func (p *captureProject) runHook(event, stdin string, extraArgs ...string) hookR
 
 func runBinary(t *testing.T, binary string, args []string, stdin *strings.Reader) hookResult {
 	t.Helper()
+	return runCall(t, binaryCall{binary: binary, args: args, stdin: stdin})
+}
+
+// binaryCall is one run of the built binary. The directory is the working
+// directory of the run; the memory commands read the project from it.
+type binaryCall struct {
+	binary string
+	args   []string
+	stdin  *strings.Reader
+	dir    string
+}
+
+func runCall(t *testing.T, call binaryCall) hookResult {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), runBinaryLimit)
 	defer cancel()
-	command := exec.CommandContext(ctx, binary, args...)
+	command := exec.CommandContext(ctx, call.binary, call.args...)
+	command.Dir = call.dir
 	var stdout, stderr bytes.Buffer
 	command.Stdout, command.Stderr = &stdout, &stderr
-	if stdin != nil {
-		command.Stdin = stdin
+	if call.stdin != nil {
+		command.Stdin = call.stdin
 	}
 	start := time.Now()
 	err := command.Run()
@@ -136,7 +155,7 @@ func runBinary(t *testing.T, binary string, args []string, stdin *strings.Reader
 	if exitErr, isExit := err.(*exec.ExitError); isExit {
 		code = exitErr.ExitCode()
 	} else if err != nil {
-		t.Fatalf("run %v: %v", args, err)
+		t.Fatalf("run %v: %v", call.args, err)
 	}
 	return hookResult{code: code, stdout: stdout.String(), stderr: stderr.String(), elapsed: time.Since(start)}
 }

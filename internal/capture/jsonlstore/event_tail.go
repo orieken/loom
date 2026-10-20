@@ -57,7 +57,7 @@ func (t Tail) Recent(ctx context.Context, now time.Time, window time.Duration) (
 }
 
 func reachesPreviousDay(now, cutoff time.Time) bool {
-	startOfDay := now.UTC().Truncate(24 * time.Hour)
+	startOfDay := now.UTC().Truncate(hoursPerDay * time.Hour)
 	return cutoff.Before(startOfDay)
 }
 

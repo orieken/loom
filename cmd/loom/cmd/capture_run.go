@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"time"
 
 	"github.com/orieken/loom/internal/capture"
@@ -66,19 +67,43 @@ func liveHookParts(root string) hookParts {
 }
 
 // runCaptureHook never returns an error and never prints: cobra would print
-// an error and exit 1, and a hook must do neither.
+// an error and exit 1, and a hook must do neither. The watchdog is the first
+// act, so that nothing after it, not even a working-directory lookup, can
+// hold the process past the stop time.
 func runCaptureHook(cmd *cobra.Command, args []string) error {
+	run := armHookRun(liveHookEnv(cmd.InOrStdin()), eventName(args))
+	defer run.disarm()
+	defer func() { _ = recover() }()
+	if parts, isReady := livePartsOfFlags(cmd); isReady {
+		run.supply(parts)
+		run.execute()
+	}
+	return nil
+}
+
+// livePartsOfFlags wires the adapters for the root of the --root flag. A
+// missing root gives no parts: there is nowhere to record anything.
+func livePartsOfFlags(cmd *cobra.Command) (hookParts, bool) {
 	root, _ := cmd.Flags().GetString(captureRootFlag)
 	if root == "" {
-		return nil
+		return hookParts{}, false
 	}
 	// A relative root would make every payload path look outside the project.
 	if absolute, err := filepath.Abs(root); err == nil {
 		root = absolute
 	}
-	run := startHookRun(liveHookEnv(cmd.InOrStdin()), liveHookParts(root), eventName(args))
-	defer run.disarm()
-	run.execute()
+	return liveHookParts(root), true
+}
+
+// swallowFlagError makes a flag error silent. It counts the error as a decode
+// failure in the project of the --root flag, or of the working directory when
+// the flag has no value, and it lets the command end with exit 0.
+func swallowFlagError(cmd *cobra.Command, _ error) error {
+	root, _ := cmd.Flags().GetString(captureRootFlag)
+	if root == "" {
+		root = "."
+	}
+	jsonlstore.NewFailureLog(capture.NewLayout(root)).Record(capture.CauseDecode)
 	return nil
 }
 
@@ -89,57 +114,78 @@ func eventName(args []string) string {
 	return args[0]
 }
 
-// hookRun is one run of the hook with its watchdog.
+// hookRun is one run of the hook with its watchdog. The parts arrive after
+// the watchdog is armed, so the field is read and written through a pointer.
 type hookRun struct {
 	env   hookEnv
-	parts hookParts
+	parts atomic.Pointer[hookParts]
 	event string
 	timer *time.Timer
 }
 
-// startHookRun arms the watchdog as its first act, before any read, so a
+// startHookRun arms the watchdog and supplies the parts in one step.
+func startHookRun(env hookEnv, parts hookParts, event string) *hookRun {
+	run := armHookRun(env, event)
+	run.supply(parts)
+	return run
+}
+
+// armHookRun arms the watchdog as its first act, before any read, so a
 // stdin that never closes cannot hang the process (performance-report.md
 // mandate B).
-func startHookRun(env hookEnv, parts hookParts, event string) *hookRun {
-	run := &hookRun{env: env, parts: parts, event: event}
+func armHookRun(env hookEnv, event string) *hookRun {
+	run := &hookRun{env: env, event: event}
 	run.timer = time.AfterFunc(env.stopAfter, run.stopHard)
 	return run
 }
+
+func (h *hookRun) supply(parts hookParts) { h.parts.Store(&parts) }
 
 func (h *hookRun) disarm() { h.timer.Stop() }
 
 // stopHard counts the stall in a separate goroutine and waits for it at most
 // counterWait. It then exits 0 whether or not the write finished, because a
-// blocked disk must not block the exit (mandate A).
+// blocked disk must not block the exit (mandate A). When the parts are not
+// ready, there is no counter to write to, and the exit comes at once.
 func (h *hookRun) stopHard() {
+	if parts := h.parts.Load(); parts != nil {
+		h.countStall(parts.counter)
+	}
+	h.env.exit(0)
+}
+
+func (h *hookRun) countStall(counter capture.FailureCounter) {
 	written := make(chan struct{})
 	go func() {
-		h.parts.counter.Record(capture.CauseTimeout)
+		counter.Record(capture.CauseTimeout)
 		close(written)
 	}()
 	select {
 	case <-written:
 	case <-time.After(h.env.counterWait):
 	}
-	h.env.exit(0)
 }
 
 // execute does the work of the hook. Every failure is counted and nothing
 // is printed.
 func (h *hookRun) execute() {
-	defer h.countPanic()
-	if h.parts.stall.IsStalled(h.parts.clock.Now()) {
+	parts := h.parts.Load()
+	if parts == nil {
+		return
+	}
+	defer countPanic(parts.counter)
+	if parts.stall.IsStalled(parts.clock.Now()) {
 		return
 	}
 	payload, err := h.readPayload()
 	if err != nil {
-		h.parts.counter.Record(capture.CauseDecode)
+		parts.counter.Record(capture.CauseDecode)
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), h.env.stopAfter)
 	defer cancel()
-	if err := h.parts.record(ctx, h.event, payload); err != nil {
-		h.parts.counter.Record(capture.CauseOf(err))
+	if err := parts.record(ctx, h.event, payload); err != nil {
+		parts.counter.Record(capture.CauseOf(err))
 	}
 }
 
@@ -151,8 +197,8 @@ func (h *hookRun) readPayload() ([]byte, error) {
 	return payload, err
 }
 
-func (h *hookRun) countPanic() {
+func countPanic(counter capture.FailureCounter) {
 	if recover() != nil {
-		h.parts.counter.Record(capture.CausePanic)
+		counter.Record(capture.CausePanic)
 	}
 }

@@ -18,14 +18,7 @@ func runInstall(command *cobra.Command, _ []string) error {
 // install: its refusals come first, before anything is written, and its
 // writes come last.
 func installProject(flags installFlags, writer io.Writer) error {
-	if frameworkFS == nil {
-		return fmt.Errorf("embedded framework content is not configured")
-	}
-	embeddedVersion, err := readFrameworkVersion(frameworkFS)
-	if err != nil {
-		return err
-	}
-	request, err := prepareInstall(flags, embeddedVersion, frameworkFS)
+	request, err := prepareFrameworkInstall(flags)
 	if err != nil {
 		return err
 	}
@@ -42,6 +35,18 @@ func installProject(flags installFlags, writer io.Writer) error {
 		return err
 	}
 	return captureStage.apply(output)
+}
+
+// prepareFrameworkInstall checks the embedded content and builds the request.
+func prepareFrameworkInstall(flags installFlags) (installRequest, error) {
+	if frameworkFS == nil {
+		return installRequest{}, fmt.Errorf("embedded framework content is not configured")
+	}
+	embeddedVersion, err := readFrameworkVersion(frameworkFS)
+	if err != nil {
+		return installRequest{}, err
+	}
+	return prepareInstall(flags, embeddedVersion, frameworkFS)
 }
 
 // ownedWriter builds the writer already loaded with what a previous install

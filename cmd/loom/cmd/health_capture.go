@@ -22,7 +22,8 @@ const (
 	// storeWarnPercent is the share of the store cap at which health warns.
 	storeWarnPercent = 80
 	percentBase      = 100
-	bytesPerMegabyte = 1 << 20
+	// utcStampLayout shows the time of the last hook failure.
+	utcStampLayout = dateLayout + " 15:04:05Z"
 )
 
 func (check *healthCheck) verifyCapture() {
@@ -93,7 +94,7 @@ func saltProblem(err error) string {
 func (check *healthCheck) verifyCaptureFailures(layout capture.Layout) {
 	info, err := os.Stat(layout.FailuresPath())
 	if err == nil && info.Size() > 0 {
-		check.warn(fmt.Sprintf("capture: %s recorded (last at %s)", countLabel(int(info.Size()), "hook failure"), info.ModTime().UTC().Format("2006-01-02 15:04:05Z")))
+		check.warn(fmt.Sprintf("capture: %s recorded (last at %s)", countLabel(int(info.Size()), "hook failure"), info.ModTime().UTC().Format(utcStampLayout)))
 	}
 	if jsonlstore.NewFailureLog(layout).IsStalled(localfs.SystemClock{}.Now()) {
 		check.warn(fmt.Sprintf("capture: stall marker set; the hooks skip recording for up to %d s", int(capture.StallWindow.Seconds())))
@@ -106,7 +107,7 @@ func (check *healthCheck) verifyCaptureStore(layout capture.Layout) {
 	if err != nil {
 		check.warn("capture: " + err.Error())
 	}
-	label := fmt.Sprintf("capture: store %.1f MB of %d MB", float64(size)/bytesPerMegabyte, capBytes/bytesPerMegabyte)
+	label := fmt.Sprintf("capture: store %.1f MB of %d MB", float64(size)/capture.BytesPerMegabyte, capBytes/capture.BytesPerMegabyte)
 	if size*percentBase >= capBytes*storeWarnPercent {
 		check.warn(label + fmt.Sprintf(" (at %d%% or more of the cap; the purge deletes the oldest day files)", storeWarnPercent))
 		return

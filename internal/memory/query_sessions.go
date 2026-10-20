@@ -71,27 +71,35 @@ func (s *Store) SessionReport(ctx context.Context, source SessionSource, cfg cap
 		return SessionReport{}, err
 	}
 	defer func() { _ = db.Close() }()
-	report, err := buildSessionReport(ctx, db, source, cfg, filter)
+	report, err := buildSessionReport(ctx, db, sessionQuery{source: source, cfg: cfg, filter: filter})
 	return report, plainSessionError("report", ReportDeadline, err)
 }
 
-func buildSessionReport(ctx context.Context, db *sql.DB, source SessionSource, cfg capture.Config, filter SessionFilter) (SessionReport, error) {
+// sessionQuery bundles what one report needs besides the database: where the
+// newest event comes from, the weights and switches, and the filter.
+type sessionQuery struct {
+	source SessionSource
+	cfg    capture.Config
+	filter SessionFilter
+}
+
+func buildSessionReport(ctx context.Context, db *sql.DB, query sessionQuery) (SessionReport, error) {
 	hasTable, err := hasSessionTable(ctx, db)
 	if err != nil {
 		return SessionReport{}, err
 	}
 	if !hasTable {
-		return absentSessionReport(source)
+		return absentSessionReport(query.source)
 	}
-	counts, err := countSessionKinds(ctx, db, cfg.Signals, filter)
+	counts, err := countSessionKinds(ctx, db, query.cfg.Signals, query.filter)
 	if err != nil {
 		return SessionReport{}, err
 	}
-	newest, err := newestEventText(ctx, source)
+	newest, err := newestEventText(ctx, query.source)
 	if err != nil {
 		return SessionReport{}, err
 	}
-	return assembleSessionReport(counts, newest, cfg.Weights), nil
+	return assembleSessionReport(counts, newest, query.cfg.Weights), nil
 }
 
 func hasSessionTable(ctx context.Context, db *sql.DB) (bool, error) {

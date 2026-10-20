@@ -53,7 +53,7 @@ func (c *hookCall) events() ([]SessionEvent, error) {
 // recentEvents reads the tail for the calls that can need it. A tail that
 // cannot be read loses recall only.
 func (c *hookCall) recentEvents() []SessionEvent {
-	if c.obs.Kind == EventStop {
+	if !c.needsTail() {
 		return nil
 	}
 	events, err := c.deps.Tail.Recent(c.ctx, c.now, c.cfg.Window)
@@ -61,6 +61,14 @@ func (c *hookCall) recentEvents() []SessionEvent {
 		return nil
 	}
 	return events
+}
+
+// needsTail says whether the call has a use for the tail. A prompt re-hashes
+// every open hunk. A call with a file path re-hashes the hunks of that path
+// and, for a Write, looks for the pre-image. Any other call, such as Bash or
+// Stop, has no path and sees no hunk, so the read would be wasted.
+func (c *hookCall) needsTail() bool {
+	return c.obs.Kind == EventPrompt || c.obs.FilePath != ""
 }
 
 func (c *hookCall) primaryEvents(tail []SessionEvent) ([]SessionEvent, error) {

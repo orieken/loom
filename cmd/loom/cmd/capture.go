@@ -15,8 +15,11 @@ var captureCmd = &cobra.Command{
 	Use:    "capture",
 	Short:  "Record session events for correction measurement",
 	Hidden: true,
-	Args:   cobra.NoArgs,
-	RunE:   func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
+	Args:   cobra.ArbitraryArgs,
+	// The parent prints nothing either: a hook shell may call it by mistake.
+	SilenceUsage:  true,
+	SilenceErrors: true,
+	RunE:          func(*cobra.Command, []string) error { return nil },
 }
 
 var captureHookCmd = &cobra.Command{
@@ -32,7 +35,15 @@ var captureHookCmd = &cobra.Command{
 	RunE:               runCaptureHook,
 }
 
+// stayQuiet prints nothing, in place of the help and usage of cobra.
+func stayQuiet(*cobra.Command, []string) {}
+
 func init() {
+	for _, command := range []*cobra.Command{captureCmd, captureHookCmd} {
+		command.SetHelpFunc(stayQuiet)
+		command.SetUsageFunc(func(*cobra.Command) error { return nil })
+	}
+	captureHookCmd.SetFlagErrorFunc(swallowFlagError)
 	captureHookCmd.Flags().String(captureRootFlag, "", "project root that holds .claude/memory")
 	captureCmd.AddCommand(captureHookCmd)
 	rootCmd.AddCommand(captureCmd)

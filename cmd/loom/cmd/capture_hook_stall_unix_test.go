@@ -26,10 +26,6 @@ func makePipe(t *testing.T, path string) {
 	}
 }
 
-// startupSlack covers process start-up and a loaded machine. The test
-// asserts the limit plus this slack, and reports the measured time.
-const startupSlack = 700 * time.Millisecond
-
 func TestCaptureHookExitsZeroInsideTheLimitWhenTheSinkAndTheCounterBothBlock(t *testing.T) {
 	project := newCaptureProject(t)
 	makePipe(t, project.layout.DayFile(time.Now().UTC()))

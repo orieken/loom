@@ -20,6 +20,7 @@ func TestCaptureHookFailurePathsExitZeroSilentlyAndCountTheFailure(t *testing.T)
 		stdin     string
 		prepare   func(*captureProject)
 		wantCount string
+		rawArgs   []string // when set, the binary runs these arguments in the project root
 	}{
 		{name: "bad json", event: "PostToolUse", stdin: "{not json", wantCount: "d"},
 		{name: "empty stdin", event: "PostToolUse", stdin: "", wantCount: "d"},
@@ -35,6 +36,12 @@ func TestCaptureHookFailurePathsExitZeroSilentlyAndCountTheFailure(t *testing.T)
 			prepare: func(p *captureProject) { p.write(".claude/capture.yaml", "unknownKey: 1\n", 0o600) }, wantCount: "c"},
 		{name: "bad redaction glob", event: "UserPromptSubmit", stdin: promptPayload("s", "hi"),
 			prepare: func(p *captureProject) { p.write(".claude/capture.yaml", "redact: [\"[bad\"]\n", 0o600) }, wantCount: "c"},
+		{name: "root flag without a value", rawArgs: []string{"capture", "hook", "PreToolUse", "--root"}, wantCount: "d"},
+		{name: "help flag of the hook", rawArgs: []string{"capture", "hook", "--help"}},
+		{name: "short help flag of the hook", rawArgs: []string{"capture", "hook", "-h"}},
+		{name: "capture parent alone", rawArgs: []string{"capture"}},
+		{name: "help flag of the parent", rawArgs: []string{"capture", "--help"}},
+		{name: "unknown subcommand", rawArgs: []string{"capture", "bogus"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -43,7 +50,7 @@ func TestCaptureHookFailurePathsExitZeroSilentlyAndCountTheFailure(t *testing.T)
 				tt.prepare(project)
 			}
 
-			result := project.runHook(tt.event, tt.stdin)
+			result := runFailurePathCall(project, tt.event, tt.stdin, tt.rawArgs)
 
 			assertSilentSuccess(t, result)
 			if got := project.failures(); got != tt.wantCount {
@@ -54,6 +61,14 @@ func TestCaptureHookFailurePathsExitZeroSilentlyAndCountTheFailure(t *testing.T)
 			}
 		})
 	}
+}
+
+func runFailurePathCall(project *captureProject, event, stdin string, rawArgs []string) hookResult {
+	if rawArgs == nil {
+		return project.runHook(event, stdin)
+	}
+	call := binaryCall{binary: captureBinary(project.t), args: rawArgs, stdin: strings.NewReader(""), dir: project.root}
+	return runCall(project.t, call)
 }
 
 func TestCaptureHookWithoutAnEventOrARootStillExitsZeroSilently(t *testing.T) {
@@ -243,11 +258,11 @@ const (
 	canaryRedacted = "CANARYREDACTEDNAME"
 )
 
-// TestCaptureHookCanaryTextReachesNeitherDiskNorOutput feeds unique strings in
-// the prompt, old_string, new_string, content and command, then searches
-// every file the hook may have written and every byte it printed.
-func TestCaptureHookCanaryTextReachesNeitherDiskNorOutput(t *testing.T) {
-	project := newCaptureProject(t)
+// runCanaryHookCalls feeds unique strings in the prompt, old_string,
+// new_string, content and command through the built binary. It returns every
+// byte the calls printed and the source files that hold canaries on purpose.
+func runCanaryHookCalls(t *testing.T, project *captureProject) (output string, ownFiles []string) {
+	t.Helper()
 	source := project.write("app/main.go", "head\n"+canaryNewText+" "+canaryFileBody+"\ntail\n", 0o600)
 	written := project.write("app/written.go", canaryContent+"\n", 0o600)
 	secret := project.write("secrets/"+canaryRedacted+"/key.txt", "body "+canaryFileBody+"\n", 0o600)
@@ -264,22 +279,32 @@ func TestCaptureHookCanaryTextReachesNeitherDiskNorOutput(t *testing.T) {
 		{"PostToolUse", bash},
 		{"Stop", marshalPayload(map[string]any{"session_id": "s1"})},
 	}
-
-	var output strings.Builder
+	var printed strings.Builder
 	for _, call := range calls {
 		result := project.runHook(call.event, call.payload)
 		assertSilentSuccess(t, result)
-		output.WriteString(result.stdout + result.stderr)
+		printed.WriteString(result.stdout + result.stderr)
 	}
+	return printed.String(), []string{source, written, secret}
+}
+
+// TestCaptureHookCanaryTextReachesNeitherDiskNorOutput runs the canary calls,
+// then searches every file the hook may have written and every byte it
+// printed. The database and report side is
+// TestCaptureCanaryReachesNeitherDatabaseNorReport.
+func TestCaptureHookCanaryTextReachesNeitherDiskNorOutput(t *testing.T) {
+	project := newCaptureProject(t)
+
+	output, ownFiles := runCanaryHookCalls(t, project)
 
 	canaries := []string{canaryPrompt, canaryOldText, canaryNewText, canaryContent, canaryCommand, canaryFileBody, canaryRedacted, captureSalt}
-	assertNoCanaryOnDisk(t, project, canaries, source, written, secret)
+	assertNoCanaryOnDisk(t, project, canaries, ownFiles...)
 	dayFile := readText(t, project.layout.DayFile(time.Now()))
 	if !strings.Contains(dayFile, `"path":"app/main.go"`) || strings.Contains(dayFile, "secrets") {
 		t.Fatalf("day file must name the open path and no redacted path:\n%s", dayFile)
 	}
-	if !strings.Contains(dayFile, `"promptClass":"corrective"`) || output.Len() != 0 {
-		t.Fatalf("prompt class missing or output not empty (%d bytes)", output.Len())
+	if !strings.Contains(dayFile, `"promptClass":"corrective"`) || len(output) != 0 {
+		t.Fatalf("prompt class missing or output not empty (%d bytes)", len(output))
 	}
 }
 

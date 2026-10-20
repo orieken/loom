@@ -24,7 +24,9 @@ func ignoresWith(t *testing.T, content string) bool {
 func TestIgnoresTheDirectoryByAPlainPattern(t *testing.T) {
 	for _, line := range []string{
 		".claude/memory/", ".claude/memory", "/.claude/memory/", "/.claude/memory", ".claude/memory/*", ".claude/memory/**",
-		".claude/", ".claude", "/.claude/", ".claude/*", "  .claude/memory/  ",
+		".claude/", ".claude", "/.claude/", ".claude/*",
+		// Git removes trailing spaces from a pattern.
+		".claude/memory/  ", ".claude/memory  ",
 	} {
 		if !ignoresWith(t, "node_modules\n"+line+"\n") {
 			t.Errorf("%q should ignore %s", line, directory)
@@ -36,6 +38,12 @@ func TestDoesNotIgnoreWhatItCannotJudge(t *testing.T) {
 	for _, content := range []string{
 		"", "# .claude/memory/\n", ".claude/memory/sessions\n", ".claude/other/\n", "memory\n", ".claude/mem\n",
 		"*.log\n", ".claudex/\n", "docs/.claude/memory/\n",
+		// Git keeps leading spaces as part of the pattern, so these name a
+		// directory that begins with a space (`git check-ignore` confirms
+		// it). This test once expected "  .claude/memory/  " to be ignored.
+		// That expectation was wrong, and a false "yes" could put captured
+		// session data into a commit.
+		"  .claude/memory/\n", "  .claude/memory/  \n", " .claude\n",
 	} {
 		if ignoresWith(t, content) {
 			t.Errorf("content %q should not count as ignoring %s", content, directory)

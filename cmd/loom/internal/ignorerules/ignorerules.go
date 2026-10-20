@@ -21,6 +21,10 @@ import (
 const (
 	filename     = ".gitignore"
 	negationMark = "!"
+	// trailingSpace is the only padding that Git removes from a pattern.
+	// Leading spaces stay part of the pattern, so "  .claude/memory/" names
+	// a directory that begins with two spaces.
+	trailingSpace = " "
 )
 
 // IgnoresDirectory reports whether the .gitignore in root ignores the
@@ -46,7 +50,7 @@ func IgnoresDirectory(root, directory string) (bool, error) {
 func scan(lines *bufio.Scanner, directory string) bool {
 	isIgnored := false
 	for lines.Scan() {
-		line := strings.TrimSpace(lines.Text())
+		line := strings.TrimRight(lines.Text(), trailingSpace)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}

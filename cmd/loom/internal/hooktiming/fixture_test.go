@@ -104,6 +104,12 @@ func randomID(at time.Time) string { return fmt.Sprintf("%016x", at.UnixNano()) 
 // writeDayFile replaces today's day file with the given events.
 func (p *project) writeDayFile(events []capture.SessionEvent) {
 	p.t.Helper()
+	p.writeDayFileFor(time.Now(), events)
+}
+
+// writeDayFileFor replaces the day file of the UTC date of the given instant.
+func (p *project) writeDayFileFor(day time.Time, events []capture.SessionEvent) {
+	p.t.Helper()
 	var body strings.Builder
 	for _, event := range events {
 		line, err := capture.MarshalLine(event)
@@ -112,7 +118,7 @@ func (p *project) writeDayFile(events []capture.SessionEvent) {
 		}
 		body.Write(line)
 	}
-	if err := os.WriteFile(p.layout.DayFile(time.Now()), []byte(body.String()), 0o600); err != nil {
+	if err := os.WriteFile(p.layout.DayFile(day), []byte(body.String()), 0o600); err != nil {
 		p.t.Fatal(err)
 	}
 }

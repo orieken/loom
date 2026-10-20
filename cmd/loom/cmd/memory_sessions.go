@@ -14,6 +14,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// dateLayout is the plain UTC date of the --since flag and of the health report.
+const dateLayout = "2006-01-02"
+
 // sessionLayout is the capture layout of the project in the working
 // directory, the same root that openStore uses.
 func sessionLayout() capture.Layout { return capture.NewLayout(".") }
@@ -60,12 +63,12 @@ func sessionFilterFromFlags() (memory.SessionFilter, error) {
 
 // parseSince accepts a full RFC 3339 time or a plain UTC date.
 func parseSince(value string) (time.Time, error) {
-	for _, layout := range []string{time.RFC3339Nano, "2006-01-02"} {
+	for _, layout := range []string{time.RFC3339Nano, dateLayout} {
 		if at, err := time.Parse(layout, value); err == nil {
 			return at, nil
 		}
 	}
-	return time.Time{}, fmt.Errorf("--since %q is not a date (2006-01-02) or an RFC 3339 time", value)
+	return time.Time{}, fmt.Errorf("--since %q is not a date (%s) or an RFC 3339 time", value, dateLayout)
 }
 
 func hasSessionFilterFlags() bool {

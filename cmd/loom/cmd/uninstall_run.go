@@ -46,19 +46,35 @@ func executeUninstall(request uninstallRequest, writer io.Writer) error {
 	}
 	output := uninstallOutput{writer: writer, isDryRun: request.isDryRun}
 	output.heading(request.display)
+	removed, err := removeOwnedAndCaptureFiles(request, selected, &installed, output)
+	if err != nil {
+		return err
+	}
+	return finishUninstall(request, installed, remaining, removed, output)
+}
+
+// removeOwnedAndCaptureFiles removes the files of the selected platforms and
+// then the capture artifacts. It returns the number of paths removed.
+func removeOwnedAndCaptureFiles(request uninstallRequest, selected []manifest.PlatformRecord, installed *manifest.Manifest, output uninstallOutput) (int, error) {
 	removed, err := removeOwnedRecords(request, selected, output)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	capturePaths, didRunCapture, err := uninstallCapture(request, installed, output)
+	capturePaths, err := finishCaptureRemoval(request, installed, output)
+	return removed + capturePaths, err
+}
+
+// finishCaptureRemoval removes the capture artifacts. When the capture stage
+// ran, it also clears the capture record of the manifest.
+func finishCaptureRemoval(request uninstallRequest, installed *manifest.Manifest, output uninstallOutput) (int, error) {
+	capturePaths, didRunCapture, err := uninstallCapture(request, *installed, output)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	removed += capturePaths
 	if didRunCapture {
 		installed.Capture = nil
 	}
-	return finishUninstall(request, installed, remaining, removed, output)
+	return capturePaths, nil
 }
 
 func readUninstallManifest(request uninstallRequest) (manifest.Manifest, error) {

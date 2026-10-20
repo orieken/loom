@@ -10,10 +10,11 @@ import (
 // write. It exists to be used once and to be forgotten.
 //
 // PRECONDITION: no code path stores, logs, serializes or prints the text.
-// ENFORCED-BY: the type has no exported field and no accessor; every print
-// verb and every text encoder gives "[redacted]"; the canary tests
-// (recorder_canary_test.go and cmd/loom/cmd/capture_canary_test.go) search
-// the day file, the failure file and the command output for the text.
+// ENFORCED-BY: TestCaptureHookCanaryTextReachesNeitherDiskNorOutput (the day
+// file, the failure file and the hook output), TestCaptureCanaryReachesNeitherDatabaseNorReport
+// (the database files and the report output), and
+// TestRecorderCanaryTextNeverReachesAStoredLine (in-process). The type has no
+// exported field and no accessor, and every print verb gives "[redacted]".
 type EditText struct {
 	edits []editPair
 }

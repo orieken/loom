@@ -117,8 +117,8 @@ func TestHookHardStopExitsZeroWhenTheSinkAndTheCounterBothBlock(t *testing.T) {
 		t.Fatal("the hook did not exit although the sink and the counter both block")
 	}
 	elapsed := probe.at.Sub(start)
-	if elapsed < capture.HookStopAfter || elapsed > limit+150*time.Millisecond {
-		t.Fatalf("exited after %v, want between %v and %v", elapsed, capture.HookStopAfter, limit+150*time.Millisecond)
+	if elapsed < capture.HookStopAfter || elapsed > limit+startupSlack {
+		t.Fatalf("exited after %v, want between %v and %v", elapsed, capture.HookStopAfter, limit+startupSlack)
 	}
 	if probe.codes[0] != 0 || counter.seen() != "t" {
 		t.Fatalf("exit codes %v, counted %q; want exit 0 and one stall byte", probe.codes, counter.seen())
@@ -317,5 +317,42 @@ func TestCaptureCommandsAreHiddenAndSilent(t *testing.T) {
 	}
 	if flag := captureHookCmd.Flags().Lookup(captureRootFlag); flag == nil {
 		t.Fatal("the hook command needs the --root flag")
+	}
+}
+
+func TestHookWatchdogStopsTheProcessEvenWhenThePartsNeverArrive(t *testing.T) {
+	probe := newExitProbe()
+
+	run := armHookRun(fastEnv(strings.NewReader("{}"), probe), "Stop")
+	defer run.disarm()
+
+	if !probe.exitedWithin(time.Second) || probe.codes[0] != 0 {
+		t.Fatalf("exit codes %v: an armed watchdog must exit 0 although the parts are not ready", probe.codes)
+	}
+}
+
+func TestHookExecuteWithoutPartsDoesNothing(t *testing.T) {
+	probe := newExitProbe()
+	run := armHookRun(fastEnv(strings.NewReader("{}"), probe), "Stop")
+	defer run.disarm()
+
+	run.execute()
+
+	if probe.exitedWithin(10 * time.Millisecond) {
+		t.Fatal("execute without parts must return at once and leave the exit to the watchdog")
+	}
+}
+
+func TestSwallowFlagErrorCountsADecodeFailureAndReturnsNil(t *testing.T) {
+	root := t.TempDir()
+	project := &captureProject{t: t, root: root, layout: capture.NewLayout(root)}
+	project.write(".claude/memory/placeholder", "", 0o600)
+	command := &cobra.Command{}
+	command.Flags().String(captureRootFlag, root, "")
+
+	err := swallowFlagError(command, errors.New("flag needs an argument"))
+
+	if err != nil || project.failures() != "d" {
+		t.Fatalf("err = %v, counter = %q, want nil and one decode failure", err, project.failures())
 	}
 }
