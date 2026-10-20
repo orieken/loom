@@ -31,7 +31,7 @@ Record what happens in ad-hoc Claude Code sessions, and detect when a human fixe
 - [ ] Given any hook call, when it runs on a warm cache, then it MUST finish at p95 under 50 ms and p99 under 150 ms.
 - [ ] Given two simultaneous sessions, when both append events, then the system MUST keep every event and MUST NOT corrupt the file.
 - [ ] Given a session that crosses midnight UTC, when it appends events, then the system MUST write each event to the day file of its UTC timestamp.
-- [ ] Given a hook that exceeds 500 ms or fails, when the session continues, then the user sees no error and `loom health` shows the failure count.
+- [ ] Given a hook that exceeds 500 ms or fails, when the session continues, then the user sees no error and `loom health` shows the failures of the last 24 hours. The full history stays in a log.
 - [ ] Given day files older than 90 days or a store over 50 MB, when the session ends, then the system MUST delete the oldest files first.
 - [ ] Given `episodes.db` is deleted, when the user runs `loom memory ingest`, then the system MUST rebuild the same corrections from the day files, even when the project has no archived runs.
 - [ ] Given a sample of 50 detected corrections, when a person reviews them, then overall precision MUST reach at least 85%. Any signal under 70% MUST ship switched off.
@@ -58,7 +58,7 @@ Record what happens in ad-hoc Claude Code sessions, and detect when a human fixe
 - Hook latency: p95 under 50 ms, p99 under 150 ms, measured on a warm cache. A hook running longer than 500 ms MUST be stopped and counted as a failure.
 - Retention: 90 days. Store size cap: 50 MB. Both are configurable. `loom health` MUST warn at 80% of the cap.
 - Precision: at least 85% overall and 70% per signal on a reviewed sample of 50 corrections.
-- Reliability: a capture failure MUST NOT block or fail a session. The system counts it and shows it in `loom health`.
+- Reliability: a capture failure MUST NOT block or fail a session. The system writes it to a failure log with a fixed cause code and no text, and `loom health` shows the failures of the last 24 hours.
 - Network: none. Capture MUST work offline.
 
 ## Trust Boundaries
@@ -87,13 +87,13 @@ Go unit and integration tests. No Saturday or Sunday.
 ## Decisions
 - The report extends `loom memory corrections`. It does not add a new command. The existing JSON shape stays valid.
 - Hooks go in `.claude/settings.local.json`, so teammates who never opted in see no hook.
-- Uninstall removes the capture hook entries, `sessions/`, the salt, the failure counter and the capture tables. It keeps the rest of `episodes.db` and every hook the project wrote itself.
+- Uninstall removes the capture hook entries, `sessions/`, the salt, the failure log and the capture tables. It keeps the rest of `episodes.db` and every hook the project wrote itself.
 - Estimated human minutes use a fixed weight per kind, configurable, and the report names this method.
 - Settings live in one file, `.claude/capture.yaml`, with defaults compiled in. A missing file is not a failure.
 
 ## Infrastructure / Deploy Notes
 - Day files: `.claude/memory/sessions/<YYYY-MM-DD>.jsonl`, one file per UTC day, append-only, mode 0600. Appends from concurrent sessions MUST NOT interleave within a line. They are the record. `episodes.db` is a projection.
 - `episodes.db` gains new tables with `CREATE TABLE IF NOT EXISTS`. The schema version stays the same, because a bump rebuilds the store from archived runs only. No column or table is dropped or renamed.
-- Hooks call one entry point: `loom capture hook <event>`. `loom install --capture` adds the hooks to `.claude/settings.local.json` and creates the Capture salt. It records both in the install manifest, in an optional capture record. `loom uninstall` removes the capture hooks, the `sessions/` folder, the salt, the failure counter and the capture tables.
-- No new environment variables. `loom health` gains a capture line (live or off, failure count, store size).
+- Hooks call one entry point: `loom capture hook <event>`. `loom install --capture` adds the hooks to `.claude/settings.local.json` and creates the Capture salt. It records both in the install manifest, in an optional capture record. `loom uninstall` removes the capture hooks, the `sessions/` folder, the salt, the failure log and the capture tables.
+- No new environment variables. `loom health` gains a capture line (live or off, failures in the last 24 hours, store size).
 - Standard deploy. Capture ships off by default.
