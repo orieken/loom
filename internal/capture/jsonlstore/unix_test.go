@@ -101,3 +101,22 @@ func TestTrimIgnoresALogThatIsAPipe(t *testing.T) {
 		t.Fatal("the trim blocked on a pipe")
 	}
 }
+
+// The flag-error path records a failure before the watchdog runs. A log path
+// that is a pipe must not block that call.
+func TestRecordIgnoresALogThatIsAPipeInsteadOfBlocking(t *testing.T) {
+	layout := newLayout(t)
+	makePipe(t, layout.FailureLogPath())
+	done := make(chan struct{})
+
+	go func() {
+		NewFailureLog(layout, fixedClock{}).Record(capture.CauseFlag)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Record blocked on a pipe")
+	}
+}

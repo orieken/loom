@@ -92,3 +92,15 @@ func TestParseFailureLineRejectsWhatLineCannotWrite(t *testing.T) {
 		}
 	}
 }
+
+// A struct literal can skip NewFailureEntry. Line must still keep the log
+// closed, so free text never reaches the file.
+func TestLineKeepsTheLogClosedEvenForAnEntryBuiltByHand(t *testing.T) {
+	entry := FailureEntry{At: entryAt, Cause: "/home/user/secret.txt: permission denied"}
+
+	line := entry.Line()
+
+	if strings.Contains(line, "secret") || !strings.HasSuffix(line, " write\n") {
+		t.Fatalf("line = %q, want the cause %q", line, CauseWrite)
+	}
+}

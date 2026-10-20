@@ -69,7 +69,11 @@ func NewFailureEntry(at time.Time, cause FailureCause) FailureEntry {
 // Line is the text of the entry: the UTC time, one space, the cause and a
 // newline. The hook appends it with one Write.
 func (e FailureEntry) Line() string {
-	return e.At.Format(FailureTimeLayout) + " " + string(e.Cause) + "\n"
+	cause := e.Cause
+	if !cause.IsKnown() {
+		cause = CauseWrite
+	}
+	return e.At.Format(FailureTimeLayout) + " " + string(cause) + "\n"
 }
 
 // ParseFailureLine reads one log line without its newline. It reports false

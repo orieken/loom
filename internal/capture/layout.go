@@ -8,10 +8,6 @@ import (
 
 // These names are the only place these strings appear in non-test code
 // (architecture-notes.md decision 12).
-// FailureLogTempSuffix names the scratch file of the failure-log trim. The
-// trim and Layout.FailureLogTempPath both use it, so they cannot drift apart.
-const FailureLogTempSuffix = ".tmp"
-
 const (
 	claudeDirName      = ".claude"
 	memoryDirName      = "memory"
@@ -28,6 +24,10 @@ const (
 	dayFileExtension       = ".jsonl"
 	dayFileDateLayout      = "2006-01-02"
 )
+
+// FailureLogTempSuffix names the scratch file of the failure-log trim. The
+// trim and Layout.FailureLogTempPath both use it, so they cannot drift apart.
+const FailureLogTempSuffix = ".tmp"
 
 // Layout is the single source of truth for capture paths. It is a value
 // object built from the project root. It does no file system access.

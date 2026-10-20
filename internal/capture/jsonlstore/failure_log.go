@@ -32,6 +32,9 @@ func NewFailureLog(layout capture.Layout, clock capture.Clock) FailureLog {
 // Record appends one line with one Write. A log that cannot write stays
 // silent: the hook must not fail because it cannot log.
 func (l FailureLog) Record(cause capture.FailureCause) {
+	if !isUsableLogPath(l.path) {
+		return
+	}
 	file, err := os.OpenFile(l.path, appendFlags, dayFileMode)
 	if err != nil {
 		return
@@ -52,5 +55,23 @@ func (l FailureLog) IsStalled(now time.Time) bool {
 		return false
 	}
 	entry, isParsed := lastEntryOf(tail)
-	return isParsed && entry.Cause == capture.CauseStall && now.Sub(entry.At) < capture.StallWindow
+	return isParsed && entry.Cause == capture.CauseStall && isFresh(now.Sub(entry.At))
+}
+
+// isFresh says whether a stall line of this age still holds the breaker open.
+// A negative age means the clock moved back or the line is dated in the
+// future. Such a line must not hold the breaker, or one bad clock could stop
+// the recording for days.
+func isFresh(age time.Duration) bool { return age >= 0 && age < capture.StallWindow }
+
+// isUsableLogPath says whether the log may be opened for append. A path that
+// does not exist yet is usable. A path that exists must be a regular file,
+// because opening a pipe with no reader blocks, and the flag-error path runs
+// before the watchdog.
+func isUsableLogPath(path string) bool {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return os.IsNotExist(err)
+	}
+	return info.Mode().IsRegular()
 }
