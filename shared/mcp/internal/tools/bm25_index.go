@@ -170,7 +170,7 @@ func (r *BM25Retriever) applyRefresh(ctx context.Context, plan refreshPlan) erro
 	if err != nil {
 		return err
 	}
-	if err := r.writePlan(tx, plan); err != nil {
+	if err := r.writePlan(ctx, tx, plan); err != nil {
 		_ = tx.Rollback()
 		return cancellationOr(ctx, err)
 	}
@@ -189,15 +189,20 @@ func cancellationOr(ctx context.Context, err error) error {
 	return err
 }
 
-func (r *BM25Retriever) writePlan(tx *sql.Tx, plan refreshPlan) error {
+func (r *BM25Retriever) writePlan(ctx context.Context, tx *sql.Tx, plan refreshPlan) error {
 	for _, path := range plan.removed {
 		if err := evict(tx, path); err != nil {
 			return err
 		}
 	}
-	// No context check per file: the transaction was begun with ctx, so once
-	// it ends every write fails at once and the loop stops (L2.7 mutation X11).
+	// Checked per file, not left to the transaction: database/sql rolls a
+	// context-bound transaction back from its own goroutine, so a write can
+	// still land after the context ends. L2.7 removed this check as
+	// redundant; on Linux the next file was then read anyway (L3.59 run 12).
 	for path, stamp := range plan.changed {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if err := r.reindex(tx, path, stamp); err != nil {
 			return err
 		}
