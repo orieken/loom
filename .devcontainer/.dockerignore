@@ -1,0 +1,3 @@
+# The build needs nothing from this directory but the Dockerfile.
+*
+!Dockerfile

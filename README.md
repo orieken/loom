@@ -634,8 +634,29 @@ cp .cursor/settings.json.example .cursor/settings.json
 ```
 
 Both templates wire `shared/schemas/agent-frontmatter.schema.json`, `skill-frontmatter.schema.json`,
-and `ki-frontmatter.schema.json` to the matching glob patterns under `shared/`. The contracts these
-schemas encode live under `shared/contracts/`.
+`ki-frontmatter.schema.json` and `pattern-spec.schema.json` to the matching glob patterns. The contracts
+these schemas encode live under `shared/contracts/`.
+
+## Developing loom — the CI toolchain, locally
+
+CI builds with the Go version in `go.mod` and pins golangci-lint and gremlins in
+`.github/workflows/framework-ci.yml`. A newer local Go builds loom too, but only CI's versions give CI's
+answers, and a golangci-lint built with an older Go refuses this module. One script installs all three
+at CI's versions, reading them from those two files, into `~/.cache/loom-dev`. It never replaces a
+system Go:
+
+```bash
+bash scripts/dev-setup.sh                    # install what is missing
+eval "$(bash scripts/dev-setup.sh --env)"    # put them first on PATH in this shell
+bash scripts/dev-setup.sh --check            # compare what is on PATH with CI
+```
+
+Or open the repository in the dev container (`.devcontainer/`): an Ubuntu 24.04 image, the same as the
+CI runner, that runs the script on create and keeps the tools in a volume across rebuilds. It runs as a
+non-root user, which some file-permission tests need.
+
+The script needs `dl.google.com` for Go (it builds Go from GitHub source when that host is blocked)
+and `proxy.golang.org` for the linters. `bash scripts/test-dev-setup.sh` tests it offline.
 
 ---
 

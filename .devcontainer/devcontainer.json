@@ -1,0 +1,28 @@
+{
+  // Dev container for loom: the Go toolchain and linters CI uses, at CI's versions.
+  // scripts/dev-setup.sh does the installing; see its header for where each version comes from.
+  "name": "loom",
+  "build": { "dockerfile": "Dockerfile" },
+  "remoteUser": "dev",
+  "mounts": [
+    // Go, the linters and the module cache survive a rebuild, so a rebuild takes seconds.
+    "source=loom-dev-cache,target=/home/dev/.cache,type=volume",
+    "source=loom-go-path,target=/home/dev/go,type=volume"
+  ],
+  "containerEnv": {
+    "LOOM_DEV_HOME": "/home/dev/.cache/loom-dev",
+    "GOTOOLCHAIN": "local"
+  },
+  "remoteEnv": {
+    "PATH": "/home/dev/.cache/loom-dev/go/bin:/home/dev/.cache/loom-dev/bin:/home/dev/go/bin:${containerEnv:PATH}"
+  },
+  // safe.directory: when the host user's id differs from dev's, git refuses the mounted repo as
+  // owned by someone else, and go build's VCS stamping fails with it (ci-check.sh does the same).
+  "postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder} && bash scripts/dev-setup.sh && bash scripts/dev-setup.sh --check",
+  "customizations": {
+    "vscode": {
+      // redhat.vscode-yaml turns shared/schemas/*.json into live checks; see .vscode/settings.json.example.
+      "extensions": ["golang.go", "redhat.vscode-yaml"]
+    }
+  }
+}
