@@ -82,7 +82,7 @@ func replaceSessionRows(ctx context.Context, db *sql.DB, source SessionSource, c
 	defer func() { _ = tx.Rollback() }()
 	result, err := streamIntoTable(ctx, tx, source, cfg)
 	if err != nil {
-		return SessionIngest{}, err
+		return SessionIngest{}, cancellationOr(ctx, err)
 	}
 	if err := tx.Commit(); err != nil {
 		return SessionIngest{}, fmt.Errorf("commit session ingest: %w", err)
@@ -169,6 +169,19 @@ func optionalPath(value *string) sql.NullString {
 		return sql.NullString{}
 	}
 	return optionalText(*value)
+}
+
+// cancellationOr prefers the context's own error. When the context ends,
+// database/sql rolls the transaction back and closes its statements from its
+// own goroutine, so the insert in flight can fail with "statement is closed"
+// before it sees the deadline. Without this the caller got that internal
+// error, about one run in ten on Linux, instead of the deadline message
+// plainSessionError gives.
+func cancellationOr(ctx context.Context, err error) error {
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return ctxErr
+	}
+	return err
 }
 
 // plainSessionError turns a lock or a deadline into a message that says what
