@@ -1,0 +1,4 @@
+# layer: structure
+# expect: failure (spec) | must be object
+- just
+- a list

@@ -1,0 +1,23 @@
+# layer: contract
+# expect: failure inputs[0].default | does not match the input type list
+schemaVersion: 1
+name: list-default-not-a-list
+version: 0.1.0
+intent: Run the workflow.
+owner: someone
+triggers:
+  keywords: []
+  intentPatterns: []
+inputs:
+  - name: count
+    type: list
+    description: Labels.
+    default: single
+steps:
+  - id: only-step
+    description: Run the tool.
+    executor: tool
+    consumes: [count]
+provenance:
+  source: hand-written
+  status: candidate
