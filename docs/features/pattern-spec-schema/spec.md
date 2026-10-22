@@ -10,30 +10,32 @@ created: 2026-10-21
 Give every repeatable workflow one typed, versioned file: a pattern spec. Mining (F3), proposals (F4) and rendering (F5) then share one shape instead of each parsing prose. Invalid specs fail in the editor and in `loom health`, and the error names the field.
 
 ## Acceptance Criteria
-- [ ] Given a valid pattern spec in `.claude/patterns/`, when the user runs `loom health`, then the pattern line passes and counts the spec.
-- [ ] Given a pattern spec with a missing required field, when the user runs `loom health`, then health fails and names the file and the field path.
-- [ ] Given a pattern spec with an unknown field, when the user runs `loom health`, then health fails and names the file and the field path.
-- [ ] Given a step without an executor, when the user runs `loom health`, then health fails and names the step id.
-- [ ] Given a step with an executor other than `tool`, `skill` or `human`, when health runs, then health fails and lists the allowed values.
-- [ ] Given a `human` step without a reason, when the user runs `loom health`, then health fails and lists the allowed reasons.
-- [ ] Given a non-human step with a reason, when the user runs `loom health`, then health fails for that step.
-- [ ] Given two steps with the same id, when the user runs `loom health`, then health fails and names the duplicate id.
-- [ ] Given a step that consumes a value that no input and no earlier step produces, when health runs, then health fails and names the value.
-- [ ] Given an input of type `enum` without values, when the user runs `loom health`, then health fails for that input.
-- [ ] Given an input with a default that does not match its type, when the user runs `loom health`, then health fails for that input.
-- [ ] Given a required input that also has a default, when the user runs `loom health`, then health fails for that input.
-- [ ] Given a `verify` entry that names no existing skill or tool, when the user runs `loom health`, then health fails and names the reference.
-- [ ] Given a spec whose `name` differs from its file name, when the user runs `loom health`, then health fails and shows both names.
-- [ ] Given a spec with `source: mined` and no evidence, when the user runs `loom health`, then health fails for `provenance.evidence`.
-- [ ] Given evidence whose last-seen date is before its first-seen date, when health runs, then health fails for `provenance.evidence`.
-- [ ] Given a spec with status `candidate` in `shared/patterns/`, when health runs, then health fails and says that shared specs MUST be approved.
-- [ ] Given a schema version that the loader does not know, when health runs, then health fails and names the supported versions.
-- [ ] Given a local spec with the name of a shared spec, when health runs, then health warns that the local spec overrides the shared one.
-- [ ] Given a project without pattern specs, when the user runs `loom health`, then the pattern line passes and reports zero specs.
+- [x] Given a valid pattern spec in `.claude/patterns/`, when the user runs `loom health`, then the pattern line passes and counts the spec.
+- [x] Given a pattern spec with a missing required field, when the user runs `loom health`, then health fails and names the file and the field path.
+- [x] Given a pattern spec with an unknown field, when the user runs `loom health`, then health fails and names the file and the field path.
+- [x] Given a step without an executor, when the user runs `loom health`, then health fails and names the step id.
+- [x] Given a step with an executor other than `tool`, `skill` or `human`, when health runs, then health fails and lists the allowed values.
+- [x] Given a `human` step without a reason, when the user runs `loom health`, then health fails and lists the allowed reasons.
+- [x] Given a non-human step with a reason, when the user runs `loom health`, then health fails for that step.
+- [x] Given two steps with the same id, when the user runs `loom health`, then health fails and names the duplicate id.
+- [x] Given a step that consumes a value that no input and no earlier step produces, when health runs, then health fails and names the value.
+- [x] Given an input of type `enum` without values, when the user runs `loom health`, then health fails for that input.
+- [x] Given an input with a default that does not match its type, when the user runs `loom health`, then health fails for that input.
+- [x] Given a required input that also has a default, when the user runs `loom health`, then health fails for that input.
+- [x] Given a `verify` entry that names no existing skill or tool, when the user runs `loom health`, then health fails and names the reference.
+- [x] Given a spec whose `name` differs from its file name, when the user runs `loom health`, then health fails and shows both names.
+- [x] Given a spec with `source: mined` and no evidence, when the user runs `loom health`, then health fails for `provenance.evidence`.
+- [x] Given evidence whose last-seen date is before its first-seen date, when health runs, then health fails for `provenance.evidence`.
+- [x] Given a spec with status `candidate` in `shared/patterns/`, when health runs, then health fails and says that shared specs MUST be approved.
+- [x] Given a schema version that the loader does not know, when health runs, then health fails and names the supported versions.
+- [x] Given a local spec with the name of a shared spec, when health runs, then health warns that the local spec overrides the shared one.
+- [x] Given a project without pattern specs, when the user runs `loom health`, then the pattern line passes and reports zero specs.
 - [ ] Given an invalid pattern spec open in VS Code or Cursor with the settings template applied, when the user edits it, then the editor marks the invalid field.
+  - *Open:* the settings templates point both editors at the schema, and `TestTheCommittedSchemaAgreesWithTheValidatorOnEveryFixture` proves the schema rejects every structural fixture. Confirm once in VS Code and in Cursor with the Red Hat YAML extension.
 - [ ] Given the two example specs, when health runs, then both validate. A reviewer MUST be able to follow each one without reading the schema.
-- [ ] Given a change to the Go types, when the committed JSON Schema is not regenerated, then the test suite fails.
-- [ ] Given a fixture spec, when the Go validator and the JSON Schema both check it, then both MUST agree on every structural rule.
+  - *Open:* both examples pass `loom health`. Whether they read naturally is a reviewer's call.
+- [x] Given a change to the Go types, when the committed JSON Schema is not regenerated, then the test suite fails.
+- [x] Given a fixture spec, when the Go validator and the JSON Schema both check it, then both MUST agree on every structural rule.
 
 ## Out of Scope
 - Rendering a spec into a skill, tool stub or runbook (F5).
@@ -54,7 +56,7 @@ Give every repeatable workflow one typed, versioned file: a pattern spec. Mining
 - A spec with zero steps: health fails. A pattern MUST have at least one step.
 - An input that no step consumes: health warns. Mined specs can carry unused inputs, but a reviewer SHOULD see them.
 - A very large file (over 256 KB): health fails without reading the rest of the file.
-- Two specs in one directory with the same `name`: health fails and names both files.
+- Two specs in one directory with the same `name`: this cannot happen, because `name` MUST match the file name. A copy under another file name fails the name rule.
 - An unreadable pattern directory: health fails and names the directory.
 
 ## Domain Language
@@ -76,7 +78,7 @@ Give every repeatable workflow one typed, versioned file: a pattern spec. Mining
 ## Trust Boundaries
 - Pattern spec files → loader: treat them as untrusted input. Later, F4 writes specs from model drafts, and F8 brings them from a hub. A spec MUST NOT run, include or fetch anything at load time.
 - YAML parsing: anchors, aliases and custom tags MUST NOT expand into an unbounded structure. The loader MUST reject a file over the size cap before it parses it.
-- Spec text in messages: health output names files, field paths and ids. It MUST NOT print field values that come from the spec, except the names it compares (`name` and the file name).
+- Spec text in messages: health output names files, field paths, step ids and allowed values. It MUST NOT print free text from the spec. The only spec values it repeats are identifiers that already match the schema's name patterns (`name`, step ids, input names, consumed names and verify names).
 - Evidence: `provenance.evidence` holds counts, dates, a cluster id and repo identifiers only. It MUST NOT hold prompt text, code or file paths (`architecture-guardrails.md` #9).
 
 ## Test Approach
@@ -90,9 +92,7 @@ Go unit and integration tests. No Saturday or Sunday.
 
 ## Open Questions
 - The target date for the hypothesis: F5 has no date yet. Assumption: measure the metric at the F5 merge.
-- Tool names for `verify`: the MCP registry holds the tool names, but scripts such as `check-agent-versions-ci.sh` are not tools. Assumption: `verify` names skills and registered MCP tools only, and scripts wait for F5's tool stubs.
 - Repo identifiers in evidence: a plain repo name can be sensitive once F8 shares specs. Assumption: a free string in version 1, and F8 decides whether to hash it.
-- Does `loom health` validate the specs in `shared/patterns/` of an installed project, or only in this repository? Assumption: both pattern directories that exist in the project tree.
 
 ## Decisions
 - Steps are a linear list in version 1. No nesting, branching or conditions.
@@ -103,6 +103,9 @@ Go unit and integration tests. No Saturday or Sunday.
 - Each spec carries `schemaVersion: 1`. A schema change bumps the version and adds a row to a new `shared/schemas/CHANGELOG.md`, in the same way agents carry a version and a CHANGELOG row.
 - Field names use lowerCamelCase, the same as skill frontmatter (`intentPatterns`). `triggers` uses the same `keywords` and `intentPatterns` keys as skills.
 - Examples live in `shared/patterns/examples/`, so they are validated but are not promoted specs. Suggested examples: `regenerate-codemap` (mostly `tool`) and `bump-agent-version` (`skill` edit, `tool` check, `human` approval).
+
+- `verify` names skills and registered MCP tools only. A skill resolves under the project's `.claude/skills/` or the framework's `shared/skills/`. Scripts such as `check-agent-versions-ci.sh` wait for F5's tool stubs. *(Resolved during the build.)*
+- `loom health` validates both pattern directories wherever they exist in the project tree, with or without an install manifest. *(Resolved during the build.)*
 
 ## Infrastructure / Deploy Notes
 - New files: `shared/schemas/pattern-spec.schema.json` (generated), `shared/schemas/CHANGELOG.md`, `shared/contracts/pattern-spec-contract.md`, `shared/patterns/examples/*.pattern.yaml`, and a Go package under `internal/` for the types, the loader and the validator.
