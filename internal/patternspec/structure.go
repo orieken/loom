@@ -150,9 +150,6 @@ var kindMessages = map[reflect.Type]func(jsonschema.ErrorKind) string{
 	reflect.TypeFor[*kind.Format](): func(errorKind jsonschema.ErrorKind) string {
 		return "must be a " + errorKind.(*kind.Format).Want + " (YYYY-MM-DD)"
 	},
-	reflect.TypeFor[*kind.Const](): func(errorKind jsonschema.ErrorKind) string {
-		return fmt.Sprintf("must be %v", errorKind.(*kind.Const).Want)
-	},
 }
 
 func messageFor(errorKind jsonschema.ErrorKind) string {
