@@ -1,0 +1,43 @@
+# Example: a mostly-tool pattern. Three deterministic steps and the approval
+# gate that loom puts in front of every write to a repository.
+schemaVersion: 1
+name: regenerate-codemap
+version: 1.0.0
+intent: Regenerate CODEMAP.md from the import graph and the context index.
+owner: loom-maintainers
+triggers:
+  keywords: ["codemap", "CODEMAP.md", "regenerate the codemap"]
+  intentPatterns: ["Update the codemap after *", "CODEMAP.md is stale"]
+inputs:
+  - name: root
+    type: path
+    description: The repository to map.
+    default: .
+preconditions:
+  - The loom CLI is installed.
+steps:
+  - id: index-repository
+    description: Run loom index to rebuild the repo graph and the context index.
+    executor: tool
+    consumes: [root]
+    produces: [repoGraph]
+  - id: plan-codemap
+    description: Run loom docs plan --codemap-only to stage the new CODEMAP.md for review.
+    executor: tool
+    consumes: [root, repoGraph]
+    produces: [codemapChangeset]
+  - id: approve-codemap
+    description: Read the staged summary and approve it with loom docs approve.
+    executor: human
+    reason: approval
+    consumes: [codemapChangeset]
+  - id: apply-codemap
+    description: Run loom docs apply to write the approved CODEMAP.md.
+    executor: tool
+    consumes: [codemapChangeset]
+verify:
+  - kind: skill
+    name: health-check
+provenance:
+  source: hand-written
+  status: approved

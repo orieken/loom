@@ -47,6 +47,7 @@ field-presence checks that `scripts/health-check.sh` already runs across the who
 | humans (agent author) | `shared/agents/*.md` | `shared/contracts/agent-frontmatter-contract.md` |
 | humans (skill author) | `shared/skills/*/SKILL.md` | `shared/contracts/skill-frontmatter-contract.md` |
 | humans (KI author) | `shared/knowledge/*.md`, `.claude/knowledge/*.md` | `shared/contracts/ki-frontmatter-contract.md` |
+| humans, later the pattern proposal step (F4) | `shared/patterns/**/*.pattern.yaml`, `.claude/patterns/*.pattern.yaml` | `shared/contracts/pattern-spec-contract.md` |
 
 ## Process
 
@@ -71,6 +72,13 @@ Same PASS/FAIL semantics; the validation switches from heading-grepping to front
 
 The output section headings (`Missing Sections`, `Present Sections`) still apply — read them as
 "Missing Fields" / "Present Fields" for the frontmatter case.
+
+### Pattern specs (`*.pattern.yaml`)
+A pattern spec is a whole YAML file, not frontmatter.
+1. Run `loom health` in the project. It validates every pattern spec against the schema and the contract rules,
+   and each issue names the file and the field path. Its result is authoritative.
+2. Without the CLI, apply the contract's Structure table and its "Rules the schema cannot express" by hand, and
+   report `PASS` / `FAIL` in the same output format.
 
 ### Opt-in Counter Auditor Invocation (AOS Phase 2)
 When enabled via project configuration (`.claude/validate-artifact.yaml` or `invokeAuditors: true` in `.claude/delivery-policy.yaml`):

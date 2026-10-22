@@ -1,0 +1,46 @@
+# Example: a mixed pattern. A model judges and edits, a tool checks the
+# result, and a person approves the commit.
+schemaVersion: 1
+name: bump-agent-version
+version: 1.0.0
+intent: Record a behavior change to an agent as a version bump with a CHANGELOG row.
+owner: loom-maintainers
+triggers:
+  keywords: ["bump agent version", "agent changelog"]
+  intentPatterns: ["I changed the * agent", "Version the change to *"]
+inputs:
+  - name: agentName
+    type: string
+    description: The agent file name in shared/agents/, without .md.
+    required: true
+preconditions:
+  - The agent file has an uncommitted edit.
+steps:
+  - id: classify-change
+    description: Read the diff and decide whether it changes behavior, and if so whether it is a patch, minor or major bump.
+    executor: skill
+    consumes: [agentName]
+    produces: [bumpLevel]
+  - id: edit-version
+    description: Raise the version field in the agent frontmatter by the bump level.
+    executor: skill
+    consumes: [agentName, bumpLevel]
+    produces: [newVersion]
+  - id: write-changelog-row
+    description: Add a dated row to shared/agents/CHANGELOG.md that names the agent, the versions and the change.
+    executor: skill
+    consumes: [agentName, newVersion]
+  - id: check-versions
+    description: Run scripts/check-agent-versions-ci.sh and confirm every bumped agent has its CHANGELOG row.
+    executor: tool
+    consumes: [agentName]
+  - id: approve-commit
+    description: Review the edit, the bump and the row together, and approve the commit.
+    executor: human
+    reason: approval
+verify:
+  - kind: skill
+    name: validate-artifact
+provenance:
+  source: hand-written
+  status: approved

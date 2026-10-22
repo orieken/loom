@@ -1,5 +1,5 @@
 {
-  "//": "Opt-in IDE settings for contributors to this repo. Copy to .cursor/settings.json to enable schema-backed autocomplete and validation for agent, skill, and Knowledge Item frontmatter.",
+  "//": "Opt-in IDE settings for contributors to this repo. Copy to .cursor/settings.json to enable schema-backed autocomplete and validation for agent, skill, and Knowledge Item frontmatter, and for pattern specs.",
   "//requires": "Cursor uses the same YAML LSP integration as VS Code (Red Hat yaml-language-server); ensure the YAML extension is enabled.",
 
   "yaml.schemas": {
@@ -8,6 +8,10 @@
     "./shared/schemas/ki-frontmatter.schema.json": [
       "shared/knowledge/*.md",
       ".claude/knowledge/*.md"
+    ],
+    "./shared/schemas/pattern-spec.schema.json": [
+      "shared/patterns/**/*.pattern.yaml",
+      ".claude/patterns/*.pattern.yaml"
     ]
   }
 }
