@@ -10,31 +10,35 @@ created: 2026-10-18
 Record what happens in ad-hoc Claude Code sessions, and detect when a human fixes agent work. The report extends the existing `loom memory corrections` command. Report how much human time those fixes cost and on what. Loom then measures correction time before any later feature tries to automate it.
 
 ## Acceptance Criteria
-- [ ] Given a project without capture, when the user runs `loom install --level 3`, then no hooks are registered and a hint names `--capture`.
-- [ ] Given a project, when the user runs `loom install --capture`, then the hooks are registered in `.claude/settings.local.json` and `loom health` reports capture as live.
-- [ ] Given Claude Code is not a detected platform, when the user runs `loom install --capture`, then the command fails and installs nothing.
-- [ ] Given the project does not gitignore `.claude/memory/`, when the user runs `loom install --capture`, then the command stops and prints the line to add.
-- [ ] Given capture is installed, when the user runs `loom uninstall`, then no capture hooks, session logs or other residue remain, and the user's own hooks stay.
+- [x] Given a project without capture, when the user runs `loom install --level 3`, then no hooks are registered and a hint names `--capture`.
+- [x] Given a project, when the user runs `loom install --capture`, then the hooks are registered in `.claude/settings.local.json` and `loom health` reports capture as live.
+- [x] Given Claude Code is not a detected platform, when the user runs `loom install --capture`, then the command fails and installs nothing.
+- [x] Given the project does not gitignore `.claude/memory/`, when the user runs `loom install --capture`, then the command stops and prints the line to add.
+- [x] Given capture is installed, when the user runs `loom uninstall`, then no capture hooks, session logs or other residue remain, and the user's own hooks stay.
 - [ ] Given capture is live, when a session runs, then the system MUST append one event per tool call, permission outcome and prompt.
-- [ ] Given any event, when the system stores it, then it MUST NOT contain prompt text, argument values or code. It keeps argument keys and types only.
-- [ ] Given a prompt that opens with "no," or "don't", when the system stores it, then it MUST keep the class label and discard the text.
-- [ ] Given a path on the redaction list, when the system records an event, then it MUST store a salted hash of the path and no line range.
-- [ ] Given any stored hash, when a reader inspects it, then the system MUST have salted it, and no report or export MUST show the salt.
-- [ ] Given an agent-written hunk, when a human edits it within 10 minutes, then the system MUST record a hunk-edit correction.
-- [ ] Given an agent-written hunk, when a human edits it after the window, then the system MUST NOT record a correction.
-- [ ] Given an agent change, when its lines return to their earlier state, then the system MUST record a revert.
+  - *Open:* tool calls and prompts are captured. No hook event maps to a permission outcome yet (`claudehook/payload.go`). Close it with the denied-call criterion.
+- [x] Given any event, when the system stores it, then it MUST NOT contain prompt text, argument values or code. It keeps argument keys and types only.
+- [x] Given a prompt that opens with "no," or "don't", when the system stores it, then it MUST keep the class label and discard the text.
+- [x] Given a path on the redaction list, when the system records an event, then it MUST store a salted hash of the path and no line range.
+- [x] Given any stored hash, when a reader inspects it, then the system MUST have salted it, and no report or export MUST show the salt.
+- [x] Given an agent-written hunk, when a human edits it within 10 minutes, then the system MUST record a hunk-edit correction.
+- [x] Given an agent-written hunk, when a human edits it after the window, then the system MUST NOT record a correction.
+- [x] Given an agent change, when its lines return to their earlier state, then the system MUST record a revert.
 - [ ] Given a denied tool call, when the denial occurs, then the system MUST record a denied-call correction. This signal ships off until a person verifies how Claude Code reports a denial.
-- [ ] Given a file changed through `Bash`, when the system cannot attribute the author, then it MUST mark the event `unknown` and exclude it from counts.
-- [ ] Given recorded corrections, when the user runs `loom memory corrections`, then the report lists kinds by count and estimated human minutes. The header names the method: a fixed weight per kind, shown as an estimate.
-- [ ] Given a time window, a file glob or a tool, when the user passes it as a filter, then the report MUST show only matching corrections.
-- [ ] Given the report, when it shows Session Corrections, then it MUST list gate-level Human Corrections separately, and the existing `--json` output MUST stay valid.
+  - *Open:* the detector records it when the signal is on (`TestDetectorSpecificationByExample`). No hook event maps to `EventToolDenied` until a person verifies the denial payload.
+- [x] Given a file changed through `Bash`, when the system cannot attribute the author, then it MUST mark the event `unknown` and exclude it from counts.
+- [x] Given recorded corrections, when the user runs `loom memory corrections`, then the report lists kinds by count and estimated human minutes. The header names the method: a fixed weight per kind, shown as an estimate.
+- [x] Given a time window, a file glob or a tool, when the user passes it as a filter, then the report MUST show only matching corrections.
+- [x] Given the report, when it shows Session Corrections, then it MUST list gate-level Human Corrections separately, and the existing `--json` output MUST stay valid.
 - [ ] Given any hook call, when it runs on a warm cache, then it MUST finish at p95 under 50 ms and p99 under 150 ms.
-- [ ] Given two simultaneous sessions, when both append events, then the system MUST keep every event and MUST NOT corrupt the file.
-- [ ] Given a session that crosses midnight UTC, when it appends events, then the system MUST write each event to the day file of its UTC timestamp.
-- [ ] Given a hook that exceeds 500 ms or fails, when the session continues, then the user sees no error and `loom health` shows the failures of the last 24 hours. The full history stays in a log.
-- [ ] Given day files older than 90 days or a store over 50 MB, when the session ends, then the system MUST delete the oldest files first.
-- [ ] Given `episodes.db` is deleted, when the user runs `loom memory ingest`, then the system MUST rebuild the same corrections from the day files, even when the project has no archived runs.
+  - *Open:* `cmd/loom/internal/hooktiming` asserts the budget, but the suite runs only on opt-in. Record one run on the release machine.
+- [x] Given two simultaneous sessions, when both append events, then the system MUST keep every event and MUST NOT corrupt the file.
+- [x] Given a session that crosses midnight UTC, when it appends events, then the system MUST write each event to the day file of its UTC timestamp.
+- [x] Given a hook that exceeds 500 ms or fails, when the session continues, then the user sees no error and `loom health` shows the failures of the last 24 hours. The full history stays in a log.
+- [x] Given day files older than 90 days or a store over 50 MB, when the session ends, then the system MUST delete the oldest files first.
+- [x] Given `episodes.db` is deleted, when the user runs `loom memory ingest`, then the system MUST rebuild the same corrections from the day files, even when the project has no archived runs.
 - [ ] Given a sample of 50 detected corrections, when a person reviews them, then overall precision MUST reach at least 85%. Any signal under 70% MUST ship switched off.
+  - *Open:* manual checkpoint. Review 50 sampled corrections.
 
 ## Out of Scope
 - Mining or clustering of corrections (F3), proposals (F4), and any automatic change to agents or rules.
