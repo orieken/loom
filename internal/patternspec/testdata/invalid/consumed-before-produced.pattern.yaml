@@ -1,0 +1,22 @@
+# layer: contract
+# expect: failure steps[0].consumes[0] | "later" is not an input or the output of an earlier step (step "first")
+schemaVersion: 1
+name: consumed-before-produced
+version: 0.1.0
+intent: Run the workflow.
+owner: someone
+triggers:
+  keywords: []
+  intentPatterns: []
+steps:
+  - id: first
+    description: Read a value.
+    executor: skill
+    consumes: [later]
+  - id: second
+    description: Make the value.
+    executor: tool
+    produces: [later]
+provenance:
+  source: hand-written
+  status: candidate

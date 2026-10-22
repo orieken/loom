@@ -1,0 +1,18 @@
+# layer: structure
+# expect: failure steps[0].timeout | is not a pattern spec field (step "only-step")
+schemaVersion: 1
+name: unknown-step-field
+version: 0.1.0
+intent: Run the workflow.
+owner: someone
+triggers:
+  keywords: []
+  intentPatterns: []
+steps:
+  - id: only-step
+    description: Run the tool.
+    executor: tool
+    timeout: 5
+provenance:
+  source: hand-written
+  status: candidate

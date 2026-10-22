@@ -1,0 +1,17 @@
+# layer: structure
+# expect: failure intent | must not be empty
+schemaVersion: 1
+name: empty-intent
+version: 0.1.0
+intent: ""
+owner: someone
+triggers:
+  keywords: []
+  intentPatterns: []
+steps:
+  - id: only-step
+    description: Run the tool.
+    executor: tool
+provenance:
+  source: hand-written
+  status: candidate

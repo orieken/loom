@@ -1,0 +1,18 @@
+# layer: structure
+# expect: failure color | is not a pattern spec field
+schemaVersion: 1
+name: unknown-field
+version: 0.1.0
+intent: Run the workflow.
+owner: someone
+triggers:
+  keywords: []
+  intentPatterns: []
+steps:
+  - id: only-step
+    description: Run the tool.
+    executor: tool
+color: blue
+provenance:
+  source: hand-written
+  status: candidate

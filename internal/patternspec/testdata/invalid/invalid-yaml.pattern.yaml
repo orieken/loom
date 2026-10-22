@@ -1,0 +1,5 @@
+# layer: document
+# expect: failure (spec) | is not valid YAML (line
+schemaVersion: 1
+steps: [
+  - id: a

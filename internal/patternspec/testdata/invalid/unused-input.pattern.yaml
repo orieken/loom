@@ -1,0 +1,21 @@
+# layer: contract
+# expect: warning inputs[0].name | no step consumes input "spare"
+schemaVersion: 1
+name: unused-input
+version: 0.1.0
+intent: Run the workflow.
+owner: someone
+triggers:
+  keywords: []
+  intentPatterns: []
+inputs:
+  - name: spare
+    type: string
+    description: Not used.
+steps:
+  - id: only-step
+    description: Run the tool.
+    executor: tool
+provenance:
+  source: hand-written
+  status: candidate

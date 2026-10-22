@@ -1,0 +1,18 @@
+# layer: document
+# expect: failure (spec) | every mapping key MUST be a string
+schemaVersion: 1
+name: non-string-key
+version: 0.1.0
+intent: Run the workflow.
+owner: someone
+triggers:
+  keywords: []
+  intentPatterns: []
+steps:
+  - id: only-step
+    description: Run the tool.
+    executor: tool
+7: seven
+provenance:
+  source: hand-written
+  status: candidate

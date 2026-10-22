@@ -1,0 +1,16 @@
+# The smallest valid spec: no inputs, no verify, hand-written.
+schemaVersion: 1
+name: minimal-spec
+version: 0.1.0
+intent: Run one tool.
+owner: someone
+triggers:
+  keywords: []
+  intentPatterns: []
+steps:
+  - id: only-step
+    description: Run the tool.
+    executor: tool
+provenance:
+  source: hand-written
+  status: candidate

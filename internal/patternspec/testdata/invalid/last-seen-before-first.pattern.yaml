@@ -1,0 +1,23 @@
+# layer: contract
+# expect: failure provenance.evidence.lastSeen | is before firstSeen
+schemaVersion: 1
+name: last-seen-before-first
+version: 0.1.0
+intent: Run the workflow.
+owner: someone
+triggers:
+  keywords: []
+  intentPatterns: []
+steps:
+  - id: only-step
+    description: Run the tool.
+    executor: tool
+provenance:
+  source: mined
+  status: candidate
+  evidence:
+    clusterId: c1
+    instanceCount: 2
+    repos: [loom]
+    firstSeen: 2026-10-01
+    lastSeen: 2026-09-01

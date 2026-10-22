@@ -10,6 +10,7 @@ import (
 	"github.com/orieken/loom/internal/contextindex"
 	"github.com/orieken/loom/internal/factsheet"
 	"github.com/orieken/loom/internal/orchestrator"
+	"github.com/orieken/loom/internal/patternspec"
 	"github.com/orieken/loom/internal/repograph"
 	"github.com/orieken/loom/internal/state"
 )
@@ -72,6 +73,33 @@ func TestCommittedFactSheetSchemaMatchesTheType(t *testing.T) {
 // generateTelemetry writes both artifacts, and both are derived from the
 // same vocabulary — that is the property that makes them unable to drift
 // from each other.
+func TestCommittedPatternSpecSchemaMatchesTheTypes(t *testing.T) {
+	generated, err := patternspec.GenerateSchema()
+	if err != nil {
+		t.Fatal(err)
+	}
+	committed, err := os.ReadFile(filepath.Join("..", "..", patternspec.SchemaDir, patternspec.SchemaFile))
+	if err != nil {
+		t.Fatalf("read committed schema: %v (run go run ./cmd/gen-schemas)", err)
+	}
+	if string(committed) != string(generated) {
+		t.Error("pattern-spec.schema.json drifted from internal/patternspec; run go run ./cmd/gen-schemas")
+	}
+}
+
+func TestGeneratePatternSpecWritesTheSchema(t *testing.T) {
+	dir := t.TempDir()
+
+	if err := generatePatternSpec(dir); err != nil {
+		t.Fatal(err)
+	}
+
+	written, err := os.ReadFile(filepath.Join(dir, patternspec.SchemaFile))
+	if err != nil || !strings.Contains(string(written), `"title": "Pattern Spec"`) {
+		t.Errorf("schema not written: %v", err)
+	}
+}
+
 func TestGenerateTelemetryWritesSchemaAndTable(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "telemetry")
 	if err := generateTelemetry(dir); err != nil {

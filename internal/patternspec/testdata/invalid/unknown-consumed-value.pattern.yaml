@@ -1,0 +1,18 @@
+# layer: contract
+# expect: failure steps[0].consumes[0] | "missing" is not an input or the output of an earlier step (step "only-step")
+schemaVersion: 1
+name: unknown-consumed-value
+version: 0.1.0
+intent: Run the workflow.
+owner: someone
+triggers:
+  keywords: []
+  intentPatterns: []
+steps:
+  - id: only-step
+    description: Run the tool.
+    executor: tool
+    consumes: [missing]
+provenance:
+  source: hand-written
+  status: candidate

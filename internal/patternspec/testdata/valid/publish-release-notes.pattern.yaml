@@ -1,0 +1,67 @@
+# Every field in use: inputs of each type, a human step, verify and mined evidence.
+schemaVersion: 1
+name: publish-release-notes
+version: 1.0.0
+intent: Draft, review and publish the release notes for a tagged version.
+owner: platform-team
+triggers:
+  keywords: ["release notes", "changelog"]
+  intentPatterns: ["write the notes for a release"]
+inputs:
+  - name: tag
+    type: string
+    description: The release tag.
+    required: true
+  - name: notesFile
+    type: path
+    description: Where the notes are written.
+    default: docs/RELEASE_NOTES.md
+  - name: audience
+    type: enum
+    description: Who the notes are for.
+    values: [users, operators]
+    default: users
+  - name: maxItems
+    type: number
+    description: The most entries to list.
+    default: 20
+  - name: includeChores
+    type: boolean
+    description: Whether chore commits are listed.
+    default: false
+  - name: labels
+    type: list
+    description: Issue labels to group by.
+    default: [feature, fix]
+preconditions:
+  - The tag exists on the default branch.
+steps:
+  - id: collect-commits
+    description: List the commits since the previous tag.
+    executor: tool
+    consumes: [tag, maxItems, includeChores, labels]
+    produces: [commitList]
+  - id: draft-notes
+    description: Group the commits and write the notes for the audience.
+    executor: skill
+    consumes: [commitList, audience, notesFile]
+    produces: [draft]
+  - id: approve-notes
+    description: Read the draft and approve it.
+    executor: human
+    reason: approval
+    consumes: [draft]
+verify:
+  - kind: skill
+    name: review-pr
+  - kind: tool
+    name: check_ubiquitous_language
+provenance:
+  source: mined
+  status: approved
+  evidence:
+    clusterId: cluster-0042
+    instanceCount: 7
+    repos: [loom, saturday]
+    firstSeen: 2026-08-01
+    lastSeen: 2026-10-01

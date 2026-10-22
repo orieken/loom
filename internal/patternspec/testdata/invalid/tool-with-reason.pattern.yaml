@@ -1,0 +1,18 @@
+# layer: contract
+# expect: failure steps[0].reason | only a human step gives a reason (step "only-step")
+schemaVersion: 1
+name: tool-with-reason
+version: 0.1.0
+intent: Run the workflow.
+owner: someone
+triggers:
+  keywords: []
+  intentPatterns: []
+steps:
+  - id: only-step
+    description: Run the tool.
+    executor: tool
+    reason: approval
+provenance:
+  source: hand-written
+  status: candidate

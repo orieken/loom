@@ -1,0 +1,16 @@
+# layer: structure
+# expect: failure owner | is required
+schemaVersion: 1
+name: missing-owner
+version: 0.1.0
+intent: Run the workflow.
+triggers:
+  keywords: []
+  intentPatterns: []
+steps:
+  - id: only-step
+    description: Run the tool.
+    executor: tool
+provenance:
+  source: hand-written
+  status: candidate

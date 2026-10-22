@@ -1,0 +1,17 @@
+# layer: contract
+# expect: failure steps[0].reason | a human step MUST give a reason, one of: "approval", "irreversible", "judgment-out-of-scope" (step "only-step")
+schemaVersion: 1
+name: human-without-reason
+version: 0.1.0
+intent: Run the workflow.
+owner: someone
+triggers:
+  keywords: []
+  intentPatterns: []
+steps:
+  - id: only-step
+    description: Run the tool.
+    executor: human
+provenance:
+  source: hand-written
+  status: candidate

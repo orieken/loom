@@ -1,0 +1,25 @@
+# layer: contract
+# expect: failure inputs[1].name | duplicate input name "count"
+schemaVersion: 1
+name: duplicate-input-name
+version: 0.1.0
+intent: Run the workflow.
+owner: someone
+triggers:
+  keywords: []
+  intentPatterns: []
+inputs:
+  - name: count
+    type: number
+    description: A count.
+  - name: count
+    type: string
+    description: Again.
+steps:
+  - id: only-step
+    description: Run the tool.
+    executor: tool
+    consumes: [count]
+provenance:
+  source: hand-written
+  status: candidate

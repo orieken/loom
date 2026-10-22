@@ -1,0 +1,23 @@
+# layer: structure
+# expect: failure provenance.evidence.firstSeen | must be a date (YYYY-MM-DD)
+schemaVersion: 1
+name: bad-evidence-date
+version: 0.1.0
+intent: Run the workflow.
+owner: someone
+triggers:
+  keywords: []
+  intentPatterns: []
+steps:
+  - id: only-step
+    description: Run the tool.
+    executor: tool
+provenance:
+  source: mined
+  status: candidate
+  evidence:
+    clusterId: c1
+    instanceCount: 2
+    repos: [loom]
+    firstSeen: last tuesday
+    lastSeen: 2026-10-01

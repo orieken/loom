@@ -1,0 +1,20 @@
+# layer: contract
+# expect: failure steps[1].id | duplicate step id "only-step"
+schemaVersion: 1
+name: duplicate-step-id
+version: 0.1.0
+intent: Run the workflow.
+owner: someone
+triggers:
+  keywords: []
+  intentPatterns: []
+steps:
+  - id: only-step
+    description: Run the tool.
+    executor: tool
+  - id: only-step
+    description: Run the tool.
+    executor: tool
+provenance:
+  source: hand-written
+  status: candidate

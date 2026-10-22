@@ -1,0 +1,24 @@
+# layer: contract
+# expect: failure inputs[0].default | does not match the input type enum
+schemaVersion: 1
+name: enum-default-not-a-value
+version: 0.1.0
+intent: Run the workflow.
+owner: someone
+triggers:
+  keywords: []
+  intentPatterns: []
+inputs:
+  - name: mode
+    type: enum
+    description: The mode.
+    values: [fast, safe]
+    default: reckless
+steps:
+  - id: only-step
+    description: Run the tool.
+    executor: tool
+    consumes: [mode]
+provenance:
+  source: hand-written
+  status: candidate

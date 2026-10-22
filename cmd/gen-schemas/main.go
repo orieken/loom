@@ -1,6 +1,7 @@
 // Command gen-schemas writes the generated schema artifacts: one JSON Schema
 // per typed pipeline stage into shared/schemas/pipeline/, and the run event
-// schema plus its documentation table into shared/schemas/telemetry/. Run it
+// schema plus its documentation table into shared/schemas/telemetry/, the
+// repo graph schemas, and the pattern spec schema into shared/schemas/. Run it
 // from the repo root after changing any struct in internal/state or the event
 // vocabulary in internal/orchestrator; a test fails if the committed files
 // drift from what the source generates.
@@ -14,6 +15,7 @@ import (
 	"github.com/orieken/loom/internal/contextindex"
 	"github.com/orieken/loom/internal/factsheet"
 	"github.com/orieken/loom/internal/orchestrator"
+	"github.com/orieken/loom/internal/patternspec"
 	"github.com/orieken/loom/internal/repograph"
 	"github.com/orieken/loom/internal/state"
 )
@@ -31,6 +33,19 @@ func main() {
 		fmt.Fprintln(os.Stderr, "gen-schemas:", err)
 		os.Exit(1)
 	}
+	if err := generatePatternSpec(patternspec.SchemaDir); err != nil {
+		fmt.Fprintln(os.Stderr, "gen-schemas:", err)
+		os.Exit(1)
+	}
+}
+
+// generatePatternSpec writes the pattern spec schema (pattern mining F2).
+func generatePatternSpec(dir string) error {
+	schema, err := patternspec.GenerateSchema()
+	if err != nil {
+		return err
+	}
+	return writeGenerated(filepath.Join(dir, patternspec.SchemaFile), schema)
 }
 
 // generateRepoGraph writes the graph.json schema (ADR-010).

@@ -1,0 +1,20 @@
+# layer: contract
+# expect: failure verify[0].name | no tool named "no_such_tool" exists
+schemaVersion: 1
+name: unknown-verify-tool
+version: 0.1.0
+intent: Run the workflow.
+owner: someone
+triggers:
+  keywords: []
+  intentPatterns: []
+steps:
+  - id: only-step
+    description: Run the tool.
+    executor: tool
+verify:
+  - kind: tool
+    name: no_such_tool
+provenance:
+  source: hand-written
+  status: candidate

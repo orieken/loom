@@ -1,0 +1,21 @@
+# layer: structure
+# expect: failure inputs[0].type | must be one of: "string", "number", "boolean", "path", "enum", "list"
+schemaVersion: 1
+name: unknown-input-type
+version: 0.1.0
+intent: Run the workflow.
+owner: someone
+triggers:
+  keywords: []
+  intentPatterns: []
+inputs:
+  - name: count
+    type: integer
+    description: A count.
+steps:
+  - id: only-step
+    description: Run the tool.
+    executor: tool
+provenance:
+  source: hand-written
+  status: candidate
