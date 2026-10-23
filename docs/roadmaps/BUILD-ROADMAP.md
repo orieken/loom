@@ -4597,6 +4597,47 @@ with stand-ins for two shared helpers. CI is the first full run.
 4. **Done when**: importing an issue whose body contains an instruction override produces a `draft`
    order flagged by the scan, and nothing picks it up.
 
+### L3.72 — A pinned build-and-test image
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: L3.73 · *(raised 2026-10-23)*
+
+1. **Problem**: CI runs `go test ./...` on a hosted runner, but nothing else can reproduce that
+   environment. The session that built L3.64 could not obtain the Go 1.26.5 toolchain or any module
+   on a vanity import path, so `cmd/loom/cmd` was tested in a harness and `revive` never ran.
+2. **Architectural Fix**: A multi-stage image pinned by digest (per `iac-conventions.md`), non-root,
+   with the toolchain, a warm module cache, `golangci-lint` and `gremlins` baked in. One entrypoint
+   runs the full suite, lint and changed-line mutation, then builds `loom`, installs it into a scratch
+   project and runs `loom health` there. CI uses the same image, so local and CI cannot drift.
+3. **Target Files**: new `docker/test.Dockerfile`, `Makefile`, `.github/workflows/framework-ci.yml`
+4. **Done when**: `make test-in-container` passes on a machine with only Docker installed, and the CI
+   job runs from the same image digest.
+
+### L3.73 — An end-to-end factory harness against a fixture repo
+**Workstream**: OBSERVE · **Effort**: M · **Blocked by**: L3.72 · **Blocks**: L3.74 · *(raised 2026-10-23)*
+
+1. **Problem**: Nothing has ever handed an intake file to loom and checked what came out. L3.63's
+   Done-when and review item I-11 are both unverified for that reason.
+2. **Architectural Fix**: A second container holding a small fixture repository and a set of
+   acceptance tests the factory never sees — mounted only after the run, so the agents cannot write
+   their own judge. The harness drops an order into `intake/`, runs it (`loom run` until L3.65 exists,
+   then the supervisor), approves each gate explicitly with `--resume --approve` rather than any
+   auto-approve switch, and then validates: hidden acceptance tests pass, run state is complete, every
+   digest verifies, and the diff stays inside the order's `scope.paths`. Runs on every PR with
+   `--provider mock`.
+3. **Target Files**: new `tests/e2e/`, new `docker/e2e.Dockerfile`
+4. **Done when**: a PR that breaks gate approval, digest verification or intake parsing fails this job.
+
+### L3.74 — A budgeted real-provider run, nightly
+**Workstream**: OBSERVE · **Effort**: S · **Blocked by**: L3.73, L3.70 · **Blocks**: none · *(raised 2026-10-23)*
+
+1. **Problem**: Mock runs under-exercise the pipeline — the first real run took a different route
+   (10 of 12 stages against the mock's 7) and found two defects the mock never could.
+2. **Architectural Fix**: Run L3.73's harness nightly and on demand with `--provider claude`, a hard
+   budget from L3.70, and the API key in an environment-scoped secret with a required reviewer. Record
+   cost and route per run so I-9's budget defaults come from data.
+3. **Target Files**: `.github/workflows/`, `tests/e2e/`
+4. **Done when**: a nightly run either passes the hidden acceptance tests or parks with a recorded
+   reason, and never exceeds its budget.
+
 ---
 
 # Appendix A — Provenance map
