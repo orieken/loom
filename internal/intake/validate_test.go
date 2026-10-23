@@ -36,7 +36,7 @@ func TestValidateReportsEachBrokenRuleAgainstItsField(t *testing.T) {
 		{"unknown schema version", func(o *Order, _ *Context) { o.Intake = 2 }, "intake", "this build reads 1"},
 		{"missing schema version", func(o *Order, _ *Context) { o.Intake = 0 }, "intake", "schema version is 0"},
 		{"id not kebab-case", func(o *Order, _ *Context) { o.ID = "User_Auth" }, "id", "not kebab-case"},
-		{"id differs from file", func(o *Order, c *Context) { c.FileStem = "other" }, "id", `file name "other"`},
+		{"id differs from file", func(_ *Order, c *Context) { c.FileStem = "other" }, "id", `file name "other"`},
 		{"unknown type", func(o *Order, _ *Context) { o.Type = "epic" }, "type", `"epic" is not one of`},
 		{"unknown status", func(o *Order, _ *Context) { o.Status = "queued" }, "status", "draft, hold, ready"},
 		{"unknown source", func(o *Order, _ *Context) { o.Source = "email" }, "source", `"email"`},
