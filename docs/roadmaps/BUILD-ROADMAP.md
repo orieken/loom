@@ -4600,6 +4600,14 @@ with stand-ins for two shared helpers. CI is the first full run.
 ### L3.72 — A pinned build-and-test image
 **Workstream**: OBSERVE · **Effort**: S · **Blocked by**: none · **Blocks**: L3.73 · *(raised 2026-10-23)*
 
+**SHIPPED IN CI** 2026-10-23 — `docker/test.Dockerfile`, `scripts/test-in-container.sh`,
+`make test-in-container[-quick]`, and CI's `test-image` job, which built the image (91s) and ran build,
+tests, both coverage gates, lint and the install smoke (115s) green on its first run (#3). The runner's
+own logic was also exercised with stub tools: a version mismatch fails, a missing profile or diff base
+reports NOT MEASURED, and a failing step still prints the summary. **Half of the Done-when is still
+open**: nobody has yet run `make test-in-container` on a laptop. Two follow-ups are open as well: pin the base image by digest (it is pinned by exact Go version today),
+and retire `go-build` and `golangci-lint` into `test-image` once it has run green long enough to trust.
+
 1. **Problem**: CI runs `go test ./...` on a hosted runner, but nothing else can reproduce that
    environment. The session that built L3.64 could not obtain the Go 1.26.5 toolchain or any module
    on a vanity import path, so `cmd/loom/cmd` was tested in a harness and `revive` never ran.
