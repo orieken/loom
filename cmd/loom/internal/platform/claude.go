@@ -67,20 +67,24 @@ func installClaudeProjectFiles(environment Environment, paths []string) ([]strin
 	return installClaudeTemplates(environment, paths)
 }
 
+// claudeTemplates are copied into a project only when absent: each is a
+// starting point the team edits, so a reinstall must never overwrite it.
+// intake/ holds the factory's work-order template (roadmap L3.64).
+var claudeTemplates = []sourceDestination{
+	{"templates/claude-feature-team/CLAUDE.md", "CLAUDE.md"},
+	{"templates/claude-feature-team/features", "features"},
+	{"templates/claude-feature-team/intake", "intake"},
+}
+
 func installClaudeTemplates(environment Environment, paths []string) ([]string, error) {
-	installed, err := environment.Files.CopyIfMissing("templates/claude-feature-team/CLAUDE.md", "CLAUDE.md")
-	if err != nil {
-		return nil, err
-	}
-	if installed {
-		paths = append(paths, "CLAUDE.md")
-	}
-	installed, err = environment.Files.CopyIfMissing("templates/claude-feature-team/features", "features")
-	if err != nil {
-		return nil, err
-	}
-	if installed {
-		paths = append(paths, "features")
+	for _, pair := range claudeTemplates {
+		installed, err := environment.Files.CopyIfMissing(pair.source, pair.destination)
+		if err != nil {
+			return nil, err
+		}
+		if installed {
+			paths = append(paths, pair.destination)
+		}
 	}
 	return paths, nil
 }

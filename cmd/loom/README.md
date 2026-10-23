@@ -14,6 +14,7 @@ coding platforms and serves the framework's MCP tools. Install it via
 | `loom tools status` / `loom tools install` | Report / install opt-in context tools |
 | `loom mcp serve` | Serve the framework MCP tools over stdio |
 | `loom ki scan <file\|dir>...` | Flag Knowledge Item text that addresses a model instead of informing it — instruction overrides, role markers, gate bypasses, invisible characters. Exits 0 clean, 1 flagged, 2 unscannable; `scripts/sync-memory.sh` runs it on every org KI before pulling (roadmap L3.7) |
+| `loom intake check [file\|dir]...` | Validate factory work orders in `intake/` against the intake contract — schema, ids, vocabularies, runnable plan, budgets, and an injection scan of external orders. Exits 1 on any violation (roadmap L3.64) |
 | `loom run` | Execute the delivery pipeline for a feature spec (experimental — see below) |
 | `loom uninstall` | Remove installed framework content |
 | `loom update` | Update installed framework content |

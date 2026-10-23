@@ -7,7 +7,7 @@
 intake: 1                      # schema version; a supervisor refuses a version it does not know
 id: kebab-case-slug            # MUST equal this file's name without .md — it becomes the run's workspace name
 type: feature                  # feature | bug | spike | chore
-plan: deliver-feature          # deliver-feature | deliver-bugfix (type: bug → deliver-bugfix)
+plan: deliver-feature          # a plan this project can run; deliver-bugfix is for type: bug only
 status: draft                  # draft | ready | hold — the supervisor only ever picks up `ready`
 priority: 3                    # 1 (highest) to 4; ties break on `created`, oldest first
 created: YYYY-MM-DD
@@ -33,7 +33,8 @@ HOW TO USE THIS TEMPLATE
    another file in intake/ or features/ (both map to .claude/feature-workspace/<id>/).
 2. Fill the spec sections below — the same ones as features/TEMPLATE.md.
 3. Run /spec-writer intake/<id>.md and fix what its readiness critique raises.
-4. Set `status: ready`. That is the only signal the supervisor acts on.
+4. Run `loom intake check intake/<id>.md` and fix what it reports.
+5. Set `status: ready`. That is the only signal the supervisor acts on.
 Delete this comment block and every guidance comment once filled in.
 
 TRUST

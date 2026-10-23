@@ -4453,7 +4453,9 @@ appears to need otherwise is wrong, not the gate.
 **Workstream**: KERNEL · **Effort**: S · **Blocked by**: none · **Blocks**: L3.64, L3.65 · *(raised 2026-10-23)*
 
 **SHIPPED (contract only)** 2026-10-23 — `templates/claude-feature-team/intake/TEMPLATE.md` and
-`intake/README.md`. Nothing reads them yet; L3.64 is the first code that does.
+`intake/README.md`; L3.64 is the first code that reads them. **The Done-when below has not been
+demonstrated**: nobody has yet run `loom run --provider mock` on an intake file, so whether the
+analyst's spec-ingestion check and the executor accept the extra frontmatter is unverified.
 
 1. **Problem**: There is no format for "work the factory may pick up." `features/TEMPLATE.md` is a
    spec, with nowhere to put priority, a budget, a finish line, dependencies, or whether the text
@@ -4469,6 +4471,15 @@ appears to need otherwise is wrong, not the gate.
 ### L3.64 — Ship `intake/` and validate orders before pickup
 **Workstream**: KERNEL · **Effort**: S · **Blocked by**: L3.63 · **Blocks**: L3.65 · *(raised 2026-10-23)*
 
+**SHIPPED** 2026-10-23 — `loom install` copies `intake/` when missing; `internal/intake` parses and
+validates orders (100% statement coverage, eight hand mutations all killed); `loom intake check`
+runs it. Two premises changed on contact: `deliver-bugfix` is not installed into target projects
+(no plan files are), so `plan` is checked against what `planfile.Discover` finds rather than a fixed
+list; and a bug may take the full plan — the restriction runs the other way, `deliver-bugfix` for
+bugs only. **Not run here:** `cmd/loom/cmd` could not compile in the authoring sandbox (its
+`modernc.org/sqlite` dependency was unreachable), so the command's tests ran in a harness package
+with stand-ins for two shared helpers. CI is the first full run.
+
 1. **Problem**: `loom install` copies `features/` into a project but not `intake/`, so the template
    never reaches the repos that would use it. And every pickup rule in `intake/README.md` is a promise
    in prose: nothing checks that `id` matches the file name, that `plan` exists, or that `autonomy`
@@ -4476,8 +4487,8 @@ appears to need otherwise is wrong, not the gate.
 2. **Architectural Fix**: Install `intake/` alongside `features/` (copy-if-missing). Add
    `internal/intake`: parse the frontmatter into a typed `Order`, and validate every rule that is
    checkable from the file alone — schema version, id/file-name agreement and kebab-case, known
-   `type`/`plan`/`status`/`trust`/`finish`/`autonomy` values, `type: bug` → `deliver-bugfix`,
-   positive budgets. Expose it as `loom intake check [path...]`, exit 1 on any violation, so the same
+   `type`/`status`/`trust`/`finish`/`autonomy` values, a `plan` the project can resolve with
+   `deliver-bugfix` reserved for bugs, positive budgets. Expose it as `loom intake check [path...]`, exit 1 on any violation, so the same
    check runs in CI and at pickup.
 3. **Target Files**: `cmd/loom/internal/platform/claude.go`, new `internal/intake/`,
    new `cmd/loom/cmd/intake.go`

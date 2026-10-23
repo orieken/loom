@@ -5,10 +5,10 @@ Every piece of work the factory may pick up is one markdown file here:
 (its frontmatter: priority, budget, finish line) and the **spec** (its body: the same sections as
 `features/TEMPLATE.md`), so `loom run --spec intake/<id>.md` runs it with no conversion step.
 
-**Status: contract only.** This folder and its template define what a factory supervisor reads.
-No supervisor ships with loom yet, so nothing here is enforced today — a field below is a promise
-about what the supervisor will check, not a check that runs. Until it exists, an intake file is a
-spec you can hand to `loom run` or `/deliver-feature` yourself.
+**Status: validated, not yet run.** `loom intake check` enforces every rule below that can be
+checked from the file alone, and is safe to run in CI today. The supervisor that claims `ready`
+orders and runs them (roadmap L3.65) does not exist yet, so until it does an intake file is a spec
+you hand to `loom run --spec intake/<id>.md` yourself.
 
 ## Lifecycle
 
@@ -40,20 +40,36 @@ state, and lives in the supervisor's ledger, not in this file.
 An import adapter (GitHub issues, Linear, Jira) may create files here, always with `status: draft`
 and `trust: external`. Only a human promotes it to `ready`.
 
-## Rules a supervisor enforces at pickup
+## Rules
 
-Each is checkable from the file alone, before a single model call:
+### Enforced now, by `loom intake check`
 
-- `id` equals the file name without `.md`, and no other file in `intake/` or `features/` has the same
-  stem (both map to `.claude/feature-workspace/<id>/`).
-- `intake` is a schema version the supervisor knows; unknown versions are refused, not guessed at.
-- `plan` names a plan loom ships (`deliver-feature`, `deliver-bugfix`), and `type: bug` uses
-  `deliver-bugfix`.
-- `autonomy` can only tighten `.claude/delivery-policy.yaml`. An order cannot raise its own autonomy,
-  for the same reason a plan cannot weaken a stage.
-- `trust: external` orders are scanned with `loom ki scan` before pickup and stop at the design gate
-  whatever `autonomy` says.
-- `depends-on` ids must all be shipped in the ledger.
+Run with no arguments to check every order in `intake/` (the template and this README are skipped);
+it exits 1 if any order breaks a rule, and names the file and field for each.
+
+- `intake` is a schema version this build reads; any other version is refused, not guessed at.
+- Unknown keys are rejected: a misspelt `prority` is a setting its author believes they made.
+- `id` is kebab-case and equals the file name without `.md`, because that name becomes the run's
+  workspace, `.claude/feature-workspace/<id>/`.
+- `type`, `status`, `source`, `trust`, `finish` and `autonomy` hold one of their listed values.
+  `autonomy` has no value that loosens `.claude/delivery-policy.yaml`, so an order cannot raise its
+  own autonomy, for the same reason a plan cannot weaken a stage.
+- `plan` is a plan this project can run — the built-in `deliver-feature`, or a plan file under
+  `.claude/plans/`. `deliver-bugfix` skips the design and verification stages, so it is accepted
+  for `type: bug` only; a bug may still take the full plan.
+- `priority` is 1–4, `created` is a real `YYYY-MM-DD` date, and each `budget` limit is positive.
+- An imported order (`source` other than `manual`) has `trust: external`.
+- A `ready` order names `requested-by`: nobody is there to ask during an unattended run, so someone
+  must answer for the spec.
+- `finish: pr` or `branch` names a `base-branch`.
+- `depends-on` lists order ids, without itself or duplicates.
+- A `trust: external` order's body is scanned with the same rules as `loom ki scan`, and each match
+  is reported with its line in the file. A clean scan means the order may be read, not that it is safe.
+
+### Enforced at pickup, by the supervisor (not built yet)
+
+- No other file in `intake/` or `features/` has the same stem.
+- Every `depends-on` id is shipped in the ledger.
 - `budget` limits are recorded with the claim, so a parked order says which limit stopped it.
 
 ## Naming
