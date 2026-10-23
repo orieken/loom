@@ -1,0 +1,12 @@
+# The test image's build context needs only the module files: source is mounted
+# at run time, so nothing else may invalidate the module-cache layer. Read by
+# BuildKit for docker/test.Dockerfile only.
+*
+!go.mod
+!go.sum
+!examples/
+examples/*
+!examples/embedding/
+examples/embedding/*
+!examples/embedding/go.mod
+!examples/embedding/go.sum
