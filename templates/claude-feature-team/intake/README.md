@@ -22,7 +22,7 @@ draft ──(spec-writer READY)──► ready ──(supervisor claims)──�
 |---|---|---|
 | `draft` | Being written. Never picked up. | human or import adapter |
 | `ready` | Eligible for pickup once every `depends-on` id is shipped. | human only |
-| `hold` | Paused. Not picked up; a run already in flight finishes its current stage and stops at the next gate. | human only |
+| `hold` | Paused. Never picked up. What a hold does to a run already in flight is not decided yet — `loom run` has no way to be asked to stop at its next gate. | human only |
 
 Everything after pickup — running, waiting on a gate, parked after a failure, shipped — is run
 state, and lives in the supervisor's ledger, not in this file.
@@ -33,7 +33,8 @@ state, and lives in the supervisor's ledger, not in this file.
 
 1. **The file is the spec.** A supervisor that rewrote `status:` would be editing the input of a run
    in flight. Today `loom run` records the spec's path but not its digest, so nothing would even
-   notice — which is a gap in the executor (see `docs/audits/`), not a licence to write here.
+   notice — which is a gap in the executor (loom's 2026-10-23 review, item I-1), not a licence to
+   write here.
 2. **One writer per fact.** If both a human and the supervisor wrote `status`, each could overwrite
    the other. Humans own intent (`ready`, `hold`, priority); the ledger owns progress.
 

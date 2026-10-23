@@ -63,9 +63,10 @@ Priority: **P1** wrong or unsafe today · **P2** contradiction or drift that wil
 - [ ] **I-6 (P2) — Where intake lives in git is undefined.** Is `status: ready` read from the working
   tree, or only once committed to `base-branch`? A supervisor reading the working tree runs
   uncommitted specs; one reading the branch needs a commit per status flip. Decide before L3.65.
-- [ ] **I-7 (P2) — `hold` promises behavior nothing can deliver.** The README says a held run finishes
-  its stage and stops at the next gate; `loom run` has no external stop signal but SIGINT. *Fix*:
-  cut the promise, or give the executor a stop-at-next-gate request. *Where*: README, L3.65.
+- [ ] **I-7 (P2) — `hold` has no meaning for a run in flight.** The README first promised a held run
+  would finish its stage and stop at the next gate; `loom run` has no external stop signal but
+  SIGINT. The promise is withdrawn in this PR; the decision is not made. *Fix*: give the executor a
+  stop-at-next-gate request, or define `hold` as affecting only orders not yet claimed. *Where*: L3.65.
 - [ ] **I-8 (P3) — Priority ties break on `created`, which has day granularity**, so same-day orders
   start in filesystem order. Add `id` as the final tie-break.
 - [ ] **I-9 (P3) — Budget defaults are unfounded.** `$10 / 4h` came from nowhere. The first real run
