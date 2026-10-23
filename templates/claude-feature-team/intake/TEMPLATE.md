@@ -32,7 +32,9 @@ HOW TO USE THIS TEMPLATE
 1. Copy to intake/<id>.md, where <id> is a kebab-case slug not already used by
    another file in intake/ or features/ (both map to .claude/feature-workspace/<id>/).
 2. Fill the spec sections below — the same ones as features/TEMPLATE.md.
-3. Run /spec-writer intake/<id>.md and fix what its readiness critique raises.
+3. Run /spec-writer intake/<id>.md for its readiness critique, and make the fixes by
+   hand. Do not let it rewrite the file: spec-writer writes its own three-key
+   frontmatter and would drop this work order.
 4. Run `loom intake check intake/<id>.md` and fix what it reports.
 5. Set `status: ready`. That is the only signal the supervisor acts on.
 Delete this comment block and every guidance comment once filled in.

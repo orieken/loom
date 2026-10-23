@@ -4449,6 +4449,11 @@ mutation) and is Always Human** in `approval-gates.md`. The factory's finish lin
 pushed branch with a PR *proposal* waiting in the inbox — never an opened PR. An item below that
 appears to need otherwise is wrong, not the gate.
 
+**Reviewed 2026-10-23**: `docs/audits/factory-intake-and-deliver-feature-review-2026-10-23.md` holds
+26 open action items against L3.63–L3.64 and `deliver-feature`. Two of them gate L3.65: where intake
+lives in git (I-6) and what `hold` can actually promise (I-7). One predates this workstream and
+matters more than any of it — the executor never digests the spec (I-1).
+
 ### L3.63 — Define the intake contract
 **Workstream**: KERNEL · **Effort**: S · **Blocked by**: none · **Blocks**: L3.64, L3.65 · *(raised 2026-10-23)*
 

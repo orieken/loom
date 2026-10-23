@@ -31,9 +31,9 @@ state, and lives in the supervisor's ledger, not in this file.
 
 **The supervisor never writes an intake file.** Two reasons:
 
-1. **The file is the spec.** `loom run` hashes artifacts and invalidates an approval when anything it
-   covered changes. A supervisor that rewrote `status:` in the spec mid-run would be editing the input
-   of its own run.
+1. **The file is the spec.** A supervisor that rewrote `status:` would be editing the input of a run
+   in flight. Today `loom run` records the spec's path but not its digest, so nothing would even
+   notice — which is a gap in the executor (see `docs/audits/`), not a licence to write here.
 2. **One writer per fact.** If both a human and the supervisor wrote `status`, each could overwrite
    the other. Humans own intent (`ready`, `hold`, priority); the ledger owns progress.
 
