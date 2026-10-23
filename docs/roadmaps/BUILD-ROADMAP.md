@@ -4434,6 +4434,155 @@ the done-when cannot be met as written.
 
 ---
 
+## Workstream: KERNEL — Factory Floor
+
+*(Raised 2026-10-23.)* `loom run` executes one spec well: atomic state, digest-verified resume,
+gates that hold in code, a bounded review loop. Every run still starts with a human typing a spec
+path, runs alone, and ends at a terminal. A **software factory** is the floor around that
+executor: work arrives as files, runs start without a human, many run at once, every run waiting
+on a human surfaces in one place, transient failures retry, and the line ends at a branch a human
+can review. These items build that floor **around** the executor, not inside it — every integrity
+and gate guarantee above stays owned by `loom run`, and the supervisor only reads what it records.
+
+One constraint shapes the whole workstream: **opening a pull request is gate #5 (external API
+mutation) and is Always Human** in `approval-gates.md`. The factory's finish line is therefore a
+pushed branch with a PR *proposal* waiting in the inbox — never an opened PR. An item below that
+appears to need otherwise is wrong, not the gate.
+
+### L3.63 — Define the intake contract
+**Workstream**: KERNEL · **Effort**: S · **Blocked by**: none · **Blocks**: L3.64, L3.65 · *(raised 2026-10-23)*
+
+**SHIPPED (contract only)** 2026-10-23 — `templates/claude-feature-team/intake/TEMPLATE.md` and
+`intake/README.md`. Nothing reads them yet; L3.64 is the first code that does.
+
+1. **Problem**: There is no format for "work the factory may pick up." `features/TEMPLATE.md` is a
+   spec, with nowhere to put priority, a budget, a finish line, dependencies, or whether the text
+   came from an untrusted ticket.
+2. **Architectural Fix**: One file per order, `intake/<id>.md`, whose frontmatter is the work order
+   and whose body is the spec — so `loom run --spec intake/<id>.md` needs no conversion. Humans own
+   every field; the supervisor never writes the file, because the file is its own run's input and an
+   edit would reset that run's approvals.
+3. **Target Files**: `templates/claude-feature-team/intake/TEMPLATE.md`,
+   `templates/claude-feature-team/intake/README.md`
+4. **Done when**: an intake file runs unchanged under `loom run --provider mock`.
+
+### L3.64 — Ship `intake/` and validate orders before pickup
+**Workstream**: KERNEL · **Effort**: S · **Blocked by**: L3.63 · **Blocks**: L3.65 · *(raised 2026-10-23)*
+
+1. **Problem**: `loom install` copies `features/` into a project but not `intake/`, so the template
+   never reaches the repos that would use it. And every pickup rule in `intake/README.md` is a promise
+   in prose: nothing checks that `id` matches the file name, that `plan` exists, or that `autonomy`
+   does not loosen the repo's policy.
+2. **Architectural Fix**: Install `intake/` alongside `features/` (copy-if-missing). Add
+   `internal/intake`: parse the frontmatter into a typed `Order`, and validate every rule that is
+   checkable from the file alone — schema version, id/file-name agreement and kebab-case, known
+   `type`/`plan`/`status`/`trust`/`finish`/`autonomy` values, `type: bug` → `deliver-bugfix`,
+   positive budgets. Expose it as `loom intake check [path...]`, exit 1 on any violation, so the same
+   check runs in CI and at pickup.
+3. **Target Files**: `cmd/loom/internal/platform/claude.go`, new `internal/intake/`,
+   new `cmd/loom/cmd/intake.go`
+4. **Done when**: a fresh `loom install` creates `intake/TEMPLATE.md`, and `loom intake check` rejects
+   an order whose `id` differs from its file name, naming both.
+
+### L3.65 — The supervisor: `loom factory run`
+**Workstream**: KERNEL · **Effort**: L · **Blocked by**: L3.64, L3.66 · **Blocks**: L3.67, L3.68, L3.69 · *(raised 2026-10-23)*
+
+1. **Problem**: Nothing starts a run. The scheduler skill says so itself: loom ships no runner for
+   its scheduled hooks (L3.10), and `loom run` exits when its one spec finishes or halts.
+2. **Architectural Fix**: A long-lived `loom factory run` (and a one-shot `--once` for cron). Each
+   tick: validate `intake/*.md` (L3.64), select `ready` orders whose `depends-on` are shipped, order by
+   priority then `created`, claim up to `--max-concurrent`, and start `loom run --spec` for each in its
+   own worktree (L3.66). Claims and outcomes go to an append-only ledger
+   (`.claude/factory/ledger.jsonl`); the supervisor never edits an intake file or a run's state. Exit
+   codes from `loom run` are the protocol: 0 shipped-candidate, 3 waiting on a human (L3.67), 130
+   interrupted, anything else a failure for L3.68 to classify.
+3. **Target Files**: new `internal/factory/`, new `cmd/loom/cmd/factory.go`
+4. **Done when**: with three `ready` orders and `--max-concurrent 2` under `--provider mock`, two
+   runs start, the third starts when one finishes, and the ledger replays to the same state after
+   the supervisor is killed mid-tick.
+
+### L3.66 — One worktree per run
+**Workstream**: KERNEL · **Effort**: M · **Blocked by**: none · **Blocks**: L3.65 · *(raised 2026-10-23)*
+
+1. **Problem**: `deliver-feature`'s guardrails say two concurrent deliveries share one git index and
+   must take turns at the commit gate. The executor has no isolation at all: two runs in one checkout
+   see each other's edits, and `internal/worktree` (L3.30) would attribute one run's change to the
+   other's stage.
+2. **Architectural Fix**: The supervisor creates `git worktree add` per claimed order on a branch
+   `factory/<id>` from the order's `base-branch`, runs `loom run` with that worktree as its working
+   directory, and removes the worktree only after the ledger records the outcome. Workspace state stays
+   inside the worktree, so `.claude/feature-workspace/<id>/` is per run by construction.
+3. **Target Files**: `internal/worktree/`, `internal/factory/`
+4. **Done when**: two mock runs in parallel produce two branches whose diffs contain only their own
+   changes, and L3.30's undeclared-edit check reports nothing across them.
+
+### L3.67 — The approval inbox
+**Workstream**: KERNEL · **Effort**: M · **Blocked by**: L3.65 · **Blocks**: L3.69 · *(raised 2026-10-23)*
+
+1. **Problem**: A run waiting on a human exits 3 and prints a resume command to a terminal nobody is
+   watching. With ten runs in flight there is no list of what is blocked on whom.
+2. **Architectural Fix**: `loom factory inbox` lists every run whose state is `WAITING_APPROVAL`
+   across the factory's worktrees, with the gate, how long it has waited, and the artifact digest the
+   approval would bind to. `loom factory approve <id> <gate>` delegates to the existing
+   `loom run --resume --approve` path, so approval keeps every property it has today — binding to
+   artifact digests, reset on edit, refused when stale. The inbox adds visibility, never a new way to
+   approve.
+3. **Target Files**: `internal/factory/`, `cmd/loom/cmd/factory.go`
+4. **Done when**: an approval given through the inbox and one given through `loom run --resume
+   --approve` produce identical run state.
+
+### L3.68 — Retry, backoff, and parking at run level
+**Workstream**: KERNEL · **Effort**: M · **Blocked by**: L3.65 · **Blocks**: none · *(raised 2026-10-23)*
+
+1. **Problem**: `cmd/loom/README.md` lists "no retries or backoff" for `loom run`. A provider timeout
+   fails the stage and the run stays failed until a human resumes it.
+2. **Architectural Fix**: Classify a failed run from its recorded state — transient (provider error,
+   timeout, interruption) versus terminal (typed invariant violated, review loop exhausted, a security
+   critical). Resume transient failures with exponential backoff up to the order's `max-attempts`,
+   using `cenkalti/backoff/v5`, which L2.6 already adopted for tool calls; park everything else
+   with the reason in the ledger. Parking is a terminal ledger state a human clears by editing the
+   order. Shares a taxonomy with L4.2 rather than inventing a second one.
+3. **Target Files**: `internal/factory/`
+4. **Done when**: a mock provider failing once with a timeout is resumed and completes; one failing
+   with an invariant violation is parked on the first attempt.
+
+### L3.69 — The finish line: a branch and a PR proposal
+**Workstream**: KERNEL · **Effort**: S · **Blocked by**: L3.66, L3.67 · **Blocks**: none · *(raised 2026-10-23)*
+
+1. **Problem**: `ship-feature` opens a PR only when a human runs it. An unattended run has no defined
+   end, and opening the PR itself is gate #5, Always Human.
+2. **Architectural Fix**: For `finish: pr`, on a completed run the supervisor commits only under the
+   `git-commit` policy (gate #2, the one policy-eligible gate this needs), pushes `factory/<id>`, and
+   writes a PR proposal — title, body from `delivery-summary.md`, base branch — into the inbox.
+   Approving it there runs `gh pr create`. `finish: branch` stops after the push; `finish: none`
+   leaves the worktree for a human.
+3. **Target Files**: `internal/factory/`, `shared/skills/ship-feature/SKILL.md`
+4. **Done when**: no code path in `internal/factory` calls `gh pr create` without a recorded human
+   approval for that order, and a test asserts it.
+
+### L3.70 — Enforce order budgets
+**Workstream**: KERNEL · **Effort**: S · **Blocked by**: L4.3, L3.65 · **Blocks**: none · *(raised 2026-10-23)*
+
+1. **Problem**: An order's `budget` (`max-usd`, `max-hours`, `max-attempts`) is recorded and nothing
+   stops a run that exceeds it.
+2. **Architectural Fix**: Seed L4.3's `BudgetGovernor` from the order, so a single governor enforces
+   both run and order limits. Usage the governor cannot see is unknown, not zero — inherited from L4.3.
+3. **Target Files**: `internal/factory/`, `internal/orchestrator/budget.go`
+4. **Done when**: an order with `max-usd: 1` is parked at $1 with per-stage spend in the ledger.
+
+### L3.71 — Import adapters for trackers
+**Workstream**: PLATFORM · **Effort**: M · **Blocked by**: L3.64 · **Blocks**: none · *(raised 2026-10-23)*
+
+1. **Problem**: Work starts in GitHub issues, Linear, or Jira; the factory reads only files.
+2. **Architectural Fix**: One adapter per tracker that writes `intake/<id>.md` with `status: draft`,
+   `trust: external`, the ticket body quoted under `## Request`, and `source-ref` set. Adapters run
+   `loom ki scan` on what they import and never set `ready` — promotion stays human.
+3. **Target Files**: new `internal/intake/adapters/`
+4. **Done when**: importing an issue whose body contains an instruction override produces a `draft`
+   order flagged by the scan, and nothing picks it up.
+
+---
+
 # Appendix A — Provenance map
 
 Every `agy.md` item and where it landed. No item was dropped.
