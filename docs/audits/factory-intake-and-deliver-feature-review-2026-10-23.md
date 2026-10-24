@@ -41,7 +41,7 @@ Priority: **P1** wrong or unsafe today · **P2** contradiction or drift that wil
 
 ### Intake and the factory floor
 
-- [ ] **I-1 (P1) — The executor never digests the spec.** Approvals bind to artifact digests, but the
+- [x] **I-1 (P1) — The executor never digests the spec.** *Closed 2026-10-23: the spec's digest is recorded at run start (and by `loom state record`); a changed or deleted spec demotes every completed stage with `SPEC_CHANGED` and resets their approvals; a running process checks it before each stage and stops with `SpecChangedError`. Twelve tests; every mutation of the new lines killed.* Approvals bind to artifact digests, but the
   spec they were derived from can change mid-run — acceptance criteria included — and nothing
   notices. This is an executor defect that predates intake; intake just makes it likelier, because
   humans now edit the frontmatter of in-flight specs. *Fix*: record the spec's SHA-256 at run start,
@@ -67,6 +67,11 @@ Priority: **P1** wrong or unsafe today · **P2** contradiction or drift that wil
   would finish its stage and stop at the next gate; `loom run` has no external stop signal but
   SIGINT. The promise is withdrawn in this PR; the decision is not made. *Fix*: give the executor a
   stop-at-next-gate request, or define `hold` as affecting only orders not yet claimed. *Where*: L3.65.
+  *Sharpened by I-1 (2026-10-23)*: the spec is now digested, so editing `status:` in an intake file
+  changes the spec of any run already started from it, and resuming that run re-runs every stage.
+  Human-owned status inside the spec's own frontmatter and an executor that treats the spec as
+  immutable cannot both hold. I-6 and I-7 should be decided together, and moving `status` (and perhaps
+  `priority`) out of the spec file — or digesting only the body — is the likely shape of the answer.
 - [ ] **I-8 (P3) — Priority ties break on `created`, which has day granularity**, so same-day orders
   start in filesystem order. Add `id` as the final tie-break.
 - [ ] **I-9 (P3) — Budget defaults are unfounded.** `$10 / 4h` came from nowhere. The first real run

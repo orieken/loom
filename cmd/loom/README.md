@@ -46,6 +46,11 @@ loom run --spec docs/features/user-auth/spec.md --provider mock
   artifact demotes that stage to `STALE` — it re-runs — and the demotion cascades to every stage
   completed after it, whose own output came from content that no longer exists. The resume prints
   what it invalidated and why. There is no flag to skip verification (roadmap L2.12).
+- **The spec is verified too** (review item I-1): its SHA-256 is recorded when the run starts. On
+  resume, a changed or deleted spec demotes every completed stage (`SPEC_CHANGED`) and resets every
+  approval bound to them, since all of them were derived from the old text. A running process checks
+  the spec before each stage and stops without starting anything if it changed. State written before
+  this existed adopts the spec as it is on the first resume.
 - **Interruption**: the first Ctrl-C cancels the in-flight stage and persists a
   clean `INTERRUPTED` checkpoint; a second Ctrl-C kills immediately. `--resume`
   skips completed stages and re-runs the interrupted one.

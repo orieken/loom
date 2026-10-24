@@ -54,6 +54,26 @@ func TestStateRecordVerifyCatchesHandEdit(t *testing.T) {
 	assertVerifyCatchesEdit(t, binary, projectDir, spec)
 }
 
+// TestStateVerifyCatchesAnEditedSpec is review item I-1 for the markdown
+// pipeline: `loom state record` binds the run to the spec's digest, so an
+// edited spec demotes every recorded stage, just as it does under the executor.
+func TestStateVerifyCatchesAnEditedSpec(t *testing.T) {
+	binary := buildLoomBinary(t)
+	projectDir := t.TempDir()
+	spec := writeSpec(t, projectDir)
+	recordStage(t, binary, projectDir, spec, "analyst", writeStageArtifact(t, projectDir, "analyst", "# analysis\n"))
+	assertCleanVerify(t, binary, projectDir, spec)
+
+	if err := os.WriteFile(spec, []byte("# Feature: user auth, with lockout added\n"), 0o644); err != nil {
+		t.Fatalf("edit spec: %v", err)
+	}
+	output, code := runLoom(t, binary, projectDir, "state", "verify", "--spec", spec)
+	if code == 0 || !strings.Contains(output, string(orchestrator.StaleReasonSpecChanged)) {
+		t.Errorf("verify over an edited spec: exit %d, want a failure naming %s\n%s",
+			code, orchestrator.StaleReasonSpecChanged, output)
+	}
+}
+
 func assertCleanVerify(t *testing.T, binary, projectDir, spec string) {
 	t.Helper()
 	output, code := runLoom(t, binary, projectDir, "state", "verify", "--spec", spec)

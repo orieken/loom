@@ -123,6 +123,7 @@ func openMarkdownState(specPath string) (*orchestrator.StateStore, *orchestrator
 func newMarkdownState(input orchestrator.StageInput) *orchestrator.RunState {
 	state := orchestrator.NewRunState(orchestrator.DefaultDeliverFeaturePlanName, orchestrator.CreatedByMarkdown)
 	state.SpecPath = input.SpecPath
+	state.SpecSHA256 = orchestrator.SpecDigest(input.SpecPath)
 	state.FeatureName = orchestrator.FeatureNameFromSpec(input.SpecPath)
 	return state
 }
