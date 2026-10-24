@@ -489,7 +489,7 @@ Status: Complete | Complete with notes | Blocked
 - Never trust a `pipeline-state.json` entry whose checksum doesn't match the artifact currently on disk — re-run that step instead of resuming past it
 - Never fabricate timing data in `pipeline-trace.json` — if a step's start/end time wasn't actually observed, omit the entry rather than estimating it
 - The feature archive in docs/features/<feature-name>/ is append-only — never delete prior delivery artifacts
-- Multiple named workspaces may exist concurrently — each feature's delivery is isolated. However, Gate #2 (git-commit) shares the single git index: two concurrent deliveries MUST NOT both attempt Gate #2 at the same time. Coordinate commit gates sequentially when running parallel deliveries
+- Multiple named workspaces may exist concurrently — each feature's delivery is isolated, but they share one checkout and one git index, so two concurrent deliveries in one checkout MUST NOT both attempt Gate #2 (git-commit) at the same time. For deliveries that run in parallel, use `loom factory`, which gives each its own git worktree and branch, so the shared index does not exist
 
 ## Standalone Mode
 All agents run locally. Friday POST is the only external call — non-blocking if Friday is not running. Artifact persistence to docs/features/ works entirely offline.

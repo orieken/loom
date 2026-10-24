@@ -4513,6 +4513,16 @@ with stand-ins for two shared helpers. CI is the first full run.
 ### L3.65 — The supervisor: `loom factory run`
 **Workstream**: KERNEL · **Effort**: L · **Blocked by**: L3.64, L3.66 · **Blocks**: L3.67, L3.68, L3.69 · *(raised 2026-10-23)*
 
+**SHIPPED** 2026-10-24 — `internal/factory/` and `loom factory run [--once]`. Reads `intake/` committed on
+`--branch`, validates (including I-10's duplicate stems), orders by priority, `created`, then `id` (I-8),
+claims up to `--max-concurrent`, snapshots each claim into its worktree, and launches `loom run`. The
+ledger is append-only and replayed on every tick; a torn final line is dropped, and a claim recorded
+but never launched is launched once by the next supervisor. Runs a previous supervisor started are
+adopted and settled from their state once their process is gone. Outcomes are judged from run state
+first and exit codes second. `stop`, `resume` and `rerun` append a human's request to the ledger.
+Verified with a scripted launcher against real git (`internal/factory`) and through the binary with
+the mock provider (`cmd/loom/cmd/factory_test.go`).
+
 1. **Problem**: Nothing starts a run. The scheduler skill says so itself: loom ships no runner for
    its scheduled hooks (L3.10), and `loom run` exits when its one spec finishes or halts.
 2. **Architectural Fix**: A long-lived `loom factory run` (and a one-shot `--once` for cron). Each
@@ -4534,6 +4544,10 @@ with stand-ins for two shared helpers. CI is the first full run.
 ### L3.66 — One worktree per run
 **Workstream**: KERNEL · **Effort**: M · **Blocked by**: none · **Blocks**: L3.65 · *(raised 2026-10-23)*
 
+**SHIPPED** 2026-10-24 — `internal/worktree/manage.go`. Each claim gets `git worktree add` on
+`factory/<id>` under `.claude/factory/worktrees/`, which ignores itself, so the root checkout stays clean.
+A test makes edits in two worktrees and shows each, and the root, reports only its own. Retires D-12.
+
 1. **Problem**: `deliver-feature`'s guardrails say two concurrent deliveries share one git index and
    must take turns at the commit gate. The executor has no isolation at all: two runs in one checkout
    see each other's edits, and `internal/worktree` (L3.30) would attribute one run's change to the
@@ -4548,6 +4562,11 @@ with stand-ins for two shared helpers. CI is the first full run.
 
 ### L3.67 — The approval inbox
 **Workstream**: KERNEL · **Effort**: M · **Blocked by**: L3.65 · **Blocks**: L3.69 · *(raised 2026-10-23)*
+
+**SHIPPED** 2026-10-24 — `loom factory inbox` and `loom factory approve <order> <gate>`. An approval is
+recorded in the ledger bound to the digest the inbox showed; the supervisor then runs `loom run
+--resume --approve <gate>`, and drops the approval if any completed artifact changed in between.
+Parked orders and orders edited since their claim are listed too, without asking for anything.
 
 1. **Problem**: A run waiting on a human exits 3 and prints a resume command to a terminal nobody is
    watching. With ten runs in flight there is no list of what is blocked on whom.
@@ -4564,6 +4583,12 @@ with stand-ins for two shared helpers. CI is the first full run.
 ### L3.68 — Retry, backoff, and parking at run level
 **Workstream**: KERNEL · **Effort**: M · **Blocked by**: L3.65 · **Blocks**: none · *(raised 2026-10-23)*
 
+**SHIPPED** 2026-10-24 — every failed or interrupted stage records `failureClass` (transient: provider
+error, timeout, interruption; terminal: anything else, including state written before classes). The
+supervisor resumes transient failures with `cenkalti/backoff/v5` delays up to `max-attempts` and parks
+the rest; an unclassified failure is terminal. Editing a parked order re-claims it. A supervisor shutting
+down stops its runs for the next one to resume without spending an attempt.
+
 1. **Problem**: `cmd/loom/README.md` lists "no retries or backoff" for `loom run`. A provider timeout
    fails the stage and the run stays failed until a human resumes it.
 2. **Architectural Fix**: Classify a failed run from its recorded state — transient (provider error,
@@ -4579,6 +4604,12 @@ with stand-ins for two shared helpers. CI is the first full run.
 ### L3.69 — The finish line: a branch and a PR proposal
 **Workstream**: KERNEL · **Effort**: S · **Blocked by**: L3.66, L3.67 · **Blocks**: none · *(raised 2026-10-23)*
 
+**SHIPPED** 2026-10-24 — since nothing auto-approves, gate #2 is a human `commit` approval in the
+inbox, bound to the worktree's digest. The supervisor then commits (excluding run state and its own
+files), pushes `factory/<id>`, and for `finish: pr` writes a proposal; `gh pr create` runs only for an
+`open-pr` approval of that exact proposal, which a test asserts. A shipped order's workspace is archived
+to `.claude/factory/runs/<id>/` before its worktree is removed. `ship-feature` is unchanged.
+
 1. **Problem**: `ship-feature` opens a PR only when a human runs it. An unattended run has no defined
    end, and opening the PR itself is gate #5, Always Human.
 2. **Architectural Fix**: For `finish: pr`, on a completed run the supervisor commits only under the
@@ -4592,6 +4623,10 @@ with stand-ins for two shared helpers. CI is the first full run.
 
 ### L3.70 — Enforce order budgets
 **Workstream**: KERNEL · **Effort**: S · **Blocked by**: L4.3, L3.65 · **Blocks**: none · *(raised 2026-10-23)*
+
+**SHIPPED** 2026-10-24 — every launch passes the order's `max-usd` and `max-hours` to `loom run`, so
+one governor enforces both. A budget halt parks the order with the total and per-stage spend in the
+ledger. `max-attempts` is enforced by L3.68.
 
 1. **Problem**: An order's `budget` (`max-usd`, `max-hours`, `max-attempts`) is recorded and nothing
    stops a run that exceeds it.

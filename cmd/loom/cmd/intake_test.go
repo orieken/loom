@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"errors"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -99,8 +100,49 @@ func TestIntakeCheckDefaultsToTheIntakeDirectory(t *testing.T) {
 func TestIntakeCheckOffersOnlyPlansThatParse(t *testing.T) {
 	t.Chdir(t.TempDir())
 	writeTestFile(t, filepath.Join(".claude", "plans", "broken.yaml"), "version: [\n")
-	plans := runnablePlans()
+	plans := runnablePlans(".")
 	if len(plans) != 1 || plans[0] != "deliver-feature" {
 		t.Errorf("plans = %v, want only the built-in", plans)
+	}
+}
+
+// Review item I-5: plans are found from the repository root, so the answer
+// does not change with the directory the command runs in.
+func TestIntakeCheckFindsProjectPlansFromASubdirectory(t *testing.T) {
+	root := t.TempDir()
+	gitForTest(t, root, "init", "-q")
+	writeTestFile(t, filepath.Join(root, ".claude", "plans", "custom.yaml"), customPlanForTest)
+	order := strings.Replace(validIntakeOrder, "plan: deliver-feature", "plan: custom", 1)
+	writeTestFile(t, filepath.Join(root, "intake", "lockout.md"), order)
+	t.Chdir(filepath.Join(root, "intake"))
+
+	if output, err := runIntakeCheckFor(t, "lockout.md"); err != nil {
+		t.Errorf("from a subdirectory the project's plan vanished: %v\n%s", err, output)
+	}
+}
+
+// Review item I-10: an order sharing a feature spec's stem shares its workspace.
+func TestIntakeCheckRejectsAnOrderNamedLikeAFeatureSpec(t *testing.T) {
+	t.Chdir(t.TempDir())
+	writeTestFile(t, filepath.Join("intake", "lockout.md"), validIntakeOrder)
+	writeTestFile(t, filepath.Join("features", "lockout.md"), "# Feature: lockout\n")
+
+	output, err := runIntakeCheckFor(t)
+	if !errors.Is(err, errIntakeInvalid) || !strings.Contains(output, "features/lockout.md has the same name") {
+		t.Errorf("err %v, output %q, want the shared stem reported", err, output)
+	}
+}
+
+const customPlanForTest = `version: 1
+name: custom
+stages: [context-engineer, analyst]
+`
+
+func gitForTest(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	command := exec.Command("git", args...)
+	command.Dir = dir
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("git %v: %v\n%s", args, err, output)
 	}
 }
