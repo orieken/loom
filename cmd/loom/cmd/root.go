@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -32,6 +33,12 @@ func Execute(frameworkFS, mcpFS platform.Content) {
 	}
 	if errors.Is(err, orchestrator.ErrWaitingApproval) {
 		os.Exit(ExitCodeWaitingApproval)
+	}
+	if errors.Is(err, orchestrator.ErrBudgetExhausted) {
+		os.Exit(ExitCodeBudgetExhausted)
+	}
+	if errors.Is(err, context.Canceled) {
+		os.Exit(ExitCodeInterrupted)
 	}
 	exitOnKIScan(err)
 	cobra.CheckErr(err)

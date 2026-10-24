@@ -4173,6 +4173,14 @@ their documents are gone. Evidence starts accumulating from the next run.
 ### L4.3 — Global budget governor
 **Workstream**: KERNEL · **Effort**: M · **Blocked by**: L3.8 (shipped), L2.16 (shipped) · **Blocks**: none
 
+**SHIPPED** 2026-10-24 — `internal/orchestrator/budget.go`. `loom run --max-usd/--max-tokens/--max-hours`
+records a budget on the run; the executor checks it before every provider stage, warns at 80%, and
+halts with exit 4 and a per-stage spend report. Hours count time stages spent running, not time
+waiting on a human. A finished stage that reported no usage makes a dollar or token ceiling
+unverifiable, and the run halts rather than reading it as zero. A resume keeps the recorded budget
+unless the command sets one, which is how a human raises it. Wall-clock and tool-call ceilings
+beyond these three are not built.
+
 **UNBLOCKED** 2026-09-02. It inherits both halves it was waiting for: per-stage token counts and
 cost on every `StageRecord` with `RunState.TotalUsage()` summing them (epic 84), and a policy
 evaluator that runs as code with a working kill-switch (epic 87). Neither needs a metrics pipeline

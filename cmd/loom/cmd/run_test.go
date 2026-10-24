@@ -199,6 +199,10 @@ func interruptRunMidStage(t *testing.T, binary, projectDir, spec string) {
 	if err := run.Wait(); err == nil {
 		t.Fatal("interrupted run exited 0; a canceled run must report the interruption")
 	}
+	// A supervisor reads 130 as "stopped and resumable", not as a failure.
+	if code := run.ProcessState.ExitCode(); code != ExitCodeInterrupted {
+		t.Errorf("interrupted run exit code = %d, want %d", code, ExitCodeInterrupted)
+	}
 }
 
 func waitForStageStatus(t *testing.T, projectDir, stageID string, want orchestrator.StageStatus) {
