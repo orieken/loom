@@ -180,7 +180,21 @@ is_known_step() {
 run_step() {
   echo ""
   echo "=== $1 ==="
-  ( set -euo pipefail; "step_$1" )
+  local log="$OUT_DIR/step-$1.log"
+  ( set -euo pipefail; "step_$1" ) 2>&1 | tee "$log"
+  return "${PIPESTATUS[0]}"
+}
+
+# annotate_failure turns a failed step into GitHub Actions error annotations:
+# the step's name and its first failure lines (a Go test's `--- FAIL`, a
+# panic, a lint finding). Annotations are readable through the API and the PR
+# page, so a failure can be diagnosed without opening the raw log.
+annotate_failure() {
+  [[ "${GITHUB_ACTIONS:-}" == "true" ]] || return 0
+  local step="$1" log="$OUT_DIR/step-$1.log"
+  echo "::error title=test-in-container: ${step} failed::see the ${step} step's output for detail"
+  grep -E -- '--- FAIL|^FAIL|panic:|\.go:[0-9]+(:[0-9]+)?: ' "$log" 2>/dev/null | head -20 \
+    | while IFS= read -r line; do echo "::error title=${step}::${line}"; done
 }
 
 main() {
@@ -198,7 +212,7 @@ main() {
     case "$status" in
       0) results+=("PASS          $step") ;;
       "$NOT_MEASURED") results+=("NOT MEASURED  $step") ;;
-      *) results+=("FAIL          $step"); failed=1 ;;
+      *) results+=("FAIL          $step"); failed=1; annotate_failure "$step" ;;
     esac
   done
   echo ""
