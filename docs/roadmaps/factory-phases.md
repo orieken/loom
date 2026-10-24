@@ -35,7 +35,8 @@ Nothing in Steps 2–4 should build on code that has never run in full.
 
 ### Step 2 — Decide before building the supervisor
 
-These are decisions, not code, and L3.65 cannot be designed around an open question.
+These are decisions, not code, and L3.65 cannot be designed around an open question. All four are
+laid out, with a recommendation each, in [ADR-010](../adrs/ADR-010-factory-order-state-and-policy-configuration.md).
 
 - [ ] **I-6** — where intake lives in git: working tree, or committed to `base-branch`.
 - [ ] **I-7** — what `hold` means for a run already in flight.
