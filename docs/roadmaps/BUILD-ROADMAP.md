@@ -4577,7 +4577,10 @@ the mock provider (`cmd/loom/cmd/factory_test.go`).
 **Workstream**: KERNEL · **Effort**: M · **Blocked by**: none · **Blocks**: L3.65 · *(raised 2026-10-23)*
 
 **SHIPPED** 2026-10-24 — `internal/worktree/manage.go`. Each claim gets `git worktree add` on
-`factory/<id>` under `.claude/factory/worktrees/`, which ignores itself, so the root checkout stays clean.
+`factory/<id>` under `.loom/worktrees/`, which ignores itself, so the root checkout stays clean. (First
+built under `.claude/factory/worktrees/`. The first real-provider run, I-4 on 2026-10-24, found that Claude
+Code refuses writes to any path with a `.claude` segment, so no agent could write in the worktree. The
+mock writes through Go and could never have shown it.)
 A test makes edits in two worktrees and shows each, and the root, reports only its own. Retires D-12.
 
 1. **Problem**: `deliver-feature`'s guardrails say two concurrent deliveries share one git index and
