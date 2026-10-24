@@ -96,6 +96,10 @@ type StageRecord struct {
 	// with its own digest.
 	IterationArtifacts []IterationArtifact `json:"iterationArtifacts,omitempty"`
 	Error              string              `json:"error,omitempty"`
+	// FailureClass says whether a FAILED or INTERRUPTED stage is worth
+	// retrying (roadmap L3.68). Empty on state written before classes
+	// existed, which a supervisor must treat as terminal.
+	FailureClass FailureClass `json:"failureClass,omitempty"`
 }
 
 // RunState is the executor-owned durable state for one feature delivery run.
@@ -166,8 +170,14 @@ type RunState struct {
 	// Money spent is a fact about the run, not a property of a record
 	// someone may remove, so it is accumulated here where nothing about a
 	// stage's later fate can subtract from it.
-	Spend     *Usage    `json:"spend,omitempty"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	Spend *Usage `json:"spend,omitempty"`
+	// Budget is the run's ceiling (roadmap L4.3), recorded so a resume
+	// enforces what the run was started with. Nil sets no ceiling.
+	Budget *Budget `json:"budget,omitempty"`
+	// BudgetHalt is set when the budget stopped the run, and cleared when a
+	// resume re-decides it.
+	BudgetHalt *BudgetHalt `json:"budgetHalt,omitempty"`
+	UpdatedAt  time.Time   `json:"updatedAt"`
 }
 
 // Creator identifies which pipeline owns a state file. The two pipelines

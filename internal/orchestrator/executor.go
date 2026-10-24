@@ -42,6 +42,10 @@ type Executor struct {
 	// default and the safe one.
 	policies []policy.Policy
 	onPolicy func(policy.Decision)
+	// budget is this invocation's ceiling (roadmap L4.3); nil keeps whatever
+	// the run recorded.
+	budget          *Budget
+	onBudgetWarning func(BudgetWarning)
 }
 
 // NewExecutor wires a provider and a state store into an executor.
@@ -214,6 +218,9 @@ func (e *Executor) advance(ctx context.Context, stage Stage, plan Plan, input St
 	if err := checkSpecUnchanged(state); err != nil {
 		return err
 	}
+	if err := e.checkBudget(plan, stage, state); err != nil {
+		return err
+	}
 	return e.runStage(ctx, stage, plan, input, state)
 }
 
@@ -252,19 +259,30 @@ func (e *Executor) prepareState(plan Plan, input StageInput) (*RunState, EventKi
 		fresh := newRunFor(plan, input)
 		fresh.StartCommit = e.startCommit()
 		fresh.Provider = e.providerName
+		e.adoptBudget(fresh)
 		return fresh, EventRunStarted, nil
 	}
-	if err := state.CheckCreatedBy(CreatedByExecutor); err != nil {
-		return nil, "", err
-	}
-	if err := checkStateBelongsToRun(state, plan, input, e.store.Path()); err != nil {
-		return nil, "", err
-	}
-	resumed, err := e.verifyResumedState(state)
+	resumed, err := e.resumeState(state, plan, input)
 	if err != nil {
 		return nil, "", err
 	}
 	return resumed, EventRunResumed, nil
+}
+
+// resumeState checks that state on disk is this run's, then verifies it.
+func (e *Executor) resumeState(state *RunState, plan Plan, input StageInput) (*RunState, error) {
+	if err := state.CheckCreatedBy(CreatedByExecutor); err != nil {
+		return nil, err
+	}
+	if err := checkStateBelongsToRun(state, plan, input, e.store.Path()); err != nil {
+		return nil, err
+	}
+	resumed, err := e.verifyResumedState(state)
+	if err != nil {
+		return nil, err
+	}
+	e.adoptBudget(resumed)
+	return resumed, nil
 }
 
 func (e *Executor) emitStale(state *RunState, stale []StaleStage) error {
@@ -471,7 +489,8 @@ func (e *Executor) executeStage(ctx context.Context, stage Stage, plan Plan, inp
 	}
 	output, invokeErr := e.runOrInvoke(ctx, stage, plan, input)
 	if invokeErr != nil {
-		return e.persistFailure(ctx, state, stageFailure{stage: stage, err: invokeErr, usage: output.Usage})
+		return e.persistFailure(ctx, state, stageFailure{stage: stage, err: invokeErr, usage: output.Usage,
+			class: invocationFailureClass(stage)})
 	}
 	e.notePostureViolation(state, stage, before, output)
 	// Order matters: a stage is judged against the review that preceded it,
@@ -513,6 +532,7 @@ func runningRecord(state *RunState, stageID string) StageRecord {
 	record.StartedAt = time.Now().UTC()
 	record.FinishedAt = nil
 	record.Error = ""
+	record.FailureClass = ""
 	return record
 }
 
@@ -581,6 +601,10 @@ type stageFailure struct {
 	stage Stage
 	err   error
 	usage *Usage
+	// class says whether retrying the run could plausibly succeed (roadmap
+	// L3.68). The zero value is terminal: a failure nobody classified is
+	// not one a supervisor should spend money retrying.
+	class FailureClass
 }
 
 func (e *Executor) persistFailure(ctx context.Context, state *RunState, failure stageFailure) error {
@@ -588,10 +612,12 @@ func (e *Executor) persistFailure(ctx context.Context, state *RunState, failure 
 	now := time.Now().UTC()
 	record.FinishedAt = &now
 	record.Error = failure.err.Error()
+	record.FailureClass = classifyFailure(failure)
 	record.Usage = accumulateUsage(record.Usage, failure.usage)
 	state.recordSpend(failure.usage)
 	if errors.Is(ctx.Err(), context.Canceled) {
 		record.Status = StageStatusInterrupted
+		record.FailureClass = FailureTransient
 	} else {
 		record.Status = StageStatusFailed
 	}
