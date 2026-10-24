@@ -100,22 +100,41 @@ func decodeConfig(raw []byte) (Config, error) {
 // checkKeys names every removed and unknown key in one error, so a file can
 // be fixed in one edit.
 func checkKeys(raw []byte, path string) error {
-	// A raw map is the wire boundary: it exists only to read key names, and
-	// nothing typed travels inward from it (go-conventions.md).
-	var document map[string]any
-	if err := yaml.Unmarshal(raw, &document); err != nil {
-		return fmt.Errorf("%w: %s must be a YAML mapping: %v", ErrInvalidConfig, path, err)
+	keys, err := topLevelKeys(raw)
+	if err != nil {
+		return fmt.Errorf("%w: %s: %v", ErrInvalidConfig, path, err)
 	}
-	removed, unknown := classifyKeys(document)
+	removed, unknown := classifyKeys(keys)
 	if len(removed) == 0 && len(unknown) == 0 {
 		return nil
 	}
 	return fmt.Errorf("%w: %s", ErrInvalidConfig, describeKeys(path, removed, unknown))
 }
 
-func classifyKeys(document map[string]any) ([]string, []string) {
+// topLevelKeys reads the key names from the document's node tree, so nothing
+// untyped is decoded. An empty file has no keys.
+func topLevelKeys(raw []byte) ([]string, error) {
+	var document yaml.Node
+	if err := yaml.Unmarshal(raw, &document); err != nil {
+		return nil, err
+	}
+	if len(document.Content) == 0 {
+		return nil, nil
+	}
+	mapping := document.Content[0]
+	if mapping.Kind != yaml.MappingNode {
+		return nil, errors.New("the file must be a YAML mapping")
+	}
+	keys := make([]string, 0, len(mapping.Content)/2)
+	for index := 0; index < len(mapping.Content); index += 2 {
+		keys = append(keys, mapping.Content[index].Value)
+	}
+	return keys, nil
+}
+
+func classifyKeys(keys []string) ([]string, []string) {
 	var removed, unknown []string
-	for key := range document {
+	for _, key := range keys {
 		switch {
 		case keptKeys[key]:
 		case removedKeys[key] || strings.HasPrefix(key, "autoProceed"):
