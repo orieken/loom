@@ -130,7 +130,7 @@ Conditions are simple dot-path equality checks evaluated against the pipeline co
 ```
 "analysis.architecturalFlags != 'None'"   # check analysis.md architectural flags
 "feature.hasUI == true"                    # check feature spec metadata
-"policy.autoProceed == true"               # check delivery policy
+"policy.policiesEnabled == false"          # check the policy kill switch
 ```
 
 Condition expression language is intentionally minimal — no loops, no function calls, no side effects.

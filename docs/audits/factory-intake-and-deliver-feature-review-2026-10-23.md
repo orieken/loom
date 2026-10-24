@@ -95,16 +95,16 @@ Priority: **P1** wrong or unsafe today · **P2** contradiction or drift that wil
   `:61`) that `deliver-feature` ships migration code to repair, omits context-engineer entirely, and
   lists different checkpoints. *Fix*: the template points at `/deliver-feature` and `loom run`
   instead of restating the pipeline.
-- [ ] **D-2 (P1) — Policy-driven auto-proceed is silent.** The markdown pipeline auto-proceeds past
+- [x] **D-2 (P1) — Policy-driven auto-proceed is silent.** The markdown pipeline auto-proceeds past
   checkpoints in `policy-driven` mode and, by its own admission (`SKILL.md:137`), records nothing.
   `approval-gates.md` promises no silent auto-approvals. *Fix*: when `loom state` is available,
   record each policy decision through it; when it is not, `policy-driven` falls back to
   `strict-human`.
-  *Decided 2026-10-24 in ADR-010 (4B): automation lives only in `.policy.yaml`, evaluated and recorded by `loom run`; `delivery-policy.yaml` loses `mode` and `autoProceed*` and is validated strictly. Not yet built.*
-- [ ] **D-3 (P2) — The policy schema disagrees with its reader.** `delivery-policy.template.yaml:5`
+  *Closed 2026-10-24 (ADR-010, 4B): `internal/policy.LoadConfig` validates `delivery-policy.yaml` strictly, and `loom run` refuses a removed or unknown key by name. The template keeps `policiesEnabled` and `maxContractRetries`; `/deliver-feature` always stops for a human; `docs/MIGRATION.md` lists the removed keys.*
+- [x] **D-3 (P2) — The policy schema disagrees with its reader.** `delivery-policy.template.yaml:5`
   offers `mode: "unattended"`, defined nowhere else; `SKILL.md:131` reads `autoProceedPersistence`,
   which the template does not contain; no Go code reads `mode` at all. *Fix*: one schema, validated.
-  *Decided 2026-10-24 in ADR-010 (4B): automation lives only in `.policy.yaml`, evaluated and recorded by `loom run`; `delivery-policy.yaml` loses `mode` and `autoProceed*` and is validated strictly. Not yet built.*
+  *Closed 2026-10-24 (ADR-010, 4B): `internal/policy.LoadConfig` validates `delivery-policy.yaml` strictly, and `loom run` refuses a removed or unknown key by name. The template keeps `policiesEnabled` and `maxContractRetries`; `/deliver-feature` always stops for a human; `docs/MIGRATION.md` lists the removed keys.*
 - [ ] **D-4 (P2) — Step numbers have drifted.** `:144` says Friday is step 40 (it is 42); the state
   and trace examples cite steps 6, 8 and 19 for agents now at 7, 9 and 20 (`:268`, `:276`, `:320`,
   `:332`). Cross-referencing by number inside a 43-step prose list will keep drifting. *Fix*: refer

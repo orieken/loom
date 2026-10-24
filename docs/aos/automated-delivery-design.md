@@ -1,5 +1,11 @@
 # Automated Deliver-Feature Workflow Design
 
+> **Superseded in part by [ADR-010](../adrs/ADR-010-factory-order-state-and-policy-configuration.md)
+> (decision 4B, 2026-10-24).** The markdown pipeline no longer auto-proceeds, and
+> `.claude/delivery-policy.yaml` no longer has `mode`, `autoProceed*`, `gates`, `stages`,
+> `escalations` or `defaults`. Automation lives only in `.claude/policies/*.policy.yaml`, evaluated by
+> `loom run`, which records every decision. Read the rest of this document as history.
+
 > **Goal**: Evolve the `/deliver-feature` pipeline from prose-instructed human PAUSE checkpoints to policy-driven graduated automation while preserving the framework's core discipline ("Stage-3 excellence over Stage-4 fantasy").
 
 ---
