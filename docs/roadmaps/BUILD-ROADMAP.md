@@ -4458,9 +4458,11 @@ matters more than any of it — the executor never digests the spec (I-1).
 **Workstream**: KERNEL · **Effort**: S · **Blocked by**: none · **Blocks**: L3.64, L3.65 · *(raised 2026-10-23)*
 
 **SHIPPED (contract only)** 2026-10-23 — `templates/claude-feature-team/intake/TEMPLATE.md` and
-`intake/README.md`; L3.64 is the first code that reads them. **The Done-when below has not been
-demonstrated**: nobody has yet run `loom run --provider mock` on an intake file, so whether the
-analyst's spec-ingestion check and the executor accept the extra frontmatter is unverified.
+`intake/README.md`; L3.64 is the first code that reads them. **Done-when demonstrated** 2026-10-23 by
+`TestRunDeliversAnIntakeOrderToCompletion` (#4): an intake file runs from its relative path through all
+three gates to completion, the run takes the order's id, and the file is byte-identical afterwards. Not
+covered: whether a real analyst reads the frontmatter correctly — the executor handles only the spec's
+path and the mock reads nothing, so that is L3.74's to prove.
 
 1. **Problem**: There is no format for "work the factory may pick up." `features/TEMPLATE.md` is a
    spec, with nowhere to put priority, a budget, a finish line, dependencies, or whether the text

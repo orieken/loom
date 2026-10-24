@@ -74,7 +74,7 @@ Priority: **P1** wrong or unsafe today · **P2** contradiction or drift that wil
   $10 and park spuriously. *Fix*: derive defaults from `loom memory agents` cost data.
 - [ ] **I-10 (P3) — Duplicate stems across `intake/` and `features/` are checkable now**, with
   directory context, but are deferred to the supervisor. Cheap to add to `loom intake check`.
-- [ ] **I-11 (P3) — Unverified paths.** The command's tests ran in a harness package (sqlite was
+- [x] **I-11 (P3) — Unverified paths.** *Closed 2026-10-23: the command package passes in CI's go-build and test-image jobs (#2, #3), and an intake file runs to completion under the mock (#4).* The command's tests ran in a harness package (sqlite was
   unreachable in the authoring sandbox), and L3.63's Done-when — `loom run --provider mock` on an
   intake file — has not been run. Confirm both in CI before L3.65 builds on them.
 - [ ] **I-12 (P3) — `scope.paths` globs and `source-ref` are not validated.** A malformed glob or a
@@ -128,6 +128,11 @@ Priority: **P1** wrong or unsafe today · **P2** contradiction or drift that wil
   — including a 155-line fork of `deliver-feature` — is embedded by `embed.go` but installed by
   neither installer. Claude Code still discovers them as live skills when working in this repo.
   *Fix*: delete them, or install them; not both silently.
+- [ ] **T-1 (P2) — A flaky test in `go-build`.** #4's first `go-build` attempt failed inside `go test`
+  and passed on a rerun of the same commit; the `test-image` job, running the same tests, passed first
+  time. The failing test's name is in that attempt's log (run 40042528576, attempt 1), which the
+  authoring sandbox could not read. Candidates are the timing-based interrupt/resume tests in
+  `cmd/loom/cmd/run_test.go`. *Fix*: name it from the log, then make it deterministic.
 - [ ] **D-14 (P3) — The spec-ingestion check is a keyword list in prose** (`:72`) that duplicates
   `internal/injectionscan`. *Fix*: run `loom ki scan` on the spec when the binary is present.
 
