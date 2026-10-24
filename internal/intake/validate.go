@@ -28,6 +28,10 @@ type Context struct {
 	// A plan named in an order but not here would fail at `loom run`, after
 	// the order had already been claimed.
 	Plans []string
+	// OtherSpecs maps the stem of every other spec in the project — intake
+	// orders and features/*.md — to its path (review item I-10). Two specs
+	// with one stem would share one workspace, .claude/feature-workspace/<stem>/.
+	OtherSpecs map[string]string
 }
 
 const dateLayout = "2006-01-02"
@@ -40,6 +44,7 @@ type rule func(Order, Context) []Violation
 var rules = []rule{
 	checkSchemaVersion,
 	checkIdentity,
+	checkUniqueStem,
 	checkVocabulary,
 	checkPlan,
 	checkPriority,
@@ -81,6 +86,15 @@ func checkIdentity(order Order, context Context) []Violation {
 			order.ID, context.FileStem)
 	}
 	return nil
+}
+
+func checkUniqueStem(_ Order, context Context) []Violation {
+	other, taken := context.OtherSpecs[context.FileStem]
+	if !taken {
+		return nil
+	}
+	return violation("id", "%s has the same name; both would use the workspace .claude/feature-workspace/%s/",
+		other, context.FileStem)
 }
 
 func checkVocabulary(order Order, _ Context) []Violation {

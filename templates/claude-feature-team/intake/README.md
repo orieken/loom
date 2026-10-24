@@ -5,15 +5,15 @@ Every piece of work the factory may pick up is one markdown file here:
 (its frontmatter: priority, budget, finish line) and the **spec** (its body: the same sections as
 `features/TEMPLATE.md`), so `loom run --spec intake/<id>.md` runs it with no conversion step.
 
-**Status: validated, not yet run.** `loom intake check` enforces every rule below that can be
-checked from the file alone, and is safe to run in CI today. The supervisor that claims `ready`
-orders and runs them (roadmap L3.65) does not exist yet, so until it does an intake file is a spec
-you hand to `loom run --spec intake/<id>.md` yourself.
+**Status: run by `loom factory`.** `loom intake check` enforces every rule below that can be
+checked from the file alone, and is safe to run in CI. `loom factory run` claims committed `ready`
+orders and runs each in its own worktree; `loom factory inbox` lists what is waiting on you. You can
+still hand an order to `loom run --spec intake/<id>.md` yourself.
 
 ## Lifecycle
 
 ```
-draft ──(spec-writer READY)──► ready ──(supervisor claims)──► [ledger: running → waiting-approval → shipped | parked]
+draft ──(spec-writer READY)──► ready ──(supervisor claims)──► [ledger: running → waiting → completed → shipped | parked | stopped]
   ▲                              │
   └────────── hold ◄─────────────┘   (a human pulls it back; the supervisor stops claiming it)
 ```
@@ -66,7 +66,7 @@ it exits 1 if any order breaks a rule, and names the file and field for each.
 - A `trust: external` order's body is scanned with the same rules as `loom ki scan`, and each match
   is reported with its line in the file. A clean scan means the order may be read, not that it is safe.
 
-### Enforced at pickup, by the supervisor (not built yet — ADR-010)
+### Enforced at pickup, by `loom factory` (ADR-010)
 
 - The supervisor reads orders **committed on `base-branch`**, never your working tree. Flipping an order
   to `ready` is a commit, so an order reaches the factory reviewed, the way code reaches `main`.
@@ -74,9 +74,13 @@ it exits 1 if any order breaks a rule, and names the file and field for each.
   never changes a running order; the approval inbox shows "changed since claim" and you choose whether to
   re-run.
 
-- No other file in `intake/` or `features/` has the same stem.
+- No other file in `intake/` or `features/` has the same stem (also checked by `loom intake check`).
 - Every `depends-on` id is shipped in the ledger.
-- `budget` limits are recorded with the claim, so a parked order says which limit stopped it.
+- Ties in `priority` break on `created`, then on `id`.
+- `budget` limits are recorded with the claim and passed to the run as its ceiling, so a parked order
+  says which limit stopped it and what each stage spent. `max-attempts` bounds retries of transient
+  failures; anything terminal is parked on the first attempt.
+- A parked order is cleared by editing it: the edited version is claimed again and its run resumed.
 
 ## Naming
 

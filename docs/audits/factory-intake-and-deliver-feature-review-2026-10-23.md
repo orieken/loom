@@ -57,9 +57,10 @@ Priority: **P1** wrong or unsafe today · **P2** contradiction or drift that wil
 - [ ] **I-4 (P2) — The vocabulary exists three times**: Go sets (`internal/intake/vocabulary.go`), the
   template's comments, and the README's rule list. Only the template's *parseability* is tested.
   *Fix*: a test that reads the README's listed values and compares them with the Go sets.
-- [ ] **I-5 (P2) — `loom intake check` answers differently by working directory.** `plan` is resolved
+- [x] **I-5 (P2) — `loom intake check` answers differently by working directory.** `plan` is resolved
   through `planfile.SearchPath()`, which is relative; run from a subdirectory, every project plan
   vanishes. *Fix*: resolve from the repository root. *Where*: `cmd/loom/cmd/intake.go`.
+  *Closed 2026-10-24: plans resolve from the repository root (`planfile.SearchPathFrom`), tested from a subdirectory.*
 - [x] **I-6 (P2) — Where intake lives in git is undefined.** Is `status: ready` read from the working
   tree, or only once committed to `base-branch`? A supervisor reading the working tree runs
   uncommitted specs; one reading the branch needs a commit per status flip. Decide before L3.65.
@@ -74,13 +75,15 @@ Priority: **P1** wrong or unsafe today · **P2** contradiction or drift that wil
   immutable cannot both hold. I-6 and I-7 should be decided together, and moving `status` (and perhaps
   `priority`) out of the spec file — or digesting only the body — is the likely shape of the answer.
   *Decided 2026-10-24 in ADR-010 (1C, 3A): a claim runs from a snapshot, so editing the intake file never touches a running order; `hold` stops resumption at the next natural halt, and `loom factory stop` interrupts at once through the executor's existing checkpoint. Built as part of L3.65.*
-- [ ] **I-8 (P3) — Priority ties break on `created`, which has day granularity**, so same-day orders
+- [x] **I-8 (P3) — Priority ties break on `created`, which has day granularity**, so same-day orders
   start in filesystem order. Add `id` as the final tie-break.
+  *Closed 2026-10-24: the supervisor orders by priority, `created`, then `id`.*
 - [ ] **I-9 (P3) — Budget defaults are unfounded.** `$10 / 4h` came from nowhere. The first real run
   cost $3.57 for five stages (roadmap header, 2026-09-06); a full fourteen-stage run may exceed
   $10 and park spuriously. *Fix*: derive defaults from `loom memory agents` cost data.
-- [ ] **I-10 (P3) — Duplicate stems across `intake/` and `features/` are checkable now**, with
+- [x] **I-10 (P3) — Duplicate stems across `intake/` and `features/` are checkable now**, with
   directory context, but are deferred to the supervisor. Cheap to add to `loom intake check`.
+  *Closed 2026-10-24: both `loom intake check` and the supervisor reject an order whose stem a `features/` spec uses.*
 - [x] **I-11 (P3) — Unverified paths.** *Closed 2026-10-23: the command package passes in CI's go-build and test-image jobs (#2, #3), and an intake file runs to completion under the mock (#4).* The command's tests ran in a harness package (sqlite was
   unreachable in the authoring sandbox), and L3.63's Done-when — `loom run --provider mock` on an
   intake file — has not been run. Confirm both in CI before L3.65 builds on them.
@@ -131,8 +134,9 @@ Priority: **P1** wrong or unsafe today · **P2** contradiction or drift that wil
   counting bugfixes too since they share the namespace (ADR-004). *Fix*: make it a scheduled job.
 - [ ] **D-11 (P3) — Gate #9 is missing** from the skill's Always-Human list (`:138`); test-coverage
   removal is Always Human in `approval-gates.md`.
-- [ ] **D-12 (P3) — The git-index guardrail (`:492`) is prose a model must remember.** L3.66's
+- [x] **D-12 (P3) — The git-index guardrail (`:492`) is prose a model must remember.** L3.66's
   per-run worktrees make it structural; fold it into that item.
+  *Closed 2026-10-24: `loom factory` gives every run its own worktree; the guardrail now says so.*
 - [ ] **D-13 (P3) — Dead skills ship in the binary.** `templates/claude-feature-team/.claude/skills/`
   — including a 155-line fork of `deliver-feature` — is embedded by `embed.go` but installed by
   neither installer. Claude Code still discovers them as live skills when working in this repo.

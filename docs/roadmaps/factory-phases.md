@@ -48,16 +48,16 @@ laid out, with a recommendation each, in [ADR-010](../adrs/ADR-010-factory-order
 
 In dependency order. Small rules that belong to the supervisor ride with it.
 
-- [ ] **L3.66** (M) — one git worktree per run. Also retires **D-12**, the prose-only git-index rule.
-- [ ] **L3.65** (L) — `loom factory run`: poll, validate, claim, ledger, launch. Includes **I-5**
+- [x] **L3.66** (M) — one git worktree per run. Also retires **D-12**, the prose-only git-index rule.
+- [x] **L3.65** (L) — `loom factory run`: poll, validate, claim, ledger, launch. Includes **I-5**
   (resolve plans from the repo root), **I-10** (duplicate stems across `intake/` and `features/`), and
   **I-8** (`id` as the final priority tie-break).
-- [ ] **L3.67** (M) — the approval inbox, delegating to the existing approval path.
-- [ ] **L3.68** (M) — run-level retry with backoff, and parking with a reason.
-- [ ] **L4.3** (M) — the budget governor. Pulled into Phase 1: an unattended factory with no spend
+- [x] **L3.67** (M) — the approval inbox, delegating to the existing approval path.
+- [x] **L3.68** (M) — run-level retry with backoff, and parking with a reason.
+- [x] **L4.3** (M) — the budget governor. Pulled into Phase 1: an unattended factory with no spend
   ceiling is not safe to leave running.
-- [ ] **L3.70** (S) — order budgets seed that governor.
-- [ ] **L3.69** (S) — the finish line: push `factory/<id>`, put a PR proposal in the inbox. Opening
+- [x] **L3.70** (S) — order budgets seed that governor.
+- [x] **L3.69** (S) — the finish line: push `factory/<id>`, put a PR proposal in the inbox. Opening
   the PR stays gate #5, Always Human.
 
 ### Step 4 — Prove it builds something

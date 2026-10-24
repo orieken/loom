@@ -13,6 +13,7 @@ import (
 
 	"github.com/orieken/loom/internal/intake"
 	"github.com/orieken/loom/internal/planfile"
+	"github.com/orieken/loom/internal/worktree"
 	"github.com/spf13/cobra"
 )
 
@@ -60,10 +61,11 @@ func runIntakeCheck(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	plans := runnablePlans()
+	root := projectRoot()
+	context := intake.Context{Plans: runnablePlans(root), OtherSpecs: featureSpecs(root)}
 	invalid := 0
 	for _, file := range files {
-		violations, err := checkOrderFile(file, plans)
+		violations, err := checkOrderFile(file, context)
 		if err != nil {
 			return fmt.Errorf("%w: %s: %v", errIntakeInvalid, file, err)
 		}
@@ -83,13 +85,39 @@ func summarizeIntakeCheck(cmd *cobra.Command, invalid, total int) error {
 	return nil
 }
 
-func checkOrderFile(file string, plans []string) ([]intake.Violation, error) {
+func checkOrderFile(file string, context intake.Context) ([]intake.Violation, error) {
 	source, err := os.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
-	stem := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
-	return intake.Check(source, intake.Context{FileStem: stem, Plans: plans}), nil
+	context.FileStem = strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
+	return intake.Check(source, context), nil
+}
+
+// projectRoot is the repository the command runs inside, so plans and specs
+// are found the same way from any subdirectory (review item I-5). Outside a
+// repository it is the current directory.
+func projectRoot() string {
+	root, err := worktree.RepositoryRoot(".")
+	if err != nil {
+		return "."
+	}
+	return root
+}
+
+// featureSpecs maps the stem of every features/*.md spec to its path. An
+// order sharing one would share its workspace (review item I-10).
+func featureSpecs(root string) map[string]string {
+	matches, _ := filepath.Glob(filepath.Join(root, "features", "*.md"))
+	specs := map[string]string{}
+	for _, match := range matches {
+		if notOrders[filepath.Base(match)] {
+			continue
+		}
+		stem := strings.TrimSuffix(filepath.Base(match), ".md")
+		specs[stem] = filepath.ToSlash(filepath.Join("features", filepath.Base(match)))
+	}
+	return specs
 }
 
 func printViolations(cmd *cobra.Command, file string, violations []intake.Violation) {
@@ -132,9 +160,9 @@ func withoutNonOrders(arg string, expanded []string) []string {
 // runnablePlans are the plans `loom run --plan` could resolve here. A plan
 // file that does not parse is listed by Discover with its error; it cannot
 // run, so an order naming it is invalid.
-func runnablePlans() []string {
+func runnablePlans(root string) []string {
 	var names []string
-	for _, available := range planfile.Discover(planfile.SearchPath()) {
+	for _, available := range planfile.Discover(planfile.SearchPathFrom(root)) {
 		if available.Err == nil {
 			names = append(names, available.Name)
 		}

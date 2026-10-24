@@ -111,3 +111,24 @@ func TestViolationStringNamesItsField(t *testing.T) {
 		t.Errorf("String() = %q", got)
 	}
 }
+
+// Review item I-10: two specs with one stem share one workspace.
+func TestValidateRejectsAStemAnotherSpecAlreadyUses(t *testing.T) {
+	context := validContext()
+	context.OtherSpecs = map[string]string{context.FileStem: "features/" + context.FileStem + ".md"}
+
+	violations := Validate(validOrder(), context)
+
+	if !hasViolation(violations, "id", "features/"+context.FileStem+".md has the same name") {
+		t.Errorf("violations = %v, want the duplicate stem named", violations)
+	}
+}
+
+func hasViolation(violations []Violation, field, message string) bool {
+	for _, violation := range violations {
+		if violation.Field == field && strings.Contains(violation.Message, message) {
+			return true
+		}
+	}
+	return false
+}
