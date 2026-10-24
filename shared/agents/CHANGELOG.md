@@ -16,6 +16,16 @@ Semantic-ish, not strict SemVer:
 When you bump an agent's `version:` frontmatter field, add a row under a new dated heading here in the same
 commit — the pre-commit hook checks for exactly this.
 
+## 2026-10-23 — spec-writer keeps frontmatter it did not write (review item I-2)
+
+| Agent | Version | Change |
+|---|---|---|
+| spec-writer | 1.1.1 -> 1.2.0 | Minor: expanded guardrail. Fix and review mode preserve an existing file's frontmatter key for key and edit only the body; a factory work order's frontmatter (`intake:` key) is never changed, `status` included; the READY message for an order points to `loom intake check` |
+
+Fix mode used to rewrite the whole file to its own three-key frontmatter, which would strip a factory
+work order down to `type`, `status` and `created`. `loom intake check` still catches a stripped order
+(schema version and id go missing), so this rule is backed by a deterministic check.
+
 ## 2026-09-24 — KI provenance and injection flags (roadmap L3.7)
 
 | Agent | Version | Change |

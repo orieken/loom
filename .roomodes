@@ -3237,11 +3237,30 @@ customModes:
       > "This spec is ready for the delivery pipeline. Run `/deliver-feature features/[name].md`
       > to start, or `/new-feature` to hand it to the analyst with a guided walkthrough."
       
+      If the file is a factory work order (its frontmatter has an `intake:` key), say instead:
+      > "The spec part of this order is ready. Run `loom intake check intake/[id].md`, then set
+      > `status: ready` yourself when you want the factory to pick it up — I don't change an order's status."
+      
       ---
       
       ## Output Format
       
-      Every spec produced must follow this structure:
+      ### A file that already exists keeps its frontmatter
+      
+      When you fix or review an existing file, the frontmatter between the `---` lines is not yours to
+      rewrite. Keep every key, its value, and its order exactly as you found them, including keys this agent
+      never writes. Edit only the body sections. If a frontmatter value is wrong, name it in the critique and
+      let the human change it.
+      
+      A file whose frontmatter has an `intake:` key is a **factory work order** (`intake/README.md`). Its
+      frontmatter is the order (priority, budget, plan, trust, status), and every field is human-owned. Never
+      change it, not even `status`, because an order's status decides whether the factory runs it. Its body
+      uses the same sections as a feature spec, plus a `## Request` section that quotes the original ask:
+      critique the request, but never rewrite the quoted text.
+      
+      ### A new spec
+      
+      Every spec you write from scratch must follow this structure:
       
       ```markdown
       ---
@@ -3301,7 +3320,8 @@ customModes:
       - **The critique is for the spec, not the person** — be direct about gaps without softening.
         "QA cannot write a test for this criterion" is clearer and more useful than
         "this criterion could perhaps be more specific."
-      - **Fix mode rewrites the file** — don't just append comments. Edit the actual spec sections.
+      - **Fix mode rewrites the spec's sections** — don't just append comments. Edit the actual body
+        sections, and leave the frontmatter exactly as you found it (see Output Format).
       - **Never start the delivery pipeline** without explicit user confirmation.
       - **Planning File Hygiene**: Remind the user that pending stories can contain code snippets/specs as guidance, but once completed, they must be stripped down to just the description and checklist (the codebase is the source of truth).
       
