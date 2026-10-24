@@ -43,11 +43,25 @@ func fileClause(allowed []string) string {
 			"Do not write files. Do not add commentary before or after the JSON.\n\n"
 	}
 	return "Make the file changes this stage is responsible for, using the tools you have been given.\n" +
+		artifactClause +
 		"Then return a single JSON object conforming to this schema as your final output.\n" +
 		"The JSON REPORTS that work; it does not replace it. Every path you list as created or modified\n" +
 		"must be a file you actually wrote this session — verify with git status before answering.\n" +
 		"Do not add commentary before or after the JSON.\n\n"
 }
+
+// artifactClause stops a write-capable stage from trying to write its own
+// artifact. Agent definitions are shared with the markdown pipeline, so they
+// still say "produce analysis.md in .claude/feature-workspace/", but under
+// loom run the executor writes the artifact from the returned JSON, and
+// Claude Code refuses writes to any path with a .claude segment. The first
+// real factory run's analyst spent its whole budget retrying that write and
+// returned an apology instead of JSON.
+const artifactClause = "Your stage artifact is not a file you write: loom writes it, and its markdown view, from the\n" +
+	"JSON you return. Ignore any instruction above to write your artifact or any other file under .claude/ —\n" +
+	"that directory is not writable in this session. The file changes meant here are the project's own\n" +
+	"source, test and documentation files that this stage is responsible for. A stage that changes none of\n" +
+	"them, such as an analysis or a review, makes no file changes and returns the JSON alone.\n"
 
 // upstreamSection hands the agent the projected fields of each stage it
 // reads — the data it is allowed to see, rather than documents to reparse.
