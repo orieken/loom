@@ -43,6 +43,9 @@ func run(args []string, out io.Writer, diff diffSource) int {
 	}
 	printReport(out, report, parsed.threshold)
 	if !report.Passes(parsed.threshold) {
+		if os.Getenv("GITHUB_ACTIONS") == "true" {
+			annotate(out, report)
+		}
 		return exitFail
 	}
 	return exitPass
