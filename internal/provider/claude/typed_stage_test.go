@@ -283,3 +283,21 @@ func TestAnUnparseableResponseIsKeptWhole(t *testing.T) {
 		t.Error("the tail was lost — the run-4 'partial' finding, unfixed")
 	}
 }
+
+// The first real factory run's analyst holds Write, read "make the file
+// changes this stage is responsible for" as "write analysis.md under
+// .claude/feature-workspace/", was refused (Claude Code protects .claude/),
+// and returned an apology instead of JSON. A write-capable typed stage must
+// be told the artifact is loom's to write, and that .claude/ is off limits.
+func TestAWriteCapableTypedStageIsToldLoomWritesItsArtifact(t *testing.T) {
+	stage := orchestrator.Stage{ID: "analyst", Agent: "analyst", StateKind: string(state.KindAnalysis)}
+	instruction, err := typedInstruction(stage, orchestrator.StageInput{}, []string{"Read", "Write", "Glob", "Grep"})
+	if err != nil {
+		t.Fatalf("typedInstruction: %v", err)
+	}
+	for _, want := range []string{"loom writes it", "under .claude/", "returns the JSON alone"} {
+		if !strings.Contains(instruction, want) {
+			t.Errorf("the contract lacks %q:\n%s", want, instruction)
+		}
+	}
+}
