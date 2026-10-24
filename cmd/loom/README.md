@@ -17,7 +17,12 @@ coding platforms and serves the framework's MCP tools. Install it via
 | `loom document` | Run the `repo-documenter` agent over every directory that is undocumented or whose fact-sheet hash changed, children before parents — one model call each, given a fact sheet and its children's summaries and never raw source. Each result is verified by a Go check and then the `repo-doc-auditor`; problems go back as typed feedback for up to `--max-rounds`, and a directory still failing is reported unverified and never accepted. Verified results are candidates under `.loom/runs/`; nothing reaches the index or your repo. `--dry-run` lists the plan with no calls; `--limit`, `--path` and `--no-audit` bound the cost (ADR-010) |
 | `loom docs plan\|approve\|apply` | The gate between verified documenter results and your repository. `plan` stages a changeset (rendered docs under `.loom/docs/`, the updated index, a regenerated `CODEMAP.md`, and with `--in-tree-readmes` / `--doc-comments` real READMEs and native doc comments inside `loom:generated` markers) and writes nothing else. `approve` records your decision bound to every staged file's digest; `apply` writes exactly that, and refuses if a staged file or a target changed since. A block you edited by hand is reported as a conflict, never overwritten. `--codemap-only` needs no documenter run (ADR-010) |
 | `loom ki scan <file\|dir>...` | Flag Knowledge Item text that addresses a model instead of informing it — instruction overrides, role markers, gate bypasses, invisible characters. Exits 0 clean, 1 flagged, 2 unscannable; `scripts/sync-memory.sh` runs it on every org KI before pulling (roadmap L3.7) |
+| `loom intake check [file\|dir]...` | Validate factory work orders in `intake/` against the intake contract — schema, ids, vocabularies, runnable plan, budgets, and an injection scan of external orders. Exits 1 on any violation (roadmap L3.64) |
 | `loom run` | Execute the delivery pipeline for a feature spec (experimental — see below) |
+| `loom factory run [--once]` | Supervise work orders: claim committed `ready` orders from `intake/`, run each in its own worktree with its budget as the run's ceiling, retry transient failures, park the rest, and record everything in `.claude/factory/ledger.jsonl` (roadmap L3.65–L3.70 — see below) |
+| `loom factory status` / `inbox` | What the factory has claimed, and what is waiting on a human |
+| `loom factory approve <order> <gate>` | Approve an inbox item: a run's gate (applied as `loom run --resume --approve`), `commit`, or `open-pr` |
+| `loom factory stop` / `resume` / `rerun <order>` | Interrupt a running order now; continue a stopped one; re-run one edited since its claim |
 | `loom uninstall` | Remove installed framework content |
 | `loom update` | Update installed framework content |
 
@@ -48,6 +53,11 @@ loom run --spec docs/features/user-auth/spec.md --provider mock
   artifact demotes that stage to `STALE` — it re-runs — and the demotion cascades to every stage
   completed after it, whose own output came from content that no longer exists. The resume prints
   what it invalidated and why. There is no flag to skip verification (roadmap L2.12).
+- **The spec is verified too** (review item I-1): its SHA-256 is recorded when the run starts. On
+  resume, a changed or deleted spec demotes every completed stage (`SPEC_CHANGED`) and resets every
+  approval bound to them, since all of them were derived from the old text. A running process checks
+  the spec before each stage and stops without starting anything if it changed. State written before
+  this existed adopts the spec as it is on the first resume.
 - **Interruption**: the first Ctrl-C cancels the in-flight stage and persists a
   clean `INTERRUPTED` checkpoint; a second Ctrl-C kills immediately. `--resume`
   skips completed stages and re-runs the interrupted one.
@@ -78,9 +88,44 @@ loom run --spec docs/features/user-auth/spec.md --provider mock
   Approving a run whose own verification is about to reset that approval is refused up
   front, rather than recorded and immediately destroyed.
 
+**Budgets** (roadmap L4.3): `--max-usd`, `--max-tokens` and `--max-hours` set a ceiling the
+executor checks before every provider stage. It warns at 80% and halts with **exit 4** and
+per-stage spend; a resume with a larger value continues. Hours count time stages spent
+running, not time waiting on you. A stage that finished without reporting usage makes a dollar
+or token ceiling unverifiable, and the run halts rather than counting it as free.
+
+**Exit codes**: 0 completed, 3 waiting on a gate, 4 budget exhausted, 130 interrupted
+(checkpointed, resumable), 1 anything else.
+
 **What it does NOT do yet** (skeleton by design — see `docs/roadmaps/BUILD-ROADMAP.md`):
-no `--from-phase` or rollback (L2.15), no retries or backoff, no parallelism
-(L3.3), and no policy evaluation (L2.16).
+no `--from-phase` or rollback (L2.15), and no parallelism within a run (L3.3). Retries live
+one level up, in `loom factory`.
+
+## Running the factory (experimental)
+
+`loom factory run` is the supervisor (ADR-010). It reads `intake/*.md` **as committed** on
+`--branch`, claims each valid `ready` order whose `depends-on` have shipped — by priority, then
+`created`, then `id` — and runs up to `--max-concurrent` at once. Each claim gets:
+
+- a git worktree on `factory/<id>` under `.claude/factory/worktrees/`, so concurrent runs never
+  share an index or see each other's edits;
+- a snapshot of the order as its spec, so editing the intake file never changes a running order
+  (the inbox says it changed; `loom factory rerun` re-runs the new version);
+- the order's `budget` as the run's `--max-usd` and `--max-hours`.
+
+```bash
+loom factory run --once          # one pass for cron: claim, wait for the runs to halt, exit
+loom factory run                 # keep supervising; Ctrl-C stops runs at a checkpoint
+loom factory inbox               # what is waiting on you, and what each approval binds to
+loom factory approve <id> confirm-design
+loom factory stop <id>           # interrupt now; `loom factory resume <id>` continues
+```
+
+A transient failure (provider error, timeout, interruption) is resumed with exponential backoff
+up to the order's `max-attempts`; a terminal one (an artifact that broke its contract, a budget)
+is parked with its reason, and **editing the order** is how you clear it. A completed run is
+committed and pushed only after you approve `commit` in the inbox; for `finish: pr` a pull
+request is proposed, and opened only after you approve `open-pr`. Nothing is auto-approved.
 
 ## Recording markdown-pipeline checkpoints
 

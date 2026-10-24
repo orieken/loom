@@ -157,3 +157,29 @@ the contradiction ADR-009 removes. If you invoke either by name, this is what to
 agent writing both always does. What the framework requires instead is the result, measured on the
 change (ADR-008): changed lines at least 85% covered, no test without a path to a failure, mutants on
 changed lines killed. Test-first remains a technique anyone may use; it is no longer a rule.
+
+---
+
+# Removed: auto-proceed keys in `delivery-policy.yaml` (2026-10-24, ADR-010)
+
+**Breaking.** `loom run` now validates `.claude/delivery-policy.yaml` strictly and refuses to start
+when it sets a removed or unknown key, naming each one. The markdown pipeline (`/deliver-feature`)
+no longer auto-proceeds at any checkpoint.
+
+| Removed key | Use instead |
+|---|---|
+| `mode` (`policy-driven`, `strict-human`, `unattended`) | nothing — `/deliver-feature` always stops for a human; `loom run` evaluates policies |
+| `autoProceed`, `autoProceedAnalyst`, `autoProceedPersistence`, any `autoProceed*` | a `.claude/policies/<name>.policy.yaml` for that gate |
+| `gates`, `stages`, `escalations` | `.claude/policies/*.policy.yaml` (`matcher.gate`, `condition`, `action`) |
+| `defaults` | move `maxContractRetries` to the top level |
+| `maxDiffLines`, `requireGreenTests` | a policy `condition` (`diffLines`, `testsPass`) |
+| `version` | nothing — delete it |
+| `policyDir` (documented, never read) | nothing — policies always live in `.claude/policies/` |
+
+What stays: `policiesEnabled` (kill switch), `maxContractRetries`, and the two `/orchestrate` keys
+`workflowAuditsEnabled` and `orchestrationMode`. See `shared/templates/delivery-policy.template.yaml`.
+
+**Why.** The markdown pipeline auto-approved in prose and recorded nothing, which
+`approval-gates.md` says cannot happen. Keys that were ignored rather than rejected let a project
+believe it had configured something. One engine now does automation, and it writes down every
+decision.

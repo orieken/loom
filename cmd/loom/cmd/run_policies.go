@@ -17,11 +17,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// loadPolicies reads the project's policy directory. A load failure is
-// fatal on purpose: a policy that does not parse is not a policy that
-// silently does nothing, it is a file whose author believes it is working.
+// loadPolicies validates delivery-policy.yaml, then reads the project's
+// policy directory. Both failures are fatal on purpose: a policy that does
+// not parse is not a policy that silently does nothing, it is a file whose
+// author believes it is working — and since ADR-010 the same holds for a
+// delivery-policy.yaml still setting `mode` or `autoProceed*`.
 func loadPolicies(cmd *cobra.Command, dir string) ([]policy.Policy, error) {
-	if !policy.Enabled(policy.ConfigFile) {
+	config, err := policy.LoadConfig(policy.ConfigFile)
+	if err != nil {
+		return nil, err
+	}
+	if !config.PoliciesEvaluated() {
 		cmd.Println(policy.DisabledNotice(policy.ConfigFile))
 		return nil, nil
 	}

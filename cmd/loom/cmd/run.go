@@ -28,6 +28,11 @@ type runFlags struct {
 	otelFile       string
 	noTelemetry    bool
 	dryRunPolicies bool
+	maxUSD         float64
+	maxTokens      int64
+	maxHours       float64
+	mockStageCost  float64
+	mockSolution   string
 }
 
 var runArgs runFlags
@@ -78,6 +83,18 @@ func init() {
 		"disable tracing entirely, including the local trace file")
 	runCmd.Flags().BoolVar(&runArgs.dryRunPolicies, "dry-run-policies", false,
 		"evaluate policies against an existing run's state, print the decisions, and exit without running anything")
+	runCmd.Flags().Float64Var(&runArgs.maxUSD, "max-usd", 0,
+		"halt before any stage once the run has spent this many dollars (0: no ceiling)")
+	runCmd.Flags().Int64Var(&runArgs.maxTokens, "max-tokens", 0,
+		"halt before any stage once the run has used this many tokens (0: no ceiling)")
+	runCmd.Flags().Float64Var(&runArgs.maxHours, "max-hours", 0,
+		"halt before any stage once stages have run this many hours in total (0: no ceiling)")
+	runCmd.Flags().Float64Var(&runArgs.mockStageCost, "mock-stage-cost", 0,
+		"mock provider only: dollars each stage reports spending (testing)")
+	_ = runCmd.Flags().MarkHidden("mock-stage-cost")
+	runCmd.Flags().StringVar(&runArgs.mockSolution, "mock-solution", "",
+		"mock provider only: a directory whose files the developer and QA stages write (testing)")
+	_ = runCmd.Flags().MarkHidden("mock-solution")
 	_ = runCmd.MarkFlagRequired("spec")
 }
 
@@ -125,7 +142,8 @@ func providerForRun(cmd *cobra.Command, plan orchestrator.Plan,
 	// invocation's default, so anything printing a resume command
 	// reproduces the run instead of the default.
 	runArgs.provider = name
-	provider, err := selectProvider(plan, name, runArgs.mockHangStage)
+	provider, err := selectProvider(plan, name, mockOptions{hangStage: runArgs.mockHangStage, stageCost: runArgs.mockStageCost,
+		solution: runArgs.mockSolution})
 	if err != nil {
 		return nil, "", err
 	}
@@ -164,6 +182,7 @@ func executeRun(cmd *cobra.Command, setup runSetup) error {
 	executor.OnBaselineError(func(err error) { cmd.PrintErrf("warning: %v\n", err) })
 	executor.OnRoute(func(summary orchestrator.RouteSummary) { reportRoute(cmd, summary, input.WorkspaceDir) })
 	executor.OnLoopRound(func(round orchestrator.LoopRound) { reportLoopRound(cmd, round) })
+	applyBudgetFlags(cmd, executor)
 	if err := applyApproveFlag(executor, runArgs.approve, runArgs.resume); err != nil {
 		return err
 	}
@@ -180,6 +199,7 @@ func executeRun(cmd *cobra.Command, setup runSetup) error {
 		return err
 	}
 	if err != nil {
+		reportBudgetHalt(cmd, err)
 		return err
 	}
 	cmd.Printf("Plan %q completed. Artifacts: %s\n", plan.Name, input.WorkspaceDir)

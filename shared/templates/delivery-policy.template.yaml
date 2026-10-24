@@ -1,49 +1,26 @@
-# Delivery Policy Template (.claude/delivery-policy.yaml)
-# Controls policy-driven graduated automation for the /deliver-feature pipeline.
+# Delivery policy (.claude/delivery-policy.yaml)
+#
+# Every key is optional; an absent file means all defaults. `loom run` validates
+# this file strictly and refuses to start on an unknown or removed key.
+#
+# This file does not automate anything. Since ADR-010 (decision 4B), automation
+# lives only in .claude/policies/*.policy.yaml: `loom run` evaluates those at each
+# gate and records every decision. The markdown pipeline (/deliver-feature)
+# always stops for a human. The old `mode`, `autoProceed*`, `gates`, `stages`,
+# `escalations` and `defaults` keys are gone — see docs/MIGRATION.md.
 
-version: "1.0"
-mode: "policy-driven" # Options: "strict-human", "policy-driven", "unattended"
+# Kill switch for policy evaluation under `loom run`. Only an explicit `false`
+# turns it off.
+policiesEnabled: true
 
-defaults:
-  maxContractRetries: 3
-  maxDiffLines: 200
-  requireGreenTests: true
+# How many times the markdown pipeline re-runs an agent whose artifact fails its
+# contract check (validate-artifact) before asking a human. Default 3.
+maxContractRetries: 3
 
-# Non-negotiable gate policies (Only gates 2, 6, and 7 are policy-eligible)
-gates:
-  gitCommit:
-    autoProceed: true
-    maxDiffLines: 300
-    requireCleanStatus: true
+# /orchestrate only (to be retired — review item D-7). Set to false to skip the
+# audit-after-producer step in workflow stages.
+# workflowAuditsEnabled: true
 
-  outOfBoundaryWrite:
-    autoProceed: true
-    allowedPaths:
-      - "src/**"
-      - "tests/**"
-      - "docs/**"
-
-  fitnessFunctionWiring:
-    autoProceed: true
-    requireDryRunPass: true
-
-# Pipeline stage auto-proceed settings
-stages:
-  phase1_discovery:
-    autoProceedAnalyst: true
-    autoProceedArchitect: false # Pause if architectural RFC or structural flags exist
-
-  phase2_implementation:
-    autoProceedDeveloper: true
-    autoProceedCodeReviewer: true # Auto-proceed if verdict is APPROVED & 0 Criticals
-
-  phase3_verification:
-    autoProceedQA: true
-    autoProceedTechWriter: true
-    autoProceedDevOps: true
-
-# Hard escalation thresholds (always halt to human if triggered)
-escalations:
-  haltOnSecurityCritical: true
-  haltOnArchitecturalRFC: true
-  haltOnMaxRetriesExceeded: true
+# /orchestrate only. "runtime" opts the feature-delivery workflow into the
+# orchestration runtime. Leave unset to keep /deliver-feature unchanged.
+# orchestrationMode: runtime

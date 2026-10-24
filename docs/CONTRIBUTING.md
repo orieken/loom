@@ -110,6 +110,15 @@ testing requirements.
   2026-07-04 incident where this exact gap broke CI for several commits before anyone noticed). Run this
   before every push that touches `scripts/`, `shared/`, or `.github/workflows/` — a plain local run of the
   individual scripts below isn't sufficient for those.
+- `make test-in-container` — the Go side of the same idea (roadmap L3.72). It builds
+  `docker/test.Dockerfile`, a pinned image with the Go toolchain `go.mod` requires, both modules'
+  dependencies, and the linters CI pins, then runs `scripts/test-in-container.sh` against your working
+  tree mounted read-only: build, tests, the coverage ratchet and changed-line coverage, golangci-lint,
+  changed-line mutation, and a smoke test that installs the built binary into a scratch project.
+  `make test-in-container-quick` skips mutation; `STEPS="build test"` runs a subset. Each step reports
+  PASS, FAIL or NOT MEASURED, and NOT MEASURED — usually no diff base, so fetch `origin/main` or set
+  `LOOM_DIFF_BASE` — is never a pass. Requires Docker. Run it before pushing any change under `cmd/`,
+  `internal/` or `shared/mcp/`: CI's `test-image` job runs the same image.
 
 ## Before you commit
 

@@ -89,7 +89,7 @@ func cloneForInspection(state *RunState) *RunState {
 		stages[id] = record
 	}
 	return &RunState{SchemaVersion: state.SchemaVersion, PlanName: state.PlanName, Stages: stages,
-		Approvals: state.Approvals}
+		Approvals: state.Approvals, SpecPath: state.SpecPath, SpecSHA256: state.SpecSHA256}
 }
 
 func gateBoundTo(state *RunState, stageID string) string {

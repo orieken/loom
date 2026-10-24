@@ -15,4 +15,10 @@ var RepositoryExclusions = map[string]bool{
 	// code that reads the context index. Nothing in production imports it, so
 	// no profile of this module's own tests can reach it.
 	"internal/repoquery/fixture/": true,
+	// Compiled only for GOOS=windows. Coverage and mutation both run on
+	// Linux, so no profile can contain these files; `GOOS=windows go vet
+	// ./internal/factory/` type-checks them. Each holds the Windows half of a
+	// function whose POSIX half is measured.
+	"internal/factory/lock_windows.go":    true,
+	"internal/factory/process_windows.go": true,
 }

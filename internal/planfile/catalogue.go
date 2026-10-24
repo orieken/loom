@@ -37,9 +37,15 @@ func (a Available) IsBuiltIn() bool { return a.Path == "" }
 // plan overrides one the framework installed under the same name, which is
 // the precedence every other .claude/ resource has.
 func SearchPath() []string {
+	return SearchPathFrom("")
+}
+
+// SearchPathFrom is SearchPath anchored at a project root, so the answer does
+// not depend on which subdirectory a command runs from (review item I-5).
+func SearchPathFrom(root string) []string {
 	return []string{
-		filepath.Join(".claude", "plans"),
-		filepath.Join("shared", "plans"),
+		filepath.Join(root, ".claude", "plans"),
+		filepath.Join(root, "shared", "plans"),
 	}
 }
 

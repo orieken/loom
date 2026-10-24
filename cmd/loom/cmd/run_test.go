@@ -199,6 +199,10 @@ func interruptRunMidStage(t *testing.T, binary, projectDir, spec string) {
 	if err := run.Wait(); err == nil {
 		t.Fatal("interrupted run exited 0; a canceled run must report the interruption")
 	}
+	// A supervisor reads 130 as "stopped and resumable", not as a failure.
+	if code := run.ProcessState.ExitCode(); code != ExitCodeInterrupted {
+		t.Errorf("interrupted run exit code = %d, want %d", code, ExitCodeInterrupted)
+	}
 }
 
 func waitForStageStatus(t *testing.T, projectDir, stageID string, want orchestrator.StageStatus) {
@@ -594,4 +598,29 @@ func TestRunExplainsWhyAnApprovalWasReset(t *testing.T) {
 	}
 	assertOutputContains(t, output, `approval for gate "confirm-design" was reset`, `stage "analyst"`, "re-approve to continue")
 	assertWaitingOnGate(t, projectDir, "developer", "confirm-design")
+}
+
+// TestRunRefusesARemovedDeliveryPolicyKey is ADR-010's fitness function for
+// 4B: a delivery-policy.yaml still configuring auto-proceed stops the run
+// before any stage starts, and names what to delete.
+func TestRunRefusesARemovedDeliveryPolicyKey(t *testing.T) {
+	binary := buildLoomBinary(t)
+	projectDir := t.TempDir()
+	spec := writeSpec(t, projectDir)
+	writeTestFile(t, filepath.Join(projectDir, ".claude", "delivery-policy.yaml"), "mode: policy-driven\n")
+
+	output, code := runLoom(t, binary, projectDir, "run", "--spec", spec, "--provider", "mock")
+
+	if code == 0 || code == ExitCodeWaitingApproval {
+		t.Fatalf("run with a removed key exit code = %d, want a failure\n%s", code, output)
+	}
+	for _, want := range []string{"`mode`", "ADR-010"} {
+		if !strings.Contains(output, want) {
+			t.Errorf("output does not name %s:\n%s", want, output)
+		}
+	}
+	statePath := filepath.Join(projectDir, ".claude", "feature-workspace", "user-auth", orchestrator.RunStateFileName)
+	if _, err := os.Stat(statePath); err == nil {
+		t.Error("a stage ran: run state was written although the config was invalid")
+	}
 }

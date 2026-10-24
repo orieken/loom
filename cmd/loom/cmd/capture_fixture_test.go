@@ -33,14 +33,7 @@ var (
 	builtBinaryDir  string
 )
 
-// TestMain removes the binary that the capture tests build once.
-func TestMain(m *testing.M) {
-	code := m.Run()
-	if builtBinaryDir != "" {
-		os.RemoveAll(builtBinaryDir)
-	}
-	os.Exit(code)
-}
+
 
 // captureBinary builds the loom binary once for all capture tests. The tests
 // run the built binary, never `go run`, so process start is part of what

@@ -13,12 +13,25 @@ import (
 // selectProvider builds the stage provider named by --provider. The claude
 // provider fails each stage loudly when the binary is absent — there is no
 // silent fallback to mock.
-func selectProvider(plan orchestrator.Plan, name, mockHangStage string) (orchestrator.Provider, error) {
+// mockOptions are the mock provider's test-only knobs.
+type mockOptions struct {
+	hangStage string
+	stageCost float64
+	// solution is a directory the mock's developer and QA stages deliver.
+	solution string
+	code     map[string][]byte
+	tests    map[string][]byte
+}
+
+func selectProvider(plan orchestrator.Plan, name string, options mockOptions) (orchestrator.Provider, error) {
 	switch name {
 	case "claude":
 		return newClaudeProvider()
 	case "mock":
-		return newMockProvider(plan, mockHangStage), nil
+		if err := options.loadSolution(); err != nil {
+			return nil, err
+		}
+		return newMockProvider(plan, options), nil
 	default:
 		return nil, fmt.Errorf("unknown provider %q — use claude or mock", name)
 	}
@@ -50,13 +63,21 @@ func findAgentsDirIn(root string) (string, error) {
 // newMockProvider scripts a deterministic run: every stage writes a canned
 // artifact; the optional hang stage blocks until interrupted, so integration
 // tests can exercise SIGINT checkpointing through the real CLI.
-func newMockProvider(plan orchestrator.Plan, hangStage string) orchestrator.Provider {
+//
+// A stage cost makes every stage report spending it, so a budget can be
+// exercised end to end. Without one the mock reports nothing, which is the
+// honest default: it consumed nothing from a model.
+func newMockProvider(plan orchestrator.Plan, options mockOptions) orchestrator.Provider {
 	scripts := make(map[string]mock.Script, len(plan.Stages))
 	for _, stage := range plan.Stages {
-		scripts[stage.ID] = scriptFor(stage)
+		script := options.scriptFor(stage)
+		if options.stageCost > 0 {
+			script.Usage = &orchestrator.Usage{Model: "mock", CostUSD: options.stageCost}
+		}
+		scripts[stage.ID] = script
 	}
-	if hangStage != "" {
-		scripts[hangStage] = mock.Script{Hang: true}
+	if options.hangStage != "" {
+		scripts[options.hangStage] = mock.Script{Hang: true}
 	}
 	return mock.New(scripts)
 }

@@ -137,9 +137,15 @@ jobs:
           go-version-file: go.mod
       - name: Build and test the loom module
         id: gotest
+        # A failure's first lines become error annotations, which the API and
+        # the PR page show without the raw log (found while chasing T-1).
         run: |
           go build ./...
-          go test ./... -coverprofile=coverage.out
+          set -o pipefail
+          go test ./... -coverprofile=coverage.out 2>&1 | tee go-test.log || {
+            grep -E -- '--- FAIL|^FAIL|panic:|_test\.go:[0-9]+: ' go-test.log | head -20 | sed 's/^/::error title=go test::/'
+            exit 1
+          }
       - name: Coverage ratchet
         # if: always() is the fix for roadmap L3.45's second defect. Steps in a
         # job fail-fast, so when the test step above failed this one silently
@@ -280,3 +286,36 @@ jobs:
           # root, gocyclo min-complexity 7 — enforces the framework-wide < 7
           # rule), runs under the go1.27 toolchain from go.mod.
           version: v2.13.2
+
+  test-image:
+    name: Pinned test image — build, test, lint, install smoke (roadmap L3.72)
+    # The same image `make test-in-container` builds locally, so a pass here and
+    # a pass on a laptop mean the same thing. It overlaps go-build and
+    # golangci-lint on purpose until it has run green long enough to replace
+    # them; mutation stays in its own job because it takes minutes per package.
+    # What only this job checks: the built binary installs into a fresh project,
+    # passes `loom health`, and `loom intake check` accepts a valid order and
+    # rejects a misnamed one.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4 — same pin as loom-release.yml
+        with:
+          # Full history: changed-line coverage diffs against the PR base or the
+          # pre-push head, which a depth-1 clone lacks.
+          fetch-depth: 0
+      - name: Build the test image
+        run: docker build -f docker/test.Dockerfile -t loom-test:ci .
+      - name: Record the image id
+        # Printed so a CI result can be matched to the image a laptop built.
+        run: docker image inspect --format '{{.Id}}' loom-test:ci
+      - name: Run every step except mutation
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/workspace:ro" \
+            -e PR_BASE -e PUSH_BEFORE -e GITHUB_ACTIONS \
+            loom-test:ci toolchain build test coverage lint smoke

@@ -23,6 +23,9 @@ const (
 	// StaleReasonUpstream means an earlier stage went stale, so this
 	// stage's own output was derived from content that no longer exists.
 	StaleReasonUpstream StaleReason = "UPSTREAM_STALE"
+	// StaleReasonSpecChanged means the spec the run was bound to changed,
+	// and every stage's output derives from it (review item I-1).
+	StaleReasonSpecChanged StaleReason = "SPEC_CHANGED"
 )
 
 // StaleStage reports one demotion, for the CLI to show the human.
@@ -41,7 +44,13 @@ type StaleStage struct {
 // Demotion never touches Approvals: unlocking a gate stays unlocked even
 // when the stage behind it goes stale. Binding approvals to digests is
 // roadmap L2.14, deliberately not built here.
+//
+// The spec is checked first: it is upstream of every stage, so a changed spec
+// demotes them all and the per-artifact checks have nothing left to decide.
 func VerifyCompletedStages(state *RunState) []StaleStage {
+	if specChanged(state) {
+		return demoteForSpecChange(state)
+	}
 	stale := make([]StaleStage, 0)
 	cascading := false
 	for _, stageID := range state.StagesInSequence() {
@@ -120,6 +129,8 @@ func (s StaleStage) Description() string {
 		return fmt.Sprintf("stage %q was COMPLETED but its artifact changed on disk — re-running", s.StageID)
 	case StaleReasonMissing:
 		return fmt.Sprintf("stage %q was COMPLETED but its artifact is missing — re-running", s.StageID)
+	case StaleReasonSpecChanged:
+		return fmt.Sprintf("stage %q was COMPLETED but the spec changed since — re-running", s.StageID)
 	default:
 		return fmt.Sprintf("stage %q re-runs because an earlier stage went stale", s.StageID)
 	}

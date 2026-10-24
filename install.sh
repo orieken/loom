@@ -454,21 +454,30 @@ install_claude_code() {
       skip "CLAUDE.md already exists"
     fi
 
-    if [[ ! -d "$TARGET_DIR/features" ]]; then
-      local template_features="$REPO_DIR/templates/claude-feature-team/features"
-      if [[ -d "$template_features" ]]; then
-        if $DRY_RUN; then
-          dry "would copy features/ template"
-        else
-          mkdir -p "$TARGET_DIR/features"
-          cp "$template_features"/*.md "$TARGET_DIR/features/" 2>/dev/null || true
-          ok "installed features/ template"
-        fi
-      fi
-    else
-      skip "features/ already exists"
-    fi
+    install_team_template_dir features
+    install_team_template_dir intake
   fi
+}
+
+# install_team_template_dir <name> copies templates/claude-feature-team/<name>/*.md
+# into the project once. Each is a starting point the team edits, so an
+# existing directory is never touched. intake/ holds the factory's work-order
+# template (roadmap L3.64); loom install copies the same two directories.
+install_team_template_dir() {
+  local name="$1"
+  local source_dir="$REPO_DIR/templates/claude-feature-team/$name"
+  if [[ -d "$TARGET_DIR/$name" ]]; then
+    skip "$name/ already exists"
+    return
+  fi
+  [[ -d "$source_dir" ]] || return
+  if $DRY_RUN; then
+    dry "would copy $name/ template"
+    return
+  fi
+  mkdir -p "$TARGET_DIR/$name"
+  cp "$source_dir"/*.md "$TARGET_DIR/$name/" 2>/dev/null || true
+  ok "installed $name/ template"
 }
 
 install_aos_layers() {
