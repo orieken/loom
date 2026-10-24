@@ -22,7 +22,7 @@ is Phase 2, however worthwhile.
 
 Nothing in Steps 2–4 should build on code that has never run in full.
 
-- [ ] **L3.72** (S) — pinned build-and-test image; full suite, lint, mutation and `loom install` in one
+- [x] **L3.72** (S) — pinned build-and-test image; full suite, lint, mutation and `loom install` in one
   container, the same image in CI.
 - [x] **I-11** (S) — `cmd/loom/cmd` passes in that image, and `loom run --provider mock` accepts an
   intake file (L3.63's unverified Done-when).
