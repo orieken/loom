@@ -32,6 +32,7 @@ type runFlags struct {
 	maxTokens      int64
 	maxHours       float64
 	mockStageCost  float64
+	mockSolution   string
 }
 
 var runArgs runFlags
@@ -91,6 +92,9 @@ func init() {
 	runCmd.Flags().Float64Var(&runArgs.mockStageCost, "mock-stage-cost", 0,
 		"mock provider only: dollars each stage reports spending (testing)")
 	_ = runCmd.Flags().MarkHidden("mock-stage-cost")
+	runCmd.Flags().StringVar(&runArgs.mockSolution, "mock-solution", "",
+		"mock provider only: a directory whose files the developer and QA stages write (testing)")
+	_ = runCmd.Flags().MarkHidden("mock-solution")
 	_ = runCmd.MarkFlagRequired("spec")
 }
 
@@ -138,7 +142,8 @@ func providerForRun(cmd *cobra.Command, plan orchestrator.Plan,
 	// invocation's default, so anything printing a resume command
 	// reproduces the run instead of the default.
 	runArgs.provider = name
-	provider, err := selectProvider(plan, name, mockOptions{hangStage: runArgs.mockHangStage, stageCost: runArgs.mockStageCost})
+	provider, err := selectProvider(plan, name, mockOptions{hangStage: runArgs.mockHangStage, stageCost: runArgs.mockStageCost,
+		solution: runArgs.mockSolution})
 	if err != nil {
 		return nil, "", err
 	}

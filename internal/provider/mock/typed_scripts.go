@@ -6,6 +6,7 @@ package mock
 
 import (
 	"encoding/json"
+	"sort"
 
 	"github.com/orieken/loom/internal/state"
 )
@@ -172,4 +173,29 @@ func sampleScenarios() state.ScenariosState {
 			Then:      []string{"the scripted outcome is visible"},
 		}},
 	}
+}
+
+// ImplementationWriting is the developer's scripted payload, claiming and
+// writing exactly the given files instead of the placeholder.
+func ImplementationWriting(files map[string][]byte) Script {
+	implementation := sampleImplementation()
+	implementation.FilesCreated = sortedPaths(files)
+	return Script{Payload: mustEncode(implementation), Files: files}
+}
+
+// QAWriting is the QA engineer's scripted payload, claiming and writing
+// exactly the given test files instead of the placeholder.
+func QAWriting(files map[string][]byte) Script {
+	qa := sampleQA()
+	qa.TestFilesCreated = sortedPaths(files)
+	return Script{Payload: mustEncode(qa), Files: files}
+}
+
+func sortedPaths(files map[string][]byte) []string {
+	paths := make([]string, 0, len(files))
+	for path := range files {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+	return paths
 }

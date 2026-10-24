@@ -385,3 +385,17 @@ func TestOnceClaimsWaitsAndFinishes(t *testing.T) {
 	factory.assertPhase("bravo", PhaseShipped)
 	factory.assertPhase("charlie", "")
 }
+
+// Every run writes its delivery record under docs/features/<id>/, which is
+// part of the order's work wherever its scope points.
+func TestTheOrdersOwnDeliveryRecordIsInScope(t *testing.T) {
+	scope := []string{"calc/**"}
+	for path, want := range map[string]bool{
+		"docs/features/divide/run-state.json": true, "docs/features/other/run-state.json": false,
+		"calc/divide.go": true, "docs/features/divide-two/x": false,
+	} {
+		if got := InOrderScope(path, "divide", scope); got != want {
+			t.Errorf("InOrderScope(%s) = %v, want %v", path, got, want)
+		}
+	}
+}

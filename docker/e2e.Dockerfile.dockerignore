@@ -1,0 +1,5 @@
+# The e2e image's build context: source to build loom and the harness, and the
+# fixture — but never the hidden acceptance tests, which must not reach any
+# layer of the image. Read by BuildKit for docker/e2e.Dockerfile only.
+.git
+tests/e2e/testdata/hidden

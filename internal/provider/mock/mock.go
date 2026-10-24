@@ -37,6 +37,11 @@ type Script struct {
 	// not do. It exists so L2.24's regression fixture — the second real
 	// run's qa payload — can be replayed as it actually arrived.
 	Fabricates bool
+	// Files is what a claimed path is written with. A claimed path with no
+	// entry gets a placeholder comment. It is how an end-to-end harness gives
+	// the mock a real implementation to deliver, so that acceptance tests
+	// the run never sees have something to judge (roadmap L3.73).
+	Files map[string][]byte
 	// Usage is what this invocation reports consuming (roadmap L3.8). Nil
 	// is the default and the honest one for a mock: it consumed nothing
 	// from a model, and reporting zeros would assert a measurement that
@@ -192,7 +197,7 @@ func writeClaimedPaths(script Script, input orchestrator.StageInput) error {
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			return fmt.Errorf("mock: create directory for %s: %w", claimed, err)
 		}
-		if err := os.WriteFile(path, []byte("// written by the mock provider\n"), 0o644); err != nil {
+		if err := os.WriteFile(path, claimedContent(script, claimed), 0o644); err != nil {
 			return fmt.Errorf("mock: write %s: %w", claimed, err)
 		}
 	}
@@ -215,4 +220,11 @@ func claimedPaths(payload []byte) []string {
 	return append(append(append(append([]string{},
 		document.FilesCreated...), document.FilesModified...),
 		document.TestFilesCreated...), document.TestFilesModified...)
+}
+
+func claimedContent(script Script, claimed string) []byte {
+	if content, ok := script.Files[claimed]; ok {
+		return content
+	}
+	return []byte("// written by the mock provider\n")
 }

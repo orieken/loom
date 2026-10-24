@@ -1,4 +1,4 @@
-.PHONY: install uninstall generate check test-agents health test-image test-in-container test-in-container-quick
+.PHONY: install uninstall generate check test-agents health test-image test-in-container test-in-container-quick e2e-in-container
 
 install:
 	./install.sh --global
@@ -39,3 +39,9 @@ test-in-container: test-image
 # mutant and takes minutes rather than seconds.
 test-in-container-quick: STEPS = toolchain build test coverage lint smoke
 test-in-container-quick: test-in-container
+
+# The factory's end-to-end harness (roadmap L3.73): deliver the fixture order
+# in one container, verify it against the hidden acceptance tests in another.
+# `go test ./tests/e2e/...` runs the same harness without Docker.
+e2e-in-container:
+	scripts/e2e-in-container.sh

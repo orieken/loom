@@ -17,6 +17,10 @@ import (
 type mockOptions struct {
 	hangStage string
 	stageCost float64
+	// solution is a directory the mock's developer and QA stages deliver.
+	solution string
+	code     map[string][]byte
+	tests    map[string][]byte
 }
 
 func selectProvider(plan orchestrator.Plan, name string, options mockOptions) (orchestrator.Provider, error) {
@@ -24,6 +28,9 @@ func selectProvider(plan orchestrator.Plan, name string, options mockOptions) (o
 	case "claude":
 		return newClaudeProvider()
 	case "mock":
+		if err := options.loadSolution(); err != nil {
+			return nil, err
+		}
 		return newMockProvider(plan, options), nil
 	default:
 		return nil, fmt.Errorf("unknown provider %q — use claude or mock", name)
@@ -60,7 +67,7 @@ func findAgentsDir() (string, error) {
 func newMockProvider(plan orchestrator.Plan, options mockOptions) orchestrator.Provider {
 	scripts := make(map[string]mock.Script, len(plan.Stages))
 	for _, stage := range plan.Stages {
-		script := scriptFor(stage)
+		script := options.scriptFor(stage)
 		if options.stageCost > 0 {
 			script.Usage = &orchestrator.Usage{Model: "mock", CostUSD: options.stageCost}
 		}

@@ -62,7 +62,7 @@ In dependency order. Small rules that belong to the supervisor ride with it.
 
 ### Step 4 — Prove it builds something
 
-- [ ] **L3.73** (M) — the end-to-end harness: a fixture repo, hidden acceptance tests, explicit gate
+- [x] **L3.73** (M) — the end-to-end harness: a fixture repo, hidden acceptance tests, explicit gate
   approvals, mock provider on every PR.
 - [ ] **L3.74** (S) — the same harness nightly against the real provider, under a hard budget.
 
