@@ -105,6 +105,12 @@ type RunState struct {
 	CreatedBy     Creator `json:"createdBy"`
 	FeatureName   string  `json:"featureName,omitempty"`
 	SpecPath      string  `json:"specPath,omitempty"`
+	// SpecSHA256 is the spec's digest when the run started, re-bound after a
+	// spec change demotes the run (review item I-1). Every stage derives
+	// from the spec, so a changed spec makes every completed stage stale.
+	// Empty when the spec could not be read at start, or for state written
+	// before digests existed — adopted on resume, see adoptSpecDigest.
+	SpecSHA256 string `json:"specSha256,omitempty"`
 	// Provider is which stage provider this run was started with. A run is
 	// mock or it is not, and half of each is meaningless — so this belongs
 	// to the run's identity rather than to one invocation (roadmap L3.17).
