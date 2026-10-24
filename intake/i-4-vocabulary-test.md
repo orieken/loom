@@ -3,7 +3,7 @@ intake: 1
 id: i-4-vocabulary-test
 type: chore
 plan: deliver-feature
-status: draft
+status: ready
 priority: 2
 created: 2026-10-24
 requested-by: oscar
