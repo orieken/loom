@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -223,5 +224,70 @@ func TestVerifyLeavesStateWithoutASpecDigestAlone(t *testing.T) {
 
 	if stale := orchestrator.VerifyCompletedStages(state); len(stale) != 0 {
 		t.Errorf("stale = %+v, want nothing: no digest means nothing to compare", stale)
+	}
+}
+
+// --- failure paths: a demotion that cannot be persisted must stop the run ---
+
+// makeStateDirUnwritable makes the next Save fail. Root ignores directory
+// permissions, so the test cannot run as root — CI runs as an ordinary user.
+func makeStateDirUnwritable(t *testing.T, store *orchestrator.StateStore) {
+	t.Helper()
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores directory permissions; needs an ordinary user")
+	}
+	dir := filepath.Dir(store.Path())
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Fatalf("chmod state dir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+}
+
+func TestAnAdoptedSpecDigestThatCannotBeSavedStopsTheRun(t *testing.T) {
+	executor, _, store, input := completedRun(t) // no spec on disk: no digest recorded
+	writeSpecFile(t, input, "# Feature\n")
+	makeStateDirUnwritable(t, store)
+
+	err := executor.Run(context.Background(), threeStagePlan(), input)
+	if err == nil || !strings.Contains(err.Error(), "persist adopted spec digest") {
+		t.Errorf("Run error = %v, want the adoption's save failure", err)
+	}
+}
+
+func TestASpecDemotionThatCannotBeSavedStopsTheRun(t *testing.T) {
+	executor, provider, store, input := completedSpecRun(t)
+	writeSpecFile(t, input, "# Feature, rewritten\n")
+	makeStateDirUnwritable(t, store)
+
+	err := executor.Run(context.Background(), threeStagePlan(), input)
+	if err == nil || !strings.Contains(err.Error(), "persist verification result") {
+		t.Errorf("Run error = %v, want the demotion's save failure", err)
+	}
+	assertInvocations(t, provider, []string{"analyst", "developer", "qa-engineer"})
+}
+
+// The timeline is how a demotion is reported; one that cannot be recorded
+// stops the run rather than re-running work nobody was told about. A
+// directory where the timeline file belongs fails the append for any user.
+func TestASpecDemotionThatCannotBeRecordedStopsTheRun(t *testing.T) {
+	executor, provider, store, input := completedSpecRun(t)
+	writeSpecFile(t, input, "# Feature, rewritten\n")
+	timeline := filepath.Join(filepath.Dir(store.Path()), orchestrator.RunEventsFileName)
+	if err := os.Remove(timeline); err != nil {
+		t.Fatalf("remove timeline: %v", err)
+	}
+	if err := os.Mkdir(timeline, 0o755); err != nil {
+		t.Fatalf("block timeline: %v", err)
+	}
+
+	if err := executor.Run(context.Background(), threeStagePlan(), input); err == nil {
+		t.Error("Run succeeded although the demotions could not be recorded")
+	}
+	assertInvocations(t, provider, []string{"analyst", "developer", "qa-engineer"})
+}
+
+func TestSpecDigestOfNoPathIsEmpty(t *testing.T) {
+	if digest := orchestrator.SpecDigest(""); digest != "" {
+		t.Errorf("SpecDigest(\"\") = %q, want empty: no spec, nothing to verify", digest)
 	}
 }
