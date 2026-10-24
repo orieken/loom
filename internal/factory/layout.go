@@ -27,6 +27,13 @@ const (
 	FeaturesDir = "features"
 	// BranchPrefix names the branch each order's run works on.
 	BranchPrefix = "factory/"
+	// WorktreeDir holds each order's worktree. It is deliberately outside
+	// .claude/: Claude Code treats every path with a .claude segment as a
+	// sensitive file and refuses to write it, so an agent working in a
+	// worktree under .claude/ cannot write a single file — not its code, not
+	// a scratch file at the worktree's root. The first real-provider run
+	// found this; the mock, which writes through Go, never could.
+	WorktreeDir = ".loom/worktrees"
 )
 
 // Layout is where the factory keeps its files in one repository.
@@ -42,7 +49,7 @@ func (l Layout) LockPath() string { return filepath.Join(l.Root, StateDir, "supe
 
 // WorktreePath is where an order's run executes.
 func (l Layout) WorktreePath(id string) string {
-	return filepath.Join(l.Root, StateDir, "worktrees", id)
+	return filepath.Join(l.Root, filepath.FromSlash(WorktreeDir), id)
 }
 
 // RunArchivePath keeps a shipped run's workspace after its worktree is gone.
@@ -64,9 +71,14 @@ func RunStatePath(worktree, id string) string {
 // BranchFor is the branch an order's run works on.
 func BranchFor(id string) string { return BranchPrefix + id }
 
-// Prepare creates the factory's directory in the root, ignoring itself.
+// Prepare creates the factory's directories in the root, each ignoring
+// itself. Only .loom/worktrees/ is ignored, not .loom/: the rest of .loom/
+// belongs to `loom index`, which decides for itself what is committed.
 func (l Layout) Prepare() error {
-	return ignoredDirectory(filepath.Join(l.Root, StateDir))
+	if err := ignoredDirectory(filepath.Join(l.Root, StateDir)); err != nil {
+		return err
+	}
+	return ignoredDirectory(filepath.Join(l.Root, filepath.FromSlash(WorktreeDir)))
 }
 
 // ignoredDirectory creates dir with a .gitignore that ignores everything in

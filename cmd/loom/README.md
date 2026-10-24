@@ -107,7 +107,8 @@ one level up, in `loom factory`.
 `--branch`, claims each valid `ready` order whose `depends-on` have shipped — by priority, then
 `created`, then `id` — and runs up to `--max-concurrent` at once. Each claim gets:
 
-- a git worktree on `factory/<id>` under `.claude/factory/worktrees/`, so concurrent runs never
+- a git worktree on `factory/<id>` under `.loom/worktrees/` (outside `.claude/`, which Claude Code
+  will not let an agent write to), so concurrent runs never
   share an index or see each other's edits;
 - a snapshot of the order as its spec, so editing the intake file never changes a running order
   (the inbox says it changed; `loom factory rerun` re-runs the new version);

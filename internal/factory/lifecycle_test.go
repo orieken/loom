@@ -316,7 +316,7 @@ func newFinishingFactory(t *testing.T, finish string, scope ...string) *testFact
 	runGit(t, origin, "init", "-q", "--bare")
 	runGit(t, factory.root, "remote", "add", "origin", origin)
 	factory.launcher.script("alpha", run{code: exitCompleted, state: func(id string) *orchestrator.RunState {
-		writeTestFile(t, filepath.Join(factory.root, StateDir, "worktrees", id, "src", "feature.go"), "package src\n")
+		writeTestFile(t, filepath.Join(factory.supervisor.config.Layout.WorktreePath(id), "src", "feature.go"), "package src\n")
 		return completedState(id)
 	}})
 	factory.tick()

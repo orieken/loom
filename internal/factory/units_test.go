@@ -399,3 +399,26 @@ func TestTheOrdersOwnDeliveryRecordIsInScope(t *testing.T) {
 		}
 	}
 }
+
+// Claude Code refuses to write any path with a .claude segment, so a
+// worktree there leaves every agent unable to write (found by the first
+// real-provider run). The worktree must sit outside .claude/, and stay
+// ignored by the root checkout without ignoring the rest of .loom/.
+func TestWorktreesLiveOutsideClaudeAndIgnoreOnlyThemselves(t *testing.T) {
+	root := t.TempDir()
+	layout := Layout{Root: root}
+	for _, segment := range strings.Split(filepath.ToSlash(layout.WorktreePath("alpha")), "/") {
+		if segment == ".claude" {
+			t.Fatalf("worktree path %s has a .claude segment; agents cannot write there", layout.WorktreePath("alpha"))
+		}
+	}
+	if err := layout.Prepare(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".loom", "worktrees", ".gitignore")); err != nil {
+		t.Errorf("the worktree directory does not ignore itself: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".loom", ".gitignore")); !os.IsNotExist(err) {
+		t.Errorf("Prepare wrote .loom/.gitignore, which would hide loom index's files: %v", err)
+	}
+}
