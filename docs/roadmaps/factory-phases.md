@@ -24,7 +24,7 @@ Nothing in Steps 2–4 should build on code that has never run in full.
 
 - [ ] **L3.72** (S) — pinned build-and-test image; full suite, lint, mutation and `loom install` in one
   container, the same image in CI.
-- [ ] **I-11** (S) — `cmd/loom/cmd` passes in that image, and `loom run --provider mock` accepts an
+- [x] **I-11** (S) — `cmd/loom/cmd` passes in that image, and `loom run --provider mock` accepts an
   intake file (L3.63's unverified Done-when).
 - [ ] **I-1** (M, P1) — the executor digests the spec and invalidates the run when it changes. Every
   unattended run trusts its spec; today nothing checks it.
@@ -87,6 +87,8 @@ how often an agent reads the thing being fixed.
 
 ### Tune from real-run data
 
+- [ ] **T-1** (S) — find and fix the flaky test in `go-build` (found while closing I-11).
+
 - [ ] **I-9** (S) — budget defaults derived from recorded run costs, not guessed.
 - [ ] **I-3** (S) — scan every order's body; warnings for internal, violations for external.
 - [ ] **I-12** (S) — validate `scope.paths` globs and `source-ref` per source.
@@ -114,7 +116,7 @@ how often an agent reads the thing being fixed.
 - [ ] **D-14** (S) — the spec-ingestion check calls `loom ki scan`.
 - [ ] **I-4** (S) — a test tying the intake README's vocabulary to the Go sets.
 
-**Size**: 17 items, almost all S. Most can ride along with whatever touches the same file.
+**Size**: 18 items, almost all S. Most can ride along with whatever touches the same file.
 
 ---
 

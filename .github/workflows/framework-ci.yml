@@ -137,9 +137,15 @@ jobs:
           go-version-file: go.mod
       - name: Build and test the loom module
         id: gotest
+        # A failure's first lines become error annotations, which the API and
+        # the PR page show without the raw log (found while chasing T-1).
         run: |
           go build ./...
-          go test ./... -coverprofile=coverage.out
+          set -o pipefail
+          go test ./... -coverprofile=coverage.out 2>&1 | tee go-test.log || {
+            grep -E -- '--- FAIL|^FAIL|panic:|_test\.go:[0-9]+: ' go-test.log | head -20 | sed 's/^/::error title=go test::/'
+            exit 1
+          }
       - name: Coverage ratchet
         # if: always() is the fix for roadmap L3.45's second defect. Steps in a
         # job fail-fast, so when the test step above failed this one silently
@@ -311,5 +317,5 @@ jobs:
           PUSH_BEFORE: ${{ github.event.before }}
         run: |
           docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/workspace:ro" \
-            -e PR_BASE -e PUSH_BEFORE \
+            -e PR_BASE -e PUSH_BEFORE -e GITHUB_ACTIONS \
             loom-test:ci toolchain build test coverage lint smoke
