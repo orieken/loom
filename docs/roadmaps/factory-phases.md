@@ -28,9 +28,9 @@ Nothing in Steps 2–4 should build on code that has never run in full.
   intake file (L3.63's unverified Done-when).
 - [x] **I-1** (M, P1) — the executor digests the spec and invalidates the run when it changes. Every
   unattended run trusts its spec; today nothing checks it.
-- [ ] **D-1** (S, P1) — the `CLAUDE.md` installed into every project stops teaching the retired
+- [x] **D-1** (S, P1) — the `CLAUDE.md` installed into every project stops teaching the retired
   pipeline. The factory runs agents inside those projects.
-- [ ] **I-2** (S, P1) — spec-writer preserves frontmatter it does not know, so authoring an order
+- [x] **I-2** (S, P1) — spec-writer preserves frontmatter it does not know, so authoring an order
   cannot destroy it.
 
 ### Step 2 — Decide before building the supervisor

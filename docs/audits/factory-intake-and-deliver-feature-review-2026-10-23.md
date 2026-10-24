@@ -47,7 +47,7 @@ Priority: **P1** wrong or unsafe today · **P2** contradiction or drift that wil
   humans now edit the frontmatter of in-flight specs. *Fix*: record the spec's SHA-256 at run start,
   verify it on resume like any artifact, and treat a change as invalidating every stage.
   *Where*: `internal/orchestrator/executor.go`, `state.go`.
-- [ ] **I-2 (P1) — spec-writer clobbers frontmatter it does not know.** F-3 is a warning, not a fix.
+- [x] **I-2 (P1) — spec-writer clobbers frontmatter it does not know.** *Closed 2026-10-23: spec-writer 1.2.0 edits only the body, preserves frontmatter key for key, and never changes an order's status. The golden test the fix called for is not added: a baseline must come from a real agent run, and fabricating one would test nothing. The deterministic backstop is `loom intake check`, which fails a stripped order.* F-3 is a warning, not a fix.
   *Fix*: spec-writer preserves unknown frontmatter keys in fix mode; a golden test in
   `tests/agents/spec-writer/` with an intake file proves it. *Where*: `shared/agents/spec-writer.md`.
 - [ ] **I-3 (P2) — `trust` is self-declared by the person who may have pasted the untrusted text.**
@@ -87,7 +87,7 @@ Priority: **P1** wrong or unsafe today · **P2** contradiction or drift that wil
 
 ### `deliver-feature` and its surroundings
 
-- [ ] **D-1 (P1) — The installed `CLAUDE.md` teaches a retired pipeline.** `loom install` copies
+- [x] **D-1 (P1) — The installed `CLAUDE.md` teaches a retired pipeline.** *Closed 2026-10-23: the template now names the entry points (`/new-feature`, `/deliver-feature`, `/deliver-bugfix`, `loom run`, `intake/`), the rules files and the artifact locations, and restates no pipeline. Already-installed projects keep their copy: install never overwrites a `CLAUDE.md`.* `loom install` copies
   `templates/claude-feature-team/CLAUDE.md` into every project as its `CLAUDE.md`, loaded every
   session. It describes the flat pre-Epic-63 workspace (`.claude/feature-workspace/analysis.md`,
   `:61`) that `deliver-feature` ships migration code to repair, omits context-engineer entirely, and
