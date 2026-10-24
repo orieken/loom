@@ -38,9 +38,9 @@ Nothing in Steps 2–4 should build on code that has never run in full.
 These are decisions, not code, and L3.65 cannot be designed around an open question. All four are
 laid out, with a recommendation each, in [ADR-010](../adrs/ADR-010-factory-order-state-and-policy-configuration.md).
 
-- [ ] **I-6** — where intake lives in git: working tree, or committed to `base-branch`.
-- [ ] **I-7** — what `hold` means for a run already in flight.
-- [ ] **D-2 + D-3** (M, P1) — one validated policy schema, and every policy decision recorded. An
+- [x] **I-6** — where intake lives in git. *Decided (ADR-010, 2B): the factory reads orders committed on `base-branch`.*
+- [x] **I-7** — what `hold` means for a run already in flight. *Decided (ADR-010, 1C and 3A): orders are snapshotted at claim; `hold` stops resumption at the next halt, and `loom factory stop` interrupts at once.*
+- [ ] **D-2 + D-3** (M, P1) — *decided (ADR-010, 4B); building it is what remains:* one validated policy schema, and every policy decision recorded. An
   unattended factory is the policy path; it cannot be the silent one.
 
 ### Step 3 — Build the floor

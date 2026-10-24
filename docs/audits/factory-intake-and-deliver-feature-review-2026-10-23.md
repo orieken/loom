@@ -60,10 +60,11 @@ Priority: **P1** wrong or unsafe today · **P2** contradiction or drift that wil
 - [ ] **I-5 (P2) — `loom intake check` answers differently by working directory.** `plan` is resolved
   through `planfile.SearchPath()`, which is relative; run from a subdirectory, every project plan
   vanishes. *Fix*: resolve from the repository root. *Where*: `cmd/loom/cmd/intake.go`.
-- [ ] **I-6 (P2) — Where intake lives in git is undefined.** Is `status: ready` read from the working
+- [x] **I-6 (P2) — Where intake lives in git is undefined.** Is `status: ready` read from the working
   tree, or only once committed to `base-branch`? A supervisor reading the working tree runs
   uncommitted specs; one reading the branch needs a commit per status flip. Decide before L3.65.
-- [ ] **I-7 (P2) — `hold` has no meaning for a run in flight.** The README first promised a held run
+  *Decided 2026-10-24 in ADR-010 (2B): the supervisor reads orders committed on `base-branch`, at a recorded SHA. Built as part of L3.65.*
+- [x] **I-7 (P2) — `hold` has no meaning for a run in flight.** The README first promised a held run
   would finish its stage and stop at the next gate; `loom run` has no external stop signal but
   SIGINT. The promise is withdrawn in this PR; the decision is not made. *Fix*: give the executor a
   stop-at-next-gate request, or define `hold` as affecting only orders not yet claimed. *Where*: L3.65.
@@ -72,6 +73,7 @@ Priority: **P1** wrong or unsafe today · **P2** contradiction or drift that wil
   Human-owned status inside the spec's own frontmatter and an executor that treats the spec as
   immutable cannot both hold. I-6 and I-7 should be decided together, and moving `status` (and perhaps
   `priority`) out of the spec file — or digesting only the body — is the likely shape of the answer.
+  *Decided 2026-10-24 in ADR-010 (1C, 3A): a claim runs from a snapshot, so editing the intake file never touches a running order; `hold` stops resumption at the next natural halt, and `loom factory stop` interrupts at once through the executor's existing checkpoint. Built as part of L3.65.*
 - [ ] **I-8 (P3) — Priority ties break on `created`, which has day granularity**, so same-day orders
   start in filesystem order. Add `id` as the final tie-break.
 - [ ] **I-9 (P3) — Budget defaults are unfounded.** `$10 / 4h` came from nowhere. The first real run
@@ -98,9 +100,11 @@ Priority: **P1** wrong or unsafe today · **P2** contradiction or drift that wil
   `approval-gates.md` promises no silent auto-approvals. *Fix*: when `loom state` is available,
   record each policy decision through it; when it is not, `policy-driven` falls back to
   `strict-human`.
+  *Decided 2026-10-24 in ADR-010 (4B): automation lives only in `.policy.yaml`, evaluated and recorded by `loom run`; `delivery-policy.yaml` loses `mode` and `autoProceed*` and is validated strictly. Not yet built.*
 - [ ] **D-3 (P2) — The policy schema disagrees with its reader.** `delivery-policy.template.yaml:5`
   offers `mode: "unattended"`, defined nowhere else; `SKILL.md:131` reads `autoProceedPersistence`,
   which the template does not contain; no Go code reads `mode` at all. *Fix*: one schema, validated.
+  *Decided 2026-10-24 in ADR-010 (4B): automation lives only in `.policy.yaml`, evaluated and recorded by `loom run`; `delivery-policy.yaml` loses `mode` and `autoProceed*` and is validated strictly. Not yet built.*
 - [ ] **D-4 (P2) — Step numbers have drifted.** `:144` says Friday is step 40 (it is 42); the state
   and trace examples cite steps 6, 8 and 19 for agents now at 7, 9 and 20 (`:268`, `:276`, `:320`,
   `:332`). Cross-referencing by number inside a 43-step prose list will keep drifting. *Fix*: refer

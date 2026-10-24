@@ -4508,9 +4508,13 @@ with stand-ins for two shared helpers. CI is the first full run.
 1. **Problem**: Nothing starts a run. The scheduler skill says so itself: loom ships no runner for
    its scheduled hooks (L3.10), and `loom run` exits when its one spec finishes or halts.
 2. **Architectural Fix**: A long-lived `loom factory run` (and a one-shot `--once` for cron). Each
-   tick: validate `intake/*.md` (L3.64), select `ready` orders whose `depends-on` are shipped, order by
-   priority then `created`, claim up to `--max-concurrent`, and start `loom run --spec` for each in its
-   own worktree (L3.66). Claims and outcomes go to an append-only ledger
+   tick: read `intake/*.md` **as committed on `base-branch`** at a recorded SHA (ADR-010, 2B), validate
+   them (L3.64), select `ready` orders whose `depends-on` are shipped, order by priority, then
+   `created`, then `id`, and claim up to `--max-concurrent`. A claim **snapshots** the order to
+   `.claude/factory/claims/<id>.md` and starts `loom run --spec` on the snapshot in its own worktree
+   (L3.66), so I-1's digest guards what actually ran (ADR-010, 1C). An order on `hold` is not claimed,
+   and a held run is not resumed past its next halt; `loom factory stop <id>` sends SIGINT for the
+   executor's existing `INTERRUPTED` checkpoint (ADR-010, 3A). Claims and outcomes go to an append-only ledger
    (`.claude/factory/ledger.jsonl`); the supervisor never edits an intake file or a run's state. Exit
    codes from `loom run` are the protocol: 0 shipped-candidate, 3 waiting on a human (L3.67), 130
    interrupted, anything else a failure for L3.68 to classify.

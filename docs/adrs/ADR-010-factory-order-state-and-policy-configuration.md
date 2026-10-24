@@ -2,8 +2,8 @@
 
 ## Status
 
-**Proposed** — awaiting three choices, marked ☐ below. Each has a recommendation; nothing is built
-until it is accepted.
+**Accepted** 2026-10-24 — **1C, 2B, 3A, 4B**, the four recommendations. The chosen option in each
+table is marked ☑.
 
 ## Date
 
@@ -46,7 +46,7 @@ And one fact makes a cheap option available: `loom run` already turns its first 
 |---|---|---|---|
 | ☐ | **1A** Digest only the spec's body; frontmatter edits never invalidate a run | `status` stays editable in place | A special case in I-1 for intake files. Changing `plan`, `scope` or `budget` mid-run would also go unnoticed |
 | ☐ | **1B** Move `status` out of the file, into the supervisor's ledger via `loom factory ready/hold <id>` | The spec file never changes after it is ready | Status is invisible in the repository and local to one machine |
-| ☐ | **1C** **Snapshot at claim**: the supervisor copies the order into `.claude/factory/claims/<id>.md`, and the run's spec is that copy | I-1 protects the copy; the intake file stays freely editable, `status` included; the claim records exactly what ran | Two copies. An edit after claim needs an explicit choice, so the inbox shows "order changed since claim" with re-run and keep options |
+| ☑ | **1C** **Snapshot at claim**: the supervisor copies the order into `.claude/factory/claims/<id>.md`, and the run's spec is that copy | I-1 protects the copy; the intake file stays freely editable, `status` included; the claim records exactly what ran | Two copies. An edit after claim needs an explicit choice, so the inbox shows "order changed since claim" with re-run and keep options |
 
 1C is the only option where every guarantee built so far holds unchanged. The executor needs nothing
 new: the snapshot is just the spec path it is given.
@@ -58,7 +58,7 @@ new: the snapshot is just the spec path it is given.
 | | Option | Gain | Cost |
 |---|---|---|---|
 | ☐ | **2A** **Working tree**: the supervisor reads `intake/` from its checkout as it is | Instant; nothing to commit | Uncommitted, unreviewed text becomes running work, and nothing records which version ran |
-| ☐ | **2B** **Committed on `base-branch`**: the supervisor reads `intake/` at the branch head (`git show <sha>:intake/<id>.md`) | An order reaches the factory the way code reaches `main`: reviewed. With 1C, the claim records a commit SHA, so provenance is exact | Every status flip is a commit. Too slow for "stop spending now", which Decision 3 handles separately |
+| ☑ | **2B** **Committed on `base-branch`**: the supervisor reads `intake/` at the branch head (`git show <sha>:intake/<id>.md`) | An order reaches the factory the way code reaches `main`: reviewed. With 1C, the claim records a commit SHA, so provenance is exact | Every status flip is a commit. Too slow for "stop spending now", which Decision 3 handles separately |
 | ☐ | **2C** Outside the repository (`~/.loom/factory/`) | Nothing in git at all | Orders are invisible to the team and to review, and the opposite of how specs live today |
 
 2B matches the trust model already built: an import adapter writes `trust: external` and only a human
@@ -70,7 +70,7 @@ promotes it to `ready`. Under 2B, that promotion is a reviewed commit.
 
 | | Option | Behavior | Needs |
 |---|---|---|---|
-| ☐ | **3A** **Two verbs.** `hold` (in the file): unclaimed orders are not picked up, and a running order finishes its current leg to its next natural halt (a gate, completion, or failure) and is not resumed. `loom factory stop <id>` (immediate): the supervisor sends SIGINT, and the executor checkpoints `INTERRUPTED` | `hold` loses no work; `stop` cuts spend at once and re-runs only the interrupted stage | Nothing new in the executor. A run already halts at every gate and the supervisor decides whether to resume; `stop` uses the existing checkpoint |
+| ☑ | **3A** **Two verbs.** `hold` (in the file): unclaimed orders are not picked up, and a running order finishes its current leg to its next natural halt (a gate, completion, or failure) and is not resumed. `loom factory stop <id>` (immediate): the supervisor sends SIGINT, and the executor checkpoints `INTERRUPTED` | `hold` loses no work; `stop` cuts spend at once and re-runs only the interrupted stage | Nothing new in the executor. A run already halts at every gate and the supervisor decides whether to resume; `stop` uses the existing checkpoint |
 | ☐ | **3B** `hold` affects unclaimed orders only | Simplest | No way to pause work in flight short of killing it |
 | ☐ | **3C** `hold` asks the executor to stop at its next gate | One verb | A new stop request in the executor, for what 3A gets from the supervisor not resuming |
 
@@ -84,7 +84,7 @@ it travels.
 | | Option | Gain | Cost |
 |---|---|---|---|
 | ☐ | **4A** Keep both paths: validate `delivery-policy.yaml` in Go, and make the markdown pipeline record each auto-proceed through a new `loom state decide` | Markdown-only hosts keep auto-proceed | Two automation engines to keep in agreement; recording is prompt discipline wherever the binary is absent |
-| ☐ | **4B** **One engine.** Automation lives only in `.claude/policies/*.policy.yaml`, evaluated in Go by `loom run`, which records every decision. `delivery-policy.yaml` keeps `policiesEnabled` and numeric limits, and loses `mode` and every `autoProceed*` key. The markdown pipeline always stops for a human. Go validates the file strictly, so unknown keys fail | The silent path is gone, not patched. One schema, one reader. Consistent with ADR-006: loom executes pipelines | Hosts without the binary lose auto-proceed. They keep the full pipeline, gated by a human at each checkpoint, which is the safe default the framework claims anyway |
+| ☑ | **4B** **One engine.** Automation lives only in `.claude/policies/*.policy.yaml`, evaluated in Go by `loom run`, which records every decision. `delivery-policy.yaml` keeps `policiesEnabled` and numeric limits, and loses `mode` and every `autoProceed*` key. The markdown pipeline always stops for a human. Go validates the file strictly, so unknown keys fail | The silent path is gone, not patched. One schema, one reader. Consistent with ADR-006: loom executes pipelines | Hosts without the binary lose auto-proceed. They keep the full pipeline, gated by a human at each checkpoint, which is the safe default the framework claims anyway |
 | ☐ | **4C** Status quo, documented | No work | Leaves D-2 open: auto-approvals that `approval-gates.md` promises cannot happen silently, happening silently |
 
 The factory is unattended by definition and runs only under `loom run`, so 4B costs it nothing. An
@@ -92,7 +92,7 @@ order's `autonomy: strict-human` maps directly: skip policy evaluation for that 
 
 ---
 
-## Consequences, if all four recommendations are accepted
+## Consequences
 
 - **L3.65 (the supervisor)** reads committed orders at a recorded SHA, snapshots each claim, never
   writes an intake file, resumes only orders not on hold, and exposes `stop`.
@@ -111,8 +111,3 @@ order's `autonomy: strict-human` maps directly: skip policy evaluation for that 
 - `delivery-policy.yaml` with `mode:` or an unknown key fails validation (4B).
 
 ---
-
-## How to decide
-
-Tick one box per decision, or reply with the numbers — for example "1C 2B 3A 4B". If a decision
-should change, say which and why, and this ADR is rewritten before it is accepted.

@@ -22,7 +22,7 @@ draft ──(spec-writer READY)──► ready ──(supervisor claims)──�
 |---|---|---|
 | `draft` | Being written. Never picked up. | human or import adapter |
 | `ready` | Eligible for pickup once every `depends-on` id is shipped. | human only |
-| `hold` | Paused. Never picked up. What a hold does to a run already in flight is not decided yet — `loom run` has no way to be asked to stop at its next gate. | human only |
+| `hold` | Paused. Not picked up; a run already in flight finishes its current leg to its next halt (a gate, completion or failure) and is not resumed. To stop spending at once, use `loom factory stop <id>` instead. | human only |
 
 Everything after pickup — running, waiting on a gate, parked after a failure, shipped — is run
 state, and lives in the supervisor's ledger, not in this file.
@@ -66,7 +66,13 @@ it exits 1 if any order breaks a rule, and names the file and field for each.
 - A `trust: external` order's body is scanned with the same rules as `loom ki scan`, and each match
   is reported with its line in the file. A clean scan means the order may be read, not that it is safe.
 
-### Enforced at pickup, by the supervisor (not built yet)
+### Enforced at pickup, by the supervisor (not built yet — ADR-010)
+
+- The supervisor reads orders **committed on `base-branch`**, never your working tree. Flipping an order
+  to `ready` is a commit, so an order reaches the factory reviewed, the way code reaches `main`.
+- A claim runs from a **snapshot** of the order taken at that commit. Editing the intake file afterwards
+  never changes a running order; the approval inbox shows "changed since claim" and you choose whether to
+  re-run.
 
 - No other file in `intake/` or `features/` has the same stem.
 - Every `depends-on` id is shipped in the ledger.
