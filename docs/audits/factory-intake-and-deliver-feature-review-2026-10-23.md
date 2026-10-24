@@ -133,11 +133,17 @@ Priority: **P1** wrong or unsafe today · **P2** contradiction or drift that wil
   — including a 155-line fork of `deliver-feature` — is embedded by `embed.go` but installed by
   neither installer. Claude Code still discovers them as live skills when working in this repo.
   *Fix*: delete them, or install them; not both silently.
-- [ ] **T-1 (P2) — A flaky test in `go-build`.** #4's first `go-build` attempt failed inside `go test`
-  and passed on a rerun of the same commit; the `test-image` job, running the same tests, passed first
-  time. The failing test's name is in that attempt's log (run 40042528576, attempt 1), which the
-  authoring sandbox could not read. Candidates are the timing-based interrupt/resume tests in
-  `cmd/loom/cmd/run_test.go`. *Fix*: name it from the log, then make it deterministic.
+- [ ] **T-1 (P2) — A flaky test, and probably a real race behind it.** Named on 2026-10-23 by the
+  failure annotations added in #4: `TestACancelledRefreshLeavesThePreviousIndexWhole`
+  (`shared/mcp/internal/tools/bm25_index_test.go`) fails intermittently in both `go-build` and
+  `test-image` with `database is locked (5) (SQLITE_BUSY)` on the refresh that follows a cancelled one.
+  *Likely cause*: `NewBM25Retriever` opens SQLite through `database/sql`'s default pool with no
+  `busy_timeout`. A transaction begun with a context is rolled back asynchronously when that context
+  ends; the next refresh can take a different pooled connection and write before the rollback releases
+  the lock, and SQLite fails at once instead of waiting. A cancelled MCP call followed by a prompt retry
+  would hit the same race in production. *Fix*: `db.SetMaxOpenConns(1)` (writes are already serialized
+  by the retriever's mutex), a `busy_timeout` pragma, or both — and check `vector_index.go`, which opens
+  its database the same way. *Verify*: run the test with `-count=200` before and after.
 - [ ] **D-14 (P3) — The spec-ingestion check is a keyword list in prose** (`:72`) that duplicates
   `internal/injectionscan`. *Fix*: run `loom ki scan` on the spec when the binary is present.
 
