@@ -3,6 +3,8 @@ package cmd
 import (
 	"strings"
 	"testing"
+
+	"github.com/orieken/loom/internal/orchestrator"
 )
 
 // Roadmap L4.3's Done-when, through the real binary: a budgeted run halts
@@ -18,15 +20,8 @@ func TestRunHaltsAtItsBudgetAndResumesWhenRaised(t *testing.T) {
 	if code != ExitCodeBudgetExhausted {
 		t.Fatalf("budgeted run exit code = %d, want %d\n%s", code, ExitCodeBudgetExhausted, output)
 	}
-	for _, want := range []string{"Budget halt", "context-engineer", "$0.6000", "--max-usd"} {
-		if !strings.Contains(output, want) {
-			t.Errorf("halt output missing %q:\n%s", want, output)
-		}
-	}
-	state := loadRunState(t, projectDir)
-	if state.BudgetHalt == nil || state.BudgetHalt.BeforeStage != "analyst" || state.IsStageCompleted("analyst") {
-		t.Fatalf("budget halt = %+v, want the run stopped before analyst", state.BudgetHalt)
-	}
+	assertOutputContains(t, output, "Budget halt", "context-engineer", "$0.6000", "--max-usd", "spent $0.6000")
+	assertHaltedBefore(t, loadRunState(t, projectDir), "analyst")
 
 	output, code = runLoom(t, binary, projectDir, "run", "--spec", spec, "--resume", "--mock-stage-cost", "0.6", "--max-usd", "100")
 	if code != ExitCodeWaitingApproval {
@@ -35,6 +30,13 @@ func TestRunHaltsAtItsBudgetAndResumesWhenRaised(t *testing.T) {
 	}
 	if state := loadRunState(t, projectDir); state.BudgetHalt != nil || state.Budget.MaxUSD != 100 {
 		t.Errorf("after resume budget = %+v, halt = %+v, want $100 recorded and the halt cleared", state.Budget, state.BudgetHalt)
+	}
+}
+
+func assertHaltedBefore(t *testing.T, state *orchestrator.RunState, stage string) {
+	t.Helper()
+	if state.BudgetHalt == nil || state.BudgetHalt.BeforeStage != stage || state.IsStageCompleted(stage) {
+		t.Fatalf("budget halt = %+v, want the run stopped before %s", state.BudgetHalt, stage)
 	}
 }
 

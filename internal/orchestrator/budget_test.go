@@ -3,8 +3,10 @@ package orchestrator_test
 import (
 	"context"
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/orieken/loom/internal/orchestrator"
 	"github.com/orieken/loom/internal/provider/mock"
@@ -31,21 +33,39 @@ func TestABudgetHaltsTheRunBeforeTheStageThatWouldExceedIt(t *testing.T) {
 
 	err := executor.Run(context.Background(), threeStagePlan(), input)
 
+	exhausted := requireBudgetHalt(t, err)
+	assertInvocations(t, provider, []string{"analyst", "developer"})
+	assertHalt(t, mustLoad(t, store).BudgetHalt, orchestrator.BudgetHalt{
+		Limit: orchestrator.BudgetLimitUSD, Allowed: 1, Consumed: 1.2, BeforeStage: "qa-engineer"})
+	want := []orchestrator.StageSpend{
+		{Stage: "analyst", CostUSD: 0.6, Tokens: 150, Measured: true},
+		{Stage: "developer", CostUSD: 0.6, Tokens: 150, Measured: true},
+	}
+	if !reflect.DeepEqual(exhausted.PerStage, want) {
+		t.Errorf("per-stage spend = %+v, want %+v", exhausted.PerStage, want)
+	}
+	if !strings.Contains(err.Error(), "before stage \"qa-engineer\": spent $1.2000 of the $1.0000 usd ceiling") {
+		t.Errorf("error %q does not say what was spent against what", err)
+	}
+}
+
+func requireBudgetHalt(t *testing.T, err error) *orchestrator.BudgetExhaustedError {
+	t.Helper()
 	var exhausted *orchestrator.BudgetExhaustedError
 	if !errors.As(err, &exhausted) || !errors.Is(err, orchestrator.ErrBudgetExhausted) {
 		t.Fatalf("err = %v, want a budget halt", err)
 	}
-	assertInvocations(t, provider, []string{"analyst", "developer"})
-	state := mustLoad(t, store)
-	halt := state.BudgetHalt
-	if halt == nil || halt.BeforeStage != "qa-engineer" || halt.Limit != orchestrator.BudgetLimitUSD || halt.Consumed != 1.2 {
-		t.Fatalf("halt = %+v, want the usd ceiling recorded before qa-engineer at $1.20", halt)
+	return exhausted
+}
+
+func assertHalt(t *testing.T, got *orchestrator.BudgetHalt, want orchestrator.BudgetHalt) {
+	t.Helper()
+	if got == nil {
+		t.Fatal("no budget halt recorded")
 	}
-	if len(exhausted.PerStage) != 2 || exhausted.PerStage[0].Stage != "analyst" || exhausted.PerStage[1].CostUSD != 0.6 {
-		t.Errorf("per-stage spend = %+v, want analyst and developer at $0.60 each", exhausted.PerStage)
-	}
-	if !strings.Contains(err.Error(), "spent $1.2000 of the $1.0000 usd ceiling") || !strings.Contains(err.Error(), "qa-engineer") {
-		t.Errorf("error %q does not say what was spent against what", err)
+	got.At = time.Time{}
+	if !reflect.DeepEqual(*got, want) {
+		t.Errorf("halt = %+v, want %+v", *got, want)
 	}
 }
 
