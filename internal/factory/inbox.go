@@ -170,6 +170,10 @@ func describeChanges(paths, scope []string) []string {
 	return described
 }
 
+// InScope reports whether a changed path falls inside an order's
+// scope.paths, by the same rule the inbox uses to mark one that does not.
+func InScope(changed string, scope []string) bool { return inScope(changed, scope) }
+
 // inScope matches a path against scope globs. `dir/**` matches anything
 // under dir; any other pattern is matched with path.Match.
 func inScope(changed string, scope []string) bool {

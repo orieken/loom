@@ -4671,6 +4671,16 @@ and retire `go-build` and `golangci-lint` into `test-image` once it has run gree
 ### L3.73 — An end-to-end factory harness against a fixture repo
 **Workstream**: OBSERVE · **Effort**: M · **Blocked by**: L3.72 · **Blocks**: L3.74 · *(raised 2026-10-23)*
 
+**SHIPPED** 2026-10-24 — `tests/e2e/` (`harness`, `cmd/factory-e2e`, `testdata/`), `docker/e2e.Dockerfile`,
+`scripts/e2e-in-container.sh`. The harness commits a fixture order, drives `loom factory run --once`
+and approves each inbox item through `loom factory approve`. It checks every digest, plus a tampered-copy
+control, before approving the commit. Afterwards it checks run state, approvals, budget, the pushed branch
+and scope, then runs `testdata/hidden/` in a clone. A second test asserts that the harness fails a run that
+delivers placeholders. The mock gained `--mock-solution`, so its developer and QA stages write real
+files. It runs on every PR as part of `go test ./...`, in the go-build and test-image jobs, so no
+workflow changed. The two-container run is wired for L3.74, but no CI job builds it yet: that job is a
+new fitness function, and approval gate #7 applies.
+
 1. **Problem**: Nothing has ever handed an intake file to loom and checked what came out. L3.63's
    Done-when and review item I-11 are both unverified for that reason.
 2. **Architectural Fix**: A second container holding a small fixture repository and a set of
