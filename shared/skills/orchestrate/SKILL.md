@@ -13,7 +13,7 @@ Use when you want:
 - **Resumable runs**: pick up a pipeline from its last checkpoint after an interruption
 - **Parallel stages**: run independent stages concurrently (security-reviewer + accessibility-engineer)
 - **Automatic auditing**: counter agents invoked after each producing stage
-- **Policy-driven auto-proceed**: skip human gates when `.claude/delivery-policy.yaml` allows
+- Not for auto-proceed: no markdown pipeline skips a human gate (ADR-010, decision 4B). Automation lives only in `.claude/policies/*.policy.yaml`, evaluated and recorded by `loom run`
 
 Do NOT use when:
 - You want the standard, human-gated pipeline — use `/deliver-feature` directly (unchanged from v3.1).
@@ -100,7 +100,7 @@ On completion:
 
 ## Guardrails
 
-- Never bypass a non-negotiable human gate (Gate #1 Friday ship, Gate #3 DB migrations, Gate #4 Contracting, Gate #5 External APIs, Gate #8 Deploy) — even in policy-driven mode. These are defined in `shared/rules/approval-gates.md`.
+- Never bypass a non-negotiable human gate (Gate #1 Friday ship, Gate #3 DB migrations, Gate #4 Contracting, Gate #5 External APIs, Gate #8 Deploy) — no policy can approve them. These are defined in `shared/rules/approval-gates.md`.
 - Never execute a `feature-delivery` or `refactoring` workflow whose first executable stage is not `context-engineer`. The validation in step 4 enforces this at load time — do not bypass it via `--legacy` to skip context scoping.
 - `--legacy` always works and routes to the skill named in `legacyFallback`. Never remove this escape hatch.
 - On any unhandled error in a stage: checkpoint current state, surface the error, and stop. Never silently skip.

@@ -40,8 +40,9 @@ laid out, with a recommendation each, in [ADR-010](../adrs/ADR-010-factory-order
 
 - [x] **I-6** — where intake lives in git. *Decided (ADR-010, 2B): the factory reads orders committed on `base-branch`.*
 - [x] **I-7** — what `hold` means for a run already in flight. *Decided (ADR-010, 1C and 3A): orders are snapshotted at claim; `hold` stops resumption at the next halt, and `loom factory stop` interrupts at once.*
-- [ ] **D-2 + D-3** (M, P1) — *decided (ADR-010, 4B); building it is what remains:* one validated policy schema, and every policy decision recorded. An
-  unattended factory is the policy path; it cannot be the silent one.
+- [x] **D-2 + D-3** (M, P1) — one validated policy schema, and every policy decision recorded. An
+  unattended factory is the policy path; it cannot be the silent one. *Built (ADR-010, 4B): strict
+  `delivery-policy.yaml` validation in `loom run`; the markdown pipeline never auto-proceeds.*
 
 ### Step 3 — Build the floor
 

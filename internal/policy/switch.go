@@ -16,20 +16,10 @@ package policy
 import (
 	"fmt"
 	"os"
-
-	"go.yaml.in/yaml/v4"
 )
 
 // ConfigFile is the project's delivery policy configuration.
 const ConfigFile = ".claude/delivery-policy.yaml"
-
-// config is the subset of delivery-policy.yaml this package reads. Unknown
-// fields are ignored rather than rejected: the file predates this parser
-// and carries settings the markdown pipeline uses, so strictness here would
-// fail runs over keys that are none of our business.
-type config struct {
-	PoliciesEnabled *bool `yaml:"policiesEnabled"`
-}
 
 // Enabled reports whether policy evaluation should run at all. A missing
 // file, an unreadable one, or a malformed one means enabled — the default
@@ -39,16 +29,20 @@ type config struct {
 // Note the asymmetry: only an explicit `policiesEnabled: false` disables.
 // A typo cannot silently switch evaluation off, because a switch that turns
 // itself off by accident is worse than one nobody set.
+//
+// This reader stays tolerant on purpose; LoadConfig is the strict one, and
+// `loom run` calls it before anything else (ADR-010). Both decode the same
+// Config, so there is one schema.
 func Enabled(path string) bool {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return true
 	}
-	var parsed config
-	if err := yaml.Unmarshal(raw, &parsed); err != nil {
+	config, err := decodeConfig(raw)
+	if err != nil {
 		return true
 	}
-	return parsed.PoliciesEnabled == nil || *parsed.PoliciesEnabled
+	return config.PoliciesEvaluated()
 }
 
 // DisabledNotice explains a skipped evaluation, for a caller that wants to

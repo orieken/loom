@@ -10,8 +10,9 @@ policy files in `.claude/policies/` and the `FeatureDeliveryWorkflow`'s stage bo
 At every checkpoint stage in `FeatureDeliveryWorkflow`, the runtime calls the evaluator before
 proceeding past the gate. The evaluator:
 
-1. Loads all `.policy.yaml` files from `.claude/policies/` (project-local) or the path configured
-   in `.claude/delivery-policy.yaml` under `policyDir`.
+1. Loads all `.policy.yaml` files from `.claude/policies/` (project-local). The directory is fixed:
+   `.claude/delivery-policy.yaml` has no `policyDir` key, and `loom run` refuses a file that sets one
+   (ADR-010).
 2. Filters to policies whose `matcher.gate` matches the current gate ID.
 3. Evaluates each matching policy's `condition` against the current pipeline context.
 4. Determines the final action (see Conflict Resolution below).
@@ -40,7 +41,6 @@ evaluatorInputs:
     codeReviewer.criticals: integer
     securityReviewer.criticals: integer
     dryRunPass: boolean              # for fitness-function-wiring gate
-  policyDir: path                    # resolved policy directory (default: .claude/policies/)
 ```
 
 ---
@@ -49,7 +49,7 @@ evaluatorInputs:
 
 ```
 1. If policiesEnabled == false in .claude/delivery-policy.yaml → return require-human (kill-switch)
-2. Load policies from policyDir (ignore files that fail schema parse; log warning)
+2. Load policies from .claude/policies/ (a file that fails schema parse stops the run)
 3. Filter: keep policies where matcher.gate == current gate AND enabled == true
 4. Further filter: discard policies targeting non-eligible gates (always-human list):
    ship-to-friday, db-migration, db-contract-phase, external-api, deploy
