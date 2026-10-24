@@ -78,7 +78,7 @@ func assertApprovedByFlag(t *testing.T, root, id string, gates ...string) {
 	for _, gate := range gates {
 		assertFlagApproval(t, state, gate)
 	}
-	assertEveryStageSettled(t, state)
+	assertFactoryRunSettled(t, state)
 }
 
 func assertFlagApproval(t *testing.T, state *orchestrator.RunState, gate string) {
@@ -89,7 +89,7 @@ func assertFlagApproval(t *testing.T, state *orchestrator.RunState, gate string)
 	}
 }
 
-func assertEveryStageSettled(t *testing.T, state *orchestrator.RunState) {
+func assertFactoryRunSettled(t *testing.T, state *orchestrator.RunState) {
 	t.Helper()
 	for _, stage := range orchestrator.DefaultDeliverFeaturePlan().Stages {
 		if !state.IsStageSettled(stage.ID) {
