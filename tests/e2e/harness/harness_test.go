@@ -95,7 +95,8 @@ func TestTheFactoryDeliversTheFixtureOrder(t *testing.T) {
 	var printed bytes.Buffer
 	Print(&printed, report)
 	if !report.Passed() {
-		t.Fatalf("the delivered order failed its checks:\n%s", printed.String())
+		reportFailures(t, report)
+		t.FailNow()
 	}
 	for _, want := range []string{
 		"the factory shipped the order", "recorded digests match every artifact",
@@ -109,6 +110,19 @@ func TestTheFactoryDeliversTheFixtureOrder(t *testing.T) {
 	}
 	if strings.Join(report.Approved, ",") != "confirm-design,confirm-security,confirm-ship,commit" {
 		t.Errorf("approved %v, want each run gate and then the commit", report.Approved)
+	}
+}
+
+// reportFailures puts each failed check on one line, so CI shows it as an
+// annotation rather than burying it in the job log.
+func reportFailures(t *testing.T, report Report) {
+	t.Helper()
+	for _, check := range report.Failed() {
+		detail := strings.Join(strings.Fields(check.Detail), " ")
+		if len(detail) > 600 {
+			detail = detail[:600] + "…"
+		}
+		t.Errorf("FAIL %s — %s", check.Name, detail)
 	}
 }
 

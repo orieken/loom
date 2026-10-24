@@ -28,9 +28,10 @@ type PullRequests interface {
 	Open(dir string, proposal Proposal) (string, error)
 }
 
-// commitExclusions stay out of a run's commit: the run's working state,
-// and the factory's own files.
-var commitExclusions = []string{".claude/feature-workspace", StateDir}
+// commitExclusions stay out of a run's commit: the run's working state, the
+// factory's own files, and the episodic memory store `loom run` writes —
+// a per-machine database, not part of the delivered change.
+var commitExclusions = []string{".claude/feature-workspace", StateDir, ".claude/memory"}
 
 // conventionalTypes maps an order's type to its commit prefix.
 var conventionalTypes = map[string]string{"feature": "feat", "bug": "fix", "chore": "chore", "spike": "docs"}

@@ -131,7 +131,7 @@ func diffInScope(config Config, order intake.Order) error {
 	}
 	var outside []string
 	for _, path := range changed {
-		if !factory.InScope(path, order.Scope.Paths) {
+		if !factory.InOrderScope(path, order.ID, order.Scope.Paths) {
 			outside = append(outside, path)
 		}
 	}

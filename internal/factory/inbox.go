@@ -131,7 +131,7 @@ func commitItem(order *OrderState, trees TreeOpener) ([]InboxItem, error) {
 	return []InboxItem{{
 		Order: order.ID, Kind: ItemCommit, Gate: GateCommit, Since: order.Since, Digest: digest,
 		Summary: fmt.Sprintf("run completed — commit %d changed path(s) to %s and push", len(committable(changed)), order.Claim.Branch),
-		Details: describeChanges(committable(changed), order.Claim.ScopePaths),
+		Details: describeChanges(committable(changed), order.ID, order.Claim.ScopePaths),
 	}}, nil
 }
 
@@ -158,10 +158,10 @@ func isExcluded(changed string) bool {
 
 // describeChanges marks every path outside the order's scope, which is what
 // a reviewer most needs to see before approving the commit.
-func describeChanges(paths, scope []string) []string {
+func describeChanges(paths []string, id string, scope []string) []string {
 	described := make([]string, 0, len(paths))
 	for _, changed := range paths {
-		if len(scope) > 0 && !inScope(changed, scope) {
+		if len(scope) > 0 && !InOrderScope(changed, id, scope) {
 			changed += "  (outside scope.paths)"
 		}
 		described = append(described, changed)
@@ -170,9 +170,16 @@ func describeChanges(paths, scope []string) []string {
 	return described
 }
 
-// InScope reports whether a changed path falls inside an order's
-// scope.paths, by the same rule the inbox uses to mark one that does not.
-func InScope(changed string, scope []string) bool { return inScope(changed, scope) }
+// InOrderScope reports whether a changed path is one an order's run may
+// change: inside its scope.paths, or the order's own delivery record under
+// docs/features/<id>/, which every run writes. It is the rule the inbox uses
+// to mark a path that is not.
+func InOrderScope(changed, id string, scope []string) bool {
+	return strings.HasPrefix(changed, DeliveryRecordDir(id)+"/") || inScope(changed, scope)
+}
+
+// DeliveryRecordDir is where `loom run` archives an order's run records.
+func DeliveryRecordDir(id string) string { return "docs/features/" + id }
 
 // inScope matches a path against scope globs. `dir/**` matches anything
 // under dir; any other pattern is matched with path.Match.
