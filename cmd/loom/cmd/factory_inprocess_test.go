@@ -3,9 +3,13 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"errors"
+	"os/exec"
+	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/orieken/loom/internal/factory"
 	"github.com/spf13/cobra"
 )
 
@@ -45,16 +49,16 @@ func TestFactoryCommandsInProcess(t *testing.T) {
 	if output, err := runFactoryCommand(t, runFactoryRun); err != nil {
 		t.Fatalf("factory run: %v\n%s", err, output)
 	}
-	status, err := runFactoryCommand(t, runFactoryStatus)
-	if err != nil || !strings.Contains(status, "gate confirm-design") {
-		t.Fatalf("status = %q, %v", status, err)
-	}
-	inbox, err := runFactoryCommand(t, runFactoryInbox)
-	if err != nil || !strings.Contains(inbox, "loom factory approve alpha confirm-design") {
-		t.Fatalf("inbox = %q, %v", inbox, err)
-	}
-	if output, err := runFactoryCommand(t, runFactoryApprove, "alpha", "confirm-design"); err != nil || !strings.Contains(output, "Approved confirm-design") {
-		t.Fatalf("approve = %q, %v", output, err)
+	expectFactoryOutput(t, runFactoryStatus, nil, "gate confirm-design")
+	expectFactoryOutput(t, runFactoryInbox, nil, "loom factory approve alpha confirm-design")
+	expectFactoryOutput(t, runFactoryApprove, []string{"alpha", "confirm-design"}, "Approved confirm-design")
+}
+
+func expectFactoryOutput(t *testing.T, run func(*cobra.Command, []string) error, args []string, want string) {
+	t.Helper()
+	output, err := runFactoryCommand(t, run, args...)
+	if err != nil || !strings.Contains(output, want) {
+		t.Fatalf("output = %q, err = %v; want %q", output, err, want)
 	}
 }
 
@@ -128,5 +132,118 @@ func TestShortDigestAndApprover(t *testing.T) {
 	}
 	if approverName() == "" {
 		t.Error("no approver name")
+	}
+}
+
+// writeLedger puts entries in the factory's ledger directly, to stand up an
+// order in a given phase without running anything.
+func writeLedger(t *testing.T, root string, entries ...factory.Entry) {
+	t.Helper()
+	ledger := factory.OpenLedger(factory.Layout{Root: root}.LedgerPath())
+	for _, entry := range entries {
+		if err := ledger.Append(entry); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func claimedEntry(id string) factory.Entry {
+	return factory.Entry{Event: factory.EventClaimed, Order: id, Claim: &factory.Claim{OrderSHA256: "an-older-version"}}
+}
+
+func TestFactoryResumeContinuesAStoppedOrderInProcess(t *testing.T) {
+	root := newFactoryProject(t, "alpha")
+	t.Chdir(root)
+	writeLedger(t, root, claimedEntry("alpha"), factory.Entry{Event: factory.EventStopped, Order: "alpha"})
+	expectFactoryOutput(t, runFactoryResume, []string{"alpha"}, "Resuming alpha")
+}
+
+func TestFactoryRerunReclaimsAnEditedOrderInProcess(t *testing.T) {
+	root := newFactoryProject(t, "alpha")
+	t.Chdir(root)
+	useFactoryFlags(t, onceAgainstTheMock())
+	writeLedger(t, root, claimedEntry("alpha"), factory.Entry{Event: factory.EventWaiting, Order: "alpha", Gate: "confirm-design"})
+	expectFactoryOutput(t, runFactoryRerun, []string{"alpha"}, "Re-running alpha")
+}
+
+func TestFactoryStopInterruptsARunningOrderInProcess(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("SIGINT is POSIX-only")
+	}
+	root := newFactoryProject(t, "alpha")
+	t.Chdir(root)
+	sleeper := exec.Command("sleep", "30")
+	if err := sleeper.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sleeper.Process.Kill(); _, _ = sleeper.Process.Wait() })
+	writeLedger(t, root, claimedEntry("alpha"), factory.Entry{Event: factory.EventLaunched, Order: "alpha", PID: sleeper.Process.Pid})
+	expectFactoryOutput(t, runFactoryStop, []string{"alpha"}, "Stopping alpha")
+}
+
+// A corrupt ledger is reported by every command that reads it.
+func TestFactoryCommandsReportACorruptLedgerInProcess(t *testing.T) {
+	root := newFactoryProject(t)
+	t.Chdir(root)
+	useFactoryFlags(t, onceAgainstTheMock())
+	writeTestFile(t, factory.Layout{Root: root}.LedgerPath(), "not json\n{}\n")
+	for name, call := range map[string]struct {
+		run  func(*cobra.Command, []string) error
+		args []string
+	}{
+		"status": {runFactoryStatus, nil}, "inbox": {runFactoryInbox, nil},
+		"approve": {runFactoryApprove, []string{"alpha", "commit"}}, "stop": {runFactoryStop, []string{"alpha"}},
+		"resume": {runFactoryResume, []string{"alpha"}}, "rerun": {runFactoryRerun, []string{"alpha"}},
+	} {
+		if _, err := runFactoryCommand(t, call.run, call.args...); err == nil {
+			t.Errorf("%s accepted a corrupt ledger", name)
+		}
+	}
+}
+
+func TestFactoryCommandsReportAMissingBranchInProcess(t *testing.T) {
+	t.Chdir(newFactoryProject(t))
+	flags := onceAgainstTheMock()
+	flags.branch = "no-such-branch"
+	useFactoryFlags(t, flags)
+	for name, run := range map[string]func(*cobra.Command, []string) error{
+		"inbox": runFactoryInbox, "rerun": runFactoryRerun, "run": runFactoryRun,
+	} {
+		if _, err := runFactoryCommand(t, run, "alpha"); err == nil {
+			t.Errorf("%s accepted a branch that does not exist", name)
+		}
+	}
+}
+
+func TestASecondSupervisorIsRefusedInProcess(t *testing.T) {
+	root := newFactoryProject(t)
+	t.Chdir(root)
+	layout := factory.Layout{Root: root}
+	if err := layout.Prepare(); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := factory.AcquireLock(layout.LockPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = lock.Release() }()
+	useFactoryFlags(t, onceAgainstTheMock())
+	if _, err := runFactoryCommand(t, runFactoryRun); !errors.Is(err, factory.ErrSupervisorRunning) {
+		t.Errorf("err = %v, want ErrSupervisorRunning", err)
+	}
+}
+
+func TestStatusDetailNamesTheGateTheURLOrTheReason(t *testing.T) {
+	for want, order := range map[string]*factory.OrderState{
+		"gate confirm-design": {Phase: factory.PhaseWaiting, Gate: "confirm-design"},
+		"https://example/1":   {Phase: factory.PhaseShipped, URL: "https://example/1"},
+		"budget: usd":         {Phase: factory.PhaseParked, Reason: "budget: usd"},
+	} {
+		if got := statusDetail(order); got != want {
+			t.Errorf("statusDetail = %q, want %q", got, want)
+		}
+	}
+	if openTree(t.TempDir()) == nil {
+		t.Error("openTree returned nothing")
 	}
 }

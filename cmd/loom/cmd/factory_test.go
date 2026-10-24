@@ -76,11 +76,21 @@ func assertApprovedByFlag(t *testing.T, root, id string, gates ...string) {
 		t.Fatalf("run state: %v", err)
 	}
 	for _, gate := range gates {
-		approval, ok := state.Approvals[gate]
-		if !ok || approval.Method != orchestrator.ApprovalMethodFlag || len(approval.ArtifactDigests) == 0 {
-			t.Errorf("approval for %s = %+v, want one made by --approve and bound to digests", gate, approval)
-		}
+		assertFlagApproval(t, state, gate)
 	}
+	assertEveryStageSettled(t, state)
+}
+
+func assertFlagApproval(t *testing.T, state *orchestrator.RunState, gate string) {
+	t.Helper()
+	approval, ok := state.Approvals[gate]
+	if !ok || approval.Method != orchestrator.ApprovalMethodFlag || len(approval.ArtifactDigests) == 0 {
+		t.Errorf("approval for %s = %+v, want one made by --approve and bound to digests", gate, approval)
+	}
+}
+
+func assertEveryStageSettled(t *testing.T, state *orchestrator.RunState) {
+	t.Helper()
 	for _, stage := range orchestrator.DefaultDeliverFeaturePlan().Stages {
 		if !state.IsStageSettled(stage.ID) {
 			t.Errorf("stage %s is %s, want settled", stage.ID, state.Stages[stage.ID].Status)

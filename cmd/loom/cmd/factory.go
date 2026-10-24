@@ -137,7 +137,7 @@ func runFactoryRun(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	defer lock.Release()
+	defer func() { _ = lock.Release() }()
 	supervisor, err := newFactorySupervisor(cmd, layout)
 	if err != nil {
 		return err
