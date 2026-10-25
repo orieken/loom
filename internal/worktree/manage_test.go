@@ -205,6 +205,15 @@ func TestCommitAllExcludesAPathTheRepositoryIgnores(t *testing.T) {
 	}
 }
 
+// An exclusion git cannot unstage fails the commit rather than committing it.
+func TestCommitAllFailsOnAnExclusionOutsideTheRepository(t *testing.T) {
+	root := baseRepo(t)
+	writeFile(t, filepath.Join(root, "feature.go"), "package feature\n")
+	if _, err := worktree.New(root).CommitAll("feat(order): x", []string{"../elsewhere"}); err == nil {
+		t.Error("a commit went ahead with an exclusion git rejected")
+	}
+}
+
 // A failing git command says why, not only its exit status.
 func TestAFailedGitCommandCarriesItsStderr(t *testing.T) {
 	_, err := worktree.New(baseRepo(t)).ShowFile("HEAD", "missing.md")

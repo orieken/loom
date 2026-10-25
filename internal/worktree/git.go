@@ -184,11 +184,8 @@ func (g *Git) run(args ...string) ([]byte, error) {
 // exactly that, and the reason was one line of stderr nobody could see.
 func stderrOf(err error) string {
 	var exitErr *exec.ExitError
-	if !errors.As(err, &exitErr) {
-		return ""
-	}
-	if message := strings.TrimSpace(string(exitErr.Stderr)); message != "" {
-		return ": " + message
+	if errors.As(err, &exitErr) && len(bytes.TrimSpace(exitErr.Stderr)) > 0 {
+		return ": " + strings.TrimSpace(string(exitErr.Stderr))
 	}
 	return ""
 }
