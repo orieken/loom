@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -173,9 +174,23 @@ func (g *Git) run(args ...string) ([]byte, error) {
 	command.Stderr = nil
 	output, err := command.Output()
 	if err != nil {
-		return nil, fmt.Errorf("git %s in %s: %w", args[0], g.root, err)
+		return nil, fmt.Errorf("git %s in %s: %w%s", args[0], g.root, err, stderrOf(err))
 	}
 	return output, nil
+}
+
+// stderrOf is what git printed before failing, so an error says why rather
+// than only "exit status 1". The first real factory commit failed with
+// exactly that, and the reason was one line of stderr nobody could see.
+func stderrOf(err error) string {
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) {
+		return ""
+	}
+	if message := strings.TrimSpace(string(exitErr.Stderr)); message != "" {
+		return ": " + message
+	}
+	return ""
 }
 
 // ChangedPaths lists every path with uncommitted changes, repo-relative and

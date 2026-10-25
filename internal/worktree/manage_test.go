@@ -180,6 +180,42 @@ func TestCommitAllLeavesExcludedPathsOutAndPushReachesOrigin(t *testing.T) {
 	}
 }
 
+// The first real factory commit failed here: the repository ignored
+// .claude/memory/, and git refused an exclude pathspec naming an ignored path.
+func TestCommitAllExcludesAPathTheRepositoryIgnores(t *testing.T) {
+	root := baseRepo(t)
+	writeFile(t, filepath.Join(root, ".gitignore"), ".claude/memory/\n")
+	commitAll(t, root)
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "memory"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(root, ".claude", "memory", "episodes.db"), "db\n")
+	writeFile(t, filepath.Join(root, "feature.go"), "package feature\n")
+
+	_, err := worktree.New(root).CommitAll("feat(order): add a feature", []string{".claude/memory", ".claude/factory"})
+	if err != nil {
+		t.Fatalf("CommitAll with an ignored exclusion: %v", err)
+	}
+	assertChanged(t, root)
+	if _, err := worktree.New(root).ShowFile("HEAD", ".claude/memory/episodes.db"); err == nil {
+		t.Error("the ignored, excluded memory store was committed")
+	}
+	if _, err := worktree.New(root).ShowFile("HEAD", "feature.go"); err != nil {
+		t.Errorf("the run's change was not committed: %v", err)
+	}
+}
+
+// A failing git command says why, not only its exit status.
+func TestAFailedGitCommandCarriesItsStderr(t *testing.T) {
+	_, err := worktree.New(baseRepo(t)).ShowFile("HEAD", "missing.md")
+	if err == nil {
+		t.Fatal("a missing file was shown")
+	}
+	if !strings.Contains(err.Error(), "missing.md' does not exist") {
+		t.Errorf("error %q lacks git's own message", err)
+	}
+}
+
 func TestCommitAllCommitsAnUnchangedTree(t *testing.T) {
 	root := baseRepo(t)
 	if _, err := worktree.New(root).CommitAll("chore(order): nothing changed", nil); err != nil {

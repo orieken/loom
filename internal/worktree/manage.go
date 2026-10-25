@@ -103,13 +103,20 @@ var committerFallback = []string{
 // CommitAll stages every change except the excluded paths and commits it,
 // returning the new commit. A run that changed nothing still gets a commit,
 // so the branch always records that the run finished.
+//
+// It stages everything and then unstages the exclusions, rather than passing
+// them as `:(exclude)` pathspecs: git counts an exclude pathspec naming an
+// ignored path as asking to add it, and fails with "The following paths are
+// ignored". Most repositories ignore .claude/memory/, so the first real
+// factory commit failed there; the e2e fixture ignores nothing and never did.
 func (g *Git) CommitAll(message string, exclude []string) (string, error) {
-	args := []string{"add", "-A", "--", "."}
-	for _, path := range exclude {
-		args = append(args, ":(exclude)"+path)
-	}
-	if _, err := g.run(args...); err != nil {
+	if _, err := g.run("add", "-A", "--", "."); err != nil {
 		return "", err
+	}
+	if len(exclude) > 0 {
+		if _, err := g.run(append([]string{"reset", "-q", "--"}, exclude...)...); err != nil {
+			return "", err
+		}
 	}
 	if err := g.runWithEnv(g.identityEnv(), "commit", "--allow-empty", "-q", "-m", message); err != nil {
 		return "", err
