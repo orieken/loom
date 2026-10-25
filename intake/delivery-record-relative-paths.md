@@ -14,7 +14,7 @@ finish: pr
 autonomy: inherit
 depends-on: []
 budget:
-  max-attempts: 2
+  max-attempts: 3
   max-usd: 25
   max-hours: 2
 scope:
