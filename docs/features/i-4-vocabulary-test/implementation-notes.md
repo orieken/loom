@@ -1,0 +1,78 @@
+---
+feature: "i-4-vocabulary-test"
+bounded_context: ""
+domain_terms: ["Closed vocabulary"]
+files_touched: ["internal/intake/vocabulary_test.go", "internal/intake/testdata/mismatched_vocabulary_template.md"]
+issue_refs: ["I-4", "i-4-vocabulary-test"]
+linked_adrs: []
+linked_kis: []
+---
+
+# Implementation Notes: i-4-vocabulary-test
+
+## Files Created
+
+- internal/intake/vocabulary_test.go
+- internal/intake/testdata/mismatched_vocabulary_template.md
+
+## Files Modified
+
+None
+
+## Interface Design
+
+- vocabularyFields []struct{name string; allowed map[string]bool} — the table pairing each of the six closed-vocabulary fields with its Go set, in package intake
+- func templatePath() string / func readmePath() string — resolve the two checked-in docs via runtime.Caller, mirroring parse_test.go's existing idiom
+- func frontmatterOf(t *testing.T, path string) string — reads a file and reuses parse.go's splitFrontmatter so a field comment outside the frontmatter block can never be misread
+- func fieldCommentValues(frontmatter, field string) ([]string, bool) — the trailing '# a | b | c' comment's values for one field, or false if none parseable
+- type vocabularyReporter interface { Helper(); Errorf(format string, args ...any) } — the narrow slice of *testing.T assertVocabularyMatches needs, satisfied by both *testing.T and the test-only errorRecorder
+- func assertVocabularyMatches(t vocabularyReporter, field, document string, got []string, want map[string]bool) — reports every value present on only one side, never just a boolean mismatch
+- func statusTableValues(readme string) []string — README.md's Lifecycle table's first column, backticks stripped
+- TestTemplateVocabularyMatchesGoSets, TestReadmeStatusTableMatchesGoSets, TestVocabularyCheckCatchesAMismatch — the three exported test entry points
+
+## Named Refactoring Log
+
+None
+
+## Self-Review Checklist
+
+- [x] Every public method has an intention-revealing name (no process/handle/manage)
+- [x] No function exceeds 30 LOC
+- [x] Cyclomatic complexity < 7 on all new functions — Verified with golangci-lint's gocyclo (project's existing min-complexity: 7 setting) — 0 issues.
+- [x] No primitive obsession — Fields are compared as map[string]bool sets, matching vocabulary.go's own representation; introducing a value object here would be the premature-generalization anti-pattern for a test file with no other consumer.
+- [x] No feature envy
+- [ ] No magic numbers or strings — The em-dash and '#'/'|' delimiters are literal because they ARE the document format being parsed, same as parse.go's own `fence = "---"`. Named as constants would add a layer without adding clarity.
+- [x] Dependency direction verified: nothing in inner layers imports from outer layers — Only stdlib imports plus the intake package itself; reads two markdown files as plain bytes, no import edge created (same conclusion architecture-notes.md already reached).
+- [ ] Sandi Metz method-length (<=5 lines, 10 ceiling) — Several functions run 6-13 lines (e.g. fieldComment, statusTableValues, assertVocabularyMatches). Matched the length of the existing codebase's own style in validate.go (checkVocabulary, checkBudget, splitFrontmatter all exceed 10 lines) rather than imposing a stricter limit nothing else in the package meets — consistency with the file's established idiom over a blind rule. Complexity-<7 (the non-negotiable rule) is satisfied throughout.
+
+## Simple Design Verification
+
+- [x] Passes the tests — go test ./internal/intake/... is green, including all pre-existing tests (parse_test.go, validate_test.go, check_test.go).
+- [x] Reveals intention — Names like fieldComment, cutAtEmDash, statusTableValues, assertVocabularyMatches, errorRecorder each say exactly what they do; no renaming needed after first draft.
+- [x] No duplication — Reused parse.go's existing splitFrontmatter instead of writing a second frontmatter parser; reused vocabulary.go's existing set() helper instead of a second set constructor.
+- [x] Fewest elements — errorRecorder/vocabularyReporter were the one addition beyond the analysis's own helper list, needed because a failing t.Run subtest propagates failure to its parent in Go — there was no way to prove AC5 ('the check can fail') without a non-*testing.T observer.
+
+## Key Decisions
+
+- Prove TestVocabularyCheckCatchesAMismatch's own failure via a narrow vocabularyReporter interface and an errorRecorder test double, not via t.Run + checking its return value.: In Go, a subtest that calls t.Errorf also marks its parent test failed, regardless of whether the parent inspects t.Run's returned bool — there is no way to run a real *testing.T subtest to observe a failure without the enclosing test also failing. The interface is the minimal slice of *testing.T that assertVocabularyMatches actually uses (Helper, Errorf), so *testing.T satisfies it for the two real-document tests with no change to their call sites.
+- Resolve TEMPLATE.md/README.md's path via frontmatterOf()+splitFrontmatter() (parse.go's own function) instead of writing a second frontmatter splitter.: This directly satisfies the spec's edge case about anchoring the search to the frontmatter block only (so prose in the HOW TO USE comment block is never misread as a field's vocabulary comment) for free, by reusing code already proven correct by parse_test.go, rather than re-implementing fence detection.
+- Store the mismatched fixture as a static copy of TEMPLATE.md with one phantom value ('queued') added to the status comment, per architecture-notes.md's instruction.: A statically committed, reviewable fixture; a reader can see the exact single-value drift. Confirmed by temporarily restoring it to an unmismatched copy of TEMPLATE.md and re-running TestVocabularyCheckCatchesAMismatch, which then failed as expected — proving the meta-test can itself fail.
+
+## Deviations from Analysis
+
+None
+
+## Dependencies Added
+
+None
+
+## Notes for QA
+
+- All three new tests were manually proven to fail before being left in their passing state: breaking knownStatuses in vocabulary.go (adding a phantom 'archived' value) made both TestTemplateVocabularyMatchesGoSets/status and TestReadmeStatusTableMatchesGoSets fail with the expected 'field, document, missing values' message, then vocabulary.go was restored (confirmed by `git diff` showing no change). Swapping testdata/mismatched_vocabulary_template.md for an unmismatched copy of TEMPLATE.md made TestVocabularyCheckCatchesAMismatch fail as expected, then the fixture was restored.
+- go test ./internal/intake/... -v: all tests (new and pre-existing) pass in 0.19-0.29s total — well under the 1s NFR, with no network or git calls (only os.ReadFile on repo-local paths).
+- golangci-lint run internal/intake/... reports 0 issues, including gocyclo at the project's existing min-complexity: 7 setting.
+- git status confirms no file outside internal/intake/ (plus the pre-existing docs/features/i-4-vocabulary-test/ delivery record from earlier stages) changed — AC6 satisfied.
+
+## Notes for DevOps
+
+None

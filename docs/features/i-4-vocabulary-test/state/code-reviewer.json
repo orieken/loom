@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 2,
+  "feature": "i-4-vocabulary-test",
+  "verdict": "APPROVED",
+  "designNarrative": "A new white-box test file in package intake (vocabulary_test.go) extracts each of the six closed-vocabulary fields' trailing `# a | b | c` comment from TEMPLATE.md, and README's status table, then diffs them against vocabulary.go's own Go sets through one shared assertVocabularyMatches helper that names the field, document, and every value present on only one side. A narrow vocabularyReporter interface lets a non-propagating errorRecorder test double prove, against a committed mismatched fixture, that the check can genuinely fail rather than pass vacuously. Behaviour change: no — this is test-only; no production code in vocabulary.go or anywhere else changed.",
+  "designScore": {
+    "clarity": 5,
+    "cohesion": 5,
+    "coupling": 4,
+    "craft": 4
+  },
+  "securitySurface": [],
+  "performanceSurface": [
+    "Three new tests run in 0.18-0.26s total (measured via go test -count=1), well inside the spec's 1s budget; all reads are os.ReadFile against repo-local paths, no network or git calls."
+  ],
+  "testDesignReview": [
+    "TestTemplateVocabularyMatchesGoSets — YES: asserts via assertVocabularyMatches, which calls t.Errorf naming missing values on either side; manually confirmed it fails when the fixture disagrees with the Go set (see TestVocabularyCheckCatchesAMismatch verification below), and fieldCommentValues' ok=false path independently fails any field whose comment can't be parsed.",
+    "TestReadmeStatusTableMatchesGoSets — YES: same assertVocabularyMatches path against README's parsed status table; a missing/empty parse already fails via t.Fatalf before the assertion runs.",
+    "TestVocabularyCheckCatchesAMismatch — YES, independently verified: I temporarily replaced testdata/mismatched_vocabulary_template.md with an exact (unmismatched) copy of TEMPLATE.md and reran it — it failed with 'comparison against a deliberately mismatched template passed; it cannot detect real drift', proving the test is not self-fulfilling. Restored the original fixture afterward; full suite (go test ./internal/intake/... -count=1) is green and git status shows only the three expected untracked paths."
+  ],
+  "selfReviewCheck": [
+    "Developer's checklist matches the code: cyclomatic complexity confirmed independently via golangci-lint (gocyclo min-complexity:7, the project's actual config) — 0 issues, matching the developer's claim.",
+    "Two boxes the developer left unchecked are honestly reported rather than hidden: (1) literal '#'/'|'/'—' delimiters as 'magic strings' — acceptable, they are the document format itself, same precedent as parse.go's own `fence = \"---\"`; (2) a few functions (fieldComment, statusTableValues, assertVocabularyMatches) exceed design-principles.md's Sandi-Metz 5/10-line method-length guidance — non-blocking: complexity stays <7 everywhere (the non-negotiable rule), the excess is consistent with validate.go's own established idiom in the same package, and splitting further would add indirection without adding clarity for a test-only file."
+  ],
+  "behaviorChange": false,
+  "findings": [],
+  "retrieval": {
+    "domainTerms": ["Closed vocabulary"],
+    "issueRefs": ["I-4", "i-4-vocabulary-test"],
+    "linkedAdrs": [],
+    "linkedKis": []
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 2,
+  "feature": "i-4-vocabulary-test",
+  "scenarios": [
+    {
+      "criterion": "Given templates/claude-feature-team/intake/TEMPLATE.md, when the new test runs, then for each of type, status, source, trust, finish and autonomy it MUST read the values in that field's trailing `# a | b | c` comment and assert they equal the matching Go set in vocabulary.go, ignoring order.",
+      "name": "Each closed-vocabulary field's template comment matches its Go set, regardless of order",
+      "given": [
+        "the intake template at templates/claude-feature-team/intake/TEMPLATE.md declares type, status, source, trust, finish and autonomy with a trailing `# a | b | c` comment on each field",
+        "internal/intake/vocabulary.go declares the matching known-value set for each of those six fields"
+      ],
+      "when": [
+        "the vocabulary comparison test runs for the template"
+      ],
+      "then": [
+        "for every one of the six fields, the set of values listed in the template comment equals the set of values in the matching Go set",
+        "a difference in listed order between the comment and the Go set does not cause a failure"
+      ]
+    },
+    {
+      "criterion": "Given templates/claude-feature-team/intake/README.md, when the new test runs, then it MUST read the values in the first column of the status table and assert they equal knownStatuses.",
+      "name": "The README's status table lists exactly the known status values",
+      "given": [
+        "templates/claude-feature-team/intake/README.md contains a status table whose first column lists one backtick-quoted status value per row",
+        "internal/intake/vocabulary.go declares the known status set"
+      ],
+      "when": [
+        "the vocabulary comparison test runs for the README"
+      ],
+      "then": [
+        "the set of status values in the table's first column equals the known status set in Go, with backticks and table-pipe delimiters stripped before comparison"
+      ]
+    },
+    {
+      "criterion": "Given a value present in a Go set but missing from the template comment, or the reverse, when the test runs, then it MUST fail naming the field, the document, and every value missing from either side.",
+      "name": "A one-sided vocabulary value fails the test with the field, the document, and the missing values named",
+      "given": [
+        "a closed-vocabulary field's Go set and its template (or README) listing disagree on membership — a value exists on one side only"
+      ],
+      "when": [
+        "the vocabulary comparison test runs"
+      ],
+      "then": [
+        "the test fails",
+        "the failure message names the field that disagreed",
+        "the failure message names the document the field was read from",
+        "the failure message lists every value missing from either side, not just that a mismatch exists"
+      ]
+    },
+    {
+      "criterion": "Given a template whose comment for one of the six fields cannot be found or parsed, when the test runs, then it MUST fail naming that field, and MUST NOT pass by finding nothing to compare.",
+      "name": "An unparseable field comment fails loudly instead of being silently skipped",
+      "given": [
+        "the template's comment for one of the six closed-vocabulary fields is missing, or does not start at the field's YAML key on its own frontmatter line"
+      ],
+      "when": [
+        "the vocabulary comparison test runs"
+      ],
+      "then": [
+        "the test fails",
+        "the failure message names the field whose comment could not be found or parsed",
+        "the test does not pass by treating the absence of a comparable value as an empty, trivially-equal set"
+      ]
+    },
+    {
+      "criterion": "Given the change is complete, a second test MUST feed the comparison a deliberately mismatched template fixture under internal/intake/testdata/ and assert the comparison fails, proving the check can catch a real mismatch.",
+      "name": "A deliberately mismatched template fixture proves the comparison can fail",
+      "given": [
+        "a fixture template file exists under internal/intake/testdata/ whose vocabulary comment for at least one field deliberately disagrees with the Go set"
+      ],
+      "when": [
+        "the vocabulary comparison runs against that fixture instead of the real template"
+      ],
+      "then": [
+        "the comparison reports a failure for the mismatched field",
+        "this demonstrates the check is not a test that can never fail"
+      ]
+    },
+    {
+      "criterion": "Given the change is complete, go test ./internal/intake/... MUST pass, every new function MUST have cyclomatic complexity below 7, and no file outside internal/intake/ MUST change except this run's own delivery record under docs/features/i-4-vocabulary-test/.",
+      "name": "The full intake suite passes and the change stays within its scope",
+      "given": [
+        "the vocabulary comparison tests and fixture have been added to internal/intake/"
+      ],
+      "when": [
+        "go test ./internal/intake/... runs"
+      ],
+      "then": [
+        "every test in the package passes, including the pre-existing parse, validate and check tests",
+        "every newly added function has cyclomatic complexity below 7",
+        "no file outside internal/intake/ changed, other than this run's delivery record under docs/features/i-4-vocabulary-test/"
+      ]
+    }
+  ],
+  "retrieval": {
+    "domainTerms": ["closed vocabulary"],
+    "issueRefs": ["I-4"],
+    "linkedAdrs": [],
+    "linkedKis": []
+  }
+}
