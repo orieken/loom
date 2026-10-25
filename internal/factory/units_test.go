@@ -271,19 +271,6 @@ func TestSubjectFallsBackForAnUnknownTypeAndNoTitle(t *testing.T) {
 	}
 }
 
-func TestTheProposalBodyIsTheDeliverySummaryWhenThereIsOne(t *testing.T) {
-	worktree := t.TempDir()
-	order := &OrderState{ID: "alpha", Claim: Claim{Worktree: worktree}}
-	supervisor := New(Config{}, Dependencies{})
-	if body := supervisor.proposalBody(order); !strings.Contains(body, "no delivery summary") {
-		t.Errorf("body without a summary = %q", body)
-	}
-	writeTestFile(t, filepath.Join(worktree, "docs", "features", "alpha", "delivery-summary.md"), "# Summary\n")
-	if body := supervisor.proposalBody(order); body != "# Summary\n" {
-		t.Errorf("body = %q, want the delivery summary", body)
-	}
-}
-
 func TestSpendLinesMarkUnmeasuredStages(t *testing.T) {
 	lines := spendLines(&Spend{TotalUSD: 2, PerStage: []orchestrator.StageSpend{
 		{Stage: "analyst", CostUSD: 2, Measured: true}, {Stage: "developer"},

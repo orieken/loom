@@ -89,6 +89,22 @@ func (g *Git) ListFiles(commit, dir string) ([]string, error) {
 	return files, nil
 }
 
+// ChangedBetween lists the files that differ between two commits,
+// repo-relative.
+func (g *Git) ChangedBetween(from, to string) ([]string, error) {
+	output, err := g.run("diff", "--name-only", from, to)
+	if err != nil {
+		return nil, err
+	}
+	var files []string
+	for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
+		if line != "" {
+			files = append(files, line)
+		}
+	}
+	return files, nil
+}
+
 // pushTimeout bounds a push: a network call with no deadline is how an
 // unattended supervisor hangs forever on a credential prompt.
 const pushTimeout = 5 * time.Minute
