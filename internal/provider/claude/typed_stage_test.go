@@ -21,7 +21,7 @@ func TestTypedInstructionInlinesTheSchemaAndForbidsCommentary(t *testing.T) {
 		t.Fatalf("typedInstruction: %v", err)
 	}
 
-	for _, want := range []string{"acceptanceCriteria", "$schema", "nothing else", "Do not write files"} {
+	for _, want := range []string{"acceptanceCriteria", "$schema", "nothing else", "Do not write files", "is rejected and fails the stage"} {
 		if !strings.Contains(instruction, want) {
 			t.Errorf("instruction missing %q", want)
 		}
@@ -102,6 +102,11 @@ func TestExtractJSONAcceptsADocumentSurroundedByCommentary(t *testing.T) {
 		// A non-JSON block after the answer is passed over, not fatal.
 		"answer then a shell block": {
 			"```json\n{\"feature\":\"user-auth\"}\n```\nRun:\n```bash\npnpm test\n```", "user-auth"},
+		// Verbatim shape of the factory's context-engineer response: a line of
+		// prose, then the document unfenced and pretty-printed.
+		"prose then a bare document": {
+			"No file changes needed for this stage — context-engineer only produces the manifest.\n\n" +
+				"{\n  \"feature\": \"user-auth\",\n  \"tier\": \"analyst\"\n}", "user-auth"},
 	}
 	for name, testCase := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -124,11 +129,13 @@ func TestExtractJSONAcceptsADocumentSurroundedByCommentary(t *testing.T) {
 // did not do its job, and calling that success would hide the failure.
 func TestExtractJSONRejectsAResponseWithNoStateDocument(t *testing.T) {
 	cases := map[string]string{
-		"empty":              "   ",
-		"prose only":         "I analyzed the feature and it looks good.",
-		"markdown artifact":  "# Feature Analysis\n\n## Summary\nIt does a thing.",
-		"fence without json": "```bash\npnpm install\n```",
-		"unterminated fence": "Here you go:\n```json\n{\"feature\":\"x\"}",
+		"empty":                      "   ",
+		"prose only":                 "I analyzed the feature and it looks good.",
+		"markdown artifact":          "# Feature Analysis\n\n## Summary\nIt does a thing.",
+		"fence without json":         "```bash\npnpm install\n```",
+		"unterminated fence":         "Here you go:\n```json\n{\"feature\":\"x\"}",
+		"prose then a broken object": "Here it is:\n{\"feature\":",
+		"bare object then prose":     "Here:\n{\"feature\":\"x\"}\nThat is all.",
 	}
 	for name, response := range cases {
 		t.Run(name, func(t *testing.T) {

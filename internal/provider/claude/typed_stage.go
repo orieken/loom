@@ -7,6 +7,7 @@ package claude
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -26,6 +27,7 @@ func typedInstruction(stage orchestrator.Stage, input orchestrator.StageInput, a
 	var instruction strings.Builder
 	instruction.WriteString("\n---\n\nOUTPUT CONTRACT (this overrides any output-format instruction above).\n")
 	instruction.WriteString(fileClause(allowed))
+	instruction.WriteString(fieldClause)
 	instruction.Write(schema)
 	instruction.WriteString(upstreamSection(input))
 	return instruction.String(), nil
@@ -49,6 +51,13 @@ func fileClause(allowed []string) string {
 		"must be a file you actually wrote this session — verify with git status before answering.\n" +
 		"Do not add commentary before or after the JSON.\n\n"
 }
+
+// fieldClause says what the decoder will do with an invented field. A
+// factory run's context-engineer added "pruned_bounded_context_note" to an
+// otherwise valid manifest, and the stage failed on it: the schema is
+// strict, and nothing in the prompt said so.
+const fieldClause = "Use only the fields this schema defines, spelled exactly as it spells them. A field the schema\n" +
+	"does not define is rejected and fails the stage; put a note you want to keep in a field that exists.\n\n"
 
 // artifactClause stops a write-capable stage from trying to write its own
 // artifact. Agent definitions are shared with the markdown pipeline, so they
@@ -113,7 +122,32 @@ func extractJSON(response []byte) ([]byte, error) {
 	if trimmed[0] == '{' {
 		return trimmed, nil
 	}
+	if object, ok := trailingBareObject(string(trimmed)); ok {
+		return object, nil
+	}
 	return lastFencedObject(string(trimmed))
+}
+
+// trailingBareObject accepts an unfenced object that ends the response,
+// after prose. The first real factory run's context-engineer answered
+// "No file changes needed for this stage — context-engineer only produces
+// the manifest." and then a complete, valid manifest, unfenced; the run was
+// failed and retried for it. The object must run to the end of the
+// response and parse whole, and nothing before it may open a fence: an
+// object inside an unterminated fence is a truncated response, not an
+// answer.
+func trailingBareObject(text string) ([]byte, bool) {
+	lines := strings.Split(text, "\n")
+	for start := len(lines) - 1; start > 0; start-- {
+		if !strings.HasPrefix(lines[start], "{") {
+			continue
+		}
+		candidate := []byte(strings.Join(lines[start:], "\n"))
+		if json.Valid(candidate) {
+			return candidate, !strings.Contains(strings.Join(lines[:start], "\n"), "```")
+		}
+	}
+	return nil, false
 }
 
 // lastFencedObject returns the final fenced block whose body looks like a
