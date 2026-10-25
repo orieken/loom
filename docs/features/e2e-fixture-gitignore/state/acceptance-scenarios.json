@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 2,
+  "feature": "e2e-fixture-gitignore",
+  "scenarios": [
+    {
+      "criterion": "The fixture at tests/e2e/testdata/repo/ MUST contain a .gitignore that ignores at least .claude/memory/ and .claude/feature-workspace/.",
+      "name": "The fixture repository ignores per-machine run-state the same way a real loom-adopting repository does",
+      "given": [
+        "the fixture repository at tests/e2e/testdata/repo/"
+      ],
+      "when": [
+        "the fixture's .gitignore is inspected"
+      ],
+      "then": [
+        "it ignores .claude/memory/",
+        "it ignores .claude/feature-workspace/"
+      ]
+    },
+    {
+      "criterion": "When the harness copies the fixture into its project, the .gitignore MUST be copied and committed in the project's first commit.",
+      "name": "The harness carries the fixture's .gitignore into the project's first commit",
+      "given": [
+        "the harness copies tests/e2e/testdata/repo/ into a fresh project worktree",
+        "the harness creates the project's first commit"
+      ],
+      "when": [
+        "the project's first commit is read back with git show HEAD:.gitignore"
+      ],
+      "then": [
+        "the returned content is byte-for-byte identical to the fixture's own .gitignore"
+      ]
+    },
+    {
+      "criterion": "When `go test ./tests/e2e/...` runs with the mock provider, TestTheFactoryDeliversTheFixtureOrder MUST pass and every check in its report MUST print PASS.",
+      "name": "The factory still delivers the fixture order cleanly with the mock provider",
+      "given": [
+        "the mock provider is configured for tests/e2e/..."
+      ],
+      "when": [
+        "go test ./tests/e2e/... runs TestTheFactoryDeliversTheFixtureOrder"
+      ],
+      "then": [
+        "the test passes",
+        "every check in its report prints PASS"
+      ]
+    },
+    {
+      "criterion": "TestTheHarnessFailsARunThatDeliversTheWrongThing MUST still pass, failing the same checks it fails today (the diff stays inside scope.paths, the hidden acceptance tests pass).",
+      "name": "The negative-control run still fails the same checks it always has",
+      "given": [
+        "TestTheHarnessFailsARunThatDeliversTheWrongThing runs a delivery that delivers the wrong thing"
+      ],
+      "when": [
+        "the harness evaluates that run's checks"
+      ],
+      "then": [
+        "the check \"the diff stays inside scope.paths\" fails",
+        "the check \"the hidden acceptance tests pass\" fails",
+        "no other check changes its prior pass or fail outcome"
+      ]
+    },
+    {
+      "criterion": "Every new function MUST have cyclomatic complexity below 7, and no file outside tests/e2e/ MUST change except this run's own delivery record under docs/features/e2e-fixture-gitignore/.",
+      "name": "The change stays inside its scope and complexity budget",
+      "given": [
+        "the implementation for this feature is complete"
+      ],
+      "when": [
+        "the project's complexity lint runs over tests/e2e/... and the delivered diff is inspected"
+      ],
+      "then": [
+        "every new function reports cyclomatic complexity below 7",
+        "no changed file lies outside tests/e2e/ except the delivery record under docs/features/e2e-fixture-gitignore/"
+      ]
+    }
+  ],
+  "retrieval": {
+    "domainTerms": [
+      "Fixture repository"
+    ],
+    "issueRefs": [],
+    "linkedAdrs": [],
+    "linkedKis": []
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 2,
+  "feature": "e2e-fixture-gitignore",
+  "verdict": "APPROVED",
+  "designNarrative": "Adds a static .gitignore fixture under tests/e2e/testdata/repo/ mirroring the two per-machine entries (.claude/feature-workspace/, .claude/memory/) loom's own root .gitignore carries, plus one new harness-internal test proving setUpProject's existing copyTree + git add -A + git commit path carries that file into the project's first commit unchanged. No production code (deliver.go, exec.go) was touched — the test itself is the evidence that copyTree's unfiltered filepath.WalkDir already copies dotfiles. Behaviour change: no.",
+  "designScore": {
+    "clarity": 5,
+    "cohesion": 5,
+    "coupling": 5,
+    "craft": 5
+  },
+  "securitySurface": [],
+  "performanceSurface": [],
+  "testDesignReview": [
+    "TestSetUpProjectCommitsTheFixturesGitignore: YES — reads the fixture's own .gitignore bytes and the committed copy via `git show HEAD:.gitignore` independently and asserts byte-for-byte equality; it would fail if copyTree started skipping dotfiles, if setUpProject stopped staging/committing them, or if the fixture file were placed outside repo/. Verified by running it: PASS."
+  ],
+  "selfReviewCheck": [
+    "Developer's self-review checklist matches reality: complexity/LOC claims verified (new test is 15 lines, no branching), golangci-lint confirmed 0 issues independently, and the 'no changes needed to deliver.go/exec.go' claim is directly supported by the new test passing without touching either file."
+  ],
+  "behaviorChange": false,
+  "findings": [],
+  "retrieval": {
+    "domainTerms": ["Fixture repository"],
+    "issueRefs": ["#12"],
+    "linkedAdrs": [],
+    "linkedKis": []
+  }
+}

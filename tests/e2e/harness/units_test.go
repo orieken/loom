@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/orieken/loom/internal/factory"
 	"github.com/orieken/loom/internal/intake"
@@ -213,6 +214,26 @@ func TestABrokenLoomFailsTheDelivery(t *testing.T) {
 	}
 	if report.Passed() || report.Checks[0].Name != "the factory shipped the order" {
 		t.Errorf("report = %+v, want the delivery failed", report)
+	}
+}
+
+// The fixture's .gitignore must reach the project's first commit unchanged,
+// the way a real loom-adopting repository's own .gitignore would.
+func TestSetUpProjectCommitsTheFixturesGitignore(t *testing.T) {
+	config := Config{Fixture: fixture(t, ""), Workdir: t.TempDir(), PassTimeout: time.Minute}
+	if err := setUpProject(config, "x"); err != nil {
+		t.Fatalf("setUpProject: %v", err)
+	}
+	want, err := os.ReadFile(filepath.Join(config.Fixture, "repo", ".gitignore"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := run(config.project(), config.PassTimeout, "git", "show", "HEAD:.gitignore")
+	if err != nil {
+		t.Fatalf("git show HEAD:.gitignore: %v", err)
+	}
+	if got != string(want) {
+		t.Errorf("committed .gitignore = %q, want %q", got, string(want))
 	}
 }
 

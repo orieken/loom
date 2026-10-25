@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 2,
+  "feature": "e2e-fixture-gitignore",
+  "testFilesCreated": [],
+  "testFilesModified": [],
+  "coverage": {
+    "acceptanceCriteriaCovered": 5,
+    "acceptanceCriteriaTotal": 5,
+    "newTests": 1,
+    "statements": [
+      {"unit": "tests/e2e/harness", "percent": 90.9},
+      {"unit": "tests/e2e/cmd/factory-e2e", "percent": 94.4}
+    ]
+  },
+  "testResults": {
+    "passed": 19,
+    "failed": 0,
+    "skipped": 0,
+    "skipReasons": []
+  },
+  "accessibilityCheck": [],
+  "bugsFound": [],
+  "knownGaps": [],
+  "notesForTechWriter": [
+    "No new user-facing behavior to document: the change adds tests/e2e/testdata/repo/.gitignore (ignoring .claude/memory/ and .claude/feature-workspace/, matching the root .gitignore's own entries) and one new harness test, TestSetUpProjectCommitsTheFixturesGitignore, in tests/e2e/harness/units_test.go.",
+    "Verified directly: go test ./tests/e2e/... passes all 19 tests (0 failures); TestTheFactoryDeliversTheFixtureOrder's printed report shows PASS for every required check string, including the pre-existing ones; TestTheHarnessFailsARunThatDeliversTheWrongThing still fails exactly 'the diff stays inside scope.paths' and 'the hidden acceptance tests pass' and no other check.",
+    "golangci-lint run ./tests/e2e/... reports 0 issues; .golangci.yml's gocyclo min-complexity is 7, so the clean lint run confirms the new function is below that budget.",
+    "Scope verified via git status: only tests/e2e/harness/units_test.go (modified), tests/e2e/testdata/repo/.gitignore (new), and docs/features/e2e-fixture-gitignore/ (this run's own delivery record) changed — nothing outside tests/e2e/ was touched."
+  ],
+  "retrieval": {
+    "domainTerms": [],
+    "issueRefs": [],
+    "linkedAdrs": [],
+    "linkedKis": []
+  }
+}
