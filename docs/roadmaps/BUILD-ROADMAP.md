@@ -4649,7 +4649,10 @@ to `.claude/factory/runs/<id>/` before its worktree is removed. `ship-feature` i
    end, and opening the PR itself is gate #5, Always Human.
 2. **Architectural Fix**: For `finish: pr`, on a completed run the supervisor commits only under the
    `git-commit` policy (gate #2, the one policy-eligible gate this needs), pushes `factory/<id>`, and
-   writes a PR proposal — title, body from `delivery-summary.md`, base branch — into the inbox.
+   writes a PR proposal — title, base branch, and a body that is the delivery summary the factory
+   builds from the run's state (request, review/security/QA results, every stage with its cost, the
+   gates approved, changed files, where the delivery record is), plus `delivery-summary.md` when the
+   run wrote one — into the inbox.
    Approving it there runs `gh pr create`. `finish: branch` stops after the push; `finish: none`
    leaves the worktree for a human.
 3. **Target Files**: `internal/factory/`, `shared/skills/ship-feature/SKILL.md`

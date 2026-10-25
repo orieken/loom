@@ -214,6 +214,26 @@ func TestCommitAllFailsOnAnExclusionOutsideTheRepository(t *testing.T) {
 	}
 }
 
+func TestChangedBetweenListsWhatTwoCommitsDiffer(t *testing.T) {
+	root := baseRepo(t)
+	repo := worktree.New(root)
+	before, _ := repo.ResolveCommit("HEAD")
+	writeFile(t, filepath.Join(root, "feature.go"), "package feature\n")
+	after, err := repo.CommitAll("feat(order): add a feature", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changed, err := repo.ChangedBetween(before, after); err != nil || strings.Join(changed, ",") != "feature.go" {
+		t.Errorf("ChangedBetween = %v, %v; want feature.go", changed, err)
+	}
+	if changed, err := repo.ChangedBetween(after, after); err != nil || len(changed) != 0 {
+		t.Errorf("ChangedBetween a commit and itself = %v, %v", changed, err)
+	}
+	if _, err := repo.ChangedBetween("no-such-ref", after); err == nil {
+		t.Error("a diff against an unknown ref succeeded")
+	}
+}
+
 // A failing git command says why, not only its exit status.
 func TestAFailedGitCommandCarriesItsStderr(t *testing.T) {
 	_, err := worktree.New(baseRepo(t)).ShowFile("HEAD", "missing.md")

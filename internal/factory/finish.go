@@ -16,6 +16,7 @@ type Tree interface {
 	Digest() (string, error)
 	ChangedPaths() ([]string, error)
 	CommitAll(message string, exclude []string) (string, error)
+	ChangedBetween(from, to string) ([]string, error)
 	Push(branch string) error
 }
 
@@ -192,25 +193,11 @@ func subject(order *OrderState) string {
 	return fmt.Sprintf("%s(%s): %s", prefix, order.ID, title)
 }
 
-// proposalFor builds the pull request a human will be asked to open. The
-// body is the run's delivery summary when it wrote one.
+// proposalFor builds the pull request a human will be asked to open. Its
+// body is the delivery summary (summary.go).
 func (s *Supervisor) proposalFor(order *OrderState) Proposal {
 	return Proposal{Title: subject(order), Body: s.proposalBody(order),
 		Base: order.Claim.BaseBranch, Head: order.Claim.Branch}
-}
-
-func (s *Supervisor) proposalBody(order *OrderState) string {
-	for _, candidate := range []string{
-		filepath.Join(order.Claim.Worktree, "docs", "features", order.ID, "delivery-summary.md"),
-		filepath.Join(order.Claim.Worktree, ".claude", "feature-workspace", order.ID, "delivery-summary.md"),
-	} {
-		if summary, err := os.ReadFile(candidate); err == nil {
-			return string(summary)
-		}
-	}
-	return fmt.Sprintf("Delivered by the loom factory from work order `%s` (%s at %s).\n\n"+
-		"The run wrote no delivery summary; its artifacts are in `.claude/feature-workspace/%s/` on the worktree.\n",
-		order.ID, order.Claim.OrderPath, order.Claim.SourceCommit, order.ID)
 }
 
 // GHPullRequests opens pull requests with the GitHub CLI.
