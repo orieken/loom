@@ -646,7 +646,8 @@ func (e *Executor) persistFailure(ctx context.Context, state *RunState, failure 
 func (e *Executor) persistCompletion(state *RunState, stage Stage, plan Plan, input StageInput, output StageOutput) error {
 	artifactPath, err := e.artifactFor(stage, input, output)
 	if err != nil {
-		return e.persistFailure(context.Background(), state, stageFailure{stage: stage, err: err, usage: output.Usage})
+		return e.persistFailure(context.Background(), state, stageFailure{stage: stage, err: err, usage: output.Usage,
+			class: artifactFailureClass(stage, err)})
 	}
 	record := state.Stages[stage.ID]
 	now := time.Now().UTC()

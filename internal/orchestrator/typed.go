@@ -75,8 +75,9 @@ func withUpstream(existing map[string][]byte, upstream string, projected []byte)
 
 // persistTypedOutput validates a typed stage's payload and writes it as the
 // stage's artifact. An invalid payload fails the stage loudly: no repair
-// prompt, no retry — those are L3.x, and a silent repair would hide the
-// modelling failures this epic exists to surface.
+// prompt, and no retry inside the run — a silent repair would hide the
+// modelling failures this epic exists to surface. A supervisor may retry
+// the run, bounded and recorded (see artifactFailureClass).
 //
 // Loudly, but not un-diagnosably. Every rejection below happens with the
 // payload in hand, so the payload is kept and the error says where
@@ -100,7 +101,7 @@ func (e *Executor) persistTypedOutput(stage Stage, input StageInput, output Stag
 func (e *Executor) validateAndWrite(stage Stage, input StageInput, raw []byte) (string, error) {
 	decoded, err := state.Decode(state.Kind(stage.StateKind), raw)
 	if err != nil {
-		return "", fmt.Errorf("stage %q returned invalid state: %w", stage.ID, err)
+		return "", fmt.Errorf("stage %q returned %w: %w", stage.ID, ErrInvalidState, err)
 	}
 	payload, err := measureTypedOutput(decoded, input, raw, e.blastResolver)
 	if err != nil {

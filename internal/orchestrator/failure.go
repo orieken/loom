@@ -15,9 +15,13 @@ const (
 	// provider error, a timeout, an interruption.
 	FailureTransient FailureClass = "transient"
 	// FailureTerminal is a failure the same input will reproduce: an
-	// artifact that broke its contract, an input that cannot be projected.
+	// input that cannot be projected, an internal stage's output.
 	FailureTerminal FailureClass = "terminal"
 )
+
+// ErrInvalidState marks a typed stage's payload that does not conform to
+// its schema.
+var ErrInvalidState = errors.New("invalid state")
 
 // classifyFailure settles a failure's class. Cancellation is always
 // transient — the run was stopped, not broken — and an unclassified failure
@@ -40,4 +44,19 @@ func invocationFailureClass(stage Stage) FailureClass {
 		return FailureTerminal
 	}
 	return FailureTransient
+}
+
+// artifactFailureClass classifies a stage whose output could not become its
+// artifact. A provider stage's schema violation is transient: a model that
+// invents a field usually does not invent it again, and the second factory
+// dogfood run parked a $25 order over one stray field
+// ("pruned_bounded_context_note") that a retry would have dropped. The
+// order's max-attempts still bounds the retries, and the rejected payload
+// is still kept, so this is a recorded retry rather than a silent repair.
+// An internal stage is deterministic, and its violation would repeat.
+func artifactFailureClass(stage Stage, err error) FailureClass {
+	if !stage.Internal && errors.Is(err, ErrInvalidState) {
+		return FailureTransient
+	}
+	return FailureTerminal
 }

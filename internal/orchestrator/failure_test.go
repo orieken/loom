@@ -3,6 +3,7 @@ package orchestrator_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -48,18 +49,24 @@ func TestAnInterruptionIsTransient(t *testing.T) {
 	}
 }
 
-// A typed stage whose payload breaks its contract will break it again.
-func TestAnInvalidArtifactIsTerminal(t *testing.T) {
+// A model that broke its schema usually does not break it the same way
+// twice, so a supervisor may retry it (bounded by the order's attempts).
+// This was terminal until the second factory dogfood run parked an order
+// over one invented field.
+func TestAProviderStagesInvalidArtifactIsTransient(t *testing.T) {
 	plan := threeStagePlan()
 	plan.Stages[0].StateKind = "analysis"
 	executor, _, store, input := newHarness(t, map[string]mock.Script{
 		"analyst": {Payload: []byte(`{"not":"an analysis"}`)},
 	})
-	_ = executor.Run(context.Background(), plan, input)
+	err := executor.Run(context.Background(), plan, input)
 
 	record := mustLoad(t, store).Stages["analyst"]
-	if record.Status != orchestrator.StageStatusFailed || record.FailureClass != orchestrator.FailureTerminal {
-		t.Errorf("record = %s/%q, want FAILED/terminal", record.Status, record.FailureClass)
+	if record.Status != orchestrator.StageStatusFailed || record.FailureClass != orchestrator.FailureTransient {
+		t.Errorf("record = %s/%q, want FAILED/transient", record.Status, record.FailureClass)
+	}
+	if !errors.Is(err, orchestrator.ErrInvalidState) || !strings.Contains(record.Error, "returned invalid state") {
+		t.Errorf("err = %v, record error = %q; want an invalid-state failure", err, record.Error)
 	}
 }
 
