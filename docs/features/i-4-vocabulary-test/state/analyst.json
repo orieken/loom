@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 2,
+  "feature": "i-4-vocabulary-test",
+  "summary": "The six closed-vocabulary fields on an intake work order (type, status, source, trust, finish, autonomy) are spelled out three times today: the Go sets in internal/intake/vocabulary.go, the trailing comments in templates/claude-feature-team/intake/TEMPLATE.md, and the status table in templates/claude-feature-team/intake/README.md. Only the template's parseability is tested (TestTheShippedTemplateParses in parse_test.go); nothing catches the three copies drifting apart. This change adds a new test, internal/intake/vocabulary_test.go, that parses the template's trailing `# a | b | c` comments and the README's status table, and asserts each against the matching Go set in vocabulary.go, so a person filling in an order is never told a value loom's validator actually rejects.",
+  "acceptanceCriteria": [
+    {
+      "statement": "Given templates/claude-feature-team/intake/TEMPLATE.md, when the new test runs, then for each of type, status, source, trust, finish and autonomy it MUST read the values in that field's trailing `# a | b | c` comment and assert they equal the matching Go set in vocabulary.go, ignoring order.",
+      "examples": [
+        "type: feature                  # feature | bug | spike | chore  ->  {feature, bug, spike, chore} == knownTypes",
+        "autonomy: inherit              # inherit | strict-human — may tighten...  ->  {inherit, strict-human} == knownAutonomies (text after the em dash is not a value)"
+      ]
+    },
+    {
+      "statement": "Given templates/claude-feature-team/intake/README.md, when the new test runs, then it MUST read the values in the first column of the status table and assert they equal knownStatuses.",
+      "examples": [
+        "| `draft` | ... |\n| `ready` | ... |\n| `hold` | ... |  ->  {draft, ready, hold} == knownStatuses"
+      ]
+    },
+    {
+      "statement": "Given a value present in a Go set but missing from the template comment, or the reverse, when the test runs, then it MUST fail naming the field, the document, and every value missing from either side.",
+      "examples": [
+        "knownTypes gains \"epic\" with no template edit -> failure names field \"type\", document \"TEMPLATE.md\", and missing value \"epic\""
+      ]
+    },
+    {
+      "statement": "Given a template whose comment for one of the six fields cannot be found or parsed, when the test runs, then it MUST fail naming that field, and MUST NOT pass by finding nothing to compare."
+    },
+    {
+      "statement": "Given the change is complete, a second test MUST feed the comparison a deliberately mismatched template fixture under internal/intake/testdata/ and assert the comparison fails, proving the check can catch a real mismatch."
+    },
+    {
+      "statement": "Given the change is complete, go test ./internal/intake/... MUST pass, every new function MUST have cyclomatic complexity below 7, and no file outside internal/intake/ MUST change except this run's own delivery record under docs/features/i-4-vocabulary-test/."
+    }
+  ],
+  "nonFunctionalRequirements": [
+    {
+      "category": "performance",
+      "requirement": "The new tests MUST run well within the package's existing fast unit-test budget.",
+      "threshold": { "metric": "new test functions' combined wall-clock duration", "value": 1, "unit": "s" }
+    },
+    {
+      "category": "other",
+      "requirement": "The new tests MUST NOT require network access or invoke git — they read two files already on disk from the repository the test binary is built from."
+    }
+  ],
+  "proposedFitnessFunctions": [
+    {
+      "property": "The template's per-field comment list and the README's status table stay equal to the matching Go closed-vocabulary set",
+      "verification": "go test ./internal/intake/... (TestTemplateVocabularyMatchesGoSets, TestReadmeStatusTableMatchesGoSets), already run by the project's existing CI test step — no new CI wiring needed",
+      "owner": "Developer",
+      "judgmentOnly": false
+    },
+    {
+      "property": "The vocabulary-comparison check can actually detect a real mismatch, not just pass vacuously",
+      "verification": "go test -run TestVocabularyCheckCatchesAMismatch ./internal/intake/... against a deliberately wrong fixture in internal/intake/testdata/",
+      "owner": "Developer",
+      "judgmentOnly": false
+    }
+  ],
+  "outOfScope": [
+    "Changing any vocabulary value, the template's wording, or the README's wording.",
+    "Validating `plan` values — they come from plan files discovered at runtime, not from a fixed set.",
+    "Generating the template or README from the Go sets, or any other drift-prevention mechanism beyond a failing test.",
+    "Adding a `closed vocabulary` entry to shared/DOMAIN_DICTIONARY.md — see Open Questions; the spec's own AC6 restricts this change to internal/intake/ plus the delivery record, which conflicts with the analyst's standing default to update the dictionary on a new term."
+  ],
+  "surfaces": { "ui": false, "runtime": false },
+  "boundedContext": {
+    "owning": "intake",
+    "crossings": [
+      "templates/claude-feature-team/intake/TEMPLATE.md and README.md — documentation owned by the template directory, read (never written) by a test in internal/intake/"
+    ]
+  },
+  "affectedComponents": [
+    { "path": "internal/intake/vocabulary_test.go", "reason": "New test file (package intake, so it can read the unexported knownTypes/knownStatuses/knownSources/knownTrust/knownFinishes/knownAutonomies sets) implementing AC1–AC4: parse TEMPLATE.md's six trailing comments and README.md's status table, diff each against its Go set, and fail naming the field and missing values on either side." },
+    { "path": "internal/intake/testdata/mismatched_vocabulary_template.md", "reason": "AC5's deliberately-wrong fixture: a copy of TEMPLATE.md with one field's comment edited to disagree with its Go set, read by a test asserting the comparison fails. Proves the check is not a vacuous pass." },
+    { "path": "docs/features/i-4-vocabulary-test/", "reason": "This run's own delivery record — the one path outside internal/intake/ that AC6 permits to change." }
+  ],
+  "dataModelChanges": [],
+  "apiChanges": [],
+  "newDependencies": [],
+  "architecturalFlags": [
+    "Parsing six differently-worded trailing comments plus one markdown table in one function risks crossing the cyclomatic-complexity-< 7 budget; decompose into a small per-field comment extractor (e.g. parseCommentValues(line string) []string, cutting at the em dash before splitting on `|`) and a reusable assertSetsEqual(t, field, document, got, want map[string]bool) helper shared by both the TEMPLATE.md and README.md checks, mirroring checkVocabulary's existing field-table style in validate.go.",
+    "Scope conflict surfaced, not resolved unilaterally: this analyst's standing instruction is to add a new business term (here, 'Closed vocabulary', defined in the spec's Domain Language section) to shared/DOMAIN_DICTIONARY.md. The spec's own AC6 says no file outside internal/intake/ changes except the delivery record. Resolved in favor of the spec's explicit, narrower AC — DOMAIN_DICTIONARY.md is left untouched by this feature. A human can promote the term separately if wanted; see Open Questions."
+  ],
+  "retrieval": {
+    "domainTerms": ["Closed vocabulary"],
+    "issueRefs": ["I-4"],
+    "linkedAdrs": [],
+    "linkedKis": []
+  },
+  "tasks": {
+    "developer": [
+      "Create internal/intake/vocabulary_test.go in package intake.",
+      "Write a helper that locates each of the six fields' lines in TEMPLATE.md by its YAML key (`type:`, `status:`, `source:`, `trust:`, `finish:`, `autonomy:`) at the start of a line, extracts the trailing `# ...` comment, cuts it at the first em dash (—) if present, splits the remainder on `|`, and trims each piece — mirroring the existing field-table pattern in checkVocabulary (internal/intake/validate.go).",
+      "Write TestTemplateVocabularyMatchesGoSets: table-driven over the six fields {name, extracted template values, Go set (knownTypes/knownStatuses/knownSources/knownTrust/knownFinishes/knownAutonomies)}; assert set equality ignoring order, and on mismatch report the field name, 'TEMPLATE.md', and the values present on only one side.",
+      "Write a small markdown-table-row parser for README.md's Lifecycle table (the `| `status`` | Meaning | Who sets it |` block) that extracts the first column's backtick-quoted values.",
+      "Write TestReadmeStatusTableMatchesGoSets: parse README.md's status table, assert its values equal knownStatuses with the same missing-values-named failure message style.",
+      "Resolve paths the same way parse_test.go's TestTheShippedTemplateParses does: runtime.Caller(0) + filepath.Join(..., \"..\", \"..\", \"templates\", \"claude-feature-team\", \"intake\", \"TEMPLATE.md\"/\"README.md\") — no hardcoded absolute paths, no network, no git.",
+      "If a field's comment cannot be found or its pipe-list cannot be parsed, fail that subtest naming the field — never silently skip it (AC4): e.g. t.Fatalf(\"could not find a parseable %q comment in TEMPLATE.md\", field).",
+      "Create internal/intake/testdata/mismatched_vocabulary_template.md: a copy of TEMPLATE.md with exactly one field's trailing comment edited to disagree with its Go set (e.g. add a phantom status `queued` not in knownStatuses).",
+      "Write TestVocabularyCheckCatchesAMismatch (AC5): run the same comparison helper against the testdata fixture and assert it reports a failure, proving the check is not vacuous.",
+      "Keep every new function's cyclomatic complexity below 7 — extract the comment-cutting, pipe-splitting, and set-diffing logic into separate small functions rather than one long one.",
+      "Run go test ./internal/intake/... and confirm no file outside internal/intake/ changed (git status / git diff --stat)."
+    ],
+    "qa": [
+      "Run go test ./internal/intake/... and confirm both new tests and the full existing suite (parse_test.go, validate_test.go, check_test.go) stay green.",
+      "Verify TestVocabularyCheckCatchesAMismatch genuinely fails if its assertion is inverted (temporarily flip the assert to confirm the test can fail, per the test-repair-contract's 'prove a new test can fail' requirement), then confirm it is restored correctly.",
+      "Confirm the new test functions each report well under 1 second in `go test -v` output and require no network or git (NFR)."
+    ],
+    "techWriter": [],
+    "devops": []
+  },
+  "edgeCases": [
+    { "case": "A field's template comment uses an em dash to add explanatory prose after the pipe list (e.g. autonomy, trust, finish, status).", "handling": "Cut the comment text at the first em dash (—) before splitting on `|`, so explanatory prose is never mistaken for a seventh vocabulary value." },
+    { "case": "The Go set and template list have the same members in a different order.", "handling": "Compare as sets (map/set membership), not as ordered slices — AC1 explicitly says 'order ignored'." },
+    { "case": "A value exists in the Go set but was never added to the template comment (or the reverse).", "handling": "Report the field, the document, and every value present on only one side — not just a boolean mismatch (AC3)." },
+    { "case": "A field's comment line does not start the line with the exact YAML key (e.g. extra whitespace, or the key appears elsewhere in a different context such as inside the <!-- HOW TO USE --> comment block).", "handling": "Anchor the search to the frontmatter block only, matching on `^fieldname:` at line start, so prose mentioning the field name elsewhere in the file is never misread as its comment." },
+    { "case": "README.md's status table row values are backtick-quoted (`` `draft` ``) inside a markdown table cell.", "handling": "Strip backticks and markdown table pipe delimiters before comparing, distinguishing a table-cell `|` from a vocabulary separator `|`." },
+    { "case": "A future contributor adds a seventh closed-vocabulary field to vocabulary.go but forgets to add test coverage for it.", "handling": "Out of scope per the spec (Open Questions) — the README check covers status alone and the template covers all six existing fields; a new field needs a follow-up change to this test, not caught automatically by this change." }
+  ],
+  "definitionOfDone": [
+    "internal/intake/vocabulary_test.go exists with TestTemplateVocabularyMatchesGoSets and TestReadmeStatusTableMatchesGoSets, both passing against the real template and README.",
+    "internal/intake/testdata/mismatched_vocabulary_template.md and TestVocabularyCheckCatchesAMismatch exist and the test fails when run against the mismatched fixture, proving the check can fail.",
+    "go test ./internal/intake/... passes in full, including all pre-existing tests.",
+    "Every new function has cyclomatic complexity below 7 (CLAUDE.md's non-negotiable rule).",
+    "No file outside internal/intake/ changed, except docs/features/i-4-vocabulary-test/ (this run's delivery record).",
+    "A field whose comment is missing or unparseable fails the test naming that field, rather than passing vacuously."
+  ],
+  "openQuestions": [
+    "The README lists only the status values in a table; the other five fields appear there by name only — Assumption (per the spec): the README check covers status alone, and the template covers all six.",
+    "Should 'Closed vocabulary' (defined in the spec's own Domain Language section) be promoted to shared/DOMAIN_DICTIONARY.md? This analyst's standing rule says yes on introducing a new term, but the spec's AC6 restricts file changes to internal/intake/ plus the delivery record. Left to the human: a follow-up chore can add the term without touching this feature's scope."
+  ]
+}

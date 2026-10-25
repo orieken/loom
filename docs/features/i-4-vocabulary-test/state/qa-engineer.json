@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 2,
+  "feature": "i-4-vocabulary-test",
+  "testFilesCreated": [],
+  "testFilesModified": [
+    "internal/intake/vocabulary_test.go"
+  ],
+  "coverage": {
+    "acceptanceCriteriaCovered": 6,
+    "acceptanceCriteriaTotal": 6,
+    "newTests": 4,
+    "statements": [
+      {
+        "unit": "internal/intake",
+        "percent": 100.0
+      }
+    ]
+  },
+  "testResults": {
+    "passed": 44,
+    "failed": 0,
+    "skipped": 0,
+    "skipReasons": []
+  },
+  "accessibilityCheck": [],
+  "bugsFound": [],
+  "knownGaps": [],
+  "notesForTechWriter": [
+    "internal/intake/vocabulary_test.go now has four test functions: TestTemplateVocabularyMatchesGoSets (AC1/AC3/AC4), TestReadmeStatusTableMatchesGoSets (AC2/AC3), TestFieldCommentValuesFailsClosedWhenUnparseable (AC4, added this stage), and TestVocabularyCheckCatchesAMismatch (AC5).",
+    "AC4's 'unparseable comment fails loudly' behavior was implemented by the developer (fieldCommentValues returning ok=false triggers t.Fatalf) but had no test exercising that branch — every existing fixture has well-formed comments. Added TestFieldCommentValuesFailsClosedWhenUnparseable, which checks fieldCommentValues directly against three frontmatter fixtures: field absent entirely, field present with no trailing comment, and a field name that's only a substring of another key (e.g. order-status: vs status:). This proves the function returns ok=false distinctly from an empty-but-valid value list, which matters because an empty valid list would make assertVocabularyMatches report 'all Go values missing' instead of the real problem.",
+    "Proved the new test can fail per the test-repair-contract: inverted its `if ok` to `if !ok`, confirmed all three subtests failed with the expected message, then restored the file and confirmed via diff it was byte-identical to the backup before re-running the full suite green.",
+    "Independently re-verified (not just trusting the developer's notes) that the three pre-existing new tests can fail: broke knownStatuses with a phantom 'archived' value (both TestTemplateVocabularyMatchesGoSets/status and TestReadmeStatusTableMatchesGoSets failed naming field, document and the missing value, then vocabulary.go was restored with zero git diff), and swapped the mismatched fixture for an unmismatched copy of TEMPLATE.md (TestVocabularyCheckCatchesAMismatch failed as expected, fixture restored with zero diff).",
+    "golangci-lint run internal/intake/... reports 0 issues with gocyclo wired at min-complexity: 7 (.golangci.yml), so every new/modified function is confirmed below the complexity threshold.",
+    "go test ./internal/intake/... -coverprofile shows 100.0% statement coverage for the internal/intake package (single unit — this feature touches only this one package).",
+    "Full suite (44 passed subtests/tests across parse, validate, check, and vocabulary) runs in ~0.3s with no network or git calls, well under the 1s NFR.",
+    "Scope confirmed via git status: only internal/intake/vocabulary_test.go, internal/intake/testdata/, and this run's own docs/features/i-4-vocabulary-test/ delivery record changed — nothing else in the repo was touched."
+  ],
+  "retrieval": {
+    "domainTerms": [],
+    "issueRefs": [
+      "I-4"
+    ],
+    "linkedAdrs": [],
+    "linkedKis": []
+  }
+}

@@ -1,0 +1,524 @@
+{
+  "schemaVersion": 10,
+  "planName": "deliver-feature",
+  "createdBy": "executor",
+  "featureName": "i-4-vocabulary-test",
+  "specPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/factory/claims/i-4-vocabulary-test.md",
+  "specSha256": "9307894fdf8e3d6dcf1a006afe98b64359040c8b06ee19d1f08e1ea8fc2e585e",
+  "provider": "claude",
+  "startedAt": "2026-10-24T23:08:13.293862Z",
+  "startCommit": "91d5d38aa2179232cf3814f5cf281dcf508e6c26",
+  "diffLines": {
+    "confirm-design": 2201,
+    "confirm-security": 2201,
+    "confirm-ship": 2201
+  },
+  "reviewedDigest": "3fa0168908983ebb93db8926e0b5fc1bda0a24fc67f399df0bbfd975cc870fa0",
+  "stages": {
+    "acceptance-scenarios": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-24T23:57:15.751954Z",
+      "finishedAt": "2026-10-24T23:57:58.859516Z",
+      "artifactPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/state/acceptance-scenarios.json",
+      "artifactSha256": "9fd291e0e97c0c9666f425c79a0d1ab786227e68dc38c3d3dce13b3a347798a7",
+      "sequence": 11,
+      "iteration": 1,
+      "stateKind": "scenarios",
+      "agent": "qa-engineer",
+      "viewPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/acceptance-scenarios.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 8,
+        "outputTokens": 3801,
+        "cacheReadTokens": 261564,
+        "cacheCreationTokens": 60918,
+        "costUsd": 0.3340108
+      }
+    },
+    "accessibility-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-24T23:55:11.357254Z",
+      "sequence": 5,
+      "skipReason": "the analysis declares no UI surface",
+      "iteration": 1
+    },
+    "analyst": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-24T23:52:59.8365Z",
+      "finishedAt": "2026-10-24T23:55:11.303595Z",
+      "artifactPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/state/analyst.json",
+      "artifactSha256": "32cf102efa62c7a521ab3928dd84c391a082a2f83c3533c3d66a33698fc505e0",
+      "sequence": 2,
+      "iteration": 1,
+      "stateKind": "analysis",
+      "agent": "analyst",
+      "viewPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/analysis.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 58,
+        "outputTokens": 47259,
+        "cacheReadTokens": 2988587,
+        "cacheCreationTokens": 221594,
+        "costUsd": 1.9567994000000004
+      }
+    },
+    "architect": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-24T23:55:11.358901Z",
+      "finishedAt": "2026-10-24T23:56:48.297307Z",
+      "artifactPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/state/architect.json",
+      "artifactSha256": "20c20bf09522df53ddc5a53e0a9626d88600064dbf3c3878a4540b1ccf0499fc",
+      "sequence": 9,
+      "iteration": 1,
+      "stateKind": "architecture",
+      "agent": "architect",
+      "viewPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/architecture-notes.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 8,
+        "outputTokens": 9113,
+        "cacheReadTokens": 287091,
+        "cacheCreationTokens": 84372,
+        "costUsd": 0.4860522
+      }
+    },
+    "code-reviewer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-25T00:29:00.935602Z",
+      "finishedAt": "2026-10-25T00:30:56.617449Z",
+      "artifactPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/state/code-reviewer.json",
+      "artifactSha256": "fba1d1abe12fd658045d29d40f79583f0735c9b1d758c54e09432f8a6aa034f5",
+      "sequence": 13,
+      "iteration": 1,
+      "stateKind": "review",
+      "agent": "code-reviewer",
+      "viewPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/code-review-report.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 28,
+        "outputTokens": 9338,
+        "cacheReadTokens": 1307785,
+        "cacheCreationTokens": 88965,
+        "costUsd": 0.710853
+      }
+    },
+    "context-engineer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-24T23:08:13.300566Z",
+      "finishedAt": "2026-10-24T23:09:30.064232Z",
+      "artifactPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/state/context-engineer.json",
+      "artifactSha256": "fcab4099fbea6ec51d444be14643a31294e49dad3f3682ce1cc28cef9ae7b663",
+      "sequence": 1,
+      "iteration": 1,
+      "stateKind": "context",
+      "agent": "context-engineer",
+      "viewPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/context-manifest.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 26,
+        "outputTokens": 6006,
+        "cacheReadTokens": 1215400,
+        "cacheCreationTokens": 88931,
+        "costUsd": 0.658916
+      }
+    },
+    "data-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-24T23:55:11.357064Z",
+      "sequence": 4,
+      "skipReason": "no data-model change to sequence",
+      "iteration": 1
+    },
+    "developer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-25T00:23:56.743625Z",
+      "finishedAt": "2026-10-25T00:29:00.934724Z",
+      "artifactPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/state/developer.json",
+      "artifactSha256": "6f265b6aca0360923c3c3dfc0509d589f6592eabf2dfb097668cf0686e1e78ba",
+      "gate": "confirm-design",
+      "sequence": 12,
+      "iteration": 1,
+      "stateKind": "implementation",
+      "agent": "developer",
+      "viewPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/implementation-notes.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 72,
+        "outputTokens": 26864,
+        "cacheReadTokens": 4235384,
+        "cacheCreationTokens": 122959,
+        "costUsd": 1.6076968
+      }
+    },
+    "devops-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-24T23:55:11.35861Z",
+      "gate": "confirm-ship",
+      "sequence": 8,
+      "skipReason": "the analysis lists no DevOps tasks",
+      "iteration": 1
+    },
+    "performance-engineer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-24T23:56:48.298075Z",
+      "finishedAt": "2026-10-24T23:57:15.751116Z",
+      "artifactPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/performance-engineer.md",
+      "artifactSha256": "13d8d89307621a0ef3318a014480cf3bf2ba365f97079ef8b6bc5899f69a6514",
+      "sequence": 10,
+      "iteration": 1,
+      "agent": "performance-engineer",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 6,
+        "outputTokens": 1994,
+        "cacheReadTokens": 167145,
+        "cacheCreationTokens": 63781,
+        "costUsd": 0.30850500000000003
+      }
+    },
+    "qa-engineer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-25T00:44:06.57019Z",
+      "finishedAt": "2026-10-25T00:47:07.940013Z",
+      "artifactPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/state/qa-engineer.json",
+      "artifactSha256": "c9a21a050a348cedd5fd81bcda33cd858873c826ffbc483f40f0b633557f9936",
+      "gate": "confirm-security",
+      "sequence": 15,
+      "iteration": 1,
+      "stateKind": "qa",
+      "agent": "qa-engineer",
+      "viewPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/qa-report.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 48,
+        "outputTokens": 13968,
+        "cacheReadTokens": 2360407,
+        "cacheCreationTokens": 97696,
+        "costUsd": 1.0026414000000001
+      }
+    },
+    "router": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-24T23:55:11.304241Z",
+      "finishedAt": "2026-10-24T23:55:11.356709Z",
+      "artifactPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/state/router.json",
+      "artifactSha256": "fc2ad6fbcec1dc7f37cb6fbaa4011b661f988f894b0a7f471b91b977b01749a9",
+      "sequence": 3,
+      "iteration": 1,
+      "stateKind": "route",
+      "agent": "router",
+      "viewPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/route.md"
+    },
+    "security-reviewer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-25T00:30:56.618295Z",
+      "finishedAt": "2026-10-25T00:31:42.098849Z",
+      "artifactPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/state/security-reviewer.json",
+      "artifactSha256": "045597c3dd66751325de16bfb501d81712e2a55d2295a3ce14cd94fca93544aa",
+      "sequence": 14,
+      "iteration": 1,
+      "stateKind": "security",
+      "agent": "security-reviewer",
+      "viewPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/security-report.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 12,
+        "outputTokens": 3138,
+        "cacheReadTokens": 438478,
+        "cacheCreationTokens": 68109,
+        "costUsd": 0.3915356
+      }
+    },
+    "sre-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-24T23:55:11.357686Z",
+      "sequence": 7,
+      "skipReason": "the analysis declares no served runtime surface, so no availability or latency SLI applies",
+      "iteration": 1
+    },
+    "tech-writer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-25T00:47:07.940669Z",
+      "finishedAt": "2026-10-25T00:48:00.424947Z",
+      "artifactPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/tech-writer.md",
+      "artifactSha256": "82426edce2f83525aa36e749e4c2edb9780b4ab6424e5ce297b9f42b71957718",
+      "sequence": 16,
+      "iteration": 1,
+      "agent": "tech-writer",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 14,
+        "outputTokens": 3997,
+        "cacheReadTokens": 521945,
+        "cacheCreationTokens": 70617,
+        "costUsd": 0.42685500000000004
+      }
+    },
+    "visual-qa-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-24T23:55:11.35744Z",
+      "sequence": 6,
+      "skipReason": "the analysis declares no UI surface, so there is nothing to look at",
+      "iteration": 1
+    }
+  },
+  "approvals": {
+    "confirm-design": {
+      "approvedAt": "2026-10-25T00:23:56.707822Z",
+      "method": "flag",
+      "approver": "oscarrieken",
+      "artifactDigests": {
+        "acceptance-scenarios": "9fd291e0e97c0c9666f425c79a0d1ab786227e68dc38c3d3dce13b3a347798a7",
+        "analyst": "32cf102efa62c7a521ab3928dd84c391a082a2f83c3533c3d66a33698fc505e0",
+        "architect": "20c20bf09522df53ddc5a53e0a9626d88600064dbf3c3878a4540b1ccf0499fc",
+        "context-engineer": "fcab4099fbea6ec51d444be14643a31294e49dad3f3682ce1cc28cef9ae7b663",
+        "performance-engineer": "13d8d89307621a0ef3318a014480cf3bf2ba365f97079ef8b6bc5899f69a6514",
+        "router": "fc2ad6fbcec1dc7f37cb6fbaa4011b661f988f894b0a7f471b91b977b01749a9"
+      }
+    },
+    "confirm-security": {
+      "approvedAt": "2026-10-25T00:44:06.509567Z",
+      "method": "flag",
+      "approver": "oscarrieken",
+      "artifactDigests": {
+        "acceptance-scenarios": "9fd291e0e97c0c9666f425c79a0d1ab786227e68dc38c3d3dce13b3a347798a7",
+        "analyst": "32cf102efa62c7a521ab3928dd84c391a082a2f83c3533c3d66a33698fc505e0",
+        "architect": "20c20bf09522df53ddc5a53e0a9626d88600064dbf3c3878a4540b1ccf0499fc",
+        "code-reviewer": "fba1d1abe12fd658045d29d40f79583f0735c9b1d758c54e09432f8a6aa034f5",
+        "context-engineer": "fcab4099fbea6ec51d444be14643a31294e49dad3f3682ce1cc28cef9ae7b663",
+        "developer": "6f265b6aca0360923c3c3dfc0509d589f6592eabf2dfb097668cf0686e1e78ba",
+        "performance-engineer": "13d8d89307621a0ef3318a014480cf3bf2ba365f97079ef8b6bc5899f69a6514",
+        "router": "fc2ad6fbcec1dc7f37cb6fbaa4011b661f988f894b0a7f471b91b977b01749a9",
+        "security-reviewer": "045597c3dd66751325de16bfb501d81712e2a55d2295a3ce14cd94fca93544aa"
+      }
+    },
+    "confirm-ship": {
+      "approvedAt": "2026-10-25T00:59:19.233174Z",
+      "method": "flag",
+      "approver": "oscarrieken",
+      "artifactDigests": {
+        "acceptance-scenarios": "9fd291e0e97c0c9666f425c79a0d1ab786227e68dc38c3d3dce13b3a347798a7",
+        "analyst": "32cf102efa62c7a521ab3928dd84c391a082a2f83c3533c3d66a33698fc505e0",
+        "architect": "20c20bf09522df53ddc5a53e0a9626d88600064dbf3c3878a4540b1ccf0499fc",
+        "code-reviewer": "fba1d1abe12fd658045d29d40f79583f0735c9b1d758c54e09432f8a6aa034f5",
+        "context-engineer": "fcab4099fbea6ec51d444be14643a31294e49dad3f3682ce1cc28cef9ae7b663",
+        "developer": "6f265b6aca0360923c3c3dfc0509d589f6592eabf2dfb097668cf0686e1e78ba",
+        "performance-engineer": "13d8d89307621a0ef3318a014480cf3bf2ba365f97079ef8b6bc5899f69a6514",
+        "qa-engineer": "c9a21a050a348cedd5fd81bcda33cd858873c826ffbc483f40f0b633557f9936",
+        "router": "fc2ad6fbcec1dc7f37cb6fbaa4011b661f988f894b0a7f471b91b977b01749a9",
+        "security-reviewer": "045597c3dd66751325de16bfb501d81712e2a55d2295a3ce14cd94fca93544aa",
+        "tech-writer": "82426edce2f83525aa36e749e4c2edb9780b4ab6424e5ce297b9f42b71957718"
+      }
+    }
+  },
+  "baselines": {
+    "confirm-design": {
+      "at": "2026-10-25T00:23:56.707878Z",
+      "reason": "APPROVED",
+      "artifacts": {
+        "acceptance-scenarios": {
+          "stage": "acceptance-scenarios",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-design/acceptance-scenarios.md",
+          "sha256": "a1e2bc35f2801963b8376ad9c1325efbd64d4a553a33ea5c292e5a0c3f38d440",
+          "at": "2026-10-25T00:23:56.708771Z"
+        },
+        "analyst": {
+          "stage": "analyst",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-design/analyst.md",
+          "sha256": "f8c8560fb007bffca318c0dc4645af28b2f022a65d65c11a3160e8b0acdc3221",
+          "at": "2026-10-25T00:23:56.709027Z"
+        },
+        "architect": {
+          "stage": "architect",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-design/architect.md",
+          "sha256": "28aaa03b41180f18b84fef3a6602f576eefd701ad53364853ef4e9d8ccf9c157",
+          "at": "2026-10-25T00:23:56.708485Z"
+        },
+        "context-engineer": {
+          "stage": "context-engineer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-design/context-engineer.md",
+          "sha256": "93cd5b6253c89ddd18c198439f64c27c4662a8c72ddc8e6b5309b67926dae935",
+          "at": "2026-10-25T00:23:56.709254Z"
+        },
+        "performance-engineer": {
+          "stage": "performance-engineer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-design/performance-engineer.md",
+          "sha256": "13d8d89307621a0ef3318a014480cf3bf2ba365f97079ef8b6bc5899f69a6514",
+          "at": "2026-10-25T00:23:56.709466Z"
+        },
+        "router": {
+          "stage": "router",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-design/router.md",
+          "sha256": "392f4cf4ad1c6ed7bb5c3863104e2f60663c48a6e90b0e789a8627876e417cce",
+          "at": "2026-10-25T00:23:56.709674Z"
+        }
+      }
+    },
+    "confirm-security": {
+      "at": "2026-10-25T00:44:06.509575Z",
+      "reason": "APPROVED",
+      "artifacts": {
+        "acceptance-scenarios": {
+          "stage": "acceptance-scenarios",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-security/acceptance-scenarios.md",
+          "sha256": "a1e2bc35f2801963b8376ad9c1325efbd64d4a553a33ea5c292e5a0c3f38d440",
+          "at": "2026-10-25T00:44:06.510571Z"
+        },
+        "analyst": {
+          "stage": "analyst",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-security/analyst.md",
+          "sha256": "f8c8560fb007bffca318c0dc4645af28b2f022a65d65c11a3160e8b0acdc3221",
+          "at": "2026-10-25T00:44:06.510159Z"
+        },
+        "architect": {
+          "stage": "architect",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-security/architect.md",
+          "sha256": "28aaa03b41180f18b84fef3a6602f576eefd701ad53364853ef4e9d8ccf9c157",
+          "at": "2026-10-25T00:44:06.510326Z"
+        },
+        "code-reviewer": {
+          "stage": "code-reviewer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-security/code-reviewer.md",
+          "sha256": "b45b204f92cb4ddea29625259d28ed2060b1d8e041163f7e14a74b6a4e763c1d",
+          "at": "2026-10-25T00:44:06.509753Z"
+        },
+        "context-engineer": {
+          "stage": "context-engineer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-security/context-engineer.md",
+          "sha256": "93cd5b6253c89ddd18c198439f64c27c4662a8c72ddc8e6b5309b67926dae935",
+          "at": "2026-10-25T00:44:06.510419Z"
+        },
+        "developer": {
+          "stage": "developer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-security/developer.md",
+          "sha256": "ce78705c64a3368458dbfa605dd79847715489b35edcf39cd36de250af974b0f",
+          "at": "2026-10-25T00:44:06.51098Z"
+        },
+        "performance-engineer": {
+          "stage": "performance-engineer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-security/performance-engineer.md",
+          "sha256": "13d8d89307621a0ef3318a014480cf3bf2ba365f97079ef8b6bc5899f69a6514",
+          "at": "2026-10-25T00:44:06.510744Z"
+        },
+        "router": {
+          "stage": "router",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-security/router.md",
+          "sha256": "392f4cf4ad1c6ed7bb5c3863104e2f60663c48a6e90b0e789a8627876e417cce",
+          "at": "2026-10-25T00:44:06.510655Z"
+        },
+        "security-reviewer": {
+          "stage": "security-reviewer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-security/security-reviewer.md",
+          "sha256": "5408e941f42c07e3b32e74f18962a4a594e85576276315c98e78ae54b20b1531",
+          "at": "2026-10-25T00:44:06.510826Z"
+        }
+      }
+    },
+    "confirm-ship": {
+      "at": "2026-10-25T00:59:19.23318Z",
+      "reason": "APPROVED",
+      "artifacts": {
+        "acceptance-scenarios": {
+          "stage": "acceptance-scenarios",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-ship/acceptance-scenarios.md",
+          "sha256": "a1e2bc35f2801963b8376ad9c1325efbd64d4a553a33ea5c292e5a0c3f38d440",
+          "at": "2026-10-25T00:59:19.236538Z"
+        },
+        "analyst": {
+          "stage": "analyst",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-ship/analyst.md",
+          "sha256": "f8c8560fb007bffca318c0dc4645af28b2f022a65d65c11a3160e8b0acdc3221",
+          "at": "2026-10-25T00:59:19.233449Z"
+        },
+        "architect": {
+          "stage": "architect",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-ship/architect.md",
+          "sha256": "28aaa03b41180f18b84fef3a6602f576eefd701ad53364853ef4e9d8ccf9c157",
+          "at": "2026-10-25T00:59:19.236301Z"
+        },
+        "code-reviewer": {
+          "stage": "code-reviewer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-ship/code-reviewer.md",
+          "sha256": "b45b204f92cb4ddea29625259d28ed2060b1d8e041163f7e14a74b6a4e763c1d",
+          "at": "2026-10-25T00:59:19.236631Z"
+        },
+        "context-engineer": {
+          "stage": "context-engineer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-ship/context-engineer.md",
+          "sha256": "93cd5b6253c89ddd18c198439f64c27c4662a8c72ddc8e6b5309b67926dae935",
+          "at": "2026-10-25T00:59:19.236388Z"
+        },
+        "developer": {
+          "stage": "developer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-ship/developer.md",
+          "sha256": "ce78705c64a3368458dbfa605dd79847715489b35edcf39cd36de250af974b0f",
+          "at": "2026-10-25T00:59:19.236841Z"
+        },
+        "performance-engineer": {
+          "stage": "performance-engineer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-ship/performance-engineer.md",
+          "sha256": "13d8d89307621a0ef3318a014480cf3bf2ba365f97079ef8b6bc5899f69a6514",
+          "at": "2026-10-25T00:59:19.236159Z"
+        },
+        "qa-engineer": {
+          "stage": "qa-engineer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-ship/qa-engineer.md",
+          "sha256": "361c97a5969fbc535ada044992daba5d2dc8bce254ebdd1a9c2352fe5379ba72",
+          "at": "2026-10-25T00:59:19.236713Z"
+        },
+        "router": {
+          "stage": "router",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-ship/router.md",
+          "sha256": "392f4cf4ad1c6ed7bb5c3863104e2f60663c48a6e90b0e789a8627876e417cce",
+          "at": "2026-10-25T00:59:19.233807Z"
+        },
+        "security-reviewer": {
+          "stage": "security-reviewer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-ship/security-reviewer.md",
+          "sha256": "5408e941f42c07e3b32e74f18962a4a594e85576276315c98e78ae54b20b1531",
+          "at": "2026-10-25T00:59:19.235964Z"
+        },
+        "tech-writer": {
+          "stage": "tech-writer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/i-4-vocabulary-test/.claude/feature-workspace/i-4-vocabulary-test/.approved/confirm-ship/tech-writer.md",
+          "sha256": "82426edce2f83525aa36e749e4c2edb9780b4ab6424e5ce297b9f42b71957718",
+          "at": "2026-10-25T00:59:19.236061Z"
+        }
+      }
+    }
+  },
+  "policyDecisions": [
+    {
+      "gate": "confirm-ship",
+      "at": "2026-10-25T00:48:00.451553Z",
+      "effect": "auto-approve",
+      "honoured": false,
+      "policies": [
+        {
+          "name": "evidence-clean-ship",
+          "action": "auto-approve",
+          "outcome": "TRUE",
+          "source": ".claude/policies/evidence-clean-ship.policy.yaml"
+        }
+      ]
+    }
+  ],
+  "spend": {
+    "model": "claude-sonnet-5",
+    "inputTokens": 280,
+    "outputTokens": 125478,
+    "cacheReadTokens": 13783786,
+    "cacheCreationTokens": 967942,
+    "costUsd": 7.883865200000001
+  },
+  "budget": {
+    "maxUsd": 25,
+    "maxHours": 2
+  },
+  "updatedAt": "2026-10-25T00:59:19.317175Z"
+}
