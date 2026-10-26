@@ -75,7 +75,7 @@ func (s *Supervisor) decide(order *OrderState, result outcome) Entry {
 	case outcomeWaiting:
 		return Entry{Event: EventWaiting, Gate: result.gate}
 	case outcomeBudget:
-		return Entry{Event: EventParked, Reason: result.reason, Spend: result.spend}
+		return Entry{Event: EventParked, Reason: result.reason, Spend: result.spend, Unmeasured: result.unmeasured}
 	case outcomeInterrupted:
 		return s.decideInterrupted(order, result)
 	}
@@ -98,6 +98,9 @@ func (s *Supervisor) decideInterrupted(order *OrderState, result outcome) Entry 
 // decideFailure retries a transient failure while the order has attempts
 // left (roadmap L3.68) and parks everything else with the reason.
 func (s *Supervisor) decideFailure(order *OrderState, result outcome) Entry {
+	if result.class == orchestrator.FailureUnavailable {
+		return s.waitOutUnavailable(result)
+	}
 	if result.class != orchestrator.FailureTransient {
 		return Entry{Event: EventParked, Reason: "terminal: " + result.reason}
 	}
@@ -121,4 +124,14 @@ func retryDelay(base, ceiling time.Duration, attempt int) time.Duration {
 		delay = policy.NextBackOff()
 	}
 	return delay
+}
+
+// waitOutUnavailable reschedules a run the provider refused — a usage or
+// session limit — after UnavailableWait, without spending an attempt. The
+// second factory dogfood run spent both of an order's attempts a minute
+// apart on a limit that reset four hours later.
+func (s *Supervisor) waitOutUnavailable(result outcome) Entry {
+	notBefore := s.deps.Now().Add(s.config.UnavailableWait)
+	return Entry{Event: EventRetryScheduled, NotBefore: &notBefore, KeepsAttempt: true,
+		Reason: "unavailable: " + result.reason}
 }

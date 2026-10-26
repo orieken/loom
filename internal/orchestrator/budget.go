@@ -9,7 +9,8 @@ package orchestrator
 // One property is inherited from the policy evaluator rather than
 // re-decided: usage the governor cannot see is unknown, not zero. A stage
 // that finished and reported no cost makes a dollar or token ceiling
-// unverifiable, and an unverifiable ceiling halts the run.
+// unverifiable, and an unverifiable ceiling halts the run — until a human
+// accepts that stage's unknown spend (unmeasured.go).
 
 import (
 	"errors"
@@ -193,7 +194,7 @@ func (m budgetMeasure) halt() *BudgetHalt {
 func budgetMeasures(budget Budget, plan Plan, state *RunState) []budgetMeasure {
 	var measures []budgetMeasure
 	total := state.TotalUsage()
-	unmeasured := UnmeasuredStages(plan, state)
+	unmeasured := unacceptedUnmeasured(plan, state)
 	if budget.MaxUSD > 0 {
 		measures = append(measures, budgetMeasure{BudgetLimitUSD, budget.MaxUSD, total.CostUSD, unmeasured})
 	}

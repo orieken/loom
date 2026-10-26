@@ -92,7 +92,10 @@ loom run --spec docs/features/user-auth/spec.md --provider mock
 executor checks before every provider stage. It warns at 80% and halts with **exit 4** and
 per-stage spend; a resume with a larger value continues. Hours count time stages spent
 running, not time waiting on you. A stage that finished without reporting usage makes a dollar
-or token ceiling unverifiable, and the run halts rather than counting it as free.
+or token ceiling unverifiable, and the run halts rather than counting it as free. If you
+accept that unknown, `--resume --accept-unmeasured <your name>` records your acceptance in the
+run state and checks the ceiling against what was measured; the stage stays unmeasured in every
+report, and a later stage that reports nothing halts the run again.
 
 **Exit codes**: 0 completed, 3 waiting on a gate, 4 budget exhausted, 130 interrupted
 (checkpointed, resumable), 1 anything else.
@@ -124,7 +127,10 @@ loom factory stop <id>           # interrupt now; `loom factory resume <id>` con
 
 A transient failure (provider error, timeout, interruption) is resumed with exponential backoff
 up to the order's `max-attempts`; a terminal one (an artifact that broke its contract, a budget)
-is parked with its reason, and **editing the order** is how you clear it. A completed run is
+is parked with its reason, and **editing the order** is how you clear it. A usage or session
+limit is waited out instead — retried after `--unavailable-wait` (30m) without spending an
+attempt. An order parked because a stage reported no usage can also be continued with
+`loom factory approve <id> budget`, which accepts that unknown spend on your behalf. A completed run is
 committed and pushed only after you approve `commit` in the inbox; for `finish: pr` a pull
 request is proposed, and opened only after you approve `open-pr`. Nothing is auto-approved.
 

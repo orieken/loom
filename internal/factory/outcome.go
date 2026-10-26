@@ -32,6 +32,8 @@ type outcome struct {
 	class  orchestrator.FailureClass
 	reason string
 	spend  *Spend
+	// unmeasured names the stages a budget could not verify.
+	unmeasured []string
 }
 
 // judge reads an invocation's outcome. exitCode is nil when the process was
@@ -106,7 +108,7 @@ func budgetOutcome(state *orchestrator.RunState) outcome {
 	if len(halt.Unmeasured) > 0 {
 		reason = fmt.Sprintf("budget: %s ceiling cannot be verified — %v reported no usage", halt.Limit, halt.Unmeasured)
 	}
-	return outcome{kind: outcomeBudget, reason: reason, spend: spendOf(state)}
+	return outcome{kind: outcomeBudget, reason: reason, spend: spendOf(state), unmeasured: halt.Unmeasured}
 }
 
 // spendOf is the run's spend, stage by stage in the order they ran.
@@ -114,6 +116,9 @@ func spendOf(state *orchestrator.RunState) *Spend {
 	spend := &Spend{TotalUSD: state.TotalUsage().CostUSD}
 	for _, stageID := range state.StagesInSequence() {
 		record := state.Stages[stageID]
+		if record.Status == orchestrator.StageStatusSkipped {
+			continue // routed out: it spent nothing, and "unmeasured" would say otherwise
+		}
 		entry := orchestrator.StageSpend{Stage: stageID, Measured: record.Usage != nil}
 		if record.Usage != nil {
 			entry.CostUSD = record.Usage.CostUSD

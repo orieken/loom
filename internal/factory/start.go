@@ -138,7 +138,9 @@ func (s *Supervisor) continuationKind(order *OrderState) (string, bool) {
 	case PhaseStopped:
 		return "", order.ResumeRequested
 	case PhaseWaiting:
-		return order.Gate, order.Approval != nil && order.Approval.Gate == order.Gate
+		return order.Gate, hasApproval(order, order.Gate)
+	case PhaseParked:
+		return GateBudget, hasApproval(order, GateBudget)
 	}
 	return "", false
 }
@@ -176,11 +178,12 @@ func (s *Supervisor) claimFor(candidate Candidate, commit string) Claim {
 }
 
 // relaunch continues a claimed order: a fresh start if it never ran, a
-// resume otherwise. Only a retry spends an attempt; continuing after a gate
-// or a stop does not.
+// resume otherwise. Only a retry spends an attempt — and not one waiting out
+// an unavailable provider; continuing after a gate, a stop or an accepted
+// budget does not.
 func (s *Supervisor) relaunch(order *OrderState, approving string) error {
 	attempt := order.Attempt
-	if order.Phase == PhaseRetrying || attempt == 0 {
+	if (order.Phase == PhaseRetrying && !order.KeepsAttempt) || attempt == 0 {
 		attempt++
 	}
 	if approving != "" {
@@ -260,10 +263,27 @@ func (s *Supervisor) runArgs(order *OrderState, resume bool, approving string) [
 	if resume {
 		args = append(args, "--resume")
 	}
-	if approving != "" {
-		args = append(args, "--approve", approving)
+	return append(append(args, approvalArgs(order, approving)...), s.config.RunArgs...)
+}
+
+// approvalArgs carries a human's approval into the run: a run gate is
+// approved by name; an accepted budget accepts the unmeasured spend on the
+// approver's behalf, so the run records who accepted it.
+func approvalArgs(order *OrderState, approving string) []string {
+	switch approving {
+	case "":
+		return nil
+	case GateBudget:
+		return []string{"--accept-unmeasured", approverOf(order)}
 	}
-	return append(args, s.config.RunArgs...)
+	return []string{"--approve", approving}
+}
+
+func approverOf(order *OrderState) string {
+	if order.Approval == nil || order.Approval.ApprovedBy == "" {
+		return "unknown"
+	}
+	return order.Approval.ApprovedBy
 }
 
 func formatFloat(value float64) string {
