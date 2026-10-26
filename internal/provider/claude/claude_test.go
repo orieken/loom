@@ -406,3 +406,52 @@ exit 1`)
 		t.Errorf("a 500 is this call's failure, not the end of the run: %v", err)
 	}
 }
+
+// A usage limit can end a stage after real work; what the envelope reports
+// it spent is kept with the error, or the run's budget cannot be verified.
+func TestAUsageLimitKeepsTheUsageItsEnvelopeReported(t *testing.T) {
+	cases := map[string]string{
+		"non-zero exit": `cat <<'ENVELOPE'
+{"type":"result","is_error":true,"api_error_status":429,"result":"You've hit your session limit",
+ "total_cost_usd":1.25,"usage":{"input_tokens":10,"output_tokens":400}}
+ENVELOPE
+exit 1`,
+		"clean exit": `cat <<'ENVELOPE'
+{"type":"result","is_error":true,"api_error_status":429,"result":"limit reached",
+ "total_cost_usd":1.25,"usage":{"input_tokens":10,"output_tokens":400}}
+ENVELOPE`,
+	}
+	for name, script := range cases {
+		t.Run(name, func(t *testing.T) {
+			provider, stage, input := newTestProvider(t, writeFakeClaude(t, t.TempDir(), script))
+			output, err := provider.Invoke(context.Background(), stage, input)
+			if !errors.Is(err, orchestrator.ErrProviderUnavailable) {
+				t.Fatalf("err = %v, want unavailable", err)
+			}
+			if output.Usage == nil || output.Usage.CostUSD != 1.25 || output.Usage.OutputTokens != 400 {
+				t.Errorf("usage = %+v, want the envelope's $1.25 and 400 output tokens", output.Usage)
+			}
+		})
+	}
+}
+
+// An envelope that reported nothing leaves the spend unknown, never zero.
+func TestAUsageLimitThatReportedNothingLeavesUsageUnmeasured(t *testing.T) {
+	binary := writeFakeClaude(t, t.TempDir(), `echo '{"type":"result","is_error":true,"api_error_status":429,"result":"limit"}'
+exit 1`)
+	provider, stage, input := newTestProvider(t, binary)
+	output, err := provider.Invoke(context.Background(), stage, input)
+	if !errors.Is(err, orchestrator.ErrProviderUnavailable) || output.Usage != nil {
+		t.Errorf("usage = %+v, err = %v; want nil usage and an unavailable error", output.Usage, err)
+	}
+}
+
+func TestAnErrorEnvelopeKeepsTheUsageItReported(t *testing.T) {
+	binary := writeFakeClaude(t, t.TempDir(),
+		`echo '{"type":"result","subtype":"error_during_execution","is_error":true,"result":"x","total_cost_usd":0.5}'`)
+	provider, stage, input := newTestProvider(t, binary)
+	output, err := provider.Invoke(context.Background(), stage, input)
+	if err == nil || output.Usage == nil || output.Usage.CostUSD != 0.5 {
+		t.Errorf("usage = %+v, err = %v; want the envelope's $0.50 with the error", output.Usage, err)
+	}
+}

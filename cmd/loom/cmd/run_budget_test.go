@@ -51,3 +51,30 @@ func TestRunRefusesToSpendAgainstAnUnmeasurableBudget(t *testing.T) {
 		t.Fatalf("exit %d, want %d and the ceiling called unverifiable\n%s", code, ExitCodeBudgetExhausted, output)
 	}
 }
+
+// An unmeasured stage made the ceiling unverifiable on every resume, for
+// good. Accepting its unknown spend lets the run go on — and the next stage
+// that reports nothing halts it again, because the acceptance covered only
+// what the human saw.
+func TestAcceptingUnmeasuredSpendLetsTheRunContinue(t *testing.T) {
+	binary := buildLoomBinary(t)
+	projectDir := t.TempDir()
+	spec := writeSpec(t, projectDir)
+	output, code := runLoom(t, binary, projectDir, "run", "--spec", spec, "--provider", "mock", "--max-usd", "10")
+	if code != ExitCodeBudgetExhausted {
+		t.Fatalf("exit %d, want the unverifiable halt\n%s", code, output)
+	}
+	assertOutputContains(t, output, "--accept-unmeasured")
+
+	output, code = runLoom(t, binary, projectDir, "run", "--spec", spec, "--resume", "--accept-unmeasured", "oscar")
+	state := loadRunState(t, projectDir)
+	if code != ExitCodeBudgetExhausted || !state.IsStageCompleted("analyst") {
+		t.Fatalf("exit %d, want the run past analyst and halted on its own unknown spend\n%s", code, output)
+	}
+	if accepted := state.UnmeasuredAccepted["context-engineer"]; accepted.AcceptedBy != "oscar" {
+		t.Errorf("acceptance = %+v, want context-engineer's spend accepted by oscar", state.UnmeasuredAccepted)
+	}
+	if _, covered := state.UnmeasuredAccepted["analyst"]; covered || !strings.Contains(strings.Join(state.BudgetHalt.Unmeasured, ","), "analyst") {
+		t.Errorf("halt = %+v, accepted = %+v; want analyst's new unknown halting the run", state.BudgetHalt, state.UnmeasuredAccepted)
+	}
+}

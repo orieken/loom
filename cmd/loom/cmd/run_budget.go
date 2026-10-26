@@ -29,6 +29,7 @@ func applyBudgetFlags(cmd *cobra.Command, executor *orchestrator.Executor) {
 	if anyFlagChanged(cmd, budgetFlags) {
 		executor.WithBudget(orchestrator.Budget{MaxUSD: runArgs.maxUSD, MaxTokens: runArgs.maxTokens, MaxHours: runArgs.maxHours})
 	}
+	executor.WithUnmeasuredAcceptedBy(runArgs.acceptUnmeasured)
 }
 
 func anyFlagChanged(cmd *cobra.Command, names []string) bool {
@@ -61,4 +62,7 @@ func reportBudgetHalt(cmd *cobra.Command, err error) {
 		cmd.Printf("  %-24s $%.4f  %d tokens\n", stage.Stage, stage.CostUSD, stage.Tokens)
 	}
 	cmd.Printf("Raise the ceiling to continue: loom run --spec %s --resume --max-usd <dollars>\n", runArgs.spec)
+	if len(exhausted.Halt.Unmeasured) > 0 {
+		cmd.Printf("Or accept the unmeasured spend: loom run --spec %s --resume --accept-unmeasured <your name>\n", runArgs.spec)
+	}
 }

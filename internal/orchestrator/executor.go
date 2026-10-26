@@ -51,6 +51,8 @@ type Executor struct {
 	// the run recorded.
 	budget          *Budget
 	onBudgetWarning func(BudgetWarning)
+	// acceptUnmeasuredBy names who accepted unmeasured spend on resume.
+	acceptUnmeasuredBy string
 }
 
 // WithBlastRadiusResolver supplies the function the executor uses to compute a
@@ -295,6 +297,7 @@ func (e *Executor) resumeState(state *RunState, plan Plan, input StageInput) (*R
 		return nil, err
 	}
 	e.adoptBudget(resumed)
+	e.acceptUnmeasured(plan, resumed)
 	return resumed, nil
 }
 

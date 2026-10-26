@@ -21,6 +21,10 @@ const (
 	// GateOpenPR approves opening the proposed pull request — gate #5,
 	// Always Human (roadmap L3.69).
 	GateOpenPR = "open-pr"
+	// GateBudget accepts the unknown spend of stages that reported no usage,
+	// which otherwise keeps an order's budget unverifiable for good. Never
+	// automated: whether an unknown cost is acceptable is a human's call.
+	GateBudget = "budget"
 )
 
 // ItemKind is what an inbox item asks of a human.
@@ -214,10 +218,26 @@ func (p *Proposal) Digest() string {
 func parkedItem(order *OrderState) InboxItem {
 	item := InboxItem{Order: order.ID, Kind: ItemParked, Since: order.Since,
 		Summary: "parked — edit the order to re-run it: " + order.Reason}
+	if len(order.Unmeasured) > 0 {
+		item.Gate, item.Digest = GateBudget, budgetDigest(order)
+		item.Summary = fmt.Sprintf("parked — the budget cannot be verified: %s reported no usage. "+
+			"`loom factory approve %s budget` accepts that unknown spend and continues; editing the order re-runs it",
+			strings.Join(order.Unmeasured, ", "), order.ID)
+	}
 	if order.Spend != nil {
 		item.Details = spendLines(order.Spend)
 	}
 	return item
+}
+
+// budgetDigest binds a budget approval to the halt a human saw: the stages
+// left unmeasured and the spend recorded when the order parked.
+func budgetDigest(order *OrderState) string {
+	total := ""
+	if order.Spend != nil {
+		total = fmt.Sprintf("%.6f", order.Spend.TotalUSD)
+	}
+	return digestOf(append([]string{total}, order.Unmeasured...)...)
 }
 
 func spendLines(spend *Spend) []string {
@@ -284,13 +304,33 @@ func waitingOn(items []InboxItem, order string) string {
 // its own digests contradict; this catches an edit made after the inbox
 // was read and before the approval was given.
 func (s *Supervisor) dropStaleApproval(order *OrderState) (bool, error) {
-	state, err := loadRunState(order.Claim.Worktree, order.ID)
+	digest, err := approvalDigest(order)
 	if err != nil {
 		return false, err
 	}
-	if digest, _ := BindingDigest(state); digest == order.Approval.Digest {
+	if digest == order.Approval.Digest {
 		return false, nil
 	}
-	return true, s.record(Entry{Event: EventApprovalDropped, Order: order.ID, Gate: order.Gate,
-		Reason: "an artifact changed after the approval was given — review the inbox and approve again"})
+	return true, s.record(Entry{Event: EventApprovalDropped, Order: order.ID, Gate: order.Approval.Gate,
+		Reason: droppedReason(order.Approval.Gate)})
+}
+
+func droppedReason(gate string) string {
+	if gate == GateBudget {
+		return "the budget halt changed after the approval was given — review the inbox and approve again"
+	}
+	return "an artifact changed after the approval was given — review the inbox and approve again"
+}
+
+// approvalDigest is what an approval of the order's current item binds to.
+func approvalDigest(order *OrderState) (string, error) {
+	if order.Approval.Gate == GateBudget {
+		return budgetDigest(order), nil
+	}
+	state, err := loadRunState(order.Claim.Worktree, order.ID)
+	if err != nil {
+		return "", err
+	}
+	digest, _ := BindingDigest(state)
+	return digest, nil
 }

@@ -21,14 +21,15 @@ import (
 )
 
 type factoryFlags struct {
-	once          bool
-	maxConcurrent int
-	interval      time.Duration
-	branch        string
-	provider      string
-	retryBase     time.Duration
-	retryMax      time.Duration
-	runArgs       []string
+	once            bool
+	maxConcurrent   int
+	interval        time.Duration
+	branch          string
+	provider        string
+	retryBase       time.Duration
+	retryMax        time.Duration
+	unavailableWait time.Duration
+	runArgs         []string
 }
 
 var factoryArgs factoryFlags
@@ -111,6 +112,8 @@ func init() {
 	flags.StringVar(&factoryArgs.provider, "provider", factory.DefaultProvider, "stage provider for every run: claude or mock")
 	flags.DurationVar(&factoryArgs.retryBase, "retry-base", factory.DefaultRetryBase, "delay before the first retry; doubles each time")
 	flags.DurationVar(&factoryArgs.retryMax, "retry-max", factory.DefaultRetryMax, "longest delay between retries")
+	flags.DurationVar(&factoryArgs.unavailableWait, "unavailable-wait", factory.DefaultUnavailableWait,
+		"wait after a usage or session limit before trying again; spends no attempt")
 	flags.StringArrayVar(&factoryArgs.runArgs, "run-arg", nil, "extra argument for every loom run (repeatable)")
 	_ = flags.MarkHidden("run-arg")
 }
@@ -158,7 +161,7 @@ func newFactorySupervisor(cmd *cobra.Command, layout factory.Layout) (*factory.S
 	config := factory.Config{
 		Layout: layout, IntakeBranch: factoryArgs.branch, MaxConcurrent: factoryArgs.maxConcurrent,
 		Provider: factoryArgs.provider, RunArgs: factoryArgs.runArgs, Plans: runnablePlans(layout.Root),
-		RetryBase: factoryArgs.retryBase, RetryMax: factoryArgs.retryMax,
+		RetryBase: factoryArgs.retryBase, RetryMax: factoryArgs.retryMax, UnavailableWait: factoryArgs.unavailableWait,
 	}
 	return factory.New(config, factory.Dependencies{
 		Repository: worktree.New(layout.Root), Launcher: factory.ExecLauncher{Executable: executable},

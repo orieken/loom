@@ -13,7 +13,10 @@ const (
 	DefaultInterval      = 30 * time.Second
 	DefaultRetryBase     = time.Minute
 	DefaultRetryMax      = 30 * time.Minute
-	DefaultProvider      = "claude"
+	// DefaultUnavailableWait is how long an order waits out a provider that
+	// cannot take calls — a usage or session limit — before trying again.
+	DefaultUnavailableWait = 30 * time.Minute
+	DefaultProvider        = "claude"
 )
 
 // Config is how one supervisor runs.
@@ -29,6 +32,9 @@ type Config struct {
 	Plans     []string
 	RetryBase time.Duration
 	RetryMax  time.Duration
+	// UnavailableWait is the wait after a provider reported it cannot take
+	// calls. It spends none of the order's attempts.
+	UnavailableWait time.Duration
 }
 
 // Dependencies are everything the supervisor reaches outside itself.
@@ -65,6 +71,9 @@ func New(config Config, deps Dependencies) *Supervisor {
 	}
 	if deps.Now == nil {
 		deps.Now = func() time.Time { return time.Now().UTC() }
+	}
+	if config.UnavailableWait <= 0 {
+		config.UnavailableWait = DefaultUnavailableWait
 	}
 	if config.RetryMax < config.RetryBase {
 		config.RetryMax = config.RetryBase
