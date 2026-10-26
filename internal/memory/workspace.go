@@ -9,6 +9,7 @@ package memory
 // idempotent.
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -50,18 +51,26 @@ func ReadRecords(dir string) (Records, error) {
 // into the feature archive, so the history is version-controlled beside the
 // artifacts it describes and survives the workspace being cleaned.
 //
+// root is the repository root the run targets. Every occurrence of
+// root+separator is stripped from the copied run-state.json,
+// run-events.jsonl and state/*.json — the workspace holds absolute paths
+// under root because resume, digest verification and the factory
+// supervisor all read them from there, but the archived copy is committed
+// to git and must not name the machine's checkout path. An empty root
+// leaves the copy unchanged.
+//
 // It is best-effort at its call sites: losing the archive copy costs
 // durability, not the run.
-func ArchiveRecords(workspaceDir, archiveDir string) error {
+func ArchiveRecords(workspaceDir, archiveDir, root string) error {
 	if err := os.MkdirAll(archiveDir, 0o755); err != nil {
 		return fmt.Errorf("create archive directory: %w", err)
 	}
 	for _, name := range []string{orchestrator.RunStateFileName, orchestrator.RunEventsFileName} {
-		if err := copyIfPresent(filepath.Join(workspaceDir, name), filepath.Join(archiveDir, name)); err != nil {
+		if err := copyRelativized(filepath.Join(workspaceDir, name), filepath.Join(archiveDir, name), root); err != nil {
 			return err
 		}
 	}
-	if err := archiveTypedState(workspaceDir, archiveDir); err != nil {
+	if err := archiveTypedState(workspaceDir, archiveDir, root); err != nil {
 		return err
 	}
 	return archiveArtifacts(workspaceDir, archiveDir)
@@ -117,7 +126,7 @@ func archiveArtifacts(workspaceDir, archiveDir string) error {
 // Every kind is copied rather than the four a policy reads today. The set of
 // questions asked of history grows, and re-deciding which facts were worth
 // keeping is only possible while the runs still have them.
-func archiveTypedState(workspaceDir, archiveDir string) error {
+func archiveTypedState(workspaceDir, archiveDir, root string) error {
 	sourceDir := filepath.Join(workspaceDir, state.TypedStateDir)
 	entries, err := os.ReadDir(sourceDir)
 	if os.IsNotExist(err) {
@@ -133,7 +142,7 @@ func archiveTypedState(workspaceDir, archiveDir string) error {
 	if err := os.MkdirAll(targetDir, 0o755); err != nil {
 		return fmt.Errorf("create typed state archive: %w", err)
 	}
-	return copyStageDocuments(entries, sourceDir, targetDir)
+	return copyStageDocuments(entries, sourceDir, targetDir, root)
 }
 
 // copyStageDocuments copies the .json stage documents and nothing else. A
@@ -144,13 +153,13 @@ func archiveTypedState(workspaceDir, archiveDir string) error {
 // payload a stage was rejected for (roadmap L2.26), so it is by definition
 // a document that does not decode. It stays in the workspace, where the
 // person diagnosing the failure is.
-func copyStageDocuments(entries []os.DirEntry, sourceDir, targetDir string) error {
+func copyStageDocuments(entries []os.DirEntry, sourceDir, targetDir, root string) error {
 	for _, entry := range entries {
 		name := entry.Name()
 		if entry.IsDir() || !strings.HasSuffix(name, ".json") || state.IsRejectedArtifact(name) {
 			continue
 		}
-		if err := copyIfPresent(filepath.Join(sourceDir, name), filepath.Join(targetDir, name)); err != nil {
+		if err := copyRelativized(filepath.Join(sourceDir, name), filepath.Join(targetDir, name), root); err != nil {
 			return err
 		}
 	}
@@ -171,6 +180,38 @@ func copyIfPresent(source, target string) error {
 		return fmt.Errorf("write %s: %w", target, err)
 	}
 	return nil
+}
+
+// copyRelativized mirrors copyIfPresent — a missing source is a no-op, and
+// errors are wrapped the same way — but strips the repository root from the
+// copied content before writing it, so the archived file never names the
+// machine's checkout path. The workspace's own file is read, never written,
+// so it stays byte-identical.
+func copyRelativized(source, target, root string) error {
+	content, err := os.ReadFile(source)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("read %s: %w", source, err)
+	}
+	if err := os.WriteFile(target, relativizeRunPaths(content, root), 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", target, err)
+	}
+	return nil
+}
+
+// relativizeRunPaths strips every occurrence of root+separator from
+// content, turning an absolute path under root into a repository-relative
+// one. A path outside root has no such prefix and is left unchanged. An
+// empty root is a no-op, so a caller that could not resolve the repository
+// root archives today's absolute paths unchanged rather than stripping an
+// empty-string prefix from every position in the file.
+func relativizeRunPaths(content []byte, root string) []byte {
+	if root == "" {
+		return content
+	}
+	return bytes.ReplaceAll(content, []byte(root+string(filepath.Separator)), nil)
 }
 
 // ArchivedRunDirs lists every feature archive holding a run's records, so a

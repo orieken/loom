@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 2,
+  "feature": "delivery-record-relative-paths",
+  "verdict": "APPROVED",
+  "designNarrative": "ArchiveRecords gains a root parameter and applies a byte-level substring strip (root+separator) to the copied run-state.json, run-events.jsonl, and typed state/*.json before writing them into the committed feature archive, leaving the workspace's own absolute-path copies untouched. root is resolved independently inside recordEpisode via filepath.Abs(\".\"), the same expression run.go's prepareRunWorkspace already uses, which keeps the whole diff inside internal/memory/** and cmd/loom/cmd/run_memory.go without threading a new parameter through run.go. The change is a narrow adapter-layer fix — two small unexported helpers, no new dependency edges, no schema change. Behaviour change: yes.",
+  "designScore": {
+    "clarity": 5,
+    "cohesion": 5,
+    "coupling": 5,
+    "craft": 4
+  },
+  "securitySurface": [
+    "No new trust boundary: this rewrites files loom itself already wrote to its own workspace/archive directories. No user-controlled input reaches the strip beyond the repository's own absolute path."
+  ],
+  "performanceSurface": [
+    "Full-file bytes.ReplaceAll per copied file (run-state.json, run-events.jsonl, state/*.json) — bounded by one run's artifact sizes, no loop over unbounded external data."
+  ],
+  "testDesignReview": [
+    "TestArchiveRelativizesPathsUnderRoot: YES — loads the archived run-state.json and asserts Stages[\"analyst\"].ArtifactPath equals the expected relative path; fails if stripping regresses.",
+    "TestArchivePreservesAPathOutsideRoot: YES — asserts SpecPath stays byte-identical to the out-of-root value; fails if the strip over-matches.",
+    "TestArchiveStripsRootFromEventText: YES — asserts the archived event's Error no longer contains root but still contains 'permission denied', and that every line still unmarshals; fails if stripping corrupts JSON or misses the text.",
+    "TestArchivedRecordsNeverContainTheRoot: YES — asserts !bytes.Contains(root) across run-state.json, run-events.jsonl and every state/*.json file; fails if any archived file leaks the absolute path. Note: the typed-state fixture content (writeTypedState) never contained root to begin with, so this assertion holds for state/*.json 'by construction' rather than by observed stripping — a gap already named and accepted in analysis.md's Edge Cases section, not a new issue.",
+    "TestArchiveLeavesTheWorkspaceByteIdentical: YES — reads the workspace's own run-state.json/run-events.jsonl before and after ArchiveRecords and asserts byte equality; fails if copyRelativized ever wrote back to the source.",
+    "Seven pre-existing tests (TestArchiveRecordsCopiesBothFiles, TestArchiveKeepsTheTypedStageDocuments, TestArchiveSkipsARejectedPayload, TestArchiveToleratesNoTypedState, TestArchiveToleratesAMissingTimeline, TestArchiveKeepsTheMarkdownArtifacts, TestArchiveLeavesNonArtifactsBehind): YES, unchanged — only a mechanical third \"\" argument was added; their original assertions are untouched and still would fail under the same regressions they always caught."
+  ],
+  "selfReviewCheck": [
+    "Complexity < 7 claim: verified true — golangci-lint run (gocyclo min-complexity 7) reports 0 issues against the changed files.",
+    "No boolean parameter added: verified true — copyRelativized is a new sibling function, not a flag on copyIfPresent.",
+    "'No new import added to internal/memory/workspace.go' (implementation-notes.md Self-Review Checklist, and architecture-notes.md's Layer Boundary Check PASS rationale): FALSE. git show HEAD:internal/memory/workspace.go confirms \"bytes\" was not previously imported; the diff adds it. The PASS verdict itself still holds — bytes is standard library, so no new dependency edge outside the permitted set was actually introduced — but the stated evidence for that verdict is inaccurate. Flagged per the discrepancy-is-a-finding instruction; non-blocking because the underlying architectural claim (no new internal/external dependency edge) remains true despite the wrong supporting detail.",
+    "'git diff touches only internal/memory/**, cmd/loom/cmd/run_memory.go, and docs/features/delivery-record-relative-paths/' claim: verified true via git status --short.",
+    "'cmd/loom/cmd/run.go is unchanged' claim: verified true via git diff; and filepath.Abs(\".\") at run.go:290 is confirmed identical to the expression now duplicated in recordEpisode."
+  ],
+  "behaviorChange": true,
+  "findings": [
+    {
+      "operation": "Correct self-review evidence",
+      "file": "internal/memory/workspace.go",
+      "smell": "implementation-notes.md's Self-Review Checklist and architecture-notes.md's Layer Boundary Check both state 'No new import added to internal/memory/workspace.go — relativizeRunPaths and copyRelativized use only bytes/os/filepath/strings, already imported.' This is factually wrong: \"bytes\" is a new import (confirmed against git show HEAD:internal/memory/workspace.go, which has no bytes import). The PASS verdict on the layer-boundary check is still correct in substance since bytes is standard library, so this is a documentation-accuracy defect, not an architecture violation.",
+      "instruction": "Amend the two artifacts' claims to say 'adds one new standard-library import (bytes), no non-stdlib dependency edge' instead of asserting no import was added. No code change needed.",
+      "blocking": false
+    },
+    {
+      "operation": "Re-archive this run's own delivery record once merged",
+      "file": "docs/features/delivery-record-relative-paths/run-state.json",
+      "smell": "This run's own committed delivery record still contains 16 occurrences of the absolute machine path (/Users/oscarrieken/...) in run-state.json and 1 in run-events.jsonl — the exact defect this feature fixes. This is expected bootstrapping behavior (the archive was written by the pre-fix binary before this diff existed) and is explicitly covered by analysis.md's Out of Scope list ('Rewriting delivery records already committed... this run's own delivery record' is exempted), so it is not a defect in the reviewed diff.",
+      "instruction": "After this change lands and a fresh `loom run` (or an equivalent re-archive) regenerates this feature's own delivery record, confirm it no longer carries the absolute path — otherwise the shipped record for 'fix the path leak' ships with the leak.",
+      "blocking": false
+    }
+  ],
+  "retrieval": {
+    "domainTerms": ["Feature Archive", "Feature Workspace", "Run State", "Run Event Timeline"],
+    "issueRefs": ["delivery-record-relative-paths"],
+    "linkedAdrs": [],
+    "linkedKis": []
+  }
+}

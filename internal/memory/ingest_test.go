@@ -1,8 +1,11 @@
 package memory_test
 
 import (
+	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -210,7 +213,7 @@ func TestArchiveRecordsCopiesBothFiles(t *testing.T) {
 	state, events := fixtureRun()
 	writeWorkspace(t, workspace, state, events)
 
-	if err := memory.ArchiveRecords(workspace, filepath.Join(archive, "user-auth")); err != nil {
+	if err := memory.ArchiveRecords(workspace, filepath.Join(archive, "user-auth"), ""); err != nil {
 		t.Fatalf("ArchiveRecords: %v", err)
 	}
 	for _, name := range []string{orchestrator.RunStateFileName, orchestrator.RunEventsFileName} {
@@ -232,7 +235,7 @@ func TestArchiveKeepsTheTypedStageDocuments(t *testing.T) {
 	writeWorkspace(t, workspace, runState, events)
 	writeTypedState(t, workspace)
 
-	if err := memory.ArchiveRecords(workspace, filepath.Join(archive, "user-auth")); err != nil {
+	if err := memory.ArchiveRecords(workspace, filepath.Join(archive, "user-auth"), ""); err != nil {
 		t.Fatalf("ArchiveRecords: %v", err)
 	}
 
@@ -262,7 +265,7 @@ func TestArchiveSkipsARejectedPayload(t *testing.T) {
 		t.Fatalf("write rejected payload: %v", err)
 	}
 
-	if err := memory.ArchiveRecords(workspace, filepath.Join(archive, "user-auth")); err != nil {
+	if err := memory.ArchiveRecords(workspace, filepath.Join(archive, "user-auth"), ""); err != nil {
 		t.Fatalf("ArchiveRecords: %v", err)
 	}
 
@@ -302,7 +305,7 @@ func TestArchiveToleratesNoTypedState(t *testing.T) {
 	runState, events := fixtureRun()
 	writeWorkspace(t, workspace, runState, events)
 
-	if err := memory.ArchiveRecords(workspace, archive); err != nil {
+	if err := memory.ArchiveRecords(workspace, archive, ""); err != nil {
 		t.Errorf("ArchiveRecords failed with no typed state present: %v", err)
 	}
 }
@@ -313,7 +316,7 @@ func TestArchiveToleratesAMissingTimeline(t *testing.T) {
 	state, _ := fixtureRun()
 	writeWorkspace(t, workspace, state, nil)
 
-	if err := memory.ArchiveRecords(workspace, archive); err != nil {
+	if err := memory.ArchiveRecords(workspace, archive, ""); err != nil {
 		t.Errorf("ArchiveRecords failed with no timeline present: %v", err)
 	}
 }
@@ -333,7 +336,7 @@ func TestArchiveKeepsTheMarkdownArtifacts(t *testing.T) {
 		}
 	}
 
-	if err := memory.ArchiveRecords(workspace, filepath.Join(archive, "user-auth")); err != nil {
+	if err := memory.ArchiveRecords(workspace, filepath.Join(archive, "user-auth"), ""); err != nil {
 		t.Fatalf("ArchiveRecords: %v", err)
 	}
 	for _, name := range []string{"analysis.md", "code-review-report.md"} {
@@ -353,10 +356,195 @@ func TestArchiveLeavesNonArtifactsBehind(t *testing.T) {
 		t.Fatalf("write traces: %v", err)
 	}
 
-	if err := memory.ArchiveRecords(workspace, filepath.Join(archive, "user-auth")); err != nil {
+	if err := memory.ArchiveRecords(workspace, filepath.Join(archive, "user-auth"), ""); err != nil {
 		t.Fatalf("ArchiveRecords: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(archive, "user-auth", "traces.jsonl")); err == nil {
 		t.Error("traces.jsonl was archived; only .md artifacts and the records belong there")
+	}
+}
+
+// rootedFixtureRun builds a run whose path-bearing fields are absolute
+// paths under root, plus one field (SpecPath) that stays outside root —
+// the shape every acceptance criterion below checks against.
+func rootedFixtureRun(root string) (*orchestrator.RunState, []orchestrator.Event) {
+	runState, events := fixtureRun()
+	runState.SpecPath = "/specs/user-auth.md"
+	artifactPath := filepath.Join(root, ".claude", "feature-workspace", "user-auth", "state", "analyst.json")
+	record := runState.Stages["analyst"]
+	record.ArtifactPath = artifactPath
+	record.IterationArtifacts = []orchestrator.IterationArtifact{{
+		Iteration: 1,
+		Path:      filepath.Join(root, ".claude", "feature-workspace", "user-auth", "developer.iteration-1.md"),
+	}}
+	runState.Stages["analyst"] = record
+	events = append(events, orchestrator.Event{
+		At: events[len(events)-1].At, Kind: orchestrator.EventStageFailed, Stage: "developer",
+		Error: fmt.Sprintf("read %s: permission denied", artifactPath),
+	})
+	return runState, events
+}
+
+// PRECONDITION: the archived run-state.json names only repository-relative
+// paths for anything that was absolute under root.
+// ENFORCED-BY: this test.
+func TestArchiveRelativizesPathsUnderRoot(t *testing.T) {
+	root := t.TempDir()
+	workspace := filepath.Join(root, ".claude", "feature-workspace", "user-auth")
+	if err := os.MkdirAll(workspace, 0o755); err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+	archive := t.TempDir()
+	runState, events := rootedFixtureRun(root)
+	writeWorkspace(t, workspace, runState, events)
+
+	if err := memory.ArchiveRecords(workspace, filepath.Join(archive, "user-auth"), root); err != nil {
+		t.Fatalf("ArchiveRecords: %v", err)
+	}
+
+	archivedState, err := orchestrator.NewStateStore(filepath.Join(archive, "user-auth", orchestrator.RunStateFileName)).Load()
+	if err != nil {
+		t.Fatalf("load archived state: %v", err)
+	}
+	wantArtifact := filepath.ToSlash(filepath.Join(".claude", "feature-workspace", "user-auth", "state", "analyst.json"))
+	if got := filepath.ToSlash(archivedState.Stages["analyst"].ArtifactPath); got != wantArtifact {
+		t.Errorf("archived ArtifactPath = %q, want %q", got, wantArtifact)
+	}
+}
+
+// A path that was never under root — a spec outside the checkout — must
+// survive archiving unchanged: never turned into a ../ path, never dropped.
+func TestArchivePreservesAPathOutsideRoot(t *testing.T) {
+	root := t.TempDir()
+	workspace := filepath.Join(root, ".claude", "feature-workspace", "user-auth")
+	if err := os.MkdirAll(workspace, 0o755); err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+	archive := t.TempDir()
+	runState, events := rootedFixtureRun(root)
+	writeWorkspace(t, workspace, runState, events)
+
+	if err := memory.ArchiveRecords(workspace, filepath.Join(archive, "user-auth"), root); err != nil {
+		t.Fatalf("ArchiveRecords: %v", err)
+	}
+
+	archivedState, err := orchestrator.NewStateStore(filepath.Join(archive, "user-auth", orchestrator.RunStateFileName)).Load()
+	if err != nil {
+		t.Fatalf("load archived state: %v", err)
+	}
+	if archivedState.SpecPath != "/specs/user-auth.md" {
+		t.Errorf("SpecPath = %q, want the out-of-root path kept unchanged", archivedState.SpecPath)
+	}
+}
+
+// An error message quoting a root-prefixed path must have the root removed
+// from the archived timeline, and every line must still parse as JSON.
+func TestArchiveStripsRootFromEventText(t *testing.T) {
+	root := t.TempDir()
+	workspace := filepath.Join(root, ".claude", "feature-workspace", "user-auth")
+	if err := os.MkdirAll(workspace, 0o755); err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+	archive := t.TempDir()
+	runState, events := rootedFixtureRun(root)
+	writeWorkspace(t, workspace, runState, events)
+
+	if err := memory.ArchiveRecords(workspace, filepath.Join(archive, "user-auth"), root); err != nil {
+		t.Fatalf("ArchiveRecords: %v", err)
+	}
+
+	archivedEvents, err := orchestrator.NewTimeline(filepath.Join(archive, "user-auth", orchestrator.RunStateFileName)).Read()
+	if err != nil {
+		t.Fatalf("read archived timeline: %v", err)
+	}
+	if len(archivedEvents) != len(events) {
+		t.Fatalf("archived %d events, want %d — every line must still parse", len(archivedEvents), len(events))
+	}
+	failed := archivedEvents[len(archivedEvents)-1]
+	if strings.Contains(failed.Error, root) {
+		t.Errorf("archived event error still contains root: %q", failed.Error)
+	}
+	if !strings.Contains(failed.Error, "permission denied") {
+		t.Errorf("archived event error lost its non-path text: %q", failed.Error)
+	}
+}
+
+// No archived run-state.json, run-events.jsonl or state/*.json may contain
+// the absolute repository root as a substring — the bug this feature fixes.
+func TestArchivedRecordsNeverContainTheRoot(t *testing.T) {
+	root := t.TempDir()
+	workspace := filepath.Join(root, ".claude", "feature-workspace", "user-auth")
+	if err := os.MkdirAll(workspace, 0o755); err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+	archive := t.TempDir()
+	runState, events := rootedFixtureRun(root)
+	writeWorkspace(t, workspace, runState, events)
+	writeTypedState(t, workspace)
+
+	archivedDir := filepath.Join(archive, "user-auth")
+	if err := memory.ArchiveRecords(workspace, archivedDir, root); err != nil {
+		t.Fatalf("ArchiveRecords: %v", err)
+	}
+
+	rootBytes := []byte(root)
+	checkNoRoot := func(path string) {
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		if bytes.Contains(content, rootBytes) {
+			t.Errorf("%s contains the absolute repository root", path)
+		}
+	}
+	checkNoRoot(filepath.Join(archivedDir, orchestrator.RunStateFileName))
+	checkNoRoot(filepath.Join(archivedDir, orchestrator.RunEventsFileName))
+
+	stateEntries, err := os.ReadDir(filepath.Join(archivedDir, state.TypedStateDir))
+	if err != nil {
+		t.Fatalf("read archived typed state: %v", err)
+	}
+	for _, entry := range stateEntries {
+		checkNoRoot(filepath.Join(archivedDir, state.TypedStateDir, entry.Name()))
+	}
+}
+
+// mustReadFile reads path or fails the test, so a byte-identity comparison
+// reads as one line rather than an if-err branch at every call site.
+func mustReadFile(t *testing.T, path string) []byte {
+	t.Helper()
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	return content
+}
+
+// Archiving must never mutate the workspace's own copy — resume, digest
+// verification and the factory supervisor all read absolute paths from it.
+func TestArchiveLeavesTheWorkspaceByteIdentical(t *testing.T) {
+	root := t.TempDir()
+	workspace := filepath.Join(root, ".claude", "feature-workspace", "user-auth")
+	if err := os.MkdirAll(workspace, 0o755); err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+	archive := t.TempDir()
+	runState, events := rootedFixtureRun(root)
+	writeWorkspace(t, workspace, runState, events)
+
+	statePath := filepath.Join(workspace, orchestrator.RunStateFileName)
+	eventsPath := filepath.Join(workspace, orchestrator.RunEventsFileName)
+	beforeState := mustReadFile(t, statePath)
+	beforeEvents := mustReadFile(t, eventsPath)
+
+	if err := memory.ArchiveRecords(workspace, filepath.Join(archive, "user-auth"), root); err != nil {
+		t.Fatalf("ArchiveRecords: %v", err)
+	}
+
+	if afterState := mustReadFile(t, statePath); !bytes.Equal(beforeState, afterState) {
+		t.Error("the workspace's run-state.json was mutated by archiving")
+	}
+	if afterEvents := mustReadFile(t, eventsPath); !bytes.Equal(beforeEvents, afterEvents) {
+		t.Error("the workspace's run-events.jsonl was mutated by archiving")
 	}
 }

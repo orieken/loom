@@ -28,7 +28,16 @@ func featureArchiveDir(feature string) string {
 // recordEpisode archives a run's records and ingests them. Failures are
 // reported to stderr and otherwise ignored.
 func recordEpisode(cmd *cobra.Command, workspaceDir, feature string) {
-	if err := memory.ArchiveRecords(workspaceDir, featureArchiveDir(feature)); err != nil {
+	// The same expression run.go's prepareRunWorkspace uses to build
+	// StageInput.ProjectRoot — resolved independently here rather than
+	// threaded through, since nothing in the process calls os.Chdir to make
+	// the two disagree.
+	root, err := filepath.Abs(".")
+	if err != nil {
+		cmd.PrintErrf("memory: could not resolve repository root: %v\n", err)
+		root = ""
+	}
+	if err := memory.ArchiveRecords(workspaceDir, featureArchiveDir(feature), root); err != nil {
 		cmd.PrintErrf("memory: could not archive run records: %v\n", err)
 	}
 	if err := ingestWorkspace(workspaceDir); err != nil {
