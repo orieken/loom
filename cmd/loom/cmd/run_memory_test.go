@@ -154,9 +154,9 @@ func TestRecordEpisodeArchivesWithoutTheProjectRoot(t *testing.T) {
 // archived — unchanged, because archiving is best-effort.
 func TestRecordEpisodeArchivesUnchangedWhenTheRootCannotBeResolved(t *testing.T) {
 	root, workspace := workspaceWithAbsoluteSpec(t)
-	resolve := projectRoot
-	t.Cleanup(func() { projectRoot = resolve })
-	projectRoot = func() (string, error) { return "", errors.New("getwd: no such directory") }
+	resolve := archiveRoot
+	t.Cleanup(func() { archiveRoot = resolve })
+	archiveRoot = func() (string, error) { return "", errors.New("getwd: no such directory") }
 	var stderr strings.Builder
 	command := &cobra.Command{}
 	command.SetErr(&stderr)
@@ -174,7 +174,7 @@ func TestRecordEpisodeArchivesUnchangedWhenTheRootCannotBeResolved(t *testing.T)
 func workspaceWithAbsoluteSpec(t *testing.T) (string, string) {
 	t.Helper()
 	t.Chdir(t.TempDir())
-	root, err := projectRoot()
+	root, err := archiveRoot()
 	if err != nil {
 		t.Fatal(err)
 	}
