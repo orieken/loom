@@ -25,14 +25,17 @@ func featureArchiveDir(feature string) string {
 	return filepath.Join("docs", "features", feature)
 }
 
+// projectRoot is the repository root a run's archived records are made
+// relative to: the expression run.go's prepareRunWorkspace uses to build
+// StageInput.ProjectRoot, resolved independently rather than threaded
+// through. The two agree because no production code calls os.Chdir (tests
+// do, before either runs). A variable so a test can make it fail.
+var projectRoot = func() (string, error) { return filepath.Abs(".") }
+
 // recordEpisode archives a run's records and ingests them. Failures are
 // reported to stderr and otherwise ignored.
 func recordEpisode(cmd *cobra.Command, workspaceDir, feature string) {
-	// The same expression run.go's prepareRunWorkspace uses to build
-	// StageInput.ProjectRoot — resolved independently here rather than
-	// threaded through, since nothing in the process calls os.Chdir to make
-	// the two disagree.
-	root, err := filepath.Abs(".")
+	root, err := projectRoot()
 	if err != nil {
 		cmd.PrintErrf("memory: could not resolve repository root: %v\n", err)
 		root = ""
