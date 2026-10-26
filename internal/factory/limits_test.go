@@ -31,14 +31,7 @@ func TestAnUnavailableProviderIsWaitedOutWithoutSpendingAnAttempt(t *testing.T) 
 
 	factory.tick() // claim and launch; the provider is unavailable
 	factory.tick() // settle: a retry after the wait, not a park
-	order := factory.orders()["alpha"]
-	if order.Phase != PhaseRetrying || !order.KeepsAttempt || !order.NotBefore.Equal(factory.now.Add(DefaultUnavailableWait)) {
-		t.Fatalf("order = %s keeps=%v notBefore=%v, want a retry in %v that keeps its attempt",
-			order.Phase, order.KeepsAttempt, order.NotBefore, DefaultUnavailableWait)
-	}
-	if !strings.HasPrefix(order.Reason, "unavailable: ") {
-		t.Errorf("reason = %q", order.Reason)
-	}
+	assertWaitingOutTheLimit(t, factory)
 
 	factory.tick()
 	if launches := factory.launcher.launchesOf("alpha"); len(launches) != 1 {
@@ -48,9 +41,20 @@ func TestAnUnavailableProviderIsWaitedOutWithoutSpendingAnAttempt(t *testing.T) 
 	factory.now = factory.now.Add(DefaultUnavailableWait)
 	factory.tick() // relaunched on the same attempt; unavailable again
 	factory.tick() // settled again: still waiting, never parked on attempts
-	order = factory.orders()["alpha"]
-	if order.Phase != PhaseRetrying || order.Attempt != 1 {
+	if order := factory.orders()["alpha"]; order.Phase != PhaseRetrying || order.Attempt != 1 {
 		t.Errorf("order = %s attempt %d, want still retrying on attempt 1 of 1", order.Phase, order.Attempt)
+	}
+}
+
+func assertWaitingOutTheLimit(t *testing.T, factory *testFactory) {
+	t.Helper()
+	order := factory.orders()["alpha"]
+	if order.Phase != PhaseRetrying || !order.KeepsAttempt || !order.NotBefore.Equal(factory.now.Add(DefaultUnavailableWait)) {
+		t.Fatalf("order = %s keeps=%v notBefore=%v, want a retry in %v that keeps its attempt",
+			order.Phase, order.KeepsAttempt, order.NotBefore, DefaultUnavailableWait)
+	}
+	if !strings.HasPrefix(order.Reason, "unavailable: ") {
+		t.Errorf("reason = %q", order.Reason)
 	}
 }
 
@@ -77,6 +81,19 @@ func TestABudgetTheRunCannotVerifyIsApprovable(t *testing.T) {
 	factory.tick()
 	factory.tick()
 
+	assertApprovableBudgetPark(t, factory)
+
+	factory.approve("alpha", GateBudget)
+	factory.tick()
+
+	assertResumedAcceptingTheSpend(t, factory)
+	if order := factory.orders()["alpha"]; order.Attempt != 1 {
+		t.Errorf("attempt = %d; accepting a budget spends no attempt", order.Attempt)
+	}
+}
+
+func assertApprovableBudgetPark(t *testing.T, factory *testFactory) {
+	t.Helper()
 	order := factory.orders()["alpha"]
 	if order.Phase != PhaseParked || strings.Join(order.Unmeasured, ",") != "developer" {
 		t.Fatalf("order = %s unmeasured %v, want parked on developer's unknown spend", order.Phase, order.Unmeasured)
@@ -85,10 +102,10 @@ func TestABudgetTheRunCannotVerifyIsApprovable(t *testing.T) {
 	if item.Gate != GateBudget || item.Digest == "" || !strings.Contains(item.Summary, "loom factory approve alpha budget") {
 		t.Fatalf("item = %+v, want an approvable budget item", item)
 	}
+}
 
-	factory.approve("alpha", GateBudget)
-	factory.tick()
-
+func assertResumedAcceptingTheSpend(t *testing.T, factory *testFactory) {
+	t.Helper()
 	launches := factory.launcher.launchesOf("alpha")
 	last := launches[len(launches)-1]
 	if len(launches) != 2 || !hasArg(last.Args, "--accept-unmeasured", "oscar") || !hasArg(last.Args, "--resume") {
@@ -96,9 +113,6 @@ func TestABudgetTheRunCannotVerifyIsApprovable(t *testing.T) {
 	}
 	if hasArg(last.Args, "--approve") {
 		t.Error("an accepted budget was passed as a gate approval")
-	}
-	if order := factory.orders()["alpha"]; order.Attempt != 1 {
-		t.Errorf("attempt = %d; accepting a budget spends no attempt", order.Attempt)
 	}
 }
 
@@ -139,6 +153,18 @@ func TestABudgetApprovalForAnotherHaltIsDropped(t *testing.T) {
 	}
 }
 
+func TestAParkedOrdersSpendLeavesOutStagesRoutedAround(t *testing.T) {
+	state := unmeasuredBudgetState("")
+	state.Stages["data-engineer"] = orchestrator.StageRecord{Status: orchestrator.StageStatusSkipped, Sequence: 3}
+	var stages []string
+	for _, stage := range spendOf(state).PerStage {
+		stages = append(stages, stage.Stage)
+	}
+	if strings.Join(stages, ",") != "analyst,developer" {
+		t.Errorf("spend lists %v; a skipped stage spent nothing and is not unmeasured", stages)
+	}
+}
+
 func findItem(items []InboxItem, order string, kind ItemKind) InboxItem {
 	for _, item := range items {
 		if item.Order == order && item.Kind == kind {
@@ -146,4 +172,23 @@ func findItem(items []InboxItem, order string, kind ItemKind) InboxItem {
 		}
 	}
 	return InboxItem{}
+}
+
+// An order parked before the ledger recorded its unmeasured stages — the
+// dogfood run's pre-ship-checks — is approvable from its reason.
+func TestAParkRecordedBeforeUnmeasuredWasLoggedIsStillApprovable(t *testing.T) {
+	cases := map[string][]string{
+		"budget: usd ceiling cannot be verified — [developer] reported no usage":         {"developer"},
+		"budget: usd ceiling cannot be verified — [analyst developer] reported no usage": {"analyst", "developer"},
+		"budget: usd ceiling reached before stage developer (41 of 40)":                  nil,
+		"terminal: stage analyst failed: boom":                                           nil,
+		"budget: usd ceiling cannot be verified — [developer":                            nil,
+	}
+	for reason, want := range cases {
+		order := &OrderState{}
+		order.apply(Entry{Event: EventParked, Reason: reason})
+		if strings.Join(order.Unmeasured, ",") != strings.Join(want, ",") {
+			t.Errorf("%q: unmeasured = %v, want %v", reason, order.Unmeasured, want)
+		}
+	}
 }

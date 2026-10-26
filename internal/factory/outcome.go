@@ -116,6 +116,9 @@ func spendOf(state *orchestrator.RunState) *Spend {
 	spend := &Spend{TotalUSD: state.TotalUsage().CostUSD}
 	for _, stageID := range state.StagesInSequence() {
 		record := state.Stages[stageID]
+		if record.Status == orchestrator.StageStatusSkipped {
+			continue // routed out: it spent nothing, and "unmeasured" would say otherwise
+		}
 		entry := orchestrator.StageSpend{Stage: stageID, Measured: record.Usage != nil}
 		if record.Usage != nil {
 			entry.CostUSD = record.Usage.CostUSD

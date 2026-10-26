@@ -28,12 +28,18 @@ func TestAnUnmeasuredStageHaltsUntilAHumanAcceptsIt(t *testing.T) {
 	if halt, _ := evaluateBudget(budget, plan, state); halt != nil {
 		t.Errorf("halt = %+v after the human accepted the unknown spend", halt)
 	}
-	accepted := state.UnmeasuredAccepted["developer"]
-	if accepted.AcceptedBy != "oscar" || !accepted.FinishedAt.Equal(*state.Stages["developer"].FinishedAt) || accepted.AcceptedAt.IsZero() {
-		t.Errorf("acceptance = %+v, want oscar bound to developer's failed attempt", accepted)
-	}
+	assertAcceptedBy(t, state, "developer", "oscar")
 	if got := UnmeasuredStages(plan, state); strings.Join(got, ",") != "developer" {
 		t.Errorf("unmeasured = %v; an accepted stage is still unmeasured, never zero", got)
+	}
+}
+
+func assertAcceptedBy(t *testing.T, state *RunState, stageID, name string) {
+	t.Helper()
+	accepted := state.UnmeasuredAccepted[stageID]
+	bound := accepted.FinishedAt.Equal(*state.Stages[stageID].FinishedAt)
+	if accepted.AcceptedBy != name || !bound || accepted.AcceptedAt.IsZero() {
+		t.Errorf("acceptance = %+v, want %s bound to %s's failed attempt", accepted, name, stageID)
 	}
 }
 

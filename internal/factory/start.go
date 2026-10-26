@@ -138,9 +138,9 @@ func (s *Supervisor) continuationKind(order *OrderState) (string, bool) {
 	case PhaseStopped:
 		return "", order.ResumeRequested
 	case PhaseWaiting:
-		return order.Gate, order.Approval != nil && order.Approval.Gate == order.Gate
+		return order.Gate, hasApproval(order, order.Gate)
 	case PhaseParked:
-		return GateBudget, order.Approval != nil && order.Approval.Gate == GateBudget
+		return GateBudget, hasApproval(order, GateBudget)
 	}
 	return "", false
 }
