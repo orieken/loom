@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 2,
+  "feature": "delivery-record-relative-paths",
+  "scenarios": [
+    {
+      "criterion": "Given a workspace whose run-state.json holds absolute paths under the repository root, when ArchiveRecords runs, then the archived run-state.json holds the same paths relative to the repository root, slash-separated.",
+      "name": "Archived run-state.json stores paths relative to the repository root",
+      "given": [
+        "A workspace's run-state.json records file paths as absolute paths under the repository root"
+      ],
+      "when": [
+        "The run's delivery records are archived"
+      ],
+      "then": [
+        "The archived run-state.json holds those same paths relative to the repository root",
+        "Each relative path uses forward slashes as separators"
+      ]
+    },
+    {
+      "criterion": "Given a path in run state that is not under the repository root, such as a spec outside the checkout, when the records are archived, that path is kept unchanged — never turned into a ../ path and never dropped.",
+      "name": "A path outside the repository root is archived unchanged",
+      "given": [
+        "A workspace's run state records a path that is not under the repository root, such as a spec file outside the checkout"
+      ],
+      "when": [
+        "The run's delivery records are archived"
+      ],
+      "then": [
+        "The archived run state holds that path exactly as it was, byte for byte",
+        "The path is not rewritten as a relative '../' path",
+        "The path is not dropped from the archived record"
+      ]
+    },
+    {
+      "criterion": "Given a run-events.jsonl line whose text contains the absolute repository root, such as a stage error quoting a file path, when the records are archived, the archived line has the root prefix removed and is otherwise unchanged. Every archived line still parses as JSON.",
+      "name": "An absolute repository root quoted inside a run-events.jsonl line is stripped on archive",
+      "given": [
+        "A workspace's run-events.jsonl contains a line whose text quotes the absolute repository root, such as a stage error message quoting a file path"
+      ],
+      "when": [
+        "The run's delivery records are archived"
+      ],
+      "then": [
+        "The archived run-events.jsonl line has the repository root prefix removed from that text",
+        "The archived line is otherwise unchanged",
+        "Every line in the archived run-events.jsonl still parses as valid JSON"
+      ]
+    },
+    {
+      "criterion": "Given the change is complete, no archived run-state.json, run-events.jsonl or state/*.json contains the absolute repository root as a substring, and a test asserts this.",
+      "name": "No archived delivery record contains the absolute repository root",
+      "given": [
+        "A run's delivery records, including run-state.json, run-events.jsonl, and any state/*.json documents, have been archived"
+      ],
+      "when": [
+        "The archived files are inspected"
+      ],
+      "then": [
+        "None of run-state.json, run-events.jsonl, or any state/*.json file contains the absolute repository root as a substring"
+      ]
+    },
+    {
+      "criterion": "Given the records are archived, the workspace's own run-state.json and run-events.jsonl are byte-identical to what they were before, and a test asserts this.",
+      "name": "Archiving leaves the workspace's own records untouched",
+      "given": [
+        "A workspace has a run-state.json and a run-events.jsonl before archiving"
+      ],
+      "when": [
+        "The run's delivery records are archived"
+      ],
+      "then": [
+        "The workspace's run-state.json is byte-identical to what it was before archiving",
+        "The workspace's run-events.jsonl is byte-identical to what it was before archiving"
+      ]
+    },
+    {
+      "criterion": "Given archived records with relative paths, when loom memory ingest reads docs/features/*/, it ingests the run exactly as it did before. The existing memory tests still pass.",
+      "name": "Memory ingest reads an archived run with relativized paths the same as before",
+      "given": [
+        "Delivery records for a run have been archived with relative paths under docs/features/<feature>/"
+      ],
+      "when": [
+        "loom memory ingest reads docs/features/*/"
+      ],
+      "then": [
+        "The run is ingested exactly as it was before paths were relativized",
+        "The existing memory tests still pass"
+      ]
+    },
+    {
+      "criterion": "Given the change is complete, go test ./internal/memory/... ./cmd/loom/... passes, every new function has cyclomatic complexity below 7, and no file outside scope.paths changes except this run's own delivery record.",
+      "name": "The change meets its build, complexity, and scope guarantees",
+      "given": [
+        "The relative-paths change is complete"
+      ],
+      "when": [
+        "go test ./internal/memory/... ./cmd/loom/... is run"
+      ],
+      "then": [
+        "The test suite passes",
+        "Every new function has cyclomatic complexity below 7",
+        "No file outside scope.paths changes except this run's own delivery record"
+      ]
+    }
+  ],
+  "retrieval": {
+    "domainTerms": [
+      "ArchiveRecords",
+      "run-state.json",
+      "run-events.jsonl",
+      "repository root"
+    ]
+  }
+}

@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 2,
+  "feature": "delivery-record-relative-paths",
+  "summary": "At the end of `loom run`, `memory.ArchiveRecords` (internal/memory/workspace.go) copies a run's Run State (run-state.json), Run Event Timeline (run-events.jsonl), and typed stage documents (state/*.json) from the Feature Workspace into the Feature Archive (docs/features/<feature>/), which is committed to git. The Feature Workspace copy legitimately stores absolute paths under the repository root (SpecPath, each stage's ArtifactPath/ViewPath/IterationArtifacts, and free-form Error/DiffPath text) because the executor, resume, digest verification, and the factory supervisor all read them from there. The committed Feature Archive copy must not leak the machine's checkout path — PR #13 committed 48 lines naming `/Users/oscarrieken/Projects/...`. The fix adds a `root` parameter to `ArchiveRecords` and strips `root + separator` as a literal substring from the copied `run-state.json`, `run-events.jsonl`, and each `state/*.json` file before writing them into the archive, leaving the workspace's own files byte-for-byte untouched and leaving any path that is not under `root` unchanged. `root` is resolved independently inside `recordEpisode` (cmd/loom/cmd/run_memory.go) via `filepath.Abs(\".\")` — the same expression `cmd/loom/cmd/run.go`'s `prepareRunWorkspace` already uses to build `StageInput.ProjectRoot` — rather than threaded through a new `run.go` parameter, which keeps the entire diff inside the spec's declared `scope.paths`.",
+  "acceptanceCriteria": [
+    {
+      "statement": "Given a workspace whose run-state.json holds absolute paths under the repository root, when ArchiveRecords runs, then the archived run-state.json holds the same paths relative to the repository root, slash-separated.",
+      "examples": [
+        "<root>/.claude/feature-workspace/f/state/analyst.json becomes .claude/feature-workspace/f/state/analyst.json"
+      ]
+    },
+    {
+      "statement": "Given a path in run state that is not under the repository root, such as a spec outside the checkout, when the records are archived, that path is kept unchanged — never turned into a ../ path and never dropped."
+    },
+    {
+      "statement": "Given a run-events.jsonl line whose text contains the absolute repository root, such as a stage error quoting a file path, when the records are archived, the archived line has the root prefix removed and is otherwise unchanged. Every archived line still parses as JSON."
+    },
+    {
+      "statement": "Given the change is complete, no archived run-state.json, run-events.jsonl or state/*.json contains the absolute repository root as a substring, and a test asserts this."
+    },
+    {
+      "statement": "Given the records are archived, the workspace's own run-state.json and run-events.jsonl are byte-identical to what they were before, and a test asserts this."
+    },
+    {
+      "statement": "Given archived records with relative paths, when loom memory ingest reads docs/features/*/, it ingests the run exactly as it did before. The existing memory tests still pass."
+    },
+    {
+      "statement": "Given the change is complete, go test ./internal/memory/... ./cmd/loom/... passes, every new function has cyclomatic complexity below 7, and no file outside scope.paths changes except this run's own delivery record."
+    }
+  ],
+  "nonFunctionalRequirements": [
+    {
+      "category": "other",
+      "requirement": "Archiving MUST stay best-effort, as it is today: a record that cannot be rewritten or relativized is reported to stderr and never fails the run."
+    }
+  ],
+  "proposedFitnessFunctions": [
+    {
+      "property": "Every changed or new function has cyclomatic complexity below 7",
+      "verification": "golangci-lint run — gocyclo min-complexity: 7 is already configured in .golangci.yml",
+      "owner": "architect",
+      "judgmentOnly": false
+    },
+    {
+      "property": "Archived run-state.json, run-events.jsonl and state/*.json never contain the absolute repository root as a substring",
+      "verification": "go test ./internal/memory/... — a new test asserts !bytes.Contains(archivedContent, []byte(root)) after ArchiveRecords, across a workspace fixture carrying root-prefixed paths in SpecPath, a StageRecord's ArtifactPath, an IterationArtifact's Path, and an Event's Error text",
+      "owner": "architect",
+      "judgmentOnly": false
+    },
+    {
+      "property": "The workspace's own run-state.json and run-events.jsonl are never mutated by archiving",
+      "verification": "go test ./internal/memory/... — a new test reads both workspace files before and after ArchiveRecords and asserts byte-for-byte equality",
+      "owner": "architect",
+      "judgmentOnly": false
+    },
+    {
+      "property": "A path outside the repository root survives archiving unchanged",
+      "verification": "go test ./internal/memory/... — the existing fixtureRun's out-of-root SpecPath (\"/specs/user-auth.md\") is asserted byte-identical in the archived copy",
+      "owner": "architect",
+      "judgmentOnly": false
+    }
+  ],
+  "outOfScope": [
+    "Changing how the executor writes run state in the Feature Workspace — absolute paths there are load-bearing for resume, digest verification, and the factory supervisor.",
+    "The factory's archive under .claude/factory/runs/<id>, which is never committed.",
+    "Rewriting delivery records already committed, such as docs/features/i-4-vocabulary-test/.",
+    "Relativizing the .md artifacts archiveArtifacts copies (analysis.md, qa-report.md, etc.) — the AC's blanket no-root-substring assertion names only run-state.json, run-events.jsonl and state/*.json."
+  ],
+  "surfaces": {
+    "ui": false,
+    "runtime": false
+  },
+  "boundedContext": {
+    "owning": "Documentation Knowledge Base",
+    "crossings": [
+      "Agent Orchestration — the fix reads and rewrites Run State and Run Event Timeline content whose schema is owned there, though it does not change that schema"
+    ]
+  },
+  "domainEvents": {
+    "commands": [
+      "ArchiveRecords(workspaceDir, archiveDir, root)"
+    ],
+    "eventsProduced": [],
+    "owningAggregates": [],
+    "readModels": [
+      "Feature Archive (docs/features/<feature>/run-state.json, run-events.jsonl, state/*.json)"
+    ]
+  },
+  "affectedComponents": [
+    {
+      "path": "internal/memory/workspace.go",
+      "reason": "ArchiveRecords gains a root parameter; a new relativizing copy helper replaces copyIfPresent for run-state.json, run-events.jsonl, and the typed state/*.json documents. copyIfPresent itself, and its use for .md artifacts in archiveArtifacts, is unchanged."
+    },
+    {
+      "path": "internal/memory/ingest_test.go",
+      "reason": "Every existing memory.ArchiveRecords(...) call (7 sites) gets a third argument; new tests assert each AC using root-prefixed fixture paths."
+    },
+    {
+      "path": "cmd/loom/cmd/run_memory.go",
+      "reason": "recordEpisode resolves root via filepath.Abs(\".\") — mirroring run.go's own prepareRunWorkspace derivation — and passes it to memory.ArchiveRecords, without widening the change into run.go."
+    }
+  ],
+  "dataModelChanges": [
+    {
+      "description": "No field or schema changes to RunState, Event, or any typed stage document. Only the string values of existing path-bearing fields differ between the Feature Workspace copy (absolute, unchanged) and the Feature Archive copy (root-stripped) of the same files.",
+      "phase": "none"
+    }
+  ],
+  "apiChanges": [],
+  "newDependencies": [],
+  "architecturalFlags": [
+    "ArchiveRecords' Go signature changes (adds a required root parameter) — every call site, production and test, must be updated in the same change; the compiler makes an unmissed call site impossible, so no feature flag is needed for a trunk-safe single-commit merge.",
+    "root is resolved independently inside recordEpisode via filepath.Abs(\".\") rather than threaded from run.go's StageInput.ProjectRoot. No os.Chdir exists anywhere in this codebase (confirmed by grep), so cwd never changes mid-process and the two expressions are provably identical — this keeps every changed line inside the spec's declared scope.paths (internal/memory/** and cmd/loom/cmd/run_memory.go), avoiding an otherwise-necessary one-line edit to cmd/loom/cmd/run.go that scope.paths does not cover. This resolves the spec's own Open Question.",
+    "Relativization is a generic substring strip of `root + filepath.Separator` across each file's full byte content, not a field-by-field path rewrite. This means (a) any future path-bearing field added to RunState or Event is covered automatically with no further change, and (b) it cannot distinguish a genuine path occurrence from the same literal text appearing elsewhere in free-form prose — accepted deliberately, since the spec's own AC3 example (an error message quoting a path) requires exactly this non-contextual stripping.",
+    "state/*.json typed stage documents carry no absolute-path field today (every typed schema already declares repo-relative paths, per context-engineer's manifest) — so AC4's blanket assertion over state/*.json holds today even before this change. The same relativizing helper is still applied there for defense-in-depth, so the invariant holds by construction rather than by the current absence of such a field."
+  ],
+  "retrieval": {
+    "domainTerms": [
+      "Feature Archive",
+      "Feature Workspace",
+      "Run State",
+      "Run Event Timeline"
+    ],
+    "issueRefs": [
+      "delivery-record-relative-paths"
+    ],
+    "linkedAdrs": [],
+    "linkedKis": []
+  },
+  "tasks": {
+    "developer": [
+      "In internal/memory/workspace.go, change ArchiveRecords(workspaceDir, archiveDir string) error to ArchiveRecords(workspaceDir, archiveDir, root string) error.",
+      "Add an unexported helper relativizeRunPaths(content []byte, root string) []byte in internal/memory/workspace.go: return content unchanged when root == \"\"; otherwise return bytes.ReplaceAll(content, []byte(root+string(filepath.Separator)), nil).",
+      "Add an unexported helper copyRelativized(source, target, root string) error mirroring copyIfPresent (a missing source is a no-op, matching error wrapping) but writing relativizeRunPaths(content, root) instead of the raw bytes read from source.",
+      "In ArchiveRecords, replace copyIfPresent with copyRelativized(..., root) for both orchestrator.RunStateFileName and orchestrator.RunEventsFileName. Leave the .md copy in archiveArtifacts on copyIfPresent, unchanged.",
+      "Thread root through archiveTypedState(workspaceDir, archiveDir, root string) error and copyStageDocuments(entries, sourceDir, targetDir, root string) error; use copyRelativized(..., root) for the .json stage documents instead of copyIfPresent.",
+      "In cmd/loom/cmd/run_memory.go, inside recordEpisode, resolve root, err := filepath.Abs(\".\") (same expression run.go's prepareRunWorkspace already uses). On error, report it the same best-effort way recordEpisode already reports other failures and pass root = \"\" to ArchiveRecords so the strip no-ops rather than failing the run. Pass root to memory.ArchiveRecords(workspaceDir, featureArchiveDir(feature), root).",
+      "Update every existing memory.ArchiveRecords(...) call in internal/memory/ingest_test.go (7 sites, lines 213, 235, 265, 305, 316, 336, 356) to add a third argument — \"\" for every existing test, since none of them exercise relativization and \"\" preserves today's byte-for-byte behavior unchanged."
+    ],
+    "qa": [
+      "In internal/memory/ingest_test.go, add a test that builds root := t.TempDir(), a workspace under filepath.Join(root, \".claude\", \"feature-workspace\", \"f\"), sets state.SpecPath and a StageRecord.ArtifactPath to absolute paths under that workspace, archives with that root, reloads the archived run-state.json via orchestrator.NewStateStore(...).Load(), and asserts both fields are now relative (slash-separated, no leading separator) — covering AC1.",
+      "Add a test asserting fixtureRun's out-of-root SpecPath (\"/specs/user-auth.md\") is byte-identical in the archived run-state.json after archiving with a real root — covering AC2.",
+      "Add a test that appends an Event whose Error field contains the absolute root (e.g. quoting a file path under root), archives, reads the archived run-events.jsonl, asserts the root substring is gone from that line, and asserts every line still unmarshals via orchestrator.NewTimeline(...).Read() (or json.Unmarshal per line) — covering AC3.",
+      "Add a test that writes typed state documents (writeTypedState helper) alongside root-prefixed run-state.json/run-events.jsonl content, archives, and asserts !bytes.Contains against root across the archived run-state.json, run-events.jsonl, and every file under state/ — covering AC4.",
+      "Add a test that reads the workspace's run-state.json and run-events.jsonl bytes before calling ArchiveRecords and again after, and asserts byte-for-byte equality — covering AC5.",
+      "Re-run the existing TestIngestRebuildsTheStoreFromTheArchive (cmd/loom/cmd/run_memory_test.go) unmodified in behavior and confirm it still passes against relativized archived files — covering AC6.",
+      "Run go test ./internal/memory/... ./cmd/loom/... and confirm it passes; grep the repository for ArchiveRecords( and recordEpisode( to confirm no call site outside the ones listed in developer tasks was missed.",
+      "Run golangci-lint run (or confirm CI's existing gocyclo check) against the two new/changed functions (relativizeRunPaths, copyRelativized) and confirm complexity is well under 7.",
+      "Confirm with git diff --stat that no file outside internal/memory/**, cmd/loom/cmd/run_memory.go, and docs/features/delivery-record-relative-paths/ changed."
+    ],
+    "techWriter": [],
+    "devops": []
+  },
+  "edgeCases": [
+    {
+      "case": "root is the empty string — a caller that cannot resolve filepath.Abs(\".\") (unlikely, but os.Getwd/Abs can fail if the cwd was removed mid-run), or a test call site passing \"\" deliberately.",
+      "handling": "relativizeRunPaths must treat an empty root as a no-op and return content unchanged, never panic or strip an empty-string prefix from every position in the file."
+    },
+    {
+      "case": "A run-events.jsonl line's text contains the root string as ordinary prose rather than as a path prefix (e.g. a message that happens to mention the directory name without a following separator).",
+      "handling": "The substring strip has no context awareness and will still remove it — accepted deliberately, since the spec's own AC3 example (an error message quoting a path) requires exactly this non-contextual stripping; flagged here rather than silently assumed."
+    },
+    {
+      "case": "A path in run state equals root exactly, with no trailing separator (e.g. the workspace directory itself recorded as a bare value, with nothing appended).",
+      "handling": "Not stripped by the root+separator prefix match, since there is no separator to match. Not covered by any AC example and not asserted by a test; documented as a known, accepted gap rather than fixed speculatively."
+    },
+    {
+      "case": "state/*.json typed stage documents hold no absolute-path field in any schema that exists today.",
+      "handling": "The relativizing copy is applied to them anyway, so AC4's assertion holds by construction rather than by the field's current absence, and a future typed field carrying an absolute path is covered without further code changes."
+    },
+    {
+      "case": "Windows-style backslash path separators.",
+      "handling": "Out of scope. filepath.Separator and this project's own CI/dev platforms (Darwin/Linux) are forward-slash throughout; no test or fitness function asserts Windows behavior."
+    },
+    {
+      "case": "A crash or interruption partway through ArchiveRecords' copy loop.",
+      "handling": "Unaffected by this change — copy semantics (best-effort, one file at a time, reported and never fatal) are exactly as they are today; relativization happens in memory before each write, not across files."
+    }
+  ],
+  "definitionOfDone": [
+    "go test ./internal/memory/... ./cmd/loom/... passes.",
+    "A test exists and passes for each of the spec's seven acceptance criteria, each asserting the behavior directly rather than inferring it from an unrelated pass.",
+    "relativizeRunPaths and copyRelativized (and any other new or changed function) each have cyclomatic complexity below 7, verified by golangci-lint's configured gocyclo rule.",
+    "git diff touches only internal/memory/**, cmd/loom/cmd/run_memory.go, and docs/features/delivery-record-relative-paths/ (this run's own delivery record) — no other file changes.",
+    "cmd/loom/cmd/run.go is unchanged: root is resolved independently inside recordEpisode, not threaded through StageInput.",
+    "code-reviewer approval recorded; no security-sensitive surface is touched (this run rewrites files loom itself wrote, with no new trust boundary)."
+  ],
+  "openQuestions": [
+    "cmd/loom/cmd/run_memory_test.go (the end-to-end test building the real loom binary) is pinned by context-engineer as the natural place to prove the real call site never leaks projectDir into the archived run-state.json, but scope.paths names only the exact file cmd/loom/cmd/run_memory.go, not its _test.go — unlike internal/memory/**, which is a glob covering its own test files. Assumption if unresolved: treat a source file named in scope.paths as implicitly covering its co-located _test.go (the same convention the internal/memory/** glob already gives for free), and add the end-to-end assertion there; if a reviewer reads scope.paths literally instead, the equivalent coverage already exists via the internal/memory unit tests in the developer/qa task list above, so dropping the e2e assertion costs confidence in the real call site only, not AC coverage."
+  ]
+}
