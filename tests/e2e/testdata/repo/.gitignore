@@ -1,0 +1,5 @@
+# Feature Team Workspace Outputs
+.claude/feature-workspace/
+
+# Episodic memory store
+.claude/memory/

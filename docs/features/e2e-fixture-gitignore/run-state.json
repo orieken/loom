@@ -1,0 +1,460 @@
+{
+  "schemaVersion": 10,
+  "planName": "deliver-feature",
+  "createdBy": "executor",
+  "featureName": "e2e-fixture-gitignore",
+  "specPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/factory/claims/e2e-fixture-gitignore.md",
+  "specSha256": "32fab60086ea710afd286af3f918d8a3c46cb24fa1340e8ab2fe17acda5d45fd",
+  "provider": "claude",
+  "startedAt": "2026-10-25T05:52:13.611516Z",
+  "startCommit": "23b8c5451ad84c5babcae2f175ae1a8dcdfea0d0",
+  "diffLines": {
+    "confirm-design": 1432,
+    "confirm-security": 1432,
+    "confirm-ship": 1432
+  },
+  "reviewedDigest": "42d0af3ddc58cd2c78f7401867af5e6f2845c624f0ac0058276de2c209c03f57",
+  "stages": {
+    "acceptance-scenarios": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-25T05:59:25.090953Z",
+      "finishedAt": "2026-10-25T06:00:45.236291Z",
+      "artifactPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/state/acceptance-scenarios.json",
+      "artifactSha256": "5da8164833de89940baf1b0ba78acd9f95071e5127fc2b91cee182ccf3f11e5f",
+      "sequence": 11,
+      "iteration": 1,
+      "stateKind": "scenarios",
+      "agent": "qa-engineer",
+      "viewPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/acceptance-scenarios.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 12,
+        "outputTokens": 4404,
+        "cacheReadTokens": 421639,
+        "cacheCreationTokens": 63572,
+        "costUsd": 0.38267979999999996
+      }
+    },
+    "accessibility-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-25T05:59:25.090035Z",
+      "sequence": 7,
+      "skipReason": "the analysis declares no UI surface",
+      "iteration": 1
+    },
+    "analyst": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-25T05:57:06.128795Z",
+      "finishedAt": "2026-10-25T05:59:25.04466Z",
+      "artifactPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/state/analyst.json",
+      "artifactSha256": "464e22e2de6b371acf25d6e2530c69002ad48c9585b3bd169d20ada3a23720eb",
+      "sequence": 2,
+      "iteration": 1,
+      "stateKind": "analysis",
+      "agent": "analyst",
+      "viewPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/analysis.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 26,
+        "outputTokens": 12873,
+        "cacheReadTokens": 1128449,
+        "cacheCreationTokens": 82764,
+        "costUsd": 0.6855278
+      }
+    },
+    "architect": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-25T05:59:25.089375Z",
+      "sequence": 4,
+      "skipReason": "no context crossing, data-model change, new dependency, performance threshold, or architectural flag",
+      "iteration": 1
+    },
+    "code-reviewer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-25T18:44:07.636077Z",
+      "finishedAt": "2026-10-25T18:45:09.355137Z",
+      "artifactPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/state/code-reviewer.json",
+      "artifactSha256": "926945c9d49f9062b2eb6fb2f105cbf5e3be03082d1558f3393244ed7f289bcb",
+      "sequence": 13,
+      "iteration": 1,
+      "stateKind": "review",
+      "agent": "code-reviewer",
+      "viewPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/code-review-report.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 20,
+        "outputTokens": 3674,
+        "cacheReadTokens": 817267,
+        "cacheCreationTokens": 74860,
+        "costUsd": 0.4996734
+      }
+    },
+    "context-engineer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-25T05:55:40.008481Z",
+      "finishedAt": "2026-10-25T05:57:06.128007Z",
+      "artifactPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/state/context-engineer.json",
+      "artifactSha256": "7da5c2370ffab563e2f358a45543ed1ee51402e56448783afd6db1ff4a6aff31",
+      "sequence": 1,
+      "iteration": 1,
+      "stateKind": "context",
+      "agent": "context-engineer",
+      "viewPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/context-manifest.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 72,
+        "outputTokens": 18461,
+        "cacheReadTokens": 3254779,
+        "cacheCreationTokens": 170621,
+        "costUsd": 1.5181938
+      }
+    },
+    "data-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-25T05:59:25.089691Z",
+      "sequence": 6,
+      "skipReason": "no data-model change to sequence",
+      "iteration": 1
+    },
+    "developer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-25T18:42:29.921478Z",
+      "finishedAt": "2026-10-25T18:44:07.635032Z",
+      "artifactPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/state/developer.json",
+      "artifactSha256": "b76cd0585eddbbcd152595c3e4ce5c4f9a83078d1e66c65f8837ba7b8d493c77",
+      "gate": "confirm-design",
+      "sequence": 12,
+      "iteration": 1,
+      "stateKind": "implementation",
+      "agent": "developer",
+      "viewPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/implementation-notes.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 32,
+        "outputTokens": 7105,
+        "cacheReadTokens": 1487960,
+        "cacheCreationTokens": 84341,
+        "costUsd": 0.70607
+      }
+    },
+    "devops-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-25T05:59:25.090698Z",
+      "gate": "confirm-ship",
+      "sequence": 10,
+      "skipReason": "the analysis lists no DevOps tasks",
+      "iteration": 1
+    },
+    "performance-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-25T05:59:25.089538Z",
+      "sequence": 5,
+      "skipReason": "no performance requirement carries a threshold with a number and a unit",
+      "iteration": 1
+    },
+    "qa-engineer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-25T18:50:50.743523Z",
+      "finishedAt": "2026-10-25T18:52:11.33088Z",
+      "artifactPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/state/qa-engineer.json",
+      "artifactSha256": "eb0600a99fec0b960993b242bb99521bc4866078e496b9cc172104838fa197dd",
+      "gate": "confirm-security",
+      "sequence": 15,
+      "iteration": 1,
+      "stateKind": "qa",
+      "agent": "qa-engineer",
+      "viewPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/qa-report.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 26,
+        "outputTokens": 4180,
+        "cacheReadTokens": 1032788,
+        "cacheCreationTokens": 67432,
+        "costUsd": 0.5181376
+      }
+    },
+    "router": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-25T05:59:25.045318Z",
+      "finishedAt": "2026-10-25T05:59:25.089083Z",
+      "artifactPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/state/router.json",
+      "artifactSha256": "097bf1cdc64205b0a0d230da50ef3da3722bfd5c307f6dcec6ed05a9de2f04ed",
+      "sequence": 3,
+      "iteration": 1,
+      "stateKind": "route",
+      "agent": "router",
+      "viewPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/route.md"
+    },
+    "security-reviewer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-25T18:45:09.356416Z",
+      "finishedAt": "2026-10-25T18:45:40.25279Z",
+      "artifactPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/state/security-reviewer.json",
+      "artifactSha256": "61fbc7f2898ef54b638d1e80f694eba71f7ed5d7f464a53f918ecdc83063edd0",
+      "sequence": 14,
+      "iteration": 1,
+      "stateKind": "security",
+      "agent": "security-reviewer",
+      "viewPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/security-report.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 8,
+        "outputTokens": 2258,
+        "cacheReadTokens": 257166,
+        "cacheCreationTokens": 59707,
+        "costUsd": 0.3128572
+      }
+    },
+    "sre-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-25T05:59:25.090486Z",
+      "sequence": 9,
+      "skipReason": "the analysis declares no served runtime surface, so no availability or latency SLI applies",
+      "iteration": 1
+    },
+    "tech-writer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-25T18:52:11.331657Z",
+      "finishedAt": "2026-10-25T18:52:53.46345Z",
+      "artifactPath": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/tech-writer.md",
+      "artifactSha256": "7c17c5db0464e7e774f18aab7e5a5eae2b1cc6b24f709966ead76a6d71968c03",
+      "sequence": 16,
+      "iteration": 1,
+      "agent": "tech-writer",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 16,
+        "outputTokens": 3194,
+        "cacheReadTokens": 599004,
+        "cacheCreationTokens": 68663,
+        "costUsd": 0.4264248
+      }
+    },
+    "visual-qa-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-25T05:59:25.090263Z",
+      "sequence": 8,
+      "skipReason": "the analysis declares no UI surface, so there is nothing to look at",
+      "iteration": 1
+    }
+  },
+  "approvals": {
+    "confirm-design": {
+      "approvedAt": "2026-10-25T18:42:29.872896Z",
+      "method": "flag",
+      "approver": "oscarrieken",
+      "artifactDigests": {
+        "acceptance-scenarios": "5da8164833de89940baf1b0ba78acd9f95071e5127fc2b91cee182ccf3f11e5f",
+        "analyst": "464e22e2de6b371acf25d6e2530c69002ad48c9585b3bd169d20ada3a23720eb",
+        "context-engineer": "7da5c2370ffab563e2f358a45543ed1ee51402e56448783afd6db1ff4a6aff31",
+        "router": "097bf1cdc64205b0a0d230da50ef3da3722bfd5c307f6dcec6ed05a9de2f04ed"
+      }
+    },
+    "confirm-security": {
+      "approvedAt": "2026-10-25T18:50:50.670725Z",
+      "method": "flag",
+      "approver": "oscarrieken",
+      "artifactDigests": {
+        "acceptance-scenarios": "5da8164833de89940baf1b0ba78acd9f95071e5127fc2b91cee182ccf3f11e5f",
+        "analyst": "464e22e2de6b371acf25d6e2530c69002ad48c9585b3bd169d20ada3a23720eb",
+        "code-reviewer": "926945c9d49f9062b2eb6fb2f105cbf5e3be03082d1558f3393244ed7f289bcb",
+        "context-engineer": "7da5c2370ffab563e2f358a45543ed1ee51402e56448783afd6db1ff4a6aff31",
+        "developer": "b76cd0585eddbbcd152595c3e4ce5c4f9a83078d1e66c65f8837ba7b8d493c77",
+        "router": "097bf1cdc64205b0a0d230da50ef3da3722bfd5c307f6dcec6ed05a9de2f04ed",
+        "security-reviewer": "61fbc7f2898ef54b638d1e80f694eba71f7ed5d7f464a53f918ecdc83063edd0"
+      }
+    },
+    "confirm-ship": {
+      "approvedAt": "2026-10-25T22:11:16.891752Z",
+      "method": "flag",
+      "approver": "oscarrieken",
+      "artifactDigests": {
+        "acceptance-scenarios": "5da8164833de89940baf1b0ba78acd9f95071e5127fc2b91cee182ccf3f11e5f",
+        "analyst": "464e22e2de6b371acf25d6e2530c69002ad48c9585b3bd169d20ada3a23720eb",
+        "code-reviewer": "926945c9d49f9062b2eb6fb2f105cbf5e3be03082d1558f3393244ed7f289bcb",
+        "context-engineer": "7da5c2370ffab563e2f358a45543ed1ee51402e56448783afd6db1ff4a6aff31",
+        "developer": "b76cd0585eddbbcd152595c3e4ce5c4f9a83078d1e66c65f8837ba7b8d493c77",
+        "qa-engineer": "eb0600a99fec0b960993b242bb99521bc4866078e496b9cc172104838fa197dd",
+        "router": "097bf1cdc64205b0a0d230da50ef3da3722bfd5c307f6dcec6ed05a9de2f04ed",
+        "security-reviewer": "61fbc7f2898ef54b638d1e80f694eba71f7ed5d7f464a53f918ecdc83063edd0",
+        "tech-writer": "7c17c5db0464e7e774f18aab7e5a5eae2b1cc6b24f709966ead76a6d71968c03"
+      }
+    }
+  },
+  "baselines": {
+    "confirm-design": {
+      "at": "2026-10-25T18:42:29.872906Z",
+      "reason": "APPROVED",
+      "artifacts": {
+        "acceptance-scenarios": {
+          "stage": "acceptance-scenarios",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/.approved/confirm-design/acceptance-scenarios.md",
+          "sha256": "70bdca34c86ad57580039b4ebf20f9d9bcdfb513473268e706c9ae11649c82d4",
+          "at": "2026-10-25T18:42:29.873113Z"
+        },
+        "analyst": {
+          "stage": "analyst",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/.approved/confirm-design/analyst.md",
+          "sha256": "deee7acc7cde096e21bde6dc1b34c0f3de7288c4cf95c1df7962dd75d9496b17",
+          "at": "2026-10-25T18:42:29.873778Z"
+        },
+        "context-engineer": {
+          "stage": "context-engineer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/.approved/confirm-design/context-engineer.md",
+          "sha256": "6ee02bd1105b82503a93756528340d5647b71838043153be19335975dd404020",
+          "at": "2026-10-25T18:42:29.873238Z"
+        },
+        "router": {
+          "stage": "router",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/.approved/confirm-design/router.md",
+          "sha256": "cb10f6497f66ef482af84f7fc65393275d3adf4a06fb338a7132d62fa9007630",
+          "at": "2026-10-25T18:42:29.873638Z"
+        }
+      }
+    },
+    "confirm-security": {
+      "at": "2026-10-25T18:50:50.67074Z",
+      "reason": "APPROVED",
+      "artifacts": {
+        "acceptance-scenarios": {
+          "stage": "acceptance-scenarios",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/.approved/confirm-security/acceptance-scenarios.md",
+          "sha256": "70bdca34c86ad57580039b4ebf20f9d9bcdfb513473268e706c9ae11649c82d4",
+          "at": "2026-10-25T18:50:50.673462Z"
+        },
+        "analyst": {
+          "stage": "analyst",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/.approved/confirm-security/analyst.md",
+          "sha256": "deee7acc7cde096e21bde6dc1b34c0f3de7288c4cf95c1df7962dd75d9496b17",
+          "at": "2026-10-25T18:50:50.673307Z"
+        },
+        "code-reviewer": {
+          "stage": "code-reviewer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/.approved/confirm-security/code-reviewer.md",
+          "sha256": "468b6ff86cf19a262b06c1f642b333b518974a65c293d1883c57314fdd6ad200",
+          "at": "2026-10-25T18:50:50.673685Z"
+        },
+        "context-engineer": {
+          "stage": "context-engineer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/.approved/confirm-security/context-engineer.md",
+          "sha256": "6ee02bd1105b82503a93756528340d5647b71838043153be19335975dd404020",
+          "at": "2026-10-25T18:50:50.673156Z"
+        },
+        "developer": {
+          "stage": "developer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/.approved/confirm-security/developer.md",
+          "sha256": "279aaaa0bf5f515c907525a63d107e8f48aa56e03ec0148c0bba8158a9a1e01e",
+          "at": "2026-10-25T18:50:50.673834Z"
+        },
+        "router": {
+          "stage": "router",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/.approved/confirm-security/router.md",
+          "sha256": "cb10f6497f66ef482af84f7fc65393275d3adf4a06fb338a7132d62fa9007630",
+          "at": "2026-10-25T18:50:50.673582Z"
+        },
+        "security-reviewer": {
+          "stage": "security-reviewer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/.approved/confirm-security/security-reviewer.md",
+          "sha256": "20cdbcdf6abb7a7154ea73ae7fb1ec755c9d5458dba78112322a717baa4adad0",
+          "at": "2026-10-25T18:50:50.673938Z"
+        }
+      }
+    },
+    "confirm-ship": {
+      "at": "2026-10-25T22:11:16.891761Z",
+      "reason": "APPROVED",
+      "artifacts": {
+        "acceptance-scenarios": {
+          "stage": "acceptance-scenarios",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/.approved/confirm-ship/acceptance-scenarios.md",
+          "sha256": "70bdca34c86ad57580039b4ebf20f9d9bcdfb513473268e706c9ae11649c82d4",
+          "at": "2026-10-25T22:11:16.893616Z"
+        },
+        "analyst": {
+          "stage": "analyst",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/.approved/confirm-ship/analyst.md",
+          "sha256": "deee7acc7cde096e21bde6dc1b34c0f3de7288c4cf95c1df7962dd75d9496b17",
+          "at": "2026-10-25T22:11:16.893991Z"
+        },
+        "code-reviewer": {
+          "stage": "code-reviewer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/.approved/confirm-ship/code-reviewer.md",
+          "sha256": "468b6ff86cf19a262b06c1f642b333b518974a65c293d1883c57314fdd6ad200",
+          "at": "2026-10-25T22:11:16.893427Z"
+        },
+        "context-engineer": {
+          "stage": "context-engineer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/.approved/confirm-ship/context-engineer.md",
+          "sha256": "6ee02bd1105b82503a93756528340d5647b71838043153be19335975dd404020",
+          "at": "2026-10-25T22:11:16.894067Z"
+        },
+        "developer": {
+          "stage": "developer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/.approved/confirm-ship/developer.md",
+          "sha256": "279aaaa0bf5f515c907525a63d107e8f48aa56e03ec0148c0bba8158a9a1e01e",
+          "at": "2026-10-25T22:11:16.894206Z"
+        },
+        "qa-engineer": {
+          "stage": "qa-engineer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/.approved/confirm-ship/qa-engineer.md",
+          "sha256": "7007655a9660cd3c428284c907fa56bc236d4c9e71851347ab8170b869f19ae9",
+          "at": "2026-10-25T22:11:16.893525Z"
+        },
+        "router": {
+          "stage": "router",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/.approved/confirm-ship/router.md",
+          "sha256": "cb10f6497f66ef482af84f7fc65393275d3adf4a06fb338a7132d62fa9007630",
+          "at": "2026-10-25T22:11:16.893702Z"
+        },
+        "security-reviewer": {
+          "stage": "security-reviewer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/.approved/confirm-ship/security-reviewer.md",
+          "sha256": "20cdbcdf6abb7a7154ea73ae7fb1ec755c9d5458dba78112322a717baa4adad0",
+          "at": "2026-10-25T22:11:16.89379Z"
+        },
+        "tech-writer": {
+          "stage": "tech-writer",
+          "path": "/Users/oscarrieken/Projects/Rieken/ai-assistant-dot-files/.loom/worktrees/e2e-fixture-gitignore/.claude/feature-workspace/e2e-fixture-gitignore/.approved/confirm-ship/tech-writer.md",
+          "sha256": "7c17c5db0464e7e774f18aab7e5a5eae2b1cc6b24f709966ead76a6d71968c03",
+          "at": "2026-10-25T22:11:16.893879Z"
+        }
+      }
+    }
+  },
+  "policyDecisions": [
+    {
+      "gate": "confirm-ship",
+      "at": "2026-10-25T18:52:53.492573Z",
+      "effect": "auto-approve",
+      "honoured": false,
+      "policies": [
+        {
+          "name": "evidence-clean-ship",
+          "action": "auto-approve",
+          "outcome": "TRUE",
+          "source": ".claude/policies/evidence-clean-ship.policy.yaml"
+        }
+      ]
+    }
+  ],
+  "spend": {
+    "model": "claude-sonnet-5",
+    "inputTokens": 212,
+    "outputTokens": 56149,
+    "cacheReadTokens": 8999052,
+    "cacheCreationTokens": 671960,
+    "costUsd": 5.0495644
+  },
+  "budget": {
+    "maxUsd": 20,
+    "maxHours": 2
+  },
+  "updatedAt": "2026-10-25T22:11:16.991618Z"
+}

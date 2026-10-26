@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 2,
+  "feature": "e2e-fixture-gitignore",
+  "threatModelSummary": "This change adds a static .gitignore fixture file under tests/e2e/testdata/repo/ and one new harness test (TestSetUpProjectCommitsTheFixturesGitignore) asserting the fixture's .gitignore is copied and committed verbatim into the test project's first commit. There is no authentication, no user-supplied input, no network call, no secret handling, and no trust boundary crossed — the spec's own Trust Boundaries section states 'None,' and code review confirms the diff is limited to a test fixture and a test file exercising existing unexported setUpProject/run helpers. No security-relevant attack surface was introduced; full STRIDE pass performed for completeness and each category is a non-finding.",
+  "dependencyAudit": [],
+  "stride": [
+    {"category": "SPOOFING", "assessed": "No identity, session, or auth concept is involved; the fixture repo and test run entirely under the test harness's own temp directory with no network-facing identity to spoof."},
+    {"category": "TAMPERING", "assessed": "The new .gitignore content is a static, hand-authored, committed file, not derived from any external or user-controlled input, so there is no tampering surface. The test reads it back via git show HEAD:.gitignore and compares to the fixture source using plain string equality, with no parsing of untrusted data."},
+    {"category": "REPUDIATION", "assessed": "Not applicable — no user action or audit trail requirement exists for a local test-harness commit in a temp directory."},
+    {"category": "INFORMATION_DISCLOSURE", "assessed": "The .gitignore's own content (.claude/feature-workspace/, .claude/memory/) only documents paths already ignored by loom's own root .gitignore; it discloses no secret or path that isn't already public in this repository. No logs, traces, or external egress are introduced by this change."},
+    {"category": "DENIAL_OF_SERVICE", "assessed": "The new test runs git show against a local temp repo with the harness's existing PassTimeout (time.Minute) bound already in place via the Config.PassTimeout/run() helper; no unbounded loop or new external call was added."},
+    {"category": "ELEVATION_OF_PRIVILEGE", "assessed": "No permission or role check is relevant; the test operates entirely within the calling process's own filesystem permissions in a t.TempDir()."}
+  ],
+  "findings": [],
+  "filesModified": [],
+  "securityChecklist": [
+    {"item": "No hardcoded secrets, tokens, or credentials introduced", "checked": true},
+    {"item": "No new external network calls or dependencies added", "checked": true},
+    {"item": "No user-supplied input is parsed, interpolated, or executed", "checked": true},
+    {"item": "No auth/session/token handling touched", "checked": true},
+    {"item": "No OTel/logging changes that could leak PII", "checked": true},
+    {"item": "Dependency vulnerability scan (go mod verify / govulncheck)", "checked": false, "note": "Skipped — no go.mod or dependency changes in this diff; nothing new to scan."}
+  ],
+  "notesForQa": [
+    "No security-driven changes were needed or made; QA can proceed directly to functional verification per the acceptance criteria (TestSetUpProjectCommitsTheFixturesGitignore, TestTheFactoryDeliversTheFixtureOrder, TestTheHarnessFailsARunThatDeliversTheWrongThing)."
+  ],
+  "notesForTechWriter": [],
+  "retrieval": {
+    "domainTerms": ["Fixture repository"],
+    "issueRefs": ["#12"],
+    "linkedAdrs": [],
+    "linkedKis": []
+  }
+}
