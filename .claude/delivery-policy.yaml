@@ -1,0 +1,13 @@
+# Delivery policy for this repository (internal/policy, ADR-010).
+#
+# preShipChecks run in the executor-internal pre-ship-checks stage, after
+# tech-writer and before the confirm-ship gate. A failing check fails the run
+# with its output kept, so a human is never asked to ship a change CI would
+# reject. Each command runs through `bash -c` at the project root with
+# LOOM_BASE_COMMIT set to the commit the run started from.
+preShipChecks:
+  # CI's changed-line coverage gate (cmd/diff-coverage, ADR-008), run on the
+  # run's own diff. PR #18 passed every agent's tests and still failed this.
+  - name: changed-line coverage
+    command: scripts/pre-ship-check.sh
+    timeout: 20m
