@@ -16,7 +16,7 @@ depends-on: [i-4-vocabulary-test]
 budget:
   max-attempts: 3
   max-usd: 15
-  max-hours: 1
+  max-hours: 2
 scope:
   paths: [internal/intake/**]
 ---
