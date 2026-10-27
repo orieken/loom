@@ -258,9 +258,13 @@ internal/
                                    counting as completed work, plus an append-only
                                    run-events.jsonl audit timeline written by both pipelines,
                                    a router that decides which stages a run needs from
-                                   the typed analysis before the design gate (L3.0), and a
+                                   the typed analysis before the design gate (L3.0), a
                                    bounded review loop the executor iterates and counts
-                                   rather than a model repeating on its own output (L2.17)
+                                   rather than a model repeating on its own output (L2.17),
+                                   and a second executor-internal stage, pre-ship-checks,
+                                   that runs the project's declared delivery-policy.yaml
+                                   commands before confirm-ship so a run never reaches the
+                                   ship gate with a check CI would reject still failing
   state/                         typed pipeline state (ADR-006, L2.9 first cut): Go structs for
                                    the analyst -> architect hop, JSON Schema generated from them
                                    into shared/schemas/pipeline/, field-level projections, and

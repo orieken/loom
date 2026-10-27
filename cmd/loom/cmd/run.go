@@ -108,7 +108,7 @@ func runRun(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	store := orchestrator.NewStateStore(filepath.Join(workspace, orchestrator.RunStateFileName))
-	policies, err := loadPolicies(cmd, policy.DefaultDir)
+	policies, preShipChecks, err := loadPolicies(cmd, policy.DefaultDir)
 	if err != nil {
 		return err
 	}
@@ -126,7 +126,7 @@ func runRun(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	return executeRun(cmd, runSetup{plan: plan, provider: provider, providerName: providerName,
-		store: store, input: input, policies: policies})
+		store: store, input: input, policies: policies, preShipChecks: preShipChecks})
 }
 
 // providerForRun resolves which provider this run uses and builds it,
@@ -153,12 +153,13 @@ func providerForRun(cmd *cobra.Command, plan orchestrator.Plan,
 // runSetup is what a run needs to start, gathered rather than passed as six
 // positional arguments.
 type runSetup struct {
-	plan         orchestrator.Plan
-	provider     orchestrator.Provider
-	providerName string
-	store        *orchestrator.StateStore
-	input        orchestrator.StageInput
-	policies     []policy.Policy
+	plan          orchestrator.Plan
+	provider      orchestrator.Provider
+	providerName  string
+	store         *orchestrator.StateStore
+	input         orchestrator.StageInput
+	policies      []policy.Policy
+	preShipChecks []policy.PreShipCheck
 }
 
 func executeRun(cmd *cobra.Command, setup runSetup) error {
@@ -170,6 +171,7 @@ func executeRun(cmd *cobra.Command, setup runSetup) error {
 	executor.OnPostureError(reportPostureErrorOnce(cmd))
 	executor.OnClaimWarning(reportClaimWarning(cmd))
 	executor.WithPolicies(setup.policies)
+	executor.WithPreShipChecks(setup.preShipChecks)
 	executor.WithBlastRadiusResolver(blastRadiusResolverFor(input.ProjectRoot))
 	executor.OnPolicyDecision(func(decision policy.Decision) { reportPolicyDecision(cmd, decision) })
 	stopTelemetry, err := startTelemetry(cmd, executor, input.WorkspaceDir)

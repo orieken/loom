@@ -45,6 +45,11 @@
       "id": "tech-writer",
       "iteration": 1,
       "status": "COMPLETED"
+    },
+    {
+      "id": "pre-ship-checks",
+      "iteration": 1,
+      "status": "SKIPPED"
     }
   ],
   "loops": {

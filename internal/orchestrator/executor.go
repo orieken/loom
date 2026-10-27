@@ -51,6 +51,20 @@ type Executor struct {
 	// the run recorded.
 	budget          *Budget
 	onBudgetWarning func(BudgetWarning)
+	// preShipChecks are the project's declared checks that must exit 0
+	// before confirm-ship (shared/rules/approval-gates.md gate #1 guards
+	// the ship decision itself; this guards what CI would reject the
+	// change for). Empty is the default: the pre-ship-checks stage then
+	// records itself SKIPPED rather than COMPLETED.
+	preShipChecks []policy.PreShipCheck
+}
+
+// WithPreShipChecks registers the project's declared pre-ship checks. Empty
+// means the pre-ship-checks stage runs nothing and records a SKIPPED reason
+// rather than COMPLETED.
+func (e *Executor) WithPreShipChecks(checks []policy.PreShipCheck) *Executor {
+	e.preShipChecks = checks
+	return e
 }
 
 // WithBlastRadiusResolver supplies the function the executor uses to compute a
@@ -411,15 +425,34 @@ func (e *Executor) checkGate(stage Stage, state *RunState) error {
 	// still a point the run passed through, and a dry-run asking about it
 	// should get the number rather than silence.
 	e.recordDiffLines(state, stage.Gate)
-	if state.IsGateApproved(stage.Gate) {
-		invalidated, err := e.enforceApprovalBinding(state, stage)
-		if err != nil {
-			return err
-		}
-		if !invalidated {
-			return nil
-		}
+	passed, err := e.checkApprovedGate(stage, state)
+	if err != nil {
+		return err
 	}
+	if passed {
+		return nil
+	}
+	return e.haltAtGate(stage, state)
+}
+
+// checkApprovedGate reports whether this gate's existing approval, if any,
+// still stands and covers what it needs to: an unapproved gate, or one an
+// edit has since invalidated, is not passed — the caller halts either way.
+func (e *Executor) checkApprovedGate(stage Stage, state *RunState) (bool, error) {
+	if !state.IsGateApproved(stage.Gate) {
+		return false, nil
+	}
+	invalidated, err := e.enforceApprovalBinding(state, stage)
+	if err != nil {
+		return false, err
+	}
+	return !invalidated, nil
+}
+
+// haltAtGate records the halt and returns the sentinel error the run loop
+// stops on — reached when a gate has no approval yet, or an edit invalidated
+// the one it had.
+func (e *Executor) haltAtGate(stage Stage, state *RunState) error {
 	// Evaluate before the halt is announced, so the decision is recorded
 	// with the state the human is about to see. It does not change whether
 	// the halt happens (roadmap L2.16).
@@ -500,10 +533,10 @@ func (e *Executor) executeStage(ctx context.Context, stage Stage, plan Plan, inp
 	if !stage.Internal {
 		before = e.treeDigest()
 	}
-	output, invokeErr := e.runOrInvoke(ctx, stage, plan, input)
+	output, invokeErr := e.runOrInvoke(ctx, stage, plan, input, state)
 	if invokeErr != nil {
 		return e.persistFailure(ctx, state, stageFailure{stage: stage, err: invokeErr, usage: output.Usage,
-			class: invocationFailureClass(stage)})
+			class: invocationFailureClass(stage), artifactPath: output.ArtifactPath})
 	}
 	e.notePostureViolation(state, stage, before, output)
 	// Order matters: a stage is judged against the review that preceded it,
@@ -551,9 +584,9 @@ func runningRecord(state *RunState, stageID string) StageRecord {
 
 // runOrInvoke executes an internal stage here, or hands any other stage to
 // the provider.
-func (e *Executor) runOrInvoke(ctx context.Context, stage Stage, plan Plan, input StageInput) (StageOutput, error) {
+func (e *Executor) runOrInvoke(ctx context.Context, stage Stage, plan Plan, input StageInput, state *RunState) (StageOutput, error) {
 	if stage.Internal {
-		return e.runInternalStage(stage, plan, input)
+		return e.runInternalStage(ctx, stage, plan, input, state)
 	}
 	return e.invoke(ctx, stage, input)
 }
@@ -618,6 +651,11 @@ type stageFailure struct {
 	// L3.68). The zero value is terminal: a failure nobody classified is
 	// not one a supervisor should spend money retrying.
 	class FailureClass
+	// artifactPath is kept from the invocation's output so a failing
+	// stage's artifact — e.g. a pre-ship check's full output — stays
+	// attached to the FAILED record exactly as persistCompletion attaches
+	// one to a COMPLETED record. Empty when the invocation produced none.
+	artifactPath string
 }
 
 func (e *Executor) persistFailure(ctx context.Context, state *RunState, failure stageFailure) error {
@@ -628,6 +666,9 @@ func (e *Executor) persistFailure(ctx context.Context, state *RunState, failure 
 	record.FailureClass = classifyFailure(failure)
 	record.Usage = accumulateUsage(record.Usage, failure.usage)
 	state.recordSpend(failure.usage)
+	if err := attachFailureArtifact(&record, failure.stage.ID, failure.artifactPath); err != nil {
+		return errors.Join(failure.err, err)
+	}
 	if errors.Is(ctx.Err(), context.Canceled) {
 		record.Status = StageStatusInterrupted
 		record.FailureClass = FailureTransient
@@ -643,7 +684,33 @@ func (e *Executor) persistFailure(ctx context.Context, state *RunState, failure 
 	return fmt.Errorf("stage %q: %w", failure.stage.ID, failure.err)
 }
 
+// attachFailureArtifact keeps a failing invocation's artifact on its FAILED
+// record, exactly as persistCompletion keeps one on a COMPLETED record — a
+// pre-ship check's full output must survive even though the stage never
+// completes. A no-op when the invocation produced no artifact.
+func attachFailureArtifact(record *StageRecord, stageID, path string) error {
+	if path == "" {
+		return nil
+	}
+	sum, err := ArtifactSHA256(path)
+	if err != nil {
+		return fmt.Errorf("stage %q failed but its artifact is unreadable: %w", stageID, err)
+	}
+	record.ArtifactPath = path
+	record.ArtifactSHA256 = sum
+	return nil
+}
+
 func (e *Executor) persistCompletion(state *RunState, stage Stage, plan Plan, input StageInput, output StageOutput) error {
+	if output.Skipped {
+		return e.persistSkippedInternal(state, stage, output.SkipReason)
+	}
+	return e.persistCompletedStage(state, stage, plan, input, output)
+}
+
+// persistCompletedStage records a stage that produced an artifact, as
+// opposed to persistSkippedInternal's path for one that didn't.
+func (e *Executor) persistCompletedStage(state *RunState, stage Stage, plan Plan, input StageInput, output StageOutput) error {
 	artifactPath, err := e.artifactFor(stage, input, output)
 	if err != nil {
 		return e.persistFailure(context.Background(), state, stageFailure{stage: stage, err: err, usage: output.Usage,
@@ -679,6 +746,24 @@ func (e *Executor) persistCompletion(state *RunState, stage Stage, plan Plan, in
 		return e.applyRoute(plan, input, state)
 	}
 	return nil
+}
+
+// persistSkippedInternal records an internal stage that found nothing to
+// do — e.g. no preShipChecks configured. It is a second, independent way
+// for a stage to settle without completing: the router's own skip
+// (applyRouteToStage) is keyed to the analyst's typed Route, which an
+// internal stage reading delivery-policy.yaml directly has no part in.
+func (e *Executor) persistSkippedInternal(state *RunState, stage Stage, reason string) error {
+	now := time.Now().UTC()
+	record := state.Stages[stage.ID]
+	record.Status = StageStatusSkipped
+	record.SkipReason = reason
+	record.FinishedAt = &now
+	if err := e.persistStatus(state, stage.ID, record); err != nil {
+		return err
+	}
+	return e.emit(Event{Kind: EventStageSkipped, Stage: stage.ID,
+		Sequence: state.Stages[stage.ID].Sequence, Reason: reason})
 }
 
 // emitStageEnd records how a stage finished, using the same record the

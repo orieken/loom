@@ -39,6 +39,14 @@ type StageOutput struct {
 	// Usage is what the invocation consumed, as the provider reported it
 	// (roadmap L3.8). Nil from a provider that reports nothing.
 	Usage *Usage
+	// Skipped marks an internal stage that found nothing to do — e.g. no
+	// preShipChecks configured. This is a second, independent way for a
+	// stage to settle without completing: the router's own skip
+	// (applyRoute) is keyed to the analyst's typed Route, which a stage
+	// reading delivery-policy.yaml directly has no part in.
+	Skipped bool
+	// SkipReason explains a Skipped output. Required when Skipped is true.
+	SkipReason string
 }
 
 // Provider invokes one stage's agent and blocks until it finishes or ctx is

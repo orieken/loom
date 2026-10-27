@@ -22,20 +22,25 @@ import (
 // not parse is not a policy that silently does nothing, it is a file whose
 // author believes it is working — and since ADR-010 the same holds for a
 // delivery-policy.yaml still setting `mode` or `autoProceed*`.
-func loadPolicies(cmd *cobra.Command, dir string) ([]policy.Policy, error) {
+//
+// preShipChecks is returned on every path, including the policiesEnabled:
+// false early return: it is a required check, not automation/approval
+// delegation, so the kill switch for *automation* must not also silently
+// disable the one gate this feature exists to add.
+func loadPolicies(cmd *cobra.Command, dir string) ([]policy.Policy, []policy.PreShipCheck, error) {
 	config, err := policy.LoadConfig(policy.ConfigFile)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if !config.PoliciesEvaluated() {
 		cmd.Println(policy.DisabledNotice(policy.ConfigFile))
-		return nil, nil
+		return nil, config.PreShipChecks, nil
 	}
 	policies, err := policy.Load(dir)
 	if err != nil {
-		return nil, fmt.Errorf("policies in %s: %w", dir, err)
+		return nil, nil, fmt.Errorf("policies in %s: %w", dir, err)
 	}
-	return policies, nil
+	return policies, config.PreShipChecks, nil
 }
 
 // reportPolicyDecision tells a human what the policies said, and is

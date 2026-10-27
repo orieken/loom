@@ -1,0 +1,518 @@
+{
+  "schemaVersion": 10,
+  "planName": "deliver-feature",
+  "createdBy": "executor",
+  "featureName": "pre-ship-checks",
+  "specPath": ".claude/factory/claims/pre-ship-checks.md",
+  "specSha256": "d2dba6924d6bb7c600270936f5d0fd811eb3090aca7cec3cc687982c71ead978",
+  "provider": "claude",
+  "startedAt": "2026-10-26T04:30:28.401899Z",
+  "startCommit": "2e8284c3bec7652ffef3dc8d5ca16b03074314e8",
+  "diffLines": {
+    "confirm-design": 3502,
+    "confirm-security": 3502,
+    "confirm-ship": 3502
+  },
+  "reviewedDigest": "119cfe4a3b9570236d3403c90789ade411982a18afce38d611fb2c78f8158eb2",
+  "stages": {
+    "acceptance-scenarios": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-26T04:49:27.01756Z",
+      "finishedAt": "2026-10-26T04:50:34.1713Z",
+      "artifactPath": ".claude/feature-workspace/pre-ship-checks/state/acceptance-scenarios.json",
+      "artifactSha256": "5033b771a8a27fccedcb6acf4cc95d52a7dace937e0413b40741fbea4e2be38a",
+      "sequence": 11,
+      "iteration": 1,
+      "stateKind": "scenarios",
+      "agent": "qa-engineer",
+      "viewPath": ".claude/feature-workspace/pre-ship-checks/acceptance-scenarios.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 10,
+        "outputTokens": 7122,
+        "cacheReadTokens": 346303,
+        "cacheCreationTokens": 62275,
+        "costUsd": 0.3896006
+      }
+    },
+    "accessibility-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-26T04:44:14.590491Z",
+      "sequence": 6,
+      "skipReason": "the analysis declares no UI surface",
+      "iteration": 1
+    },
+    "analyst": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-26T04:33:00.108012Z",
+      "finishedAt": "2026-10-26T04:44:14.546927Z",
+      "artifactPath": ".claude/feature-workspace/pre-ship-checks/state/analyst.json",
+      "artifactSha256": "f1679943ab3e78738c2d7ded74ee2248082cc95ef9bb6c62facf0334a2e34582",
+      "sequence": 2,
+      "iteration": 1,
+      "stateKind": "analysis",
+      "agent": "analyst",
+      "viewPath": ".claude/feature-workspace/pre-ship-checks/analysis.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 104,
+        "outputTokens": 61481,
+        "cacheReadTokens": 9011352,
+        "cacheCreationTokens": 210905,
+        "costUsd": 3.2609083999999995
+      }
+    },
+    "architect": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-26T04:44:14.591258Z",
+      "finishedAt": "2026-10-26T04:49:27.016636Z",
+      "artifactPath": ".claude/feature-workspace/pre-ship-checks/state/architect.json",
+      "artifactSha256": "d3b925960402e54b1a9fafbeb2fdfb67e3ea78f57690c0b8ee8838bbfb289f6e",
+      "sequence": 10,
+      "iteration": 1,
+      "stateKind": "architecture",
+      "agent": "architect",
+      "viewPath": ".claude/feature-workspace/pre-ship-checks/architecture-notes.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 38,
+        "outputTokens": 27698,
+        "cacheReadTokens": 2204411,
+        "cacheCreationTokens": 120957,
+        "costUsd": 1.2017662000000002
+      }
+    },
+    "code-reviewer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-26T23:32:14.464395Z",
+      "finishedAt": "2026-10-26T23:33:52.635541Z",
+      "artifactPath": ".claude/feature-workspace/pre-ship-checks/state/code-reviewer.json",
+      "artifactSha256": "04961d42723324f58f2ba79a84c808bf8c8d39058ce766222a5bc29612241248",
+      "sequence": 13,
+      "iteration": 2,
+      "stateKind": "review",
+      "agent": "code-reviewer",
+      "viewPath": ".claude/feature-workspace/pre-ship-checks/code-review-report.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 92,
+        "outputTokens": 27259,
+        "cacheReadTokens": 5259781,
+        "cacheCreationTokens": 161762,
+        "costUsd": 1.9717781999999997
+      },
+      "iterationArtifacts": [
+        {
+          "iteration": 1,
+          "path": ".claude/feature-workspace/pre-ship-checks/.iterations/code-reviewer.1.json",
+          "sha256": "e45fd4666db2404b2678252131141119ae1287ffe6732e8f8b2fe37434780a39",
+          "at": "2026-10-26T23:29:54.080393Z"
+        }
+      ]
+    },
+    "context-engineer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-26T04:30:28.410269Z",
+      "finishedAt": "2026-10-26T04:33:00.107207Z",
+      "artifactPath": ".claude/feature-workspace/pre-ship-checks/state/context-engineer.json",
+      "artifactSha256": "bedde20d951a83b7c3999dd27477c92e43e3e3cc9f32fd6d34fe10dafc8907e7",
+      "sequence": 1,
+      "iteration": 1,
+      "stateKind": "context",
+      "agent": "context-engineer",
+      "viewPath": ".claude/feature-workspace/pre-ship-checks/context-manifest.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 36,
+        "outputTokens": 12257,
+        "cacheReadTokens": 1736520,
+        "cacheCreationTokens": 96507,
+        "costUsd": 0.8559740000000001
+      }
+    },
+    "data-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-26T04:44:14.590344Z",
+      "sequence": 5,
+      "skipReason": "no data-model change to sequence",
+      "iteration": 1
+    },
+    "developer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-26T23:29:54.107318Z",
+      "finishedAt": "2026-10-26T23:32:14.463643Z",
+      "artifactPath": ".claude/feature-workspace/pre-ship-checks/state/developer.json",
+      "artifactSha256": "8b6a6d6046ac4ca7874fc88825d21553c191a7ee1a86326ad2492dabf94c1357",
+      "gate": "confirm-design",
+      "sequence": 12,
+      "editedAfterReview": true,
+      "iteration": 2,
+      "stateKind": "implementation",
+      "agent": "developer",
+      "viewPath": ".claude/feature-workspace/pre-ship-checks/implementation-notes.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 94,
+        "outputTokens": 18182,
+        "cacheReadTokens": 4584252,
+        "cacheCreationTokens": 172687,
+        "costUsd": 1.7896064
+      },
+      "iterationArtifacts": [
+        {
+          "iteration": 1,
+          "path": ".claude/feature-workspace/pre-ship-checks/.iterations/developer.1.json",
+          "sha256": "395426193ad60df222b6acfb00e48f7b51484cb42a431b153d32c28d647ac3d0",
+          "at": "2026-10-26T23:29:54.08007Z"
+        }
+      ]
+    },
+    "devops-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-26T04:44:14.591028Z",
+      "gate": "confirm-ship",
+      "sequence": 9,
+      "skipReason": "the analysis lists no DevOps tasks",
+      "iteration": 1
+    },
+    "performance-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-26T04:44:14.59015Z",
+      "sequence": 4,
+      "skipReason": "no performance requirement carries a threshold with a number and a unit",
+      "iteration": 1
+    },
+    "qa-engineer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-26T23:52:54.130285Z",
+      "finishedAt": "2026-10-27T00:10:17.411258Z",
+      "artifactPath": ".claude/feature-workspace/pre-ship-checks/state/qa-engineer.json",
+      "artifactSha256": "f7bbfe12d7cb03a7e37345bccb918b52b726b491c98666f4c708e359eac184f5",
+      "gate": "confirm-security",
+      "sequence": 15,
+      "iteration": 1,
+      "stateKind": "qa",
+      "agent": "qa-engineer",
+      "viewPath": ".claude/feature-workspace/pre-ship-checks/qa-report.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 140,
+        "outputTokens": 31033,
+        "cacheReadTokens": 9246133,
+        "cacheCreationTokens": 140942,
+        "costUsd": 2.723604600000001
+      }
+    },
+    "router": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-26T04:44:14.547761Z",
+      "finishedAt": "2026-10-26T04:44:14.589832Z",
+      "artifactPath": ".claude/feature-workspace/pre-ship-checks/state/router.json",
+      "artifactSha256": "b90b6783753dacbfe516318b157338ca8d88b387882c67f0f474299ffaaf1b66",
+      "sequence": 3,
+      "iteration": 1,
+      "stateKind": "route",
+      "agent": "router",
+      "viewPath": ".claude/feature-workspace/pre-ship-checks/route.md"
+    },
+    "security-reviewer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-26T23:33:52.636316Z",
+      "finishedAt": "2026-10-26T23:36:50.863506Z",
+      "artifactPath": ".claude/feature-workspace/pre-ship-checks/state/security-reviewer.json",
+      "artifactSha256": "f7c9b74b1c2922d5ba1ec6ff81398306cd18120c0aa0197d88c7da894091e6f1",
+      "sequence": 14,
+      "iteration": 1,
+      "stateKind": "security",
+      "agent": "security-reviewer",
+      "viewPath": ".claude/feature-workspace/pre-ship-checks/security-report.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 44,
+        "outputTokens": 13239,
+        "cacheReadTokens": 2167577,
+        "cacheCreationTokens": 99284,
+        "costUsd": 0.9631294000000001
+      }
+    },
+    "sre-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-26T04:44:14.590848Z",
+      "sequence": 8,
+      "skipReason": "the analysis declares no served runtime surface, so no availability or latency SLI applies",
+      "iteration": 1
+    },
+    "tech-writer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-27T00:10:17.412017Z",
+      "finishedAt": "2026-10-27T00:11:30.817926Z",
+      "artifactPath": ".claude/feature-workspace/pre-ship-checks/tech-writer.md",
+      "artifactSha256": "3710c7bb93e7fbdc16b47260c9b0d71d80017efc97577aae5b3cf7903370dde3",
+      "sequence": 16,
+      "editedAfterReview": true,
+      "iteration": 1,
+      "agent": "tech-writer",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 22,
+        "outputTokens": 6034,
+        "cacheReadTokens": 967051,
+        "cacheCreationTokens": 84204,
+        "costUsd": 0.5906102000000001
+      }
+    },
+    "visual-qa-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-26T04:44:14.59068Z",
+      "sequence": 7,
+      "skipReason": "the analysis declares no UI surface, so there is nothing to look at",
+      "iteration": 1
+    }
+  },
+  "approvals": {
+    "confirm-design": {
+      "approvedAt": "2026-10-26T05:17:50.718704Z",
+      "method": "flag",
+      "approver": "oscarrieken",
+      "artifactDigests": {
+        "acceptance-scenarios": "5033b771a8a27fccedcb6acf4cc95d52a7dace937e0413b40741fbea4e2be38a",
+        "analyst": "f1679943ab3e78738c2d7ded74ee2248082cc95ef9bb6c62facf0334a2e34582",
+        "architect": "d3b925960402e54b1a9fafbeb2fdfb67e3ea78f57690c0b8ee8838bbfb289f6e",
+        "context-engineer": "bedde20d951a83b7c3999dd27477c92e43e3e3cc9f32fd6d34fe10dafc8907e7",
+        "router": "b90b6783753dacbfe516318b157338ca8d88b387882c67f0f474299ffaaf1b66"
+      }
+    },
+    "confirm-security": {
+      "approvedAt": "2026-10-26T23:52:54.052505Z",
+      "method": "flag",
+      "approver": "oscarrieken",
+      "artifactDigests": {
+        "acceptance-scenarios": "5033b771a8a27fccedcb6acf4cc95d52a7dace937e0413b40741fbea4e2be38a",
+        "analyst": "f1679943ab3e78738c2d7ded74ee2248082cc95ef9bb6c62facf0334a2e34582",
+        "architect": "d3b925960402e54b1a9fafbeb2fdfb67e3ea78f57690c0b8ee8838bbfb289f6e",
+        "code-reviewer": "04961d42723324f58f2ba79a84c808bf8c8d39058ce766222a5bc29612241248",
+        "context-engineer": "bedde20d951a83b7c3999dd27477c92e43e3e3cc9f32fd6d34fe10dafc8907e7",
+        "developer": "8b6a6d6046ac4ca7874fc88825d21553c191a7ee1a86326ad2492dabf94c1357",
+        "router": "b90b6783753dacbfe516318b157338ca8d88b387882c67f0f474299ffaaf1b66",
+        "security-reviewer": "f7c9b74b1c2922d5ba1ec6ff81398306cd18120c0aa0197d88c7da894091e6f1"
+      }
+    },
+    "confirm-ship": {
+      "approvedAt": "2026-10-27T01:17:46.011528Z",
+      "method": "flag",
+      "approver": "oscarrieken",
+      "artifactDigests": {
+        "acceptance-scenarios": "5033b771a8a27fccedcb6acf4cc95d52a7dace937e0413b40741fbea4e2be38a",
+        "analyst": "f1679943ab3e78738c2d7ded74ee2248082cc95ef9bb6c62facf0334a2e34582",
+        "architect": "d3b925960402e54b1a9fafbeb2fdfb67e3ea78f57690c0b8ee8838bbfb289f6e",
+        "code-reviewer": "04961d42723324f58f2ba79a84c808bf8c8d39058ce766222a5bc29612241248",
+        "context-engineer": "bedde20d951a83b7c3999dd27477c92e43e3e3cc9f32fd6d34fe10dafc8907e7",
+        "developer": "8b6a6d6046ac4ca7874fc88825d21553c191a7ee1a86326ad2492dabf94c1357",
+        "qa-engineer": "f7bbfe12d7cb03a7e37345bccb918b52b726b491c98666f4c708e359eac184f5",
+        "router": "b90b6783753dacbfe516318b157338ca8d88b387882c67f0f474299ffaaf1b66",
+        "security-reviewer": "f7c9b74b1c2922d5ba1ec6ff81398306cd18120c0aa0197d88c7da894091e6f1",
+        "tech-writer": "3710c7bb93e7fbdc16b47260c9b0d71d80017efc97577aae5b3cf7903370dde3"
+      }
+    }
+  },
+  "baselines": {
+    "confirm-design": {
+      "at": "2026-10-26T05:17:50.718716Z",
+      "reason": "APPROVED",
+      "artifacts": {
+        "acceptance-scenarios": {
+          "stage": "acceptance-scenarios",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-design/acceptance-scenarios.md",
+          "sha256": "ffa9116d64f5bc32bbacaec4336b9a4b0bafc17e0c8fa7725141db44764d102a",
+          "at": "2026-10-26T05:17:50.720225Z"
+        },
+        "analyst": {
+          "stage": "analyst",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-design/analyst.md",
+          "sha256": "d0666cd5e8d8392d76657ffc333c1b94c168e86637b9922c6656d840c7c63e43",
+          "at": "2026-10-26T05:17:50.72042Z"
+        },
+        "architect": {
+          "stage": "architect",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-design/architect.md",
+          "sha256": "88b6989e184ba1749da1953dffef663e6ddd9f153cfcec4d0bed45198e3dfc5b",
+          "at": "2026-10-26T05:17:50.719973Z"
+        },
+        "context-engineer": {
+          "stage": "context-engineer",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-design/context-engineer.md",
+          "sha256": "e79e6a0015925460bdb4b3007002abf7f85b70f560ba415c2891e7d179ad3a56",
+          "at": "2026-10-26T05:17:50.719755Z"
+        },
+        "router": {
+          "stage": "router",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-design/router.md",
+          "sha256": "46fea137a15a5963c0be4c56d53bc2c7c22f72f7b98ed9fdf3f986b71061e476",
+          "at": "2026-10-26T05:17:50.720322Z"
+        }
+      }
+    },
+    "confirm-security": {
+      "at": "2026-10-26T23:52:54.052515Z",
+      "reason": "APPROVED",
+      "artifacts": {
+        "acceptance-scenarios": {
+          "stage": "acceptance-scenarios",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-security/acceptance-scenarios.md",
+          "sha256": "ffa9116d64f5bc32bbacaec4336b9a4b0bafc17e0c8fa7725141db44764d102a",
+          "at": "2026-10-26T23:52:54.053508Z"
+        },
+        "analyst": {
+          "stage": "analyst",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-security/analyst.md",
+          "sha256": "d0666cd5e8d8392d76657ffc333c1b94c168e86637b9922c6656d840c7c63e43",
+          "at": "2026-10-26T23:52:54.053719Z"
+        },
+        "architect": {
+          "stage": "architect",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-security/architect.md",
+          "sha256": "88b6989e184ba1749da1953dffef663e6ddd9f153cfcec4d0bed45198e3dfc5b",
+          "at": "2026-10-26T23:52:54.053398Z"
+        },
+        "code-reviewer": {
+          "stage": "code-reviewer",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-security/code-reviewer.md",
+          "sha256": "010c60af9e3fedf102cc9e0d6a165d244d5b1ac5c171126e8d5fe464f4745fb0",
+          "at": "2026-10-26T23:52:54.052775Z"
+        },
+        "context-engineer": {
+          "stage": "context-engineer",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-security/context-engineer.md",
+          "sha256": "e79e6a0015925460bdb4b3007002abf7f85b70f560ba415c2891e7d179ad3a56",
+          "at": "2026-10-26T23:52:54.053098Z"
+        },
+        "developer": {
+          "stage": "developer",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-security/developer.md",
+          "sha256": "ee043ad6bcab1b089ea7e46f540ba65f242c3743e73c8aa1090222aa25769671",
+          "at": "2026-10-26T23:52:54.053006Z"
+        },
+        "router": {
+          "stage": "router",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-security/router.md",
+          "sha256": "46fea137a15a5963c0be4c56d53bc2c7c22f72f7b98ed9fdf3f986b71061e476",
+          "at": "2026-10-26T23:52:54.053175Z"
+        },
+        "security-reviewer": {
+          "stage": "security-reviewer",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-security/security-reviewer.md",
+          "sha256": "686019b227418fb939565603fe356e0c1f0911c53e898baa32a1b14e7580380e",
+          "at": "2026-10-26T23:52:54.052897Z"
+        }
+      }
+    },
+    "confirm-ship": {
+      "at": "2026-10-27T01:17:46.011534Z",
+      "reason": "APPROVED",
+      "artifacts": {
+        "acceptance-scenarios": {
+          "stage": "acceptance-scenarios",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-ship/acceptance-scenarios.md",
+          "sha256": "ffa9116d64f5bc32bbacaec4336b9a4b0bafc17e0c8fa7725141db44764d102a",
+          "at": "2026-10-27T01:17:46.01293Z"
+        },
+        "analyst": {
+          "stage": "analyst",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-ship/analyst.md",
+          "sha256": "d0666cd5e8d8392d76657ffc333c1b94c168e86637b9922c6656d840c7c63e43",
+          "at": "2026-10-27T01:17:46.012317Z"
+        },
+        "architect": {
+          "stage": "architect",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-ship/architect.md",
+          "sha256": "88b6989e184ba1749da1953dffef663e6ddd9f153cfcec4d0bed45198e3dfc5b",
+          "at": "2026-10-27T01:17:46.011772Z"
+        },
+        "code-reviewer": {
+          "stage": "code-reviewer",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-ship/code-reviewer.md",
+          "sha256": "010c60af9e3fedf102cc9e0d6a165d244d5b1ac5c171126e8d5fe464f4745fb0",
+          "at": "2026-10-27T01:17:46.012194Z"
+        },
+        "context-engineer": {
+          "stage": "context-engineer",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-ship/context-engineer.md",
+          "sha256": "e79e6a0015925460bdb4b3007002abf7f85b70f560ba415c2891e7d179ad3a56",
+          "at": "2026-10-27T01:17:46.013021Z"
+        },
+        "developer": {
+          "stage": "developer",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-ship/developer.md",
+          "sha256": "ee043ad6bcab1b089ea7e46f540ba65f242c3743e73c8aa1090222aa25769671",
+          "at": "2026-10-27T01:17:46.012446Z"
+        },
+        "qa-engineer": {
+          "stage": "qa-engineer",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-ship/qa-engineer.md",
+          "sha256": "211b1b0b67de78455939f41304d66573bbd77b344b2c0209b771fadcb687aaf5",
+          "at": "2026-10-27T01:17:46.012617Z"
+        },
+        "router": {
+          "stage": "router",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-ship/router.md",
+          "sha256": "46fea137a15a5963c0be4c56d53bc2c7c22f72f7b98ed9fdf3f986b71061e476",
+          "at": "2026-10-27T01:17:46.012535Z"
+        },
+        "security-reviewer": {
+          "stage": "security-reviewer",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-ship/security-reviewer.md",
+          "sha256": "686019b227418fb939565603fe356e0c1f0911c53e898baa32a1b14e7580380e",
+          "at": "2026-10-27T01:17:46.012722Z"
+        },
+        "tech-writer": {
+          "stage": "tech-writer",
+          "path": ".claude/feature-workspace/pre-ship-checks/.approved/confirm-ship/tech-writer.md",
+          "sha256": "3710c7bb93e7fbdc16b47260c9b0d71d80017efc97577aae5b3cf7903370dde3",
+          "at": "2026-10-27T01:17:46.012821Z"
+        }
+      }
+    }
+  },
+  "policyDecisions": [
+    {
+      "gate": "confirm-ship",
+      "at": "2026-10-27T00:11:30.843358Z",
+      "effect": "auto-approve",
+      "honoured": false,
+      "policies": [
+        {
+          "name": "evidence-clean-ship",
+          "action": "auto-approve",
+          "outcome": "TRUE",
+          "source": ".claude/policies/evidence-clean-ship.policy.yaml"
+        }
+      ]
+    }
+  ],
+  "spend": {
+    "model": "claude-sonnet-5",
+    "inputTokens": 580,
+    "outputTokens": 204305,
+    "cacheReadTokens": 35523380,
+    "cacheCreationTokens": 1149523,
+    "costUsd": 13.746977999999999
+  },
+  "budget": {
+    "maxUsd": 40,
+    "maxHours": 3
+  },
+  "unmeasuredAccepted": {
+    "developer": {
+      "finishedAt": "2026-10-26T05:40:38.804676Z",
+      "acceptedBy": "oscarrieken",
+      "acceptedAt": "2026-10-26T23:19:40.973216Z"
+    }
+  },
+  "updatedAt": "2026-10-27T01:17:46.118707Z"
+}

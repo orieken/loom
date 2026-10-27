@@ -8,6 +8,7 @@ package orchestrator
 // resets that approval through the ordinary L2.14 binding.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -16,14 +17,20 @@ import (
 	"github.com/orieken/loom/internal/state"
 )
 
-// runInternalStage dispatches a stage the executor runs itself. Only the
-// router exists today; a second one should make this a registry rather than
-// a switch.
-func (e *Executor) runInternalStage(stage Stage, plan Plan, input StageInput) (StageOutput, error) {
-	if stage.ID != RouterStageID {
+// runInternalStage dispatches a stage the executor runs itself: the router,
+// or pre-ship-checks. ctx and state are needed only by the latter (run
+// cancellation, and RunState.StartCommit for LOOM_BASE_COMMIT) but are
+// threaded to both so a third internal stage needing them costs no further
+// signature change.
+func (e *Executor) runInternalStage(ctx context.Context, stage Stage, plan Plan, input StageInput, state *RunState) (StageOutput, error) {
+	switch stage.ID {
+	case RouterStageID:
+		return computeRoute(plan, input)
+	case PreShipChecksStageID:
+		return e.runPreShipChecks(ctx, input, state)
+	default:
 		return StageOutput{}, fmt.Errorf("stage %q is marked internal but the executor has no routine for it", stage.ID)
 	}
-	return computeRoute(plan, input)
 }
 
 // computeRoute reads the analysis and returns the route as a typed payload,

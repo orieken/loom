@@ -183,3 +183,41 @@ What stays: `policiesEnabled` (kill switch), `maxContractRetries`, and the two `
 `approval-gates.md` says cannot happen. Keys that were ignored rather than rejected let a project
 believe it had configured something. One engine now does automation, and it writes down every
 decision.
+
+---
+
+# Added: `preShipChecks` in `delivery-policy.yaml` (2026-10-26)
+
+**Additive, not breaking.** `loom run`'s built-in `deliver-feature` plan now has a second
+executor-internal stage, `pre-ship-checks`, between `tech-writer` and `devops-engineer` — after the
+last reviewing/documenting stage and before the stage carrying the `confirm-ship` gate. It exists to
+close a gap PR #18 exposed: every agent's tests passed and the PR was approved, and CI's own
+changed-line coverage gate still rejected the change, because nothing in the pipeline had run the
+check CI runs.
+
+A project declares the commands that must exit 0 before a human is asked to approve shipping, as a
+new `preShipChecks` list:
+
+```yaml
+preShipChecks:
+  - name: changed-line coverage
+    command: scripts/pre-ship-check.sh
+    timeout: 10m   # optional — defaults to 10 minutes
+```
+
+Each entry needs a `name` and a `command`; an unknown key, or an entry missing either field, is
+rejected by `loom run` before any stage starts. Each command runs through `bash -c` at the project
+root, with `LOOM_BASE_COMMIT` set to the run's starting commit. A failing or timed-out check fails
+the stage — terminally, with no supervisor retry — and the run never reaches `confirm-ship`; checks
+listed after it never run. With no `preShipChecks` configured, the stage records itself `SKIPPED`
+with the reason `"no preShipChecks configured"` rather than `COMPLETED`, and is orthogonal to the
+`policiesEnabled` kill switch: it is a required check, not automation.
+
+`loom`'s own repository ships `scripts/pre-ship-check.sh`, which reproduces CI's own changed-line
+coverage gate (`go test ./... -coverprofile=...` then `go run ./cmd/diff-coverage --base
+"$LOOM_BASE_COMMIT" --profile ...`) and refuses to run with an empty `LOOM_BASE_COMMIT`.
+
+A check's command may print secrets from the project's own environment to stdout or stderr. That
+output stays in the run's workspace artifact, `pre-ship-checks.md` — the last 50 lines per check on
+a pass, the full output for a failing or timed-out check. It never reaches telemetry: spans and
+events carry only the check's name, exit status, and duration.

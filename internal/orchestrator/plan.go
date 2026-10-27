@@ -150,6 +150,17 @@ func defaultPlanGates() map[string]string {
 // approves the route along with the design.
 const RouterStageID = "router"
 
+// PreShipChecksStageID names the executor-internal stage that runs the
+// project's declared preShipChecks (shared/rules/approval-gates.md gate #1
+// guards the ship decision itself; this guards what CI would reject the
+// change for). It sits after the last reviewing/documenting stage and
+// before the stage carrying GateConfirmShip, so a failing check halts the
+// run before a human is ever asked to approve shipping it — closing the gap
+// PR #18 exposed, where every agent's tests passed and CI's own coverage
+// gate still rejected the change because nothing in the pipeline had run
+// the check CI runs.
+const PreShipChecksStageID = "pre-ship-checks"
+
 // defaultSkippableStages declares which stages the router may route around.
 // Everything absent from this map always runs. The review stages
 // (code-reviewer, security-reviewer) are absent deliberately: an unnecessary
@@ -274,13 +285,14 @@ func DefaultDeliverFeaturePlan() Plan {
 		"visual-qa-engineer",
 		"sre-engineer",
 		"tech-writer",
+		PreShipChecksStageID,
 		"devops-engineer",
 	}
 	stages := make([]Stage, 0, len(agents))
 	for _, id := range agents {
 		stages = append(stages, Stage{ID: id, Agent: agentFor(id), Gate: gates[id],
 			StateKind: kinds[id], Consumes: consumes[id], Skippable: skippable[id],
-			Internal: id == RouterStageID, Timeout: defaultStageTimeout})
+			Internal: id == RouterStageID || id == PreShipChecksStageID, Timeout: defaultStageTimeout})
 	}
 	return Plan{Name: DefaultDeliverFeaturePlanName, Stages: stages, Loops: defaultPlanLoops()}
 }
