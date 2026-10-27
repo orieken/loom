@@ -14,7 +14,7 @@ finish: pr
 autonomy: inherit
 depends-on: [i-4-vocabulary-test]
 budget:
-  max-attempts: 2
+  max-attempts: 3
   max-usd: 15
   max-hours: 1
 scope:
