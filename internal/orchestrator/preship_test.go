@@ -150,7 +150,18 @@ func TestPreShipChecksFailsOnANonZeroExitAndStopsBeforeLaterChecks(t *testing.T)
 	if !strings.Contains(err.Error(), "second") {
 		t.Errorf("error %q does not name the failing check", err)
 	}
-	state := mustLoad(t, store)
+	assertFailedTerminallyKeepingItsArtifact(t, mustLoad(t, store))
+	report := readPreShipReport(t, input)
+	if !strings.Contains(report, "## second") {
+		t.Errorf("report does not keep the failing check:\n%s", report)
+	}
+	if strings.Contains(report, "## third") {
+		t.Error("a check after the failing one ran — it must not")
+	}
+}
+
+func assertFailedTerminallyKeepingItsArtifact(t *testing.T, state *orchestrator.RunState) {
+	t.Helper()
 	record := state.Stages[orchestrator.PreShipChecksStageID]
 	if record.Status != orchestrator.StageStatusFailed {
 		t.Fatalf("pre-ship-checks status = %q, want FAILED", record.Status)
@@ -163,13 +174,6 @@ func TestPreShipChecksFailsOnANonZeroExitAndStopsBeforeLaterChecks(t *testing.T)
 	}
 	if devops := state.Stages["devops-engineer"]; devops.Status != "" {
 		t.Errorf("devops-engineer status = %q, want never reached", devops.Status)
-	}
-	report := readPreShipReport(t, input)
-	if !strings.Contains(report, "## second") {
-		t.Errorf("report does not keep the failing check:\n%s", report)
-	}
-	if strings.Contains(report, "## third") {
-		t.Error("a check after the failing one ran — it must not")
 	}
 }
 
@@ -273,11 +277,15 @@ func TestPreShipChecksStageIsPositionedBetweenTechWriterAndDevOps(t *testing.T) 
 		stages[stage.ID] = stage
 	}
 
-	if !(positions["tech-writer"] < positions[orchestrator.PreShipChecksStageID] &&
-		positions[orchestrator.PreShipChecksStageID] < positions["devops-engineer"]) {
+	preShip := positions[orchestrator.PreShipChecksStageID]
+	if positions["tech-writer"] >= preShip || preShip >= positions["devops-engineer"] {
 		t.Fatalf("pre-ship-checks is not positioned between tech-writer and devops-engineer: %+v", positions)
 	}
-	preShip := stages[orchestrator.PreShipChecksStageID]
+	assertPreShipStageShape(t, stages[orchestrator.PreShipChecksStageID])
+}
+
+func assertPreShipStageShape(t *testing.T, preShip orchestrator.Stage) {
+	t.Helper()
 	if !preShip.Internal {
 		t.Error("pre-ship-checks must be Internal")
 	}
