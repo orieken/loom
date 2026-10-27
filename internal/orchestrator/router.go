@@ -150,6 +150,7 @@ func (e *Executor) applyRouteToStage(stage Stage, route state.Route, runState *R
 	record := runState.Stages[stage.ID]
 	record.Status = StageStatusSkipped
 	record.SkipReason = route.ReasonFor(stage.ID)
+	record.StartedAt = time.Time{} // a skipped stage did not start; an earlier run's start is not this record's
 	record.FinishedAt = &now
 	if err := e.persistStatus(runState, stage.ID, record); err != nil {
 		return err
