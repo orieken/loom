@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 2,
+  "feature": "factory-idle-message",
+  "summary": "The factory supervisor (internal/factory) prints a line per ledger event but says nothing on a tick that changes nothing, so an operator cannot tell an idle supervisor from a hung one. This feature adds a once-per-state-entry console line computed purely from the ledger replay already produced each tick: 'idle — no ready orders; commit one to intake/ on <branch>' when nothing is running, nothing is waiting on a human, and every known order has shipped; and 'waiting on a human — <n> order(s) in the inbox: loom factory inbox' when nothing is running but at least one order is halted at a gate, awaiting a commit or open-pr approval, or parked. A third, silent case (an order retrying before its backoff, stopped awaiting resume, or stuck on a push failure) is neither idle nor waiting and prints nothing, matching the spec's resolved assumption for a retrying order and generalizing it to the other non-terminal phases the AC's four enumerated waiting kinds don't cover. The line is tracked against the supervisor's last-reported state so it prints once on entry and again only on a state or count change, never on every tick. No ledger event, API, or data model changes are involved.",
+  "acceptanceCriteria": [
+    {
+      "statement": "When a tick ends with no order running, no order claimable, and no order waiting on a human, and the supervisor was not already idle, it MUST print exactly 'idle — no ready orders; commit one to intake/ on <branch>', with the configured intake branch filled in.",
+      "examples": [
+        "Fresh supervisor, intake/ has never had a committed order → prints 'idle — no ready orders; commit one to intake/ on main'",
+        "Every claimed order has reached shipped and intake has no new ready candidate → prints the same idle line, matching the dogfood report's 'every order shipped' case"
+      ]
+    },
+    {
+      "statement": "When a tick ends with no order running and at least one order waiting on a human, it MUST print 'waiting on a human — <n> order(s) in the inbox: loom factory inbox', where n counts a gate halt, a commit proposal, a PR proposal, and a parked order.",
+      "examples": [
+        "One order halted at gate confirm-design, nothing else outstanding → 'waiting on a human — 1 order(s) in the inbox: loom factory inbox'",
+        "One gate halt plus one parked order → n = 2"
+      ]
+    },
+    {
+      "statement": "Given consecutive ticks remain in the same state, the line MUST print exactly once, on the tick that enters the state, and never again while the state persists unchanged."
+    },
+    {
+      "statement": "Given the supervisor leaves idle or waiting and later re-enters it, the line MUST print again; while waiting, a change in the waiting count MUST print the line again with the new count."
+    },
+    {
+      "statement": "Given loom factory run --once, the same once-per-entry rule MUST apply to its single tick, so the line prints at most once for that invocation."
+    },
+    {
+      "statement": "The change MUST pass go test ./internal/factory/..., every new function MUST have cyclomatic complexity below 7, every changed line MUST be covered, and no file outside internal/factory/ MUST change except the run's own delivery record under docs/features/factory-idle-message/."
+    }
+  ],
+  "nonFunctionalRequirements": [
+    {
+      "category": "performance",
+      "requirement": "Determining idle/waiting state MUST read only the ledger replay the tick already produces. It MUST make no extra git or filesystem pass per tick — in particular it MUST NOT call Inbox() (which calls loadRunState and tree.Digest()/ChangedPaths()), and MUST NOT re-read intake."
+    }
+  ],
+  "proposedFitnessFunctions": [],
+  "outOfScope": [
+    "Changing any ledger event, or recording idleness in the ledger — this is a console message only, never written to .claude/factory/ledger.jsonl",
+    "A periodic heartbeat while work is running",
+    "Surfacing a stopped-awaiting-resume order or a stuck push failure through loom factory inbox — Inbox()'s itemsFor switch already has no case for PhaseStopped and none is added here"
+  ],
+  "surfaces": {
+    "ui": false,
+    "runtime": true
+  },
+  "boundedContext": {
+    "owning": "Agent Orchestration",
+    "crossings": []
+  },
+  "domainEvents": {
+    "commands": [],
+    "eventsProduced": [],
+    "owningAggregates": ["OrderState (internal/factory/replay.go)"],
+    "readModels": []
+  },
+  "affectedComponents": [
+    {
+      "path": "internal/factory/idle.go",
+      "reason": "New file: tickKind/tickState types, classify(orders), waitingCount(orders), hasUnshippedOrder(orders), (s *Supervisor) announce(state), and (s *Supervisor) reportTickState() — the whole idle/waiting determination and print-once logic, kept in its own file per this package's one-concern-per-file convention (start.go, finish.go, replay.go, inbox.go)."
+    },
+    {
+      "path": "internal/factory/supervisor.go",
+      "reason": "Add a lastReported tickState field to Supervisor (zero value is the busy/silent kind, so a fresh supervisor's first busy tick stays silent) and call s.reportTickState() as the last step of Tick(), after startWork returns with no error."
+    },
+    {
+      "path": "internal/factory/idle_test.go",
+      "reason": "New file: unit tests for every acceptance criterion, driven through testFactory/tick() the way supervisor_test.go already does, asserting on the new output buffer."
+    },
+    {
+      "path": "internal/factory/fixture_test.go",
+      "reason": "Dependencies.Output has no buffer wired into testFactory's newSupervisor today (defaults to io.Discard via New()). Add an output *bytes.Buffer field, wire it into Dependencies.Output, and add small assertion helpers (e.g. a line-matching/count helper) in the style of the existing assertPhase/inbox helpers."
+    }
+  ],
+  "dataModelChanges": [],
+  "apiChanges": [],
+  "newDependencies": [],
+  "architecturalFlags": [
+    "No feature flag needed: the new line is purely additive console output on an existing code path (Tick()), carries no schema, ledger, or API change, cannot affect what the supervisor claims or launches, and is trivially revertible by a normal git revert — ship directly to trunk.",
+    "classify(orders) deliberately does not take the committed Intake or call pendingWork/isClaimable, despite the context manifest flagging start.go's claimability helpers as relevant: after a successful Tick(), activeCount(orders)==0 implies nothing was claimable at tick's end either, because New() forces MaxConcurrent>=1 so any claimable work with zero orders running would already have been started in the same tick's startWork call (and a start failure aborts Tick() with an error before classify ever runs). Re-deriving claimability a second time from the committed candidates would be dead code under this invariant; classify instead falls back to 'every tracked order has reached PhaseShipped' as the general idle test, which is simpler, still reads only the already-replayed orders map, and correctly covers the dogfood report's 'every order shipped' case."
+  ],
+  "retrieval": {
+    "domainTerms": ["Idle", "Waiting on a human"],
+    "issueRefs": [],
+    "linkedAdrs": ["docs/adrs/ADR-010-factory-order-state-and-policy-configuration.md"],
+    "linkedKis": []
+  },
+  "tasks": {
+    "developer": [
+      "Create internal/factory/idle.go with: type tickKind int with consts tickBusy (zero value), tickIdle, tickWaiting; type tickState struct { kind tickKind; count int } (comparable with ==); a package-level var waitingPhases = map[Phase]bool{PhaseWaiting: true, PhaseCompleted: true, PhaseProposed: true, PhaseParked: true}.",
+      "Write func waitingCount(orders map[string]*OrderState) int counting orders whose Phase is in waitingPhases.",
+      "Write func hasUnshippedOrder(orders map[string]*OrderState) bool returning true if any order's Phase != PhaseShipped.",
+      "Write func classify(orders map[string]*OrderState) tickState: return tickBusy if activeCount(orders) > 0; else return {tickWaiting, waiting} if waitingCount(orders) > 0; else return tickBusy if hasUnshippedOrder(orders) (covers a retrying order before NotBefore, a stopped order with no resume requested, and a committed order stuck on a push failure — none of which are idle, and none of which are one of the four waiting kinds); else return tickIdle.",
+      "Write func (s *Supervisor) announce(state tickState): return immediately if state == s.lastReported; otherwise set s.lastReported = state and, only for tickIdle, call s.say(\"idle — no ready orders; commit one to intake/ on %s\", s.config.IntakeBranch), or for tickWaiting call s.say(\"waiting on a human — %d order(s) in the inbox: loom factory inbox\", state.count); tickBusy prints nothing.",
+      "Write func (s *Supervisor) reportTickState() error: call s.Orders(), return its error if any, else call s.announce(classify(orders)) and return nil.",
+      "In internal/factory/supervisor.go, add `lastReported tickState` to the Supervisor struct (after the existing fields), and change Tick()'s final `return s.startWork(committed)` to `if err := s.startWork(committed); err != nil { return err }` followed by `return s.reportTickState()`.",
+      "In internal/factory/fixture_test.go, add an `output *bytes.Buffer` field to testFactory, initialize it with `&bytes.Buffer{}` in newTestFactory, set `Output: f.output` in newSupervisor's Dependencies literal, and add an `outputLines()`/`outputCount(text string) int` pair of helpers (trim the buffer, split on newline) for tests to assert against — do not reset the buffer automatically; tests that need to isolate one tick's output call f.output.Reset() directly.",
+      "Write internal/factory/idle_test.go covering every acceptance criterion (see qa tasks for the specific scenarios); each test MUST tick(), then assert on outputLines()/outputCount(), following supervisor_test.go's two-tick idiom where a ledger event needs a prior tick to settle before the state it produces is visible.",
+      "Keep every new function at or under the 20-line guidance and cyclomatic complexity below 7 (classify has 4 return paths and no nesting beyond one level; none of the others branch more than a single switch or if)."
+    ],
+    "qa": [
+      "Verify: a fresh supervisor's first tick over empty intake prints 'idle — no ready orders; commit one to intake/ on main' exactly once.",
+      "Verify: two consecutive ticks in the same idle state print the idle line only once (outputCount == 1 after both ticks).",
+      "Verify: an order halted at a gate (no approval yet) is counted as waiting — 'waiting on a human — 1 order(s) in the inbox: loom factory inbox' prints once it settles to PhaseWaiting.",
+      "Verify: a parked order is counted as waiting with the same message and count semantics.",
+      "Verify: a second order entering a waiting phase while the first is already waiting re-prints the line with the incremented count (e.g. count 1 then count 2).",
+      "Verify: approving and relaunching the only waiting order, with nothing else pending, transitions out of waiting silently (no busy print), and once that order ships with nothing else ready, the idle line prints again (re-entry after leaving a state).",
+      "Verify: an order scheduled for retry (PhaseRetrying, NotBefore in the future) produces no idle line and no waiting line on the tick it enters that phase, per the spec's resolved assumption.",
+      "Verify: loom factory run --once prints the line at most once for its single pass (drive via Supervisor.Once() in a test, asserting outputCount for both the idle and waiting lines combined is <= 1).",
+      "Run go test ./internal/factory/... and confirm it passes.",
+      "Confirm cyclomatic complexity of classify, waitingCount, hasUnshippedOrder, announce, and reportTickState is below 7 (analyze-complexity or equivalent), and that coverage of every line changed or added in internal/factory/idle.go and internal/factory/supervisor.go meets the 85% threshold with tests that can actually fail (no test without a path to a failure, per the Test Repair Contract)."
+    ],
+    "techWriter": [],
+    "devops": []
+  },
+  "edgeCases": [
+    {
+      "case": "Every claimed order has shipped and intake has no new ready candidate.",
+      "handling": "hasUnshippedOrder(orders) is false, waitingCount is 0, activeCount is 0 → tickIdle. This is the exact 'every order shipped' scenario from the dogfood report."
+    },
+    {
+      "case": "An order is completed and waiting on a commit approval (finish != \"none\").",
+      "handling": "advanceFinishLine ships a finish:none order before classify ever runs, so any order classify observes at PhaseCompleted always has finish != \"none\" and lacks the GateCommit approval; it is counted in waitingPhases as a commit proposal."
+    },
+    {
+      "case": "An order is proposed and waiting on an open-pr approval.",
+      "handling": "Counted via waitingPhases (PhaseProposed); if a matching approval already exists, advanceFinishLine opens the PR and ships it within the same tick before classify runs, so it never appears as waiting in that case."
+    },
+    {
+      "case": "An order is retrying before its NotBefore.",
+      "handling": "Not running, not in waitingPhases, but hasUnshippedOrder is true → tickBusy (silent). Matches the spec's resolved Open Question: it is waiting on time, not a human, so the supervisor prints nothing."
+    },
+    {
+      "case": "An order is stopped (loom factory stop) and no resume has been requested, or an order is stuck in PhaseCommitted on a repeated push failure.",
+      "handling": "Neither case is running, and neither is one of the AC's four enumerated waiting kinds (inbox.go's itemsFor has no case for PhaseStopped, and a push failure only sets order.Reason without changing Phase). hasUnshippedOrder is true for both, so classify returns tickBusy (silent) rather than idle, by the same generalization as the retrying case: a known, unshipped order always rules out the idle message's claim that there is 'nothing ready' and nothing to commit."
+    },
+    {
+      "case": "Two orders are both halted at gates in the same tick.",
+      "handling": "waitingCount sums all matching phases regardless of order, so the printed count is 2, not 1."
+    },
+    {
+      "case": "loom factory run --once calls Tick() then Drain(false) then advanceFinishLine() again.",
+      "handling": "reportTickState runs only inside Tick(), once, so Once() cannot print the line more than once even though Drain/advanceFinishLine can further change order phases after Tick() returns; this trivially satisfies AC5's 'at most once'."
+    },
+    {
+      "case": "A brand-new Supervisor is constructed mid-run (e.g. after a crash, as the existing recovery tests do via factory.newSupervisor()).",
+      "handling": "lastReported resets to its zero value (tickBusy, count 0) on the new instance. If the ledger's actual state is idle or waiting at that point, the next tick's classify will differ from the zero value and print once, which is correct: a fresh process has no memory of what it printed before and should not assume the line was already shown."
+    }
+  ],
+  "definitionOfDone": [
+    "internal/factory/idle.go exists with classify, waitingCount, hasUnshippedOrder, (s *Supervisor) announce, and (s *Supervisor) reportTickState, each with cyclomatic complexity below 7.",
+    "Supervisor.Tick() calls reportTickState() as its last step, after a successful startWork, and Supervisor carries a lastReported tickState field.",
+    "internal/factory/fixture_test.go wires an output buffer into testFactory so tests can assert on printed lines.",
+    "internal/factory/idle_test.go exercises every acceptance criterion, including the once-per-entry rule, the count-change-while-waiting rule, the retrying/stopped/push-failure silent cases, and Once()'s at-most-once behavior.",
+    "go test ./internal/factory/... passes.",
+    "Every changed or added line in internal/factory/idle.go and internal/factory/supervisor.go is covered by a test that can fail.",
+    "No file outside internal/factory/ is modified, other than this run's own delivery record under docs/features/factory-idle-message/.",
+    "No ledger event is added, changed, or recorded for idleness or waiting — the feature is console output only."
+  ],
+  "openQuestions": [
+    "The spec's own Open Question (a retrying order counts as neither idle nor waiting) is resolved by the spec itself. This analysis extends that same reasoning to two further phases the spec does not explicitly mention — a stopped order with no resume requested, and an order stuck in PhaseCommitted on a repeated push failure — treating both as silent (neither idle nor waiting) on the grounds that neither is one of the AC's four enumerated waiting kinds and neither is surfaced by the existing loom factory inbox. If this generalization is wrong and either should instead count toward 'waiting on a human', the fix is confined to waitingPhases in internal/factory/idle.go."
+  ]
+}

@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -82,6 +83,7 @@ type testFactory struct {
 	pulls      *fakePulls
 	supervisor *Supervisor
 	now        time.Time
+	output     *bytes.Buffer
 }
 
 func newTestFactory(t *testing.T, orders ...orderSpec) *testFactory {
@@ -97,7 +99,7 @@ func newTestFactory(t *testing.T, orders ...orderSpec) *testFactory {
 	runGit(t, root, "add", "-A")
 	runGit(t, root, "commit", "-qm", "orders")
 	factory := &testFactory{t: t, root: root, launcher: newFakeLauncher(t), pulls: &fakePulls{},
-		now: time.Date(2026, 10, 24, 9, 0, 0, 0, time.UTC)}
+		now: time.Date(2026, 10, 24, 9, 0, 0, 0, time.UTC), output: &bytes.Buffer{}}
 	factory.supervisor = factory.newSupervisor()
 	return factory
 }
@@ -110,9 +112,33 @@ func (f *testFactory) newSupervisor() *Supervisor {
 		Plans: []string{"deliver-feature"},
 	}, Dependencies{
 		Repository: worktree.New(f.root), Launcher: f.launcher, Pulls: f.pulls,
-		Trees: func(dir string) Tree { return worktree.New(dir) },
-		Now:   func() time.Time { return f.now },
+		Trees:  func(dir string) Tree { return worktree.New(dir) },
+		Now:    func() time.Time { return f.now },
+		Output: f.output,
 	})
+}
+
+// outputLines is every non-empty line this factory's supervisor has printed
+// so far. Call f.output.Reset() first to isolate one tick's output.
+func (f *testFactory) outputLines() []string {
+	var lines []string
+	for _, line := range strings.Split(f.output.String(), "\n") {
+		if line != "" {
+			lines = append(lines, line)
+		}
+	}
+	return lines
+}
+
+// outputCount counts the printed lines containing text.
+func (f *testFactory) outputCount(text string) int {
+	count := 0
+	for _, line := range f.outputLines() {
+		if strings.Contains(line, text) {
+			count++
+		}
+	}
+	return count
 }
 
 func (f *testFactory) tick() {

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 2,
+  "feature": "factory-idle-message",
+  "testFilesCreated": [],
+  "testFilesModified": [],
+  "coverage": {
+    "acceptanceCriteriaCovered": 6,
+    "acceptanceCriteriaTotal": 6,
+    "newTests": 9,
+    "statements": [
+      { "unit": "internal/factory", "percent": 95.3 },
+      { "unit": "internal/factory/idle.go (new functions only)", "percent": 96.0 },
+      { "unit": "internal/factory/supervisor.go (changed lines only)", "percent": 100.0 }
+    ]
+  },
+  "testResults": {
+    "passed": 59,
+    "failed": 0,
+    "skipped": 0,
+    "skipReasons": []
+  },
+  "accessibilityCheck": [],
+  "bugsFound": [],
+  "knownGaps": [
+    {
+      "criterion": "Every changed or added line in internal/factory/idle.go is covered by a test that can fail.",
+      "reason": "reportTickState's one-line `return err` forward from s.Orders() (idle.go:91) is uncovered — exercising it needs a ledger read failure mid-tick, which the fixture has no seam for. The identical idiom is already uncovered at multiple pre-existing sites in this same package (e.g. supervisor.go:88, 91, 112, 128, 131, 144, 168, 175), so this is established convention rather than a new gap introduced by this feature. Function-level coverage for reportTickState is 80%; all other new functions (waitingCount, hasUnshippedOrder, classify, announce) are 100%."
+    }
+  ],
+  "notesForTechWriter": [
+    "User-visible behavior is exactly two new console lines from the supervisor: the idle line 'idle — no ready orders; commit one to intake/ on <branch>' and the waiting line 'waiting on a human — <n> order(s) in the inbox: loom factory inbox', each printed once per state entry.",
+    "No new CLI flags, config fields, or ledger events were introduced — this is output-only, so no schema or data-model documentation changes are needed, only a behavior note if the supervisor's console output is documented anywhere user-facing."
+  ],
+  "retrieval": {
+    "domainTerms": ["Supervisor", "Tick", "Phase", "Inbox", "Intake"],
+    "issueRefs": [],
+    "linkedAdrs": [],
+    "linkedKis": []
+  }
+}
