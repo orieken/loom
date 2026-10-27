@@ -39,12 +39,18 @@ type Config struct {
 	MaxContractRetries    int    `yaml:"maxContractRetries"`
 	WorkflowAuditsEnabled *bool  `yaml:"workflowAuditsEnabled"`
 	OrchestrationMode     string `yaml:"orchestrationMode"`
+	// PreShipChecks is decoded separately, from the raw document's node
+	// tree (preship.go), because an unknown key inside one entry must be
+	// named rather than silently dropped — the same reason decode.go's
+	// Condition walk exists. The "-" tag keeps this plain struct decode
+	// from touching it at all.
+	PreShipChecks []PreShipCheck `yaml:"-"`
 }
 
 // keptKeys are the only top-level keys the schema allows.
 var keptKeys = map[string]bool{
 	"policiesEnabled": true, "maxContractRetries": true,
-	"workflowAuditsEnabled": true, "orchestrationMode": true,
+	"workflowAuditsEnabled": true, "orchestrationMode": true, "preShipChecks": true,
 }
 
 // removedKeys are the pre-ADR-010 keys, rejected with a pointer to where
@@ -79,6 +85,12 @@ func LoadConfig(path string) (Config, error) {
 	if err != nil {
 		return Config{}, fmt.Errorf("%w: %s: %v", ErrInvalidConfig, path, err)
 	}
+	return decodeAndValidate(raw, path)
+}
+
+// decodeAndValidate runs the full key/value/pre-ship-checks validation
+// sequence against an already-read file.
+func decodeAndValidate(raw []byte, path string) (Config, error) {
 	if err := checkKeys(raw, path); err != nil {
 		return Config{}, err
 	}
@@ -86,7 +98,15 @@ func LoadConfig(path string) (Config, error) {
 	if err != nil {
 		return Config{}, fmt.Errorf("%w: %s: %v", ErrInvalidConfig, path, err)
 	}
-	return config, checkValues(config, path)
+	if err := checkValues(config, path); err != nil {
+		return Config{}, err
+	}
+	checks, err := decodePreShipChecksKey(raw)
+	if err != nil {
+		return Config{}, fmt.Errorf("%w: %s: %v", ErrInvalidConfig, path, err)
+	}
+	config.PreShipChecks = checks
+	return config, nil
 }
 
 // decodeConfig is the one decoder both readers share. It ignores keys it

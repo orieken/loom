@@ -1,0 +1,135 @@
+---
+feature: "pre-ship-checks"
+bounded_context: "Agent Orchestration"
+domain_terms: ["Pre-ship check"]
+files_touched: ["internal/policy/preship.go (new file)", "internal/policy/config.go", "internal/orchestrator/plan.go", "internal/orchestrator/router.go", "internal/orchestrator/preship.go (new file)", "internal/orchestrator/provider.go, failure.go, executor.go", "cmd/loom/cmd/run_policies.go, cmd/loom/cmd/run.go", "scripts/pre-ship-check.sh"]
+issue_refs: []
+linked_adrs: ["docs/adrs/ADR-008-define-tested-by-what-tests-can-catch.md", "docs/adrs/ADR-010-factory-order-state-and-policy-configuration.md"]
+linked_kis: []
+---
+
+# Architecture Notes: pre-ship-checks
+
+## Structural Decisions
+
+### Insert the pre-ship-checks stage into DefaultDeliverFeaturePlan's agent list between "tech-writer" and "devops-engineer", with Internal: true, Gate: "" (absent from defaultPlanGates), and absent from defaultSkippableStages.
+- **Rationale**: devops-engineer carries GateConfirmShip (plan.go:141-144) and is the last stage in the plan, so tech-writer→devops-engineer is the only seam after the last reviewing/documenting stage and before the ship gate. Leaving it out of defaultSkippableStages means the router's analysis-driven skip logic never touches it — its own self-skip (no preShipChecks configured) is a separate mechanism the executor runs regardless of what the router decided.
+- **Fitness Function**: pre-ship-checks sits immediately after tech-writer and before devops-engineer, is Internal, carries no Gate, and is absent from the router's skippable-stage map. — verified by go test ./internal/orchestrator/... -run TestDefaultDeliverFeaturePlan (new stage-order assertion), plus the regenerated internal/orchestrator/testdata/shape-deliver-feature.json baseline via TestShapeOfTheBuiltInPlanIsStable
+### Widen runInternalStage (router.go) to a two-case dispatch on stage.ID (router, pre-ship-checks), accepting ctx context.Context and *RunState in addition to its current (Stage, Plan, StageInput) parameters. Keep it an explicit if/switch dispatch, not a map-keyed registry.
+- **Rationale**: router.go's own comment already names this: 'Only the router exists today; a second one should make this a registry rather than a switch.' Two cases is still enumerable by hand — a registry buys nothing until a third internal stage exists and is premature generalization under design-principles.md's 'fewest elements' priority. ctx and *RunState are required because runPreShipChecks needs state.StartCommit for LOOM_BASE_COMMIT and must respect run cancellation the same way callProvider already does.
+- **Trade-offs**:
+  - A third internal stage reopens this function again — accepted deliberately rather than building the registry now for a case that doesn't exist yet.
+- **Fitness Function**: runInternalStage dispatches correctly for every stage ID marked Internal in the plan; a stage marked Internal with no matching case returns a named error rather than panicking or silently no-opping. — verified by go test ./internal/orchestrator/... -run TestPreShipChecks and TestRunInternalStage (router case already covered by existing router_test.go)
+### Add Skipped bool and SkipReason string to StageOutput (provider.go). In persistCompletion, branch on output.Skipped before calling artifactFor: write StageStatusSkipped + SkipReason and emit EventStageSkipped, independent of applyRouteToStage's route-based skip.
+- **Rationale**: The router's skip mechanism (applyRouteToStage) is keyed to the analyst's typed Route payload — a fact the analyst computes from requirements. Whether preShipChecks is configured is a fact from delivery-policy.yaml that the executor reads directly; it has no analyst involvement and must not be forced through the Route's vocabulary. Verified safe: notePostureViolation short-circuits on before=="" (always true for Internal stages), and notePostReviewEdit/noteReviewApproved gate on stage.StateKind == reviewStateKind, which pre-ship-checks never sets — so a Skipped output flows through executeStage's existing post-invocation calls without special-casing them.
+- **Fitness Function**: An internal stage returning StageOutput{Skipped:true, SkipReason: r} is recorded StageStatusSkipped with reason r and emits EventStageSkipped, never StageStatusCompleted. — verified by go test ./internal/orchestrator/... -run TestPreShipChecks/no_checks_configured
+### Add artifactPath string to stageFailure (failure.go), populated from output.ArtifactPath in executeStage's failure branch. persistFailure sets record.ArtifactPath and computes ArtifactSHA256 from it before persisting the FAILED record.
+- **Rationale**: persistFailure today never sets ArtifactPath — only persistCompletion's happy path does. The AC requires a failing check's full output to stay in the stage's artifact even though the stage ends FAILED. runPreShipChecks must therefore write its markdown report to disk and return its path alongside the error on the first failing/timed-out check, and the executor must thread that path into the FAILED record rather than discarding it.
+- **Fitness Function**: A FAILED stage whose invocation produced an artifact path keeps that artifact's path and SHA-256 on its run-state record, identically to how a COMPLETED stage keeps them. — verified by go test ./internal/orchestrator/... -run TestPreShipChecks/failing_check_keeps_full_output_artifact
+### pre-ship-checks writes a plain markdown artifact (<WorkspaceDir>/pre-ship-checks.md) and leaves Stage.StateKind empty — it is not a typed state document.
+- **Rationale**: StateKind triggers persistTypedOutput's schema validation pipeline (artifactFor, provider.go), which exists for stages whose output another stage's typed projection consumes. Nothing downstream reads pre-ship-checks' output — devops-engineer's confirm-ship gate only needs the stage to have settled, not to parse its content. This is the same precedent the router's own route.md already set for an internal stage with no consumer.
+- **Fitness Function**: pre-ship-checks' Stage.StateKind is empty, so persistCompletion/persistFailure treat output.ArtifactPath as the artifact directly rather than routing it through schema validation. — verified by go test ./internal/orchestrator/... -run TestDefaultDeliverFeaturePlan (StateKind assertion) and TestPreShipChecks (artifact file is plain markdown, not a validated JSON payload)
+### PreShipCheck.Timeout is a Go duration string parsed with time.ParseDuration, defaulting to policy.defaultPreShipCheckTimeout = 10 * time.Minute when an entry omits it.
+- **Rationale**: Matches how every other duration in this codebase is expressed — defaultStageTimeout (plan.go:249), stage.Timeout fields — rather than a bare integer whose unit (seconds? minutes?) would be ambiguous and require inventing a new convention for exactly this one field.
+- **Fitness Function**: An entry with no timeout decodes to the 10-minute default; an entry with an unparseable duration string is rejected naming the entry and the bad value. — verified by go test ./internal/policy/... -run TestLoadConfig (preShipChecks timeout cases: omitted, valid, invalid)
+### PreShipCheck decoding is a hand-written per-entry YAML node walk in a new internal/policy/preship.go, mirroring decode.go's decodeCondition pattern — not a plain yaml.Unmarshal into []PreShipCheck.
+- **Rationale**: Plain struct unmarshalling silently drops unknown fields; this feature's own AC requires an unknown key be rejected by name, which only a node walk over the raw document achieves. internal/policy already has exactly this precedent (decode.go's decodeCondition, driven by config.go's checkKeys/topLevelKeys at the document's top level) — reusing the established style rather than inventing a second decode discipline in the same package.
+- **Fitness Function**: Every preShipChecks entry decodes with a non-empty name and command; a missing name, missing command, or unknown key is rejected naming the entry (by name, else by command, else by position) and the offending key. — verified by go test ./internal/policy/... -run TestLoadConfig (new preShipChecks decode/rejection cases)
+### cmd/loom/cmd/run_policies.go's loadPolicies returns ([]policy.Policy, []policy.PreShipCheck, error), returning config.PreShipChecks on every path — including the policiesEnabled: false early return.
+- **Rationale**: preShipChecks is a required check, not automation/approval delegation — the trust-boundary NFR in the spec states it is orthogonal to the kill switch. If the kill-switch's early return dropped PreShipChecks, setting policiesEnabled: false would silently also disable the one gate this feature exists to add, which is the opposite of what a kill switch for *automation* should do.
+- **Fitness Function**: preShipChecks are still threaded into the executor when policiesEnabled: false. — verified by go test ./cmd/loom/cmd/... -run TestLoadPolicies (or equivalent) asserting PreShipChecks survives the kill-switch's early-return path
+### runPreShipChecks reads LOOM_BASE_COMMIT from the existing RunState.StartCommit field rather than adding a new field to RunState.
+- **Rationale**: StartCommit is already computed exactly once at run start (executor.go's startCommit(), called from prepareState) for the same purpose other diff-based facts need — e.g. recordDiffLines at gate evaluation. Adding a second field for the same fact would create two sources of truth for 'where did this run begin' that could silently diverge.
+- **Fitness Function**: Every pre-ship check subprocess receives LOOM_BASE_COMMIT=<RunState.StartCommit> in its environment. — verified by go test ./internal/orchestrator/... -run TestPreShipChecks/base_commit_env_var (stub command: echo $LOOM_BASE_COMMIT)
+### scripts/pre-ship-check.sh reproduces exactly the two commands .github/workflows/framework-ci.yml's own 'Changed-line coverage' step runs (go test ./... -coverprofile=<file> then go run ./cmd/diff-coverage --base "$LOOM_BASE_COMMIT" --profile <file>), refuses to run with an empty LOOM_BASE_COMMIT, and follows scripts/ci-diff-base.sh's house style (set -euo pipefail, a stderr-announced refusal rather than a silent no-op).
+- **Rationale**: Confirmed by reading .github/workflows/framework-ci.yml lines 209-225: CI's gate already runs `go run ./cmd/diff-coverage --base "$base" --profile coverage.out`. This script is not a new policy — it is packaging CI's existing changed-line coverage gate so a human (or this pipeline) can run the identical check locally before the ship gate, closing the exact gap PR #18 exposed.
+- **Fitness Function**: scripts/pre-ship-check.sh exits non-zero when either go test or diff-coverage fails, and refuses to run when LOOM_BASE_COMMIT is empty. — verified by manual: LOOM_BASE_COMMIT= scripts/pre-ship-check.sh exits non-zero with a stated reason; LOOM_BASE_COMMIT=<a real commit> scripts/pre-ship-check.sh run against this repo matches what CI's diff-coverage step reports for the same commit
+
+## Component Placement
+
+- `PreShipCheck (type) + decodePreShipChecks (node-walk decoder) + defaultPreShipCheckTimeout` → Domain/config layer, `internal/policy/preship.go (new file)` — Same layer as Policy/Condition — layers_test.go's innerLayers pin requires internal/policy reach nothing else in this module; the decoder adds only stdlib + go.yaml.in/yaml, same as decode.go's existing Condition walk.
+- `Config.PreShipChecks field + keptKeys["preShipChecks"] + LoadConfig wiring` → Domain/config layer, `internal/policy/config.go` — LoadConfig is the single strict entry point every other top-level key already goes through (checkKeys -> decodeConfig -> checkValues); preShipChecks must follow the same sequence, wrapped in ErrInvalidConfig.
+- `PreShipChecksStageID constant + plan insertion + Internal flag widening` → Use-case (execution) layer, `internal/orchestrator/plan.go` — Plan construction already lives here (RouterStageID, defaultPlanGates, defaultSkippableStages); the new stage is one more entry in the same catalogue, not a new concept.
+- `runInternalStage two-case dispatch (ctx + *RunState widening)` → Use-case (execution) layer, `internal/orchestrator/router.go` — router.go already owns the single-case dispatch and explicitly anticipated a second case; keeping the dispatch itself in one place avoids splitting 'which stage ID resolves to which internal routine' across two files.
+- `runPreShipChecks + per-check runner + markdown report render` → Use-case (execution) layer, `internal/orchestrator/preship.go (new file)` — The actual check-running logic is new behaviour distinct from the router's routing logic, so it gets its own file rather than growing router.go into two unrelated responsibilities.
+- `StageOutput.Skipped/SkipReason, stageFailure.artifactPath, persistCompletion's SKIPPED branch, persistFailure's artifact threading` → Use-case (execution) layer, `internal/orchestrator/provider.go, failure.go, executor.go` — These are the existing stage lifecycle's extension points; the feature reuses them rather than inventing a parallel completion/failure path.
+- `loadPolicies return-signature widening + Executor.WithPreShipChecks call site` → Framework/CLI (outermost) layer, `cmd/loom/cmd/run_policies.go, cmd/loom/cmd/run.go` — CLI wiring is the outermost layer; it may depend on internal/policy and internal/orchestrator freely (guardrail #1 only restricts the inward direction).
+- `pre-ship-check.sh` → N/A (project script, not a Go layer) layer, `scripts/pre-ship-check.sh` — House style already establishes scripts/ as where loom's own CI-reproducing shell scripts live (scripts/ci-diff-base.sh).
+
+## Bounded Context
+
+- **Owning Context**: Agent Orchestration
+- **Context Crossings**: internal/policy (delivery-policy.yaml schema, PreShipCheck decode) -> internal/orchestrator (stage execution, failure/artifact recording), cmd/loom/cmd (CLI wiring: loadPolicies, executeRun) -> internal/policy and internal/orchestrator
+
+## Stability Design
+
+- **Timeout** on Each pre-ship check's subprocess: exec.CommandContext under a per-check context.WithTimeout(ctx, check.Timeout) — architecture-guardrails.md #5 requires an explicit timeout on every subprocess/network call; this mirrors the existing callProvider pattern (executor.go:572-579) rather than introducing a second timeout idiom.
+- **Fail Fast** on The sequential check loop in runPreShipChecks — The AC requires checks after a failing one never run. Continuing past a known failure would spend time and (for shell commands with side effects) risk, for a result the run has already decided to fail.
+
+## Observability Design
+
+- Stage span (existing Tracer.StartStage / End) emitted from internal/orchestrator, via the Tracer interface implemented in the adapter layer (internal/telemetry) — no new direct OTel call is introduced (cardinality: Low — one stage ID ("pre-ship-checks") per run; this feature adds no new span attribute.)
+- Per-check outcome (name, exit status, duration) emitted from Written only to the stage's on-disk markdown artifact by runPreShipChecks — deliberately not emitted to any telemetry signal (cardinality: N/A by design: guardrail #9 forbids recording a check's raw output text in telemetry. If a future change adds per-check telemetry, it must carry only name/exit-status/duration — never the output — and the full output must stay confined to the artifact file, which is already the only place this feature writes it.)
+
+## Layer Boundary Checks
+
+- [PASS] internal/policy may depend on nothing else in this module (innerLayers pin, internal/orchestrator/layers_test.go:42) — Confirmed by grep: no file under internal/policy imports internal/orchestrator today, and the planned preship.go decoder adds only go.yaml.in/yaml plus stdlib (errors, fmt, strconv, time) — same import profile as the existing decode.go. No change to this pin is required.
+- [PASS] internal/orchestrator may depend only on internal/policy and internal/state (innerLayers pin, internal/orchestrator/layers_test.go:47) — runPreShipChecks consumes policy.PreShipCheck values threaded in via WithPreShipChecks (already an existing pattern — WithPolicies does the same for []policy.Policy); the new file needs only os/exec, context, time and string-building stdlib, none of which cross the pin.
+- [NOT_APPLICABLE] cmd/loom/cmd (outermost/framework layer) may depend inward on internal/policy and internal/orchestrator — Guardrail #1 restricts inner-to-outer imports only; loadPolicies/run.go's changes are ordinary outer-to-inner wiring, not a boundary crossing.
+
+## Anti-Pattern Check
+
+- God Object: FOUND — Executor (executor.go) already carries ~14 fields mixing callbacks (onStale, onReset, onRoute, onLoop, onPostureError, onClaimWarning, onBaselineError, onBudgetWarning, onPolicy) with config (policies, budget, blastResolver, providerName). This feature adds one more field, preShipChecks []policy.PreShipCheck, following the exact precedent WithPolicies already set — it does not introduce a new growth pattern, it continues an existing one. Flagged as a pre-existing structural debt, not something this feature's commit should take on: splitting Executor's callbacks from its config (e.g. an ExecutorOptions struct) is a separate refactor with its own blast radius. See refactoringOpportunities.
+- Shotgun Surgery: not found — The change touches ~12 files, but every one follows directly from Clean Architecture layering: a domain config type (internal/policy) consumed by the use-case execution layer (internal/orchestrator), wired by the outermost CLI layer (cmd/loom/cmd). This is ordinary cross-layer feature delivery, not scattered edits to unrelated files for one conceptual change.
+- Premature Generalization: not found — runInternalStage stays an explicit 2-case dispatch rather than a registry (decision #2); PreShipCheck stays a flat {Name, Command, Timeout} struct rather than a pluggable 'Check' interface or strategy — neither the current two-internal-stage reality nor any acceptance criterion calls for either abstraction yet.
+- Anemic Domain Model: not found — PreShipCheck is a small declarative config value (name/command/timeout) with no behavior expected of it beyond decode and a derived default timeout — consistent with Policy/Condition's own style in the same package, not a symptom of logic wrongly placed in a 'Service'.
+- Distributed Monolith: not found — No new service or network boundary is introduced; everything runs in-process inside the existing single-binary executor.
+- Leaky Abstraction: not found — The Provider interface is untouched; pre-ship-checks never goes through it at all (it is Internal, dispatched by the executor itself), so no caller is forced to understand a provider's internals.
+
+## Fitness Functions
+
+- **Every preShipChecks entry decodes with a non-empty name and command; a missing name, missing command, or unknown key is rejected naming the entry and the offending key.**
+  - **Verification**: go test ./internal/policy/... -run TestLoadConfig (new preShipChecks decode/rejection cases)
+  - **Owner**: DevOps
+- **An entry with no timeout decodes to the 10-minute default; an entry with an unparseable duration string is rejected naming the entry.**
+  - **Verification**: go test ./internal/policy/... -run TestLoadConfig (preShipChecks timeout cases)
+  - **Owner**: DevOps
+- **preShipChecks are still threaded into the executor when policiesEnabled: false (orthogonal to the automation kill switch).**
+  - **Verification**: go test ./cmd/loom/cmd/... -run TestLoadPolicies (or equivalent)
+  - **Owner**: DevOps
+- **The built-in plan's pre-ship-checks stage sits after tech-writer and before devops-engineer, is Internal, carries no Gate, and is absent from the router's skippable-stage map.**
+  - **Verification**: go test ./internal/orchestrator/... -run TestDefaultDeliverFeaturePlan, plus the regenerated testdata/shape-deliver-feature.json baseline via TestShapeOfTheBuiltInPlanIsStable
+  - **Owner**: Architect
+- **Every pre-ship check subprocess runs via bash -c at ProjectRoot with LOOM_BASE_COMMIT=<RunState.StartCommit> and an explicit per-check timeout (entry's own, or the 10-minute default).**
+  - **Verification**: go test ./internal/orchestrator/... -run TestPreShipChecks (stub commands: true, false, a sleep past a short timeout, echo $LOOM_BASE_COMMIT)
+  - **Owner**: DevOps
+- **A failing or timed-out check halts the run before confirm-ship, is classified terminal (no supervisor retry — invocationFailureClass already returns FailureTerminal for stage.Internal), keeps its full output as the stage's artifact, and checks after it never run.**
+  - **Verification**: go test ./internal/orchestrator/... -run TestPreShipChecks/failing_check_keeps_full_output_artifact and /checks_after_failure_never_run
+  - **Owner**: DevOps
+- **No preShipChecks configured records the stage SKIPPED with reason "no preShipChecks configured", never COMPLETED.**
+  - **Verification**: go test ./internal/orchestrator/... -run TestPreShipChecks/no_checks_configured
+  - **Owner**: DevOps
+- **internal/policy and internal/orchestrator's dependency directions are unchanged by this feature (the innerLayers pin in layers_test.go needs no edit).**
+  - **Verification**: go test ./internal/orchestrator/... -run TestInnerLayersImportOnlyInward
+  - **Owner**: Architect
+- **scripts/pre-ship-check.sh reproduces CI's own changed-line coverage gate and refuses to run with an empty LOOM_BASE_COMMIT.**
+  - **Verification**: manual: LOOM_BASE_COMMIT= scripts/pre-ship-check.sh exits non-zero; LOOM_BASE_COMMIT=<a real commit> scripts/pre-ship-check.sh matches what CI's diff-coverage step reports for that commit
+  - **Owner**: DevOps
+
+## Refactoring Opportunities
+
+- Extract Class on `internal/orchestrator/executor.go — the Executor struct` — Already mixes ~14 callback and config fields before this feature adds preShipChecks as a 15th. Not this feature's responsibility to fix (it follows the existing WithPolicies precedent exactly), but worth a dedicated refactor — e.g. grouping the On*/callback fields into a single ExecutorHooks value — before a sixteenth field makes the constructor-less field-by-field Width* pattern harder to read than a builder would be.
+
+## Developer Handoff Notes
+
+- mcp__loom__dependencies_of/dependents_of/describe were not registered in this session (no loom MCP server running) — layer-boundary checks above were done by direct `grep`/import inspection and TestInnerLayersImportOnlyInward instead. If the graph is available when you implement, re-run the equivalent queries and note any drift.
+- internal/orchestrator/layers_test.go's innerLayers pin already asserts internal/policy: {} and internal/orchestrator: {internal/policy, internal/state} — this feature's imports stay inside both pins, so that test needs no edit, but it will fail loudly if an import creeps outside them.
+- executeStage's existing post-invocation calls (notePostureViolation, notePostReviewEdit, noteReviewApproved) are each gated so a Skipped/Internal output flows through safely: notePostureViolation returns early on before=="" (always true for Internal stages since executeStage only computes `before` when !stage.Internal); the other two gate on stage.StateKind == reviewStateKind, which pre-ship-checks never sets. No changes needed to those three functions.
+- cmd/diff-coverage already takes exactly `--base` and `--profile` flags (confirmed against .github/workflows/framework-ci.yml:221) — do not invent different flag names for pre-ship-check.sh.
+- Stage.Timeout stays unused for pre-ship-checks, same as it already is for the router — runOrInvoke's Internal branch never passes through callProvider's context.WithTimeout. The only bound on the stage's total runtime is the sum of its own per-check PreShipCheck.Timeout values; don't add a redundant stage-level timeout.
+- Use CombinedOutput (stdout+stderr interleaved) for each check's subprocess unless a reason emerges not to — it's what a human running the command locally would see, and the AC only asks for 'output', not separated streams.
+- When adding preShipChecks to defaultPreShipCheckTimeout etc., keep the constant in internal/policy (the type's natural owner) rather than duplicating a default in internal/orchestrator.
+
+## Open Architectural Questions
+
+None
