@@ -15,7 +15,7 @@ autonomy: inherit
 depends-on: [i-4-vocabulary-test]
 budget:
   max-attempts: 3
-  max-usd: 15
+  max-usd: 20
   max-hours: 2
 scope:
   paths: [internal/intake/**]
