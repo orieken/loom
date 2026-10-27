@@ -234,6 +234,13 @@ func isUnmeasured(stage Stage, record StageRecord) bool {
 
 // activeHours sums the time stages spent running. A stage still recorded as
 // running counts from its start: that is time already spent.
+//
+// A stale stage counts nothing. Its work was discarded — the spec or its
+// artifact changed — and its record cannot say how long that work took:
+// demotion used to overwrite FinishedAt with the demotion time, so a stage
+// that ran for two minutes yesterday counted twenty hours today. The third
+// factory dogfood run's order hit a 1-hour ceiling at 101 hours that way,
+// before its first stage. When the stage re-runs, the new attempt counts.
 func activeHours(state *RunState) float64 {
 	var active time.Duration
 	for _, record := range state.Stages {
@@ -243,7 +250,7 @@ func activeHours(state *RunState) float64 {
 }
 
 func stageDuration(record StageRecord) time.Duration {
-	if record.StartedAt.IsZero() {
+	if record.StartedAt.IsZero() || record.Status == StageStatusStale {
 		return 0
 	}
 	if record.FinishedAt != nil {
