@@ -7,7 +7,6 @@ package orchestrator
 
 import (
 	"fmt"
-	"time"
 )
 
 // StaleReason says why a completed stage stopped counting as complete.
@@ -102,8 +101,8 @@ func markStale(state *RunState, stageID string, reason StaleReason) {
 	record.Status = StageStatusStale
 	record.StaleReason = reason
 	record.FoundSHA256 = foundDigest(record.ArtifactPath)
-	now := time.Now().UTC()
-	record.FinishedAt = &now
+	// FinishedAt keeps when the stage actually finished; when it was demoted
+	// is the stage.stale event's timestamp.
 	state.Stages[stageID] = record
 }
 

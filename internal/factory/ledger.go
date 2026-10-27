@@ -77,7 +77,13 @@ type Entry struct {
 	Gate      string     `json:"gate,omitempty"`
 	Reason    string     `json:"reason,omitempty"`
 	NotBefore *time.Time `json:"notBefore,omitempty"`
-	Spend     *Spend     `json:"spend,omitempty"`
+	// KeepsAttempt marks a retry that does not spend one of the order's
+	// attempts: the provider could not take calls, which no attempt fixes.
+	KeepsAttempt bool   `json:"keepsAttempt,omitempty"`
+	Spend        *Spend `json:"spend,omitempty"`
+	// Unmeasured names the stages whose unknown spend parked the order,
+	// which a human may accept with the budget gate.
+	Unmeasured []string `json:"unmeasured,omitempty"`
 	// Approval facts.
 	Digest     string `json:"digest,omitempty"`
 	ApprovedBy string `json:"approvedBy,omitempty"`

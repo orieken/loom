@@ -9,7 +9,8 @@ package orchestrator
 // One property is inherited from the policy evaluator rather than
 // re-decided: usage the governor cannot see is unknown, not zero. A stage
 // that finished and reported no cost makes a dollar or token ceiling
-// unverifiable, and an unverifiable ceiling halts the run.
+// unverifiable, and an unverifiable ceiling halts the run — until a human
+// accepts that stage's unknown spend (unmeasured.go).
 
 import (
 	"errors"
@@ -193,7 +194,7 @@ func (m budgetMeasure) halt() *BudgetHalt {
 func budgetMeasures(budget Budget, plan Plan, state *RunState) []budgetMeasure {
 	var measures []budgetMeasure
 	total := state.TotalUsage()
-	unmeasured := UnmeasuredStages(plan, state)
+	unmeasured := unacceptedUnmeasured(plan, state)
 	if budget.MaxUSD > 0 {
 		measures = append(measures, budgetMeasure{BudgetLimitUSD, budget.MaxUSD, total.CostUSD, unmeasured})
 	}
@@ -233,6 +234,13 @@ func isUnmeasured(stage Stage, record StageRecord) bool {
 
 // activeHours sums the time stages spent running. A stage still recorded as
 // running counts from its start: that is time already spent.
+//
+// A stale stage counts nothing. Its work was discarded — the spec or its
+// artifact changed — and its record cannot say how long that work took:
+// demotion used to overwrite FinishedAt with the demotion time, so a stage
+// that ran for two minutes yesterday counted twenty hours today. The third
+// factory dogfood run's order hit a 1-hour ceiling at 101 hours that way,
+// before its first stage. When the stage re-runs, the new attempt counts.
 func activeHours(state *RunState) float64 {
 	var active time.Duration
 	for _, record := range state.Stages {
@@ -242,7 +250,7 @@ func activeHours(state *RunState) float64 {
 }
 
 func stageDuration(record StageRecord) time.Duration {
-	if record.StartedAt.IsZero() {
+	if record.StartedAt.IsZero() || record.Status == StageStatusStale {
 		return 0
 	}
 	if record.FinishedAt != nil {

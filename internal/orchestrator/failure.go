@@ -7,7 +7,7 @@ import (
 
 // FailureClass is whether a failed stage is worth running again (roadmap
 // L3.68). It is the first entry in the error taxonomy roadmap L4.2 will
-// widen; until then it has exactly the two values a retry decision needs.
+// widen.
 type FailureClass string
 
 const (
@@ -17,6 +17,11 @@ const (
 	// FailureTerminal is a failure the same input will reproduce: an
 	// input that cannot be projected, an internal stage's output.
 	FailureTerminal FailureClass = "terminal"
+	// FailureUnavailable is a failure every call repeats until something
+	// outside the run changes: a usage or session limit (ErrProviderUnavailable).
+	// Retrying soon cannot help, and an attempt spent on it is wasted; a
+	// supervisor waits it out instead.
+	FailureUnavailable FailureClass = "unavailable"
 )
 
 // ErrInvalidState marks a typed stage's payload that does not conform to
@@ -24,11 +29,14 @@ const (
 var ErrInvalidState = errors.New("invalid state")
 
 // classifyFailure settles a failure's class. Cancellation is always
-// transient — the run was stopped, not broken — and an unclassified failure
-// is terminal.
+// transient — the run was stopped, not broken — a provider that cannot take
+// calls is unavailable, and an unclassified failure is terminal.
 func classifyFailure(failure stageFailure) FailureClass {
 	if errors.Is(failure.err, context.Canceled) || errors.Is(failure.err, context.DeadlineExceeded) {
 		return FailureTransient
+	}
+	if errors.Is(failure.err, ErrProviderUnavailable) {
+		return FailureUnavailable
 	}
 	if failure.class == "" {
 		return FailureTerminal

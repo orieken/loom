@@ -19,20 +19,21 @@ import (
 )
 
 type runFlags struct {
-	spec           string
-	resume         bool
-	provider       string
-	plan           string
-	approve        string
-	mockHangStage  string
-	otelFile       string
-	noTelemetry    bool
-	dryRunPolicies bool
-	maxUSD         float64
-	maxTokens      int64
-	maxHours       float64
-	mockStageCost  float64
-	mockSolution   string
+	spec             string
+	resume           bool
+	provider         string
+	plan             string
+	approve          string
+	mockHangStage    string
+	otelFile         string
+	noTelemetry      bool
+	dryRunPolicies   bool
+	maxUSD           float64
+	maxTokens        int64
+	maxHours         float64
+	acceptUnmeasured string
+	mockStageCost    float64
+	mockSolution     string
 }
 
 var runArgs runFlags
@@ -89,6 +90,9 @@ func init() {
 		"halt before any stage once the run has used this many tokens (0: no ceiling)")
 	runCmd.Flags().Float64Var(&runArgs.maxHours, "max-hours", 0,
 		"halt before any stage once stages have run this many hours in total (0: no ceiling)")
+	runCmd.Flags().StringVar(&runArgs.acceptUnmeasured, "accept-unmeasured", "",
+		"on resume, accept on this named person's behalf the unknown spend of every stage that reported no usage, "+
+			"so a dollar or token ceiling is checked against what was measured")
 	runCmd.Flags().Float64Var(&runArgs.mockStageCost, "mock-stage-cost", 0,
 		"mock provider only: dollars each stage reports spending (testing)")
 	_ = runCmd.Flags().MarkHidden("mock-stage-cost")

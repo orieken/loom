@@ -177,7 +177,10 @@ type RunState struct {
 	// BudgetHalt is set when the budget stopped the run, and cleared when a
 	// resume re-decides it.
 	BudgetHalt *BudgetHalt `json:"budgetHalt,omitempty"`
-	UpdatedAt  time.Time   `json:"updatedAt"`
+	// UnmeasuredAccepted records, by stage, a human's acceptance that the
+	// stage's spend is unknown (unmeasured.go).
+	UnmeasuredAccepted map[string]UnmeasuredAcceptance `json:"unmeasuredAccepted,omitempty"`
+	UpdatedAt          time.Time                       `json:"updatedAt"`
 }
 
 // Creator identifies which pipeline owns a state file. The two pipelines

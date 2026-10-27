@@ -72,6 +72,14 @@ func TestReportBudgetHaltListsSpendByStage(t *testing.T) {
 			t.Errorf("report lacks %q:\n%s", want, out.String())
 		}
 	}
+	if strings.Contains(out.String(), "--accept-unmeasured") {
+		t.Errorf("a halt with every stage measured offered to accept unmeasured spend:\n%s", out.String())
+	}
+	out.Reset()
+	reportBudgetHalt(command, &orchestrator.BudgetExhaustedError{Halt: orchestrator.BudgetHalt{Unmeasured: []string{"developer"}}})
+	if !strings.Contains(out.String(), "--accept-unmeasured <your name>") {
+		t.Errorf("an unverifiable halt does not say how to accept it:\n%s", out.String())
+	}
 	out.Reset()
 	reportBudgetHalt(command, errors.New("some other failure"))
 	if out.Len() != 0 {

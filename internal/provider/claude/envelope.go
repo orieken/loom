@@ -51,12 +51,12 @@ func (e *envelope) isUnavailable() bool {
 
 // unavailableIn reads a failed process's stdout for an unavailable result.
 // The CLI exits non-zero and still writes the envelope there.
-func unavailableIn(stdout []byte) (string, bool) {
+func unavailableIn(stdout []byte) (*envelope, bool) {
 	var decoded envelope
 	if json.Unmarshal(stdout, &decoded) != nil || !decoded.isUnavailable() {
-		return "", false
+		return nil, false
 	}
-	return decoded.Result, true
+	return &decoded, true
 }
 
 type envelopeUsage struct {
@@ -66,8 +66,9 @@ type envelopeUsage struct {
 	CacheCreationInputTokens int64 `json:"cache_creation_input_tokens"`
 }
 
-// parseEnvelope decodes the CLI's JSON result. A failure here fails the
-// stage: there is deliberately no fallback to treating raw stdout as the
+// parseEnvelope decodes the CLI's JSON result. An error result is returned
+// with its envelope, so the usage it reports is not lost with it. A failure
+// here fails the stage: there is deliberately no fallback to treating raw stdout as the
 // artifact, because that would make a malformed run look like a successful
 // one that happened to cost nothing — silently reintroducing the unmeasured
 // numbers this whole item is removing.
@@ -78,10 +79,10 @@ func parseEnvelope(stdout []byte) (*envelope, error) {
 			"(--output-format json): %w — output: %s", err, truncate(string(stdout), 2000))
 	}
 	if decoded.isUnavailable() {
-		return nil, fmt.Errorf("%w: %s", orchestrator.ErrProviderUnavailable, truncate(decoded.Result, 2000))
+		return &decoded, fmt.Errorf("%w: %s", orchestrator.ErrProviderUnavailable, truncate(decoded.Result, 2000))
 	}
 	if decoded.IsError {
-		return nil, fmt.Errorf("claude CLI reported an error result (subtype %q): %s",
+		return &decoded, fmt.Errorf("claude CLI reported an error result (subtype %q): %s",
 			decoded.Subtype, truncate(decoded.Result, 2000))
 	}
 	return &decoded, nil
@@ -102,6 +103,19 @@ func (e *envelope) Reported() bool {
 	usage := e.Usage
 	return usage.InputTokens > 0 || usage.OutputTokens > 0 ||
 		usage.CacheReadInputTokens > 0 || usage.CacheCreationInputTokens > 0 || e.TotalCost > 0
+}
+
+// reportedUsage is the usage of a failed invocation, when its envelope
+// reported any. A usage limit can end a stage that has already done twenty
+// minutes of work, and dropping the envelope with the error left that spend
+// unmeasured — which halted the run's budget for good (second factory
+// dogfood run). Nil when there is no envelope or it reported nothing: the
+// spend is then unknown, never zero.
+func (e *envelope) reportedUsage() *orchestrator.Usage {
+	if e == nil || !e.Reported() {
+		return nil
+	}
+	return e.usage()
 }
 
 // usage converts the envelope's accounting into the executor's. Cost comes

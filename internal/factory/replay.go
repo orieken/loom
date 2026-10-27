@@ -2,6 +2,7 @@ package factory
 
 import (
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -36,6 +37,10 @@ type OrderState struct {
 	Reason  string
 	// NotBefore is when a scheduled retry may start.
 	NotBefore time.Time
+	// KeepsAttempt marks a scheduled retry that spends no attempt.
+	KeepsAttempt bool
+	// Unmeasured names the stages whose unknown spend parked the order.
+	Unmeasured []string
 	// StopRequested and ResumeRequested are a human's asks not yet acted on.
 	StopRequested   bool
 	ResumeRequested bool
@@ -110,7 +115,7 @@ var entryUpdates = map[Event]func(*OrderState, Entry){
 	EventWaiting:         func(o *OrderState, e Entry) { o.Gate, o.PID = e.Gate, 0 },
 	EventCompleted:       clearProcess,
 	EventRetryScheduled:  applyRetry,
-	EventParked:          func(o *OrderState, e Entry) { clearProcess(o, e); o.Spend = e.Spend },
+	EventParked:          applyPark,
 	EventStopped:         func(o *OrderState, e Entry) { clearProcess(o, e); o.StopRequested = false },
 	EventStopRequested:   func(o *OrderState, _ Entry) { o.StopRequested = true },
 	EventResumeRequested: func(o *OrderState, _ Entry) { o.ResumeRequested = true },
@@ -132,13 +137,39 @@ func applyClaim(o *OrderState, entry Entry) {
 
 func applyLaunch(o *OrderState, entry Entry) {
 	o.PID, o.Attempt, o.ResumeRequested = entry.PID, entry.Attempt, false
+	o.KeepsAttempt, o.Unmeasured = false, nil
 	if entry.Approving != "" {
 		o.Approval = nil
 	}
 }
 
+func applyPark(o *OrderState, entry Entry) {
+	clearProcess(o, entry)
+	o.Spend, o.Unmeasured = entry.Spend, entry.Unmeasured
+	if len(o.Unmeasured) == 0 {
+		o.Unmeasured = unmeasuredInReason(entry.Reason)
+	}
+}
+
+// unmeasuredInReason recovers the unmeasured stages from a park recorded
+// before the ledger carried them, so an order parked by an older supervisor
+// can still be approved. It reads the one reason budgetOutcome writes for
+// this case: "... cannot be verified — [a b] reported no usage".
+func unmeasuredInReason(reason string) []string {
+	_, rest, found := strings.Cut(reason, "cannot be verified — [")
+	if !found {
+		return nil
+	}
+	stages, _, closed := strings.Cut(rest, "] reported no usage")
+	if !closed {
+		return nil
+	}
+	return strings.Fields(stages)
+}
+
 func applyRetry(o *OrderState, entry Entry) {
 	clearProcess(o, entry)
+	o.KeepsAttempt = entry.KeepsAttempt
 	if entry.NotBefore != nil {
 		o.NotBefore = *entry.NotBefore
 	}

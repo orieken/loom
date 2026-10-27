@@ -57,6 +57,8 @@ type Executor struct {
 	// change for). Empty is the default: the pre-ship-checks stage then
 	// records itself SKIPPED rather than COMPLETED.
 	preShipChecks []policy.PreShipCheck
+	// acceptUnmeasuredBy names who accepted unmeasured spend on resume.
+	acceptUnmeasuredBy string
 }
 
 // WithPreShipChecks registers the project's declared pre-ship checks. Empty
@@ -309,6 +311,7 @@ func (e *Executor) resumeState(state *RunState, plan Plan, input StageInput) (*R
 		return nil, err
 	}
 	e.adoptBudget(resumed)
+	e.acceptUnmeasured(plan, resumed)
 	return resumed, nil
 }
 
