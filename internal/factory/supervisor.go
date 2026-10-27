@@ -59,6 +59,9 @@ type Supervisor struct {
 	// draining is set while the supervisor shuts down: a run it interrupts
 	// then is stopped and queued for resumption, spending no attempt.
 	draining bool
+	// lastReported is the idle/waiting line last printed, so announce only
+	// repeats it on a state change (zero value: busy, i.e. never reported).
+	lastReported tickState
 }
 
 // New returns a supervisor. Zero config values take their defaults.
@@ -103,7 +106,10 @@ func (s *Supervisor) Tick() error {
 	if err != nil {
 		return err
 	}
-	return s.startWork(committed)
+	if err := s.startWork(committed); err != nil {
+		return err
+	}
+	return s.reportTickState()
 }
 
 // Run ticks every interval, and as soon as a run it started ends, until ctx

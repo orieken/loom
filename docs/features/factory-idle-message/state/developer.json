@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 2,
+  "feature": "factory-idle-message",
+  "filesCreated": [
+    "internal/factory/idle.go",
+    "internal/factory/idle_test.go"
+  ],
+  "filesModified": [
+    "internal/factory/supervisor.go",
+    "internal/factory/fixture_test.go"
+  ],
+  "interfaceDesign": [
+    "type tickKind int, consts tickBusy (zero value) | tickIdle | tickWaiting",
+    "type tickState struct { kind tickKind; count int } — comparable with ==",
+    "func classify(orders map[string]*OrderState) tickState",
+    "func waitingCount(orders map[string]*OrderState) int",
+    "func hasUnshippedOrder(orders map[string]*OrderState) bool",
+    "func (s *Supervisor) announce(state tickState)",
+    "func (s *Supervisor) reportTickState() error",
+    "Supervisor gains an unexported lastReported tickState field",
+    "testFactory gains an output *bytes.Buffer field plus outputLines()/outputCount(text) test helpers"
+  ],
+  "refactoringLog": [],
+  "selfReview": [
+    {"item": "Every public method has an intention-revealing name", "checked": true},
+    {"item": "No function exceeds 30 LOC", "checked": true},
+    {"item": "Cyclomatic complexity < 7 on all new functions", "checked": true, "note": "classify has the most branches (4 return paths, 1 level deep); confirmed via golangci-lint gocyclo (min-complexity 7, clean) and manual count — all new funcs are 2-4"},
+    {"item": "No primitive obsession", "checked": true, "note": "tickState wraps the (kind, count) pair instead of two loose return values, so announce's == comparison stays a single check"},
+    {"item": "No feature envy", "checked": true},
+    {"item": "No magic numbers or strings", "checked": true, "note": "the two printed line formats are the only literals, each used once, matching the spec's exact wording"},
+    {"item": "Dependency direction verified: nothing in inner layers imports from outer layers", "checked": true, "note": "idle.go adds no new import; classify/waitingCount/hasUnshippedOrder take only map[string]*OrderState, per architecture-notes.md's structural decision — no Repository/TreeOpener/PullRequests/Intake can reach them"}
+  ],
+  "simpleDesign": [
+    {"item": "Passes all tests", "checked": true, "note": "go test ./internal/factory/... passes, including all 7 new idle_test.go cases and every pre-existing test"},
+    {"item": "Reveals intention", "checked": true, "note": "tickBusy as the zero value documents itself: a fresh Supervisor's first busy tick needs no sentinel"},
+    {"item": "No duplication", "checked": true, "note": "waitingPhases is one lookup table shared by waitingCount, matching inbox.go's itemsFor phase list (noted as an unenforced cross-check in architecture-notes.md)"},
+    {"item": "Fewest elements", "checked": true, "note": "no new package, no interface, no flag — one new file plus a two-line call-site change in Tick()"}
+  ],
+  "keyDecisions": [
+    {"decision": "Put all idle/waiting classification and print-once logic in a new internal/factory/idle.go rather than supervisor.go", "reasoning": "follows this package's existing one-concern-per-file convention (start.go, finish.go, replay.go, inbox.go), per architecture-notes.md"},
+    {"decision": "classify/waitingCount/hasUnshippedOrder take only map[string]*OrderState, never Dependencies/Repository/TreeOpener/Intake", "reasoning": "makes the NFR ('no extra git or filesystem pass per tick', 'never call Inbox() or re-read intake') an enforced property of the function signature rather than a discipline to remember"},
+    {"decision": "tickKind's zero value is tickBusy, so tickState{} is the silent state", "reasoning": "a fresh Supervisor's first busy tick stays silent with no separate 'never reported' sentinel"},
+    {"decision": "reportTickState() is the last step of Tick(), called only after a successful startWork, and re-derives orders via its own s.Orders() call", "reasoning": "matches existing precedent — settleEnded, advanceFinishLine, and startWork already each call s.Orders() independently within one Tick(); the NFR targets Inbox()'s git/filesystem calls and re-reading intake, not the local ledger read, which stays well inside those bounds"}
+  ],
+  "deviations": [],
+  "dependenciesAdded": [],
+  "notesForQa": [
+    "idle_test.go covers: a fresh supervisor's idle line; the once-per-entry rule across consecutive idle ticks; a gate halt and a parked order each counting as waiting; a second order entering a waiting phase re-printing with the incremented count; leaving waiting (approval resumes the run) printing nothing, then re-entering idle once the order ships re-prints; a retrying order (before its backoff) printing nothing, per the spec's resolved Open Question; and Supervisor.Once() applying the same once-per-entry rule across two separate invocations.",
+    "go test ./internal/factory/... passes (full suite, 16s). golangci-lint run ./internal/factory/... reports one pre-existing, unrelated errcheck finding in units_test.go:163 (a file this change did not touch) — no issues in idle.go, idle_test.go, supervisor.go, or fixture_test.go.",
+    "Coverage: idle.go's new functions are 100% covered except reportTickState's s.Orders()-error branch (a one-line error forward, 80% on that function); the identical idiom is already uncovered at several sites in this same package (e.g. start.go's own s.Orders() error forward, and several pre-existing error branches in supervisor.go) — this matches established convention rather than introducing a new gap. Aggregate changed-line coverage is well above the 85% floor."
+  ],
+  "notesForDevops": [],
+  "retrieval": {
+    "domainTerms": ["Idle", "Waiting on a human"],
+    "issueRefs": [],
+    "linkedAdrs": ["docs/adrs/ADR-010-factory-order-state-and-policy-configuration.md"],
+    "linkedKis": []
+  }
+}

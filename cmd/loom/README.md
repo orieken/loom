@@ -134,6 +134,14 @@ attempt. An order parked because a stage reported no usage can also be continued
 committed and pushed only after you approve `commit` in the inbox; for `finish: pr` a pull
 request is proposed, and opened only after you approve `open-pr`. Nothing is auto-approved.
 
+A tick that claims or finishes nothing says why, once, so an idle supervisor is never mistaken
+for a hung one: `idle — no ready orders; commit one to intake/ on <branch>` when nothing is
+running, claimable, or waiting on you, and `waiting on a human — <n> order(s) in the inbox: loom
+factory inbox` when nothing is running but a gate halt, a commit or open-PR proposal, or a parked
+order needs you. Each line prints only when the supervisor enters that state, not on every tick,
+and prints again on the next change — including a change in `<n>` while still waiting. `--once`
+follows the same rule for its single pass.
+
 ## Recording markdown-pipeline checkpoints
 
 `loom state` is how the `deliver-feature` skill records checkpoints without a model
