@@ -280,10 +280,12 @@ func TestVocabularyCheckCatchesAMismatch(t *testing.T) {
 }
 
 // messageNamesStatusFixtureQueued reports whether message names field
-// "status", the "fixture" document, and the value "queued" — the three
-// things AC3 requires assertVocabularyMatches's failure message to name.
+// "status", the "fixture" document, and the value "queued" on the side it
+// is actually missing from — present only in the document. A message that
+// named queued as missing from the document instead would mislead whoever
+// fixes the drift, so the side is part of what AC3 requires.
 func messageNamesStatusFixtureQueued(message string) bool {
 	return strings.Contains(message, `"status"`) &&
-		strings.Contains(message, "fixture") &&
-		strings.Contains(message, "queued")
+		strings.Contains(message, "only in fixture: [queued]") &&
+		strings.Contains(message, "only in vocabulary.go: []")
 }
