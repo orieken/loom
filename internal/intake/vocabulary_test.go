@@ -1,6 +1,7 @@
 package intake
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -153,16 +154,16 @@ type vocabularyReporter interface {
 	Errorf(format string, args ...any)
 }
 
-// errorRecorder observes whether a comparison reported a mismatch, without
+// errorRecorder keeps every formatted message a comparison reports, without
 // taking part in Go's subtest pass/fail propagation.
 type errorRecorder struct {
-	failed bool
+	messages []string
 }
 
 func (r *errorRecorder) Helper() {}
 
-func (r *errorRecorder) Errorf(_ string, _ ...any) {
-	r.failed = true
+func (r *errorRecorder) Errorf(format string, args ...any) {
+	r.messages = append(r.messages, fmt.Sprintf(format, args...))
 }
 
 // assertVocabularyMatches fails naming field, document, and every value
@@ -268,7 +269,23 @@ func TestVocabularyCheckCatchesAMismatch(t *testing.T) {
 		}
 		assertVocabularyMatches(recorder, field.name, "fixture", values, field.allowed)
 	}
-	if !recorder.failed {
-		t.Fatal("comparison against a deliberately mismatched template passed; it cannot detect real drift")
+
+	if len(recorder.messages) != 1 {
+		t.Fatalf("got %d mismatch messages, want exactly 1: %v", len(recorder.messages), recorder.messages)
 	}
+	if !messageNamesStatusFixtureQueued(recorder.messages[0]) {
+		t.Fatalf("mismatch message does not name field %q, document %q, and value %q: %s",
+			"status", "fixture", "queued", recorder.messages[0])
+	}
+}
+
+// messageNamesStatusFixtureQueued reports whether message names field
+// "status", the "fixture" document, and the value "queued" on the side it
+// is actually missing from — present only in the document. A message that
+// named queued as missing from the document instead would mislead whoever
+// fixes the drift, so the side is part of what AC3 requires.
+func messageNamesStatusFixtureQueued(message string) bool {
+	return strings.Contains(message, `"status"`) &&
+		strings.Contains(message, "only in fixture: [queued]") &&
+		strings.Contains(message, "only in vocabulary.go: []")
 }

@@ -1,0 +1,71 @@
+---
+feature: "vocabulary-mismatch-message"
+bounded_context: ""
+domain_terms: ["Closed vocabulary"]
+files_touched: ["internal/intake/vocabulary_test.go"]
+issue_refs: ["I-4", "PR #13", "vocabulary-mismatch-message"]
+linked_adrs: ["docs/adrs/ADR-008-define-tested-by-what-tests-can-catch.md"]
+linked_kis: []
+---
+
+# Implementation Notes: vocabulary-mismatch-message
+
+## Files Created
+
+None
+
+## Files Modified
+
+- internal/intake/vocabulary_test.go
+
+## Interface Design
+
+- errorRecorder.messages []string (replaces the bool-only failed field)
+- func (r *errorRecorder) Errorf(format string, args ...any) — appends fmt.Sprintf(format, args...) to messages
+- func messageNamesStatusFixtureQueued(message string) bool — unexported helper naming the three required substrings
+
+## Named Refactoring Log
+
+- **Extract Function** on `internal/intake/vocabulary_test.go: messageNamesStatusFixtureQueued, extracted from TestVocabularyCheckCatchesAMismatch` — The new assertion needs three substring checks (field, document, value); extracting an intention-revealing helper keeps the test body readable and keeps the test function's complexity low, per analysis task 5.
+- **Rename Variable** on `internal/intake/vocabulary_test.go: errorRecorder.failed -> errorRecorder.messages` — The field no longer records a boolean outcome; it records the formatted messages themselves, so the name must say that.
+
+## Self-Review Checklist
+
+- [x] Every public method has an intention-revealing name (no process/handle/manage)
+- [x] No function exceeds 30 LOC
+- [x] Cyclomatic complexity < 7 on all new/changed functions — gocyclo internal/intake/vocabulary_test.go: highest score in the file is 5 (TestVocabularyCheckCatchesAMismatch, statusTableValues, both pre-existing shape); messageNamesStatusFixtureQueued scores 3, errorRecorder.Errorf scores 1.
+- [x] No primitive obsession: domain concepts wrapped in value objects, not raw strings/ints — messages []string matches the test-double's role of observing formatted Errorf output; no domain concept is being represented here.
+- [x] No feature envy: methods use their own class's data more than another's
+- [x] No magic numbers or strings: all literals are named constants — "status", "fixture", "queued" are the three literal facts AC3 requires the message to name; they are passed as arguments to an intention-revealing helper function rather than left as unexplained inline literals.
+- [x] Dependency direction verified: nothing in inner layers imports from outer layers — Test-only change within internal/intake; no new imports beyond fmt from the standard library.
+
+## Simple Design Verification
+
+- [x] Passes the tests — go test ./internal/intake/... -count=1 passes; TestVocabularyCheckCatchesAMismatch passes under the restored message and was confirmed to fail under a temporarily weakened one.
+- [x] Reveals intention — errorRecorder.messages replaces errorRecorder.failed; messageNamesStatusFixtureQueued names exactly what it checks.
+- [x] No duplication
+- [x] Fewest elements — Only the field rename, the Errorf body, the two new assertions, and one extracted helper were added — nothing speculative.
+
+## Key Decisions
+
+- Extracted messageNamesStatusFixtureQueued as a small helper instead of inlining three && chained strings.Contains calls.: Analysis task 5 calls for extracting a helper if the new assertion needs more than one or two checks; naming it also makes the failure message's own Fatalf read cleanly and keeps the test function free of an unnamed boolean expression.
+- Checked the AC3 negative control manually during implementation (weakened assertVocabularyMatches's Errorf format string, reran TestVocabularyCheckCatchesAMismatch, saw it fail, then restored the original string exactly) rather than leaving that verification solely to QA.: This is the fastest way to prove the new assertion is not vacuous before handing off; QA's formal recording of the same step in qa-report.md (per analysis.md's Proposed Fitness Function) still needs to happen independently.
+
+## Deviations from Analysis
+
+None
+
+## Dependencies Added
+
+None
+
+## Notes for QA
+
+- I already ran the required negative control locally: temporarily changed assertVocabularyMatches's Errorf format string from 'field %q: %s and vocabulary.go disagree\n  only in %s: %v\n  only in vocabulary.go: %v' to a bare 'field %q: %s and vocabulary.go disagree', reran go test ./internal/intake/... -run TestVocabularyCheckCatchesAMismatch, and confirmed it failed with 'mismatch message does not name field "status", document "fixture", and value "queued"'. I then restored the original format string exactly (git diff on that line shows no change). Please re-run this same before/after check yourselves and record it in qa-report.md per analysis.md's Proposed Fitness Function — that recording is QA's responsibility, not something I can satisfy on your behalf.
+- go test ./internal/intake/... -count=1 passes in full, including TestTemplateVocabularyMatchesGoSets, TestReadmeStatusTableMatchesGoSets, and TestFieldCommentValuesFailsClosedWhenUnparseable.
+- gocyclo internal/intake/vocabulary_test.go reports no function at or above complexity 7.
+- git diff --stat shows only internal/intake/vocabulary_test.go changed (plus the untracked docs/features/vocabulary-mismatch-message/ delivery record, which is this run's own artifact directory).
+
+## Notes for DevOps
+
+None

@@ -1,0 +1,503 @@
+{
+  "schemaVersion": 10,
+  "planName": "deliver-feature",
+  "createdBy": "executor",
+  "featureName": "vocabulary-mismatch-message",
+  "specPath": ".claude/factory/claims/vocabulary-mismatch-message.md",
+  "specSha256": "939c237c987acfcb526da9a76bb734c1b433ab0bf1bf32d8a3177598a94d84eb",
+  "provider": "claude",
+  "startedAt": "2026-10-26T05:07:04.299852Z",
+  "startCommit": "2e8284c3bec7652ffef3dc8d5ca16b03074314e8",
+  "diffLines": {
+    "confirm-design": 1664,
+    "confirm-security": 1664,
+    "confirm-ship": 1664
+  },
+  "reviewedDigest": "4b79400b4bc74abe084771b2a36a579c65ccb4d22d733a52eab698a2a88cda6f",
+  "stages": {
+    "acceptance-scenarios": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-27T04:17:41.247868Z",
+      "finishedAt": "2026-10-27T04:18:17.531786Z",
+      "artifactPath": ".claude/feature-workspace/vocabulary-mismatch-message/state/acceptance-scenarios.json",
+      "artifactSha256": "2758c24a3d39585fcc68cd38a0a84c8f48a6beb6176031b2b374ee5faaf9289c",
+      "sequence": 11,
+      "previousStatus": "COMPLETED",
+      "staleReason": "SPEC_CHANGED",
+      "foundSha256": "d84d86ed01d6f6a76fd9075c1291ee5a76bfadc1ea6e6f221292b0d52fafe69f",
+      "iteration": 1,
+      "stateKind": "scenarios",
+      "agent": "qa-engineer",
+      "viewPath": ".claude/feature-workspace/vocabulary-mismatch-message/acceptance-scenarios.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 10,
+        "outputTokens": 7079,
+        "cacheReadTokens": 278100,
+        "cacheCreationTokens": 118759,
+        "costUsd": 0.601466
+      }
+    },
+    "accessibility-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-27T04:17:41.246623Z",
+      "sequence": 6,
+      "skipReason": "the analysis declares no UI surface",
+      "iteration": 1
+    },
+    "analyst": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-27T04:16:10.800398Z",
+      "finishedAt": "2026-10-27T04:17:41.191333Z",
+      "artifactPath": ".claude/feature-workspace/vocabulary-mismatch-message/state/analyst.json",
+      "artifactSha256": "52331c88d9aabf975a77a26593ba70252d3ecaea32ec7b78dc84fee79180c8e8",
+      "sequence": 2,
+      "previousStatus": "COMPLETED",
+      "staleReason": "SPEC_CHANGED",
+      "foundSha256": "ad3500128202a5f1d8bedd020dfb76942ca9f9f5f2df7d043edbf409fb90350e",
+      "iteration": 1,
+      "stateKind": "analysis",
+      "agent": "analyst",
+      "viewPath": ".claude/feature-workspace/vocabulary-mismatch-message/analysis.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 44,
+        "outputTokens": 28144,
+        "cacheReadTokens": 1755055,
+        "cacheCreationTokens": 236276,
+        "costUsd": 1.5776430000000001
+      }
+    },
+    "architect": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-27T04:17:41.245818Z",
+      "artifactPath": ".claude/feature-workspace/vocabulary-mismatch-message/state/architect.json",
+      "artifactSha256": "e9ccd2d35c1929077bc3e3c0d8619cb268b578a074f132ac28340f1ade0b86a1",
+      "sequence": 10,
+      "previousStatus": "COMPLETED",
+      "staleReason": "SPEC_CHANGED",
+      "foundSha256": "e9ccd2d35c1929077bc3e3c0d8619cb268b578a074f132ac28340f1ade0b86a1",
+      "skipReason": "no context crossing, data-model change, new dependency, performance threshold, or architectural flag",
+      "iteration": 1,
+      "stateKind": "architecture",
+      "agent": "architect",
+      "viewPath": ".claude/feature-workspace/vocabulary-mismatch-message/architecture-notes.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 8,
+        "outputTokens": 4354,
+        "cacheReadTokens": 275676,
+        "cacheCreationTokens": 67060,
+        "costUsd": 0.3669312
+      }
+    },
+    "code-reviewer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-28T18:40:36.073635Z",
+      "finishedAt": "2026-10-28T18:41:36.891096Z",
+      "artifactPath": ".claude/feature-workspace/vocabulary-mismatch-message/state/code-reviewer.json",
+      "artifactSha256": "89d62003ea9e58b4c299ff5177b138e92de60536f609adb34858da8422c2126d",
+      "sequence": 13,
+      "iteration": 1,
+      "stateKind": "review",
+      "agent": "code-reviewer",
+      "viewPath": ".claude/feature-workspace/vocabulary-mismatch-message/code-review-report.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 28,
+        "outputTokens": 4220,
+        "cacheReadTokens": 1204225,
+        "cacheCreationTokens": 75162,
+        "costUsd": 0.5837490000000001
+      }
+    },
+    "context-engineer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-27T04:13:33.835473Z",
+      "finishedAt": "2026-10-27T04:16:10.79975Z",
+      "artifactPath": ".claude/feature-workspace/vocabulary-mismatch-message/state/context-engineer.json",
+      "artifactSha256": "4229960e8b78f6941b6c9d198fbf579d2ed51fc3f9bd7da6708b53d1e89c15cb",
+      "sequence": 1,
+      "previousStatus": "COMPLETED",
+      "staleReason": "SPEC_CHANGED",
+      "foundSha256": "eeaf35ccc5184a659783599e5672da620deb2832cede4c5a4be34ccdedd57ce1",
+      "iteration": 1,
+      "stateKind": "context",
+      "agent": "context-engineer",
+      "viewPath": ".claude/feature-workspace/vocabulary-mismatch-message/context-manifest.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 108,
+        "outputTokens": 35900,
+        "cacheReadTokens": 4592911,
+        "cacheCreationTokens": 321373,
+        "costUsd": 2.5632902
+      }
+    },
+    "data-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-27T04:17:41.246369Z",
+      "sequence": 5,
+      "skipReason": "no data-model change to sequence",
+      "iteration": 1
+    },
+    "developer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-28T18:38:40.592611Z",
+      "finishedAt": "2026-10-28T18:40:36.072918Z",
+      "artifactPath": ".claude/feature-workspace/vocabulary-mismatch-message/state/developer.json",
+      "artifactSha256": "f3e521b2d0b1ed8c0cc53e0de6b83eec53522a15241bd7e0053708a2d6fa7ab0",
+      "gate": "confirm-design",
+      "sequence": 12,
+      "iteration": 1,
+      "stateKind": "implementation",
+      "agent": "developer",
+      "viewPath": ".claude/feature-workspace/vocabulary-mismatch-message/implementation-notes.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 40,
+        "outputTokens": 9663,
+        "cacheReadTokens": 1764136,
+        "cacheCreationTokens": 81627,
+        "costUsd": 0.7760452
+      }
+    },
+    "devops-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-27T04:17:41.247432Z",
+      "gate": "confirm-ship",
+      "sequence": 9,
+      "skipReason": "the analysis lists no DevOps tasks",
+      "iteration": 1
+    },
+    "performance-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-27T04:17:41.246107Z",
+      "sequence": 4,
+      "skipReason": "no performance requirement carries a threshold with a number and a unit",
+      "iteration": 1
+    },
+    "pre-ship-checks": {
+      "status": "SKIPPED",
+      "startedAt": "2026-10-28T18:51:58.591444Z",
+      "finishedAt": "2026-10-28T18:51:58.620265Z",
+      "sequence": 17,
+      "skipReason": "no preShipChecks configured",
+      "iteration": 1
+    },
+    "qa-engineer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-28T18:49:49.318597Z",
+      "finishedAt": "2026-10-28T18:51:12.016552Z",
+      "artifactPath": ".claude/feature-workspace/vocabulary-mismatch-message/state/qa-engineer.json",
+      "artifactSha256": "56322e8c342a8001c399d8f65ae7acba635a744f2615e154ee51c297a3ff04ab",
+      "gate": "confirm-security",
+      "sequence": 15,
+      "iteration": 1,
+      "stateKind": "qa",
+      "agent": "qa-engineer",
+      "viewPath": ".claude/feature-workspace/vocabulary-mismatch-message/qa-report.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 32,
+        "outputTokens": 5527,
+        "cacheReadTokens": 1393267,
+        "cacheCreationTokens": 76593,
+        "costUsd": 0.6403594
+      }
+    },
+    "router": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-27T04:17:41.192089Z",
+      "finishedAt": "2026-10-27T04:17:41.245204Z",
+      "artifactPath": ".claude/feature-workspace/vocabulary-mismatch-message/state/router.json",
+      "artifactSha256": "05a1eee73d4d1eb18bff58d0177b86476cf0ac5eb4c91161fc737c707c656815",
+      "sequence": 3,
+      "previousStatus": "COMPLETED",
+      "staleReason": "SPEC_CHANGED",
+      "foundSha256": "f0f468bf01504c199f829f054ac1186157719b807f9d29f0a8976ccc37fba2f3",
+      "iteration": 1,
+      "stateKind": "route",
+      "agent": "router",
+      "viewPath": ".claude/feature-workspace/vocabulary-mismatch-message/route.md"
+    },
+    "security-reviewer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-28T18:41:36.891835Z",
+      "finishedAt": "2026-10-28T18:42:17.523748Z",
+      "artifactPath": ".claude/feature-workspace/vocabulary-mismatch-message/state/security-reviewer.json",
+      "artifactSha256": "37f34351bed4fd25471643392c2975f2969e5efa891c67a01812556faa549005",
+      "sequence": 14,
+      "iteration": 1,
+      "stateKind": "security",
+      "agent": "security-reviewer",
+      "viewPath": ".claude/feature-workspace/vocabulary-mismatch-message/security-report.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 12,
+        "outputTokens": 2519,
+        "cacheReadTokens": 434899,
+        "cacheCreationTokens": 64712,
+        "costUsd": 0.3710418
+      }
+    },
+    "sre-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-27T04:17:41.247124Z",
+      "sequence": 8,
+      "skipReason": "the analysis declares no served runtime surface, so no availability or latency SLI applies",
+      "iteration": 1
+    },
+    "tech-writer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-10-28T18:51:12.017333Z",
+      "finishedAt": "2026-10-28T18:51:58.590834Z",
+      "artifactPath": ".claude/feature-workspace/vocabulary-mismatch-message/tech-writer.md",
+      "artifactSha256": "f7f353492d58835af8bc79f2d4e9ad77c3677d8863d466bb892c414538dc9917",
+      "sequence": 16,
+      "iteration": 1,
+      "agent": "tech-writer",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 16,
+        "outputTokens": 3302,
+        "cacheReadTokens": 607194,
+        "cacheCreationTokens": 69660,
+        "costUsd": 0.43313080000000004
+      }
+    },
+    "visual-qa-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-10-27T04:17:41.246873Z",
+      "sequence": 7,
+      "skipReason": "the analysis declares no UI surface, so there is nothing to look at",
+      "iteration": 1
+    }
+  },
+  "approvals": {
+    "confirm-design": {
+      "approvedAt": "2026-10-28T18:38:40.547334Z",
+      "method": "flag",
+      "approver": "oscarrieken",
+      "artifactDigests": {
+        "acceptance-scenarios": "2758c24a3d39585fcc68cd38a0a84c8f48a6beb6176031b2b374ee5faaf9289c",
+        "analyst": "52331c88d9aabf975a77a26593ba70252d3ecaea32ec7b78dc84fee79180c8e8",
+        "context-engineer": "4229960e8b78f6941b6c9d198fbf579d2ed51fc3f9bd7da6708b53d1e89c15cb",
+        "router": "05a1eee73d4d1eb18bff58d0177b86476cf0ac5eb4c91161fc737c707c656815"
+      }
+    },
+    "confirm-security": {
+      "approvedAt": "2026-10-28T18:49:49.261967Z",
+      "method": "flag",
+      "approver": "oscarrieken",
+      "artifactDigests": {
+        "acceptance-scenarios": "2758c24a3d39585fcc68cd38a0a84c8f48a6beb6176031b2b374ee5faaf9289c",
+        "analyst": "52331c88d9aabf975a77a26593ba70252d3ecaea32ec7b78dc84fee79180c8e8",
+        "code-reviewer": "89d62003ea9e58b4c299ff5177b138e92de60536f609adb34858da8422c2126d",
+        "context-engineer": "4229960e8b78f6941b6c9d198fbf579d2ed51fc3f9bd7da6708b53d1e89c15cb",
+        "developer": "f3e521b2d0b1ed8c0cc53e0de6b83eec53522a15241bd7e0053708a2d6fa7ab0",
+        "router": "05a1eee73d4d1eb18bff58d0177b86476cf0ac5eb4c91161fc737c707c656815",
+        "security-reviewer": "37f34351bed4fd25471643392c2975f2969e5efa891c67a01812556faa549005"
+      }
+    },
+    "confirm-ship": {
+      "approvedAt": "2026-10-28T18:53:29.01928Z",
+      "method": "flag",
+      "approver": "oscarrieken",
+      "artifactDigests": {
+        "acceptance-scenarios": "2758c24a3d39585fcc68cd38a0a84c8f48a6beb6176031b2b374ee5faaf9289c",
+        "analyst": "52331c88d9aabf975a77a26593ba70252d3ecaea32ec7b78dc84fee79180c8e8",
+        "code-reviewer": "89d62003ea9e58b4c299ff5177b138e92de60536f609adb34858da8422c2126d",
+        "context-engineer": "4229960e8b78f6941b6c9d198fbf579d2ed51fc3f9bd7da6708b53d1e89c15cb",
+        "developer": "f3e521b2d0b1ed8c0cc53e0de6b83eec53522a15241bd7e0053708a2d6fa7ab0",
+        "qa-engineer": "56322e8c342a8001c399d8f65ae7acba635a744f2615e154ee51c297a3ff04ab",
+        "router": "05a1eee73d4d1eb18bff58d0177b86476cf0ac5eb4c91161fc737c707c656815",
+        "security-reviewer": "37f34351bed4fd25471643392c2975f2969e5efa891c67a01812556faa549005",
+        "tech-writer": "f7f353492d58835af8bc79f2d4e9ad77c3677d8863d466bb892c414538dc9917"
+      }
+    }
+  },
+  "baselines": {
+    "confirm-design": {
+      "at": "2026-10-28T18:38:40.547342Z",
+      "reason": "APPROVED",
+      "artifacts": {
+        "acceptance-scenarios": {
+          "stage": "acceptance-scenarios",
+          "path": ".claude/feature-workspace/vocabulary-mismatch-message/.approved/confirm-design/acceptance-scenarios.md",
+          "sha256": "ca1a8262265c7b0832e682227b55426651faa17d7694491fd9f04af7889b53d6",
+          "at": "2026-10-28T18:38:40.547576Z"
+        },
+        "analyst": {
+          "stage": "analyst",
+          "path": ".claude/feature-workspace/vocabulary-mismatch-message/.approved/confirm-design/analyst.md",
+          "sha256": "d1d71a492e3c644d3e6f2d9900e8d05f0e059fe5fd299d6606ec04faa6c55767",
+          "at": "2026-10-28T18:38:40.548509Z"
+        },
+        "context-engineer": {
+          "stage": "context-engineer",
+          "path": ".claude/feature-workspace/vocabulary-mismatch-message/.approved/confirm-design/context-engineer.md",
+          "sha256": "27bc947b69177361cec45c3e49f1cea109eca4fb9d6c12f87ffef6821cb6eb06",
+          "at": "2026-10-28T18:38:40.548323Z"
+        },
+        "router": {
+          "stage": "router",
+          "path": ".claude/feature-workspace/vocabulary-mismatch-message/.approved/confirm-design/router.md",
+          "sha256": "3747536d62e1d6a7d4d012e10a9c312fe36166f38be3774a07f5c1c5815c80f9",
+          "at": "2026-10-28T18:38:40.547981Z"
+        }
+      }
+    },
+    "confirm-security": {
+      "at": "2026-10-28T18:49:49.261976Z",
+      "reason": "APPROVED",
+      "artifacts": {
+        "acceptance-scenarios": {
+          "stage": "acceptance-scenarios",
+          "path": ".claude/feature-workspace/vocabulary-mismatch-message/.approved/confirm-security/acceptance-scenarios.md",
+          "sha256": "ca1a8262265c7b0832e682227b55426651faa17d7694491fd9f04af7889b53d6",
+          "at": "2026-10-28T18:49:49.262888Z"
+        },
+        "analyst": {
+          "stage": "analyst",
+          "path": ".claude/feature-workspace/vocabulary-mismatch-message/.approved/confirm-security/analyst.md",
+          "sha256": "d1d71a492e3c644d3e6f2d9900e8d05f0e059fe5fd299d6606ec04faa6c55767",
+          "at": "2026-10-28T18:49:49.263175Z"
+        },
+        "code-reviewer": {
+          "stage": "code-reviewer",
+          "path": ".claude/feature-workspace/vocabulary-mismatch-message/.approved/confirm-security/code-reviewer.md",
+          "sha256": "13df94141657580726c84cad31c580030fa88b62a462aa41920c8175a2921bef",
+          "at": "2026-10-28T18:49:49.263271Z"
+        },
+        "context-engineer": {
+          "stage": "context-engineer",
+          "path": ".claude/feature-workspace/vocabulary-mismatch-message/.approved/confirm-security/context-engineer.md",
+          "sha256": "27bc947b69177361cec45c3e49f1cea109eca4fb9d6c12f87ffef6821cb6eb06",
+          "at": "2026-10-28T18:49:49.262235Z"
+        },
+        "developer": {
+          "stage": "developer",
+          "path": ".claude/feature-workspace/vocabulary-mismatch-message/.approved/confirm-security/developer.md",
+          "sha256": "ad1f74bd345dfd0167aeb6bd62f93282530a8eba3e59af9bb235bddf2b22f6de",
+          "at": "2026-10-28T18:49:49.263016Z"
+        },
+        "router": {
+          "stage": "router",
+          "path": ".claude/feature-workspace/vocabulary-mismatch-message/.approved/confirm-security/router.md",
+          "sha256": "3747536d62e1d6a7d4d012e10a9c312fe36166f38be3774a07f5c1c5815c80f9",
+          "at": "2026-10-28T18:49:49.262361Z"
+        },
+        "security-reviewer": {
+          "stage": "security-reviewer",
+          "path": ".claude/feature-workspace/vocabulary-mismatch-message/.approved/confirm-security/security-reviewer.md",
+          "sha256": "40cf4fddf4cd54db3ef3fa0a244ad3eafe4f8d3d87237f3974972ae4994f7c97",
+          "at": "2026-10-28T18:49:49.262788Z"
+        }
+      }
+    },
+    "confirm-ship": {
+      "at": "2026-10-28T18:53:29.019287Z",
+      "reason": "APPROVED",
+      "artifacts": {
+        "acceptance-scenarios": {
+          "stage": "acceptance-scenarios",
+          "path": ".claude/feature-workspace/vocabulary-mismatch-message/.approved/confirm-ship/acceptance-scenarios.md",
+          "sha256": "ca1a8262265c7b0832e682227b55426651faa17d7694491fd9f04af7889b53d6",
+          "at": "2026-10-28T18:53:29.020186Z"
+        },
+        "analyst": {
+          "stage": "analyst",
+          "path": ".claude/feature-workspace/vocabulary-mismatch-message/.approved/confirm-ship/analyst.md",
+          "sha256": "d1d71a492e3c644d3e6f2d9900e8d05f0e059fe5fd299d6606ec04faa6c55767",
+          "at": "2026-10-28T18:53:29.019517Z"
+        },
+        "code-reviewer": {
+          "stage": "code-reviewer",
+          "path": ".claude/feature-workspace/vocabulary-mismatch-message/.approved/confirm-ship/code-reviewer.md",
+          "sha256": "13df94141657580726c84cad31c580030fa88b62a462aa41920c8175a2921bef",
+          "at": "2026-10-28T18:53:29.019742Z"
+        },
+        "context-engineer": {
+          "stage": "context-engineer",
+          "path": ".claude/feature-workspace/vocabulary-mismatch-message/.approved/confirm-ship/context-engineer.md",
+          "sha256": "27bc947b69177361cec45c3e49f1cea109eca4fb9d6c12f87ffef6821cb6eb06",
+          "at": "2026-10-28T18:53:29.020375Z"
+        },
+        "developer": {
+          "stage": "developer",
+          "path": ".claude/feature-workspace/vocabulary-mismatch-message/.approved/confirm-ship/developer.md",
+          "sha256": "ad1f74bd345dfd0167aeb6bd62f93282530a8eba3e59af9bb235bddf2b22f6de",
+          "at": "2026-10-28T18:53:29.019644Z"
+        },
+        "qa-engineer": {
+          "stage": "qa-engineer",
+          "path": ".claude/feature-workspace/vocabulary-mismatch-message/.approved/confirm-ship/qa-engineer.md",
+          "sha256": "cbe528fa0047be1df30335e0949958e593b755a7164245dd8d9d3bf23f4ab0ee",
+          "at": "2026-10-28T18:53:29.019914Z"
+        },
+        "router": {
+          "stage": "router",
+          "path": ".claude/feature-workspace/vocabulary-mismatch-message/.approved/confirm-ship/router.md",
+          "sha256": "3747536d62e1d6a7d4d012e10a9c312fe36166f38be3774a07f5c1c5815c80f9",
+          "at": "2026-10-28T18:53:29.020456Z"
+        },
+        "security-reviewer": {
+          "stage": "security-reviewer",
+          "path": ".claude/feature-workspace/vocabulary-mismatch-message/.approved/confirm-ship/security-reviewer.md",
+          "sha256": "40cf4fddf4cd54db3ef3fa0a244ad3eafe4f8d3d87237f3974972ae4994f7c97",
+          "at": "2026-10-28T18:53:29.02027Z"
+        },
+        "tech-writer": {
+          "stage": "tech-writer",
+          "path": ".claude/feature-workspace/vocabulary-mismatch-message/.approved/confirm-ship/tech-writer.md",
+          "sha256": "f7f353492d58835af8bc79f2d4e9ad77c3677d8863d466bb892c414538dc9917",
+          "at": "2026-10-28T18:53:29.019831Z"
+        }
+      }
+    }
+  },
+  "policyDecisions": [
+    {
+      "gate": "confirm-ship",
+      "at": "2026-10-28T18:51:58.641396Z",
+      "effect": "auto-approve",
+      "honoured": false,
+      "policies": [
+        {
+          "name": "evidence-clean-ship",
+          "action": "auto-approve",
+          "outcome": "TRUE",
+          "source": ".claude/policies/evidence-clean-ship.policy.yaml"
+        }
+      ]
+    }
+  ],
+  "spend": {
+    "model": "claude-sonnet-5",
+    "inputTokens": 298,
+    "outputTokens": 100708,
+    "cacheReadTokens": 12305463,
+    "cacheCreationTokens": 1111222,
+    "costUsd": 7.9136565999999995
+  },
+  "budget": {
+    "maxUsd": 20,
+    "maxHours": 2
+  },
+  "unmeasuredAccepted": {
+    "developer": {
+      "finishedAt": "2026-10-26T05:40:40.249939Z",
+      "acceptedBy": "oscarrieken",
+      "acceptedAt": "2026-10-27T01:34:21.139455Z"
+    }
+  },
+  "updatedAt": "2026-10-28T18:53:29.095552Z"
+}

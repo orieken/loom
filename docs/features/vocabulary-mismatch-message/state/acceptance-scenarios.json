@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 2,
+  "feature": "vocabulary-mismatch-message",
+  "scenarios": [
+    {
+      "criterion": "errorRecorder MUST keep every formatted message passed to Errorf, not only whether a call happened.",
+      "name": "errorRecorder keeps the full text of every formatted error message",
+      "given": [
+        "an errorRecorder test double stands in for the real test-reporting interface"
+      ],
+      "when": [
+        "Errorf is called on the recorder with a format string and arguments"
+      ],
+      "then": [
+        "the recorder stores the fully formatted message text",
+        "the recorder does not merely flag that a call happened, with the message text discarded"
+      ]
+    },
+    {
+      "criterion": "TestVocabularyCheckCatchesAMismatch MUST assert exactly one mismatch was recorded, naming field status, the document, and value queued.",
+      "name": "Vocabulary check reports exactly one mismatch, naming the field, document, and extra value",
+      "given": [
+        "a fixture document whose status vocabulary includes an extra value, queued, not present in vocabulary.go's status set",
+        "every other vocabulary field in the fixture (type, source, trust, finish, autonomy) matches vocabulary.go exactly"
+      ],
+      "when": [
+        "the vocabulary check runs the fixture document against vocabulary.go"
+      ],
+      "then": [
+        "exactly one mismatch is recorded",
+        "the recorded message names the field status",
+        "the recorded message names the fixture document",
+        "the recorded message names the extra value queued"
+      ]
+    },
+    {
+      "criterion": "Temporarily weakening assertVocabularyMatches's message MUST make the new content assertion fail; qa-report.md MUST record this and its reversal.",
+      "name": "Weakening the mismatch message breaks the content assertion, and reverting restores a passing suite",
+      "given": [
+        "assertVocabularyMatches's Errorf format string is temporarily changed to drop its \"only in\" clauses"
+      ],
+      "when": [
+        "TestVocabularyCheckCatchesAMismatch runs against the weakened format string"
+      ],
+      "then": [
+        "the message-content assertion fails",
+        "after the format string is reverted to its original text, the full internal/intake suite passes again"
+      ]
+    },
+    {
+      "criterion": "The full internal/intake suite MUST pass, every function's cyclomatic complexity MUST stay below 7, and no file outside internal/intake/ MUST change except this run's own delivery record.",
+      "name": "The internal/intake suite stays green, complexity-compliant, and scoped to its own package",
+      "given": [
+        "the vocabulary-mismatch-message change is complete"
+      ],
+      "when": [
+        "go test ./internal/intake/... runs"
+      ],
+      "then": [
+        "the suite passes",
+        "every function in the changed test file has cyclomatic complexity below 7",
+        "no file outside internal/intake/ has changed, except this run's own delivery record under docs/features/vocabulary-mismatch-message/"
+      ]
+    }
+  ]
+}
