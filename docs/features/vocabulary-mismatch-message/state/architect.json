@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 2,
+  "feature": "vocabulary-mismatch-message",
+  "structuralDecisions": [
+    {
+      "decision": "Keep errorRecorder a plain test-double struct inside internal/intake/vocabulary_test.go — change its field from `failed bool` to `messages []string`, with Errorf doing a single unconditional append (`messages = append(messages, fmt.Sprintf(format, args...))`). No new type, file, interface, or package.",
+      "rationale": "errorRecorder already satisfies the vocabularyReporter interface (Helper, Errorf) that assertVocabularyMatches depends on; the only thing missing is that Errorf discards the message instead of keeping it. Widening the stored value from a bool to a slice is the smallest change that lets the test assert on message content, and it keeps the double a pure Arrange/Act/Assert fixture with no branching, matching Simple Design's 'fewest elements' and Sandi Metz's 5-line method ceiling.",
+      "tradeOffs": [
+        "A slice instead of a bool makes a trivial zero-value check (`!recorder.failed`) become a length check (`len(recorder.messages) != 1`) — one extra token of mental overhead for readers, acceptable because it's what AC2 requires."
+      ],
+      "fitness": {
+        "property": "errorRecorder.Errorf has cyclomatic complexity 1 (single append, no branching) and stays below the project's complexity-7 budget",
+        "verification": "gocyclo (project's configured min-complexity 7 check), run via `go test ./internal/intake/...` CI step and the analyze-complexity skill",
+        "owner": "DevOps"
+      }
+    },
+    {
+      "decision": "Do not introduce a dedicated assertion helper (e.g. assertMessageContains) for the three substring checks (field name, document name, value). Inline them as plain `strings.Contains` checks inside TestVocabularyCheckCatchesAMismatch, or at most one small unexported helper if that keeps the test body under Sandi Metz's method-length guidance — but no new exported API surface.",
+      "rationale": "Three independent strings.Contains calls joined by if-statements stay at cyclomatic complexity 4 at most (1 base + 3 conditions), well under the 7 ceiling, and the test body still shows the interesting assertion (what the message must name) directly rather than hiding it behind an abstraction — this is the 'moist, not DRY' testing principle from shared/rules/testing-conventions.md: the critical assertion path belongs in the test, not tucked into a helper.",
+      "tradeOffs": [
+        "Slight duplication of 'message contains X' phrasing across three checks instead of one parameterized helper — accepted because the alternative (a loop over field/document/value) would obscure which specific thing failed when the test breaks."
+      ],
+      "fitness": {
+        "property": "TestVocabularyCheckCatchesAMismatch's cyclomatic complexity stays below 7 after the new assertions are added",
+        "verification": "gocyclo / analyze-complexity skill, same CI gate as the existing suite",
+        "owner": "DevOps"
+      }
+    },
+    {
+      "decision": "No new architectural pattern, layer, or abstraction is introduced by this chore.",
+      "rationale": "The change is confined to a test double's internal state and one test function's assertions, inside a file and package that already passed architecture and code review under i-4-vocabulary-test. There is no new component to place, no bounded-context crossing, and no fitness function beyond the complexity and coverage gates already in force.",
+      "judgmentOnly": true
+    }
+  ],
+  "componentPlacement": [
+    {
+      "component": "errorRecorder",
+      "layer": "test",
+      "package": "internal/intake/vocabulary_test.go",
+      "reason": "Pre-existing test double, package-private to internal/intake, scoped to this one test file — no relocation needed."
+    }
+  ],
+  "boundedContext": {
+    "owning": "intake",
+    "crossings": []
+  },
+  "stabilityDesign": [],
+  "observabilityDesign": [],
+  "layerBoundaryChecks": [
+    {
+      "rule": "Test code (internal/intake/vocabulary_test.go) must not be imported by, or introduce a dependency on, any non-test layer",
+      "verdict": "PASS",
+      "notes": "Confirmed by reading the file directly (repo graph not consulted — this is a single-file, zero-import-surface change where the graph would add no information). errorRecorder and its Errorf method are unexported and used only within this test file; no production file is touched."
+    }
+  ],
+  "antiPatternChecks": [
+    {
+      "pattern": "Premature generalization",
+      "found": false,
+      "notes": "Considered and rejected introducing a reusable assertion helper or a richer recorder abstraction (e.g. structured mismatch records instead of strings) — the spec's acceptance criteria only need substring checks on formatted messages, and the out-of-scope note explicitly forbids touching assertVocabularyMatches's format. Matching scope to the stated need, not anticipated future needs."
+    },
+    {
+      "pattern": "Anemic domain model",
+      "found": false,
+      "notes": "Not applicable — errorRecorder is a test double, not a domain entity."
+    }
+  ],
+  "fitnessFunctions": [
+    {
+      "property": "Every function's cyclomatic complexity in the changed file stays below 7",
+      "verification": "gocyclo (min-complexity 7), already the project's configured check per the i-4-vocabulary-test code review",
+      "owner": "DevOps"
+    },
+    {
+      "property": "internal/intake test suite passes end to end after the change",
+      "verification": "`go test ./internal/intake/...` exits 0",
+      "owner": "DevOps"
+    },
+    {
+      "property": "Negative control's new message assertion genuinely depends on assertVocabularyMatches's message content, not merely on Errorf being called",
+      "verification": "One-time manual proof-of-detection per ADR-008: QA temporarily strips the 'only in...' clauses from assertVocabularyMatches's Errorf format string, reruns `go test ./internal/intake/ -run TestVocabularyCheckCatchesAMismatch`, confirms failure, then reverts and reruns the full suite green. Recorded in qa-report.md; not wired into CI as a permanent gate.",
+      "owner": "QA",
+      "judgmentOnly": true
+    },
+    {
+      "property": "No file outside internal/intake/ changes (except this run's own delivery record under docs/features/vocabulary-mismatch-message/)",
+      "verification": "`git status` / `git diff --stat` reviewed by QA/tech-writer before handoff; scope is also declared in the claim's frontmatter `scope.paths: [internal/intake/**]`",
+      "owner": "QA"
+    }
+  ],
+  "refactoringOpportunities": [],
+  "retrieval": {
+    "domainTerms": ["closed vocabulary"],
+    "issueRefs": ["i-4-vocabulary-test", "PR #13"],
+    "linkedAdrs": ["ADR-008"],
+    "linkedKis": []
+  },
+  "developerHandoffNotes": [
+    "Change only `type errorRecorder struct { failed bool }` to `type errorRecorder struct { messages []string }` and its Errorf method to append `fmt.Sprintf(format, args...)` — no other type in the file needs to change; vocabularyReporter's interface shape is unaffected.",
+    "In TestVocabularyCheckCatchesAMismatch, replace `if !recorder.failed { t.Fatal(...) }` with a check on `len(recorder.messages) == 1` (fail with both the count and the full slice on mismatch), then assert `recorder.messages[0]` contains `field \"status\"`, the literal document name `\"fixture\"` (the string already passed to assertVocabularyMatches in that loop), and `queued`.",
+    "Keep the new assertions as plain sequential `strings.Contains` checks rather than a loop or helper — six vocabulary fields are iterated already by the existing for-loop; the new message assertion only applies after that loop, to the one recorded message, so it does not need to iterate anything.",
+    "Do not touch assertVocabularyMatches, vocabulary.go, TEMPLATE.md, or the fixture — the claim's Out of Scope section forbids it, and AC3's temporary-edit-then-revert step is QA's job in qa-report.md, not a permanent code change.",
+    "`fmt` is not currently imported in vocabulary_test.go — add it to the import block for `fmt.Sprintf`."
+  ],
+  "openQuestions": []
+}
