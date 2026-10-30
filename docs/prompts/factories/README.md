@@ -11,6 +11,7 @@ Prompts for building the factories that split delivery into pieces an expert in 
 | [04-test-factory-sunday.md](04-test-factory-sunday.md) | `deliver-tests-sunday` | API automation on Sunday | service owner, test architect, QA lead |
 | [05-pilot-cesium-reagent-map.md](05-pilot-cesium-reagent-map.md) | all | The POC: one feature through every factory, one role per gate | analyst, developer, tester |
 | [06-runner-images.md](06-runner-images.md) | — | The Debian and UBI9 browser-runner images, for any repo | — |
+| [07-agent-metrics-and-costs.md](07-agent-metrics-and-costs.md) | — | How we measure agent cost and quality, for any team or pipeline | — |
 | [05-pilot-decisions.md](05-pilot-decisions.md) | all | Choices made in the pilot, each a candidate skill, tool or rule | — |
 | (exists) | `deliver-feature` | Product code | as today |
 
