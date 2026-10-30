@@ -103,6 +103,31 @@ how often an agent reads the thing being fixed.
 - [ ] **L3.3** (L) — real in-run parallelism. The supervisor already runs orders in parallel as
   separate processes; this is about stages within one run.
 
+- [ ] **L3.75** (S) — the inbox shows a reviewer what is theirs. Each order names a reviewer per gate
+  (intake v2, `01-shared-intake.md`); `loom factory inbox --reviewer <handle>` filters to it. Which
+  roles a team has is configuration, not a fixed set of three: a team declares its roles and who
+  holds each in `.claude/factory/team.yaml`, one person can hold several, and a gate whose role is not
+  held falls back to a named default reviewer. With no `team.yaml`, everyone sees everything, as now.
+  *(raised 2026-10-29, reagent-map pilot)*
+- [ ] **L3.76** (M) — tests in a different repo from the app. The floor clones the order's
+  `target.repo` into the run's worktree and opens the PR there. Not needed for the pilot, which keeps
+  tests with the app; needed for teams whose testers own a separate repo. *(raised 2026-10-29)*
+
+- [ ] **L3.77** (M, P1) — a run sees only what its branch will have. Worktrees live inside the
+  checkout (`.loom/worktrees/<id>`), so an agent can read the main checkout's untracked and ignored
+  files through a relative path. Found in saturday-monorepo's first order: `context-engineer` "read
+  in full" five files under a gitignored `containers/` that did not exist in the worktree, and built
+  the analysis on them. *Fix*: create worktrees outside the checkout (`~/.loom/worktrees/<repo>/<id>`),
+  and have `context-engineer`'s measurer flag any pinned file missing from the worktree as a defect,
+  not "cannot read". *(raised 2026-10-29)*
+
+- [ ] **L3.78** (S) — stage timeouts a plan or order can raise. `defaultStageTimeout` is 30 minutes
+  for every stage, hard-coded in `internal/orchestrator/plan.go`; plan files cannot change it. A
+  developer stage that builds a container image under amd64 emulation hit it in saturday-monorepo's
+  first order, was killed, reported no usage, and parked. *Fix*: a per-stage `timeout` in plan files,
+  an order-level override within the budget's `max-hours`, and a killed stage's partial spend
+  recorded rather than "unmeasured". *(raised 2026-10-30)*
+
 ### Clean up `deliver-feature` and its surroundings
 
 - [ ] **D-7** (M) — one way to run the pipeline: `loom run` where the binary exists, the skill as
