@@ -67,8 +67,13 @@ Every item applies to `debian` and `ubi9` alike. A variant ships only when all o
 - `runner-check`, baked into the image, launches Chrome and Edge **headed**, creates a `webgl2`
   context in each, and writes to `/work/evidence/`: the WebGL renderer per browser, the browser
   versions, and the installed package list. It exits non-zero if either browser has no context.
-- WebGL works through Mesa's software renderer (llvmpipe), with Chrome headed under Xvfb. Do not
-  rely on new-headless Chrome's SwiftShader fallback; it needs `--enable-unsafe-swiftshader` now.
+- WebGL works through ANGLE's SwiftShader backend: Chrome headed under Xvfb, launched with
+  `--use-gl=angle --use-angle=swiftshader`. `runner-check` and every suite's Chrome project use
+  those same args. Mesa llvmpipe is **not** the renderer: in the first debian build, headed Chrome
+  with no GL args, with `--use-gl=desktop`, and with `--use-angle=gl` all got a null `webgl2`
+  context. Install the Mesa packages anyway (Chrome's GL probing touches them). Do not rely on
+  new-headless Chrome's implicit SwiftShader fallback; it needs `--enable-unsafe-swiftshader` now.
+  Record the renderer string `runner-check` reports; it should name SwiftShader.
 
 ## Variant specifics
 
@@ -90,7 +95,7 @@ Every item applies to `debian` and `ubi9` alike. A variant ships only when all o
 - Repositories, from `docs/runner-image.md`, "The UBI9 variant":
   - UBI for everything it has, with `excludepkgs=mesa*`;
   - CentOS Stream 9 BaseOS, AppStream and CRB for Xvfb and **all** Mesa packages (including
-    `mesa-dri-drivers`, which UBI lacks and WebGL needs), with `excludepkgs=openssl*` so UBI's
+    `mesa-dri-drivers`, which UBI lacks and Chrome's GL probing needs), with `excludepkgs=openssl*` so UBI's
     FIPS OpenSSL stays;
   - EPEL 9 only for `x11vnc`, `openbox`, `novnc`, `python3-websockify`. EPEL keeps only the
     latest build, so these four RPMs are vendored in `rpms/`, checked against `rpms/SHA256SUMS`

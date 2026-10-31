@@ -39,6 +39,7 @@ add the stage to "Seen in" and move it to `build`.
 | D-20 | One runner image per framework, layered: a pinned, signature-checked, non-root `base` with real browsers, Xvfb and an opt-in viewer; project needs (certificates, toolchains) as targets or layers on top | Both repos had built their own; one shared base means one place to keep browsers current | runner image | template (`containers/saturday-runner`) | watching |
 | D-21 | A container's entrypoint ends in `exec "$@"`; never supervisord as PID 1 for a test run | Otherwise the test command's exit code is lost and a pre-ship check cannot fail | runner image | rule | watching |
 | D-22 | Long build work (image builds, package locks under emulation) runs outside a factory stage until stages can be given longer limits | The first developer stage was killed at 30 minutes mid-build | first saturday run | none until L3.78 | watching |
+| D-23 | Software WebGL in the runner image is headed Chrome under Xvfb with `--use-gl=angle --use-angle=swiftshader`, in `runner-check` and in every suite's Chrome project; the design's Mesa llvmpipe claim was wrong | The first debian build got a null `webgl2` context with no GL args, `--use-gl=desktop` and `--use-angle=gl`; only ANGLE SwiftShader rendered | runner image | template (Playwright `chrome` project launch args) | watching |
 | D-12 | A stage becomes a factory plan once it has been run by hand twice and its decisions have settled | Build from evidence, not from the design | design | none | — |
 
 ## Open (decide during wave 1)
