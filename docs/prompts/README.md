@@ -30,6 +30,14 @@ Prompts an agent runs repeatedly, not one-off handoffs.
 |---|---|
 | [weekly-engineering-report.md](weekly-engineering-report.md) | Collector builder, weekly analyst and auditor prompts for `shared/templates/weekly-engineering-report.template.md`. Needs a schedule you supply; loom has no runner |
 
+### Adoption prompts
+
+Prompts a person pastes into Claude Code in **their own** project.
+
+| File | Scope |
+|---|---|
+| [add-the-writers-to-your-project.md](add-the-writers-to-your-project.md) | Adds `spec-writer`, `analyst` and `tech-writer` plus a writing-style rule that holds the team's own style. Interviews the user first, wires the three agents to the rule, and checks the output. |
+
 ### Documentation cleanup (from docs/TODO.md audit — 2026-08-15)
 
 Run in order where dependencies exist: `docs-cleanup-legacy-install-decision.md` before
