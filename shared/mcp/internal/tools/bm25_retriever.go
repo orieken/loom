@@ -54,7 +54,9 @@ func NewBM25Retriever(dbPath string) (*BM25Retriever, error) {
 			return nil, fmt.Errorf("bm25 retriever: cannot create db dir %q: %w", dir, err)
 		}
 	}
-	db, err := sql.Open("sqlite", dbPath)
+	// A cancelled transaction rolls back asynchronously, so the next write can
+	// find the file still locked. Wait for the lock instead of failing at once.
+	db, err := sql.Open("sqlite", dbPath+"?_pragma=busy_timeout(5000)")
 	if err != nil {
 		return nil, fmt.Errorf("bm25 retriever: open %q failed: %w", dbPath, err)
 	}
