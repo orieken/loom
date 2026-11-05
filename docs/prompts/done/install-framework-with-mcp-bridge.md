@@ -1,5 +1,10 @@
 # Install Framework + Bridge Its Tools Into an Existing Project MCP Server
 
+> Historical implementation handoff. Do not execute this file for a new adoption.
+> Its `shared/mcp-patterns/go/` copy paths no longer exist, and its retrieval and installation assumptions are outdated.
+> Use [Adopt framework MCP tools](../adopt-framework-mcp-tools.md) instead.
+> Commit messages and phase descriptions below are historical plans, not authorization to create commits.
+
 Set up the ai-assistant-dot-files framework in a target project **AND** expose selected framework tools through that project's own MCP server (following Option B — copy tool source files, keep the MCP sovereign, adjust for the target project's layout).
 
 ## When to use this prompt

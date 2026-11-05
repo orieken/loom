@@ -14,6 +14,21 @@ For tasks that require a human (not a fireable agent prompt), see [../human-task
 
 ## Active Prompts
 
+### Adoption by other teams
+
+| Prompt | Purpose |
+|---|---|
+| [Add the writers to your project](add-the-writers-to-your-project.md) | Adapt the spec writer, analyst, and technical writer to a team's style, DDD terminology, and Mermaid diagrams. Includes an interview, setup, and verification steps. |
+| [Add domain language](add-domain-language-to-your-project.md) | Agree on domain terms, bounded contexts, and modeling and terminology review practices. |
+| [Build a skill, agent, and tool](build-a-skill-agent-and-tool.md) | Assign workflow, judgment, and executable behavior to the smallest useful set of components. |
+| [Add independent agent review](add-independent-agent-review.md) | Introduce a read-only Counter Agent with evidence-based findings and explicit invocation. |
+| [Make agent outputs verifiable](make-agent-outputs-verifiable.md) | Define templates, structural contracts, real evaluation fixtures, and qualitative rubrics. |
+| [Adopt framework MCP tools](adopt-framework-mcp-tools.md) | Choose standalone serving, Go registry embedding, or a maintained language port. Replaces the historical copy-based bridge approach. |
+
+These are reusable adoption prompts. Run them in the adopting team's project, retain them here after use,
+and adapt paths and permissions to that project. The repository-specific handoff conventions below do not apply to them.
+For the MCP review findings and remaining maintenance work, see [MCP prompt review](../audits/mcp-adoption-prompt-review.md).
+
 ### Framework roadmap — next items (2026-09-15)
 
 | File | Scope | Estimated size |
@@ -219,3 +234,4 @@ Every prompt in this directory:
 - Requests a specific report format
 
 When a prompt is executed and shipped, move it to `docs/prompts/done/` and update the table above.
+This applies to one-time implementation handoffs; reusable adoption prompts stay in the adoption section.
