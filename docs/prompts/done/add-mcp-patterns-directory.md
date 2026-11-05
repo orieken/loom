@@ -1,5 +1,9 @@
 # Extract Framework-Generic MCP Patterns Into `shared/mcp-patterns/`
 
+> Historical extraction handoff. The copied Go templates introduced here were subsequently removed.
+> Read [the current MCP patterns guidance](../../../shared/mcp-patterns/README.md) and
+> [the MCP adoption prompt](../adopt-framework-mcp-tools.md) before planning a new integration.
+
 Break the accidental coupling between framework consumers and `saturday-mcp` by extracting the framework-generic MCP tool patterns (retrievers, analyzers, walkutil, response structs, registration pattern) into `ai-assistant-dot-files/shared/mcp-patterns/`. After this ships, downstream projects that want the bridge pattern no longer need saturday-mcp cloned locally — the framework install brings the reference implementation with it.
 
 ## Why this matters
