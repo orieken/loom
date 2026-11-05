@@ -3,7 +3,7 @@ intake: 1
 id: intake-slice-check
 type: feature
 plan: deliver-feature
-status: draft
+status: ready
 priority: 2
 created: 2026-11-04
 requested-by: oscar
