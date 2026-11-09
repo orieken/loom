@@ -25,6 +25,12 @@ budget:
   max-hours: 4                 # wall-clock ceiling across all attempts
 scope:
   paths: []                    # globs this work is expected to touch; empty = no expectation stated
+slice:                         # optional — set only when this order delivers part of a spec split by hand; see "SLICE" below
+  of: spec-package-slug        # the spec package this order is a slice of
+  spec: docs/specs/spec-package-slug/acceptance-criteria.json   # criteria[], each with id + observableVia (api | ui | both)
+  digest: sha256:...           # sha256 of `manifest`'s bytes; every slice of the same `of` must declare the same value
+  manifest: docs/specs/spec-package-slug/package.sha256   # sha256sum-style "<hex digest>  <path>" lines, one per file
+  covers: []                   # criterion ids this slice covers, e.g. [AC1:ui, AC2, AC14] — a bare id covers every level
 ---
 
 <!--
@@ -50,6 +56,15 @@ AUTONOMY
 less (`strict-human`: stop at every checkpoint) but never more — the same rule
 by which a plan can select stages but cannot weaken them. The always-human
 gates in shared/rules/approval-gates.md stay human for every order.
+
+SLICE
+Delete the whole `slice:` block if this order is not one of several that
+together deliver one larger spec split by hand. If it is, every order
+sharing one `of` is checked together: each criterion level the spec at
+`spec` declares must be covered by exactly one slice's `covers`, every
+slice must declare the same `digest`, `digest` must equal the SHA-256 of
+`manifest`'s bytes, and every file `manifest` lists must still match its
+recorded hash. `loom intake check` reports each of these by name.
 -->
 
 # [Title — active verb + noun]
