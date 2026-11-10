@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 2,
+  "feature": "intake-slice-check",
+  "structuralDecisions": [
+    {
+      "decision": "Define `FileReader func(path string) ([]byte, error)` in internal/intake/slice.go as the sole filesystem seam CheckSlices depends on; cmd/loom/cmd/intake.go is the only place that constructs a real one (os.ReadFile rooted at the resolved project root).",
+      "rationale": "internal/intake is the use-case layer and must never import os/io/fs directly (architecture-guardrails.md #1, CLAUDE.md's 'every external dependency hides behind an interface'). A function type is the idiomatic Go substitute for a single-method interface here — one capability, no state — and mirrors the existing Check(source, context) style already in check.go, which also never does its own I/O.",
+      "tradeOffs": [
+        "Every call site that needs cross-order slice validation must thread a FileReader through from the CLI layer instead of calling os.ReadFile directly — more ceremony, but it is what keeps internal/intake unit-testable without a real filesystem.",
+        "Adds a second seam type to the package alongside Context; acceptable because it has exactly one responsibility and does not entangle with Context's fields."
+      ],
+      "fitness": {
+        "property": "internal/intake/slice.go and slice_check.go import neither os nor io/fs — the filesystem boundary stays behind FileReader",
+        "verification": "golangci-lint depguard rule banning os/io/fs imports in internal/intake, or `go list -deps ./internal/intake | grep -E '^(os|io/fs)$'` returning empty, wired into CI",
+        "owner": "architect"
+      }
+    },
+    {
+      "decision": "Keep the project-root escape guard (isWithinProjectRoot) purely lexical and run it before readRooted ever calls FileReader, so slice.spec, slice.manifest, and every manifest-listed file path are refused — never read — when they would resolve outside the project root.",
+      "rationale": "slice.spec/slice.manifest arrive in order frontmatter, which may come from an external, lower-trust order (the same Trust distinction order.go already encodes via IsExternal()). A path-traversal attempt must never reach the real file reader, matching the NFR the analyst flagged and architecture-guardrails.md's boundary-validation spirit.",
+      "fitness": {
+        "property": "No path that fails isWithinProjectRoot is ever passed to FileReader",
+        "verification": "go test ./internal/intake -run 'TestIsWithinProjectRoot|TestReadRootedRefusesAnEscapingPathWithoutCallingRead|TestReadSpecPackageRefusesAnEscapingPath'",
+        "owner": "architect"
+      }
+    },
+    {
+      "decision": "Keep Slice (order.go) a plain YAML-tagged data struct with no methods; put every cross-order rule in slice_check.go as free functions over []Document, not as methods on Slice or Order.",
+      "rationale": "The unit CheckSlices evaluates — a slice.of group — spans N orders, so no single Order or Slice is the natural receiver for coverage/digest/cycle logic. This matches the package's existing idiom (Check is already a free function, not a method) rather than introducing a new OOP style mid-package.",
+      "judgmentOnly": true
+    },
+    {
+      "decision": "Fold slice-check violations into runIntakeCheck's existing `invalid` counter via checkIntakeSlices's return value, instead of giving the slice check its own independent pass/fail computation.",
+      "rationale": "AC7 requires the exit-code contract (0 only when every order is valid) to stay exactly as it was. One counter feeding summarizeIntakeCheck keeps 'is this run valid' decided in exactly one place, avoiding a Shotgun Surgery risk where two independent validity computations could drift apart under a future change.",
+      "fitness": {
+        "property": "The CLI exits non-zero whenever CheckSlices returns at least one violation, and 0 only when every per-order Check and every slice group passes",
+        "verification": "go test ./cmd/loom/cmd -run 'TestIntakeCheckVerifiesASliceSplitEndToEnd|TestIntakeCheckFailsOnASliceCoverageGap'",
+        "owner": "architect"
+      }
+    },
+    {
+      "decision": "Detect depends-on cycles with a local ~15-line DFS (findCycle) sized to one spec's slice group, not a general-purpose graph library.",
+      "rationale": "The graph here is at most a handful of nodes — one spec's slices. Pulling in a graph dependency for this would be exactly the Premature Generalization anti-pattern design-principles.md's radar flags.",
+      "fitness": {
+        "property": "findCycle reports every member of a depends-on cycle, including a self-referencing one, and dangling depends-on entries are reported independently of cycles",
+        "verification": "go test ./internal/intake -run TestCheckSlicesReportsEachViolationKind",
+        "owner": "architect"
+      }
+    },
+    {
+      "decision": "Do not widen scope.paths to touch shared/DOMAIN_DICTIONARY.md in this delivery; accept the Ubiquitous-Language gap for the new Slice/Level domain terms as a tracked follow-up rather than breaking AC10's scope lock.",
+      "rationale": "AC10 makes the scope lock a hard constraint for this run: only internal/intake/**, cmd/loom/cmd/intake*.go, templates/claude-feature-team/intake/**, and this feature's own delivery-record directory may change. shared/DOMAIN_DICTIONARY.md sits outside every one of those globs, so adding the terms here would itself be the AC10 violation the analyst flagged — a structural decision cannot override a scope-lock AC. Surfaced to the human in openQuestions rather than resolved unilaterally.",
+      "judgmentOnly": true
+    }
+  ],
+  "componentPlacement": [
+    {
+      "component": "Slice",
+      "layer": "Entities",
+      "package": "internal/intake/order.go",
+      "reason": "Pure data on Order's frontmatter (of/spec/digest/manifest/covers), zero external imports — Clean Architecture Entities layer, same as the rest of Order."
+    },
+    {
+      "component": "FileReader",
+      "layer": "UseCases",
+      "package": "internal/intake/slice.go",
+      "reason": "Defines the filesystem seam CheckSlices depends on; implemented only in the adapter layer, never in internal/intake itself."
+    },
+    {
+      "component": "CheckSlices, checkSliceGroup, checkCoverage, checkDigestAgreement, checkManifestDigests, checkManifestFiles, checkDependsOnCycle, checkDanglingDependsOn",
+      "layer": "UseCases",
+      "package": "internal/intake/slice_check.go",
+      "reason": "Application-specific business rule — verifying a hand-split feature's slices together cover its spec — operating only on already-parsed Document values and the FileReader seam; no framework imports."
+    },
+    {
+      "component": "knownObservableVia, knownLevel",
+      "layer": "Entities",
+      "package": "internal/intake/vocabulary.go",
+      "reason": "Closed domain vocabularies, placed alongside the pre-existing knownTypes/knownStatuses/etc. in the same file."
+    },
+    {
+      "component": "checkIntakeSlices, slicedSpecs",
+      "layer": "Adapters",
+      "package": "cmd/loom/cmd/intake.go",
+      "reason": "Builds the real FileReader (os.ReadFile rooted at the project root), prints violations/summaries through cobra's writer, and folds the result into the CLI's exit-code contract — Interface Adapters / Frameworks & Drivers boundary."
+    }
+  ],
+  "boundedContext": {
+    "owning": "Agent Orchestration",
+    "crossings": [
+      "cmd/loom/cmd (CLI/adapter layer) calls internal/intake (domain/use-case layer) via the FileReader seam — a one-way call carrying no framework type across the boundary."
+    ]
+  },
+  "stabilityDesign": [
+    {
+      "pattern": "Fail Fast",
+      "appliesTo": "Every readRooted/readManifest/readSpecPackage/checkListedFile call site in internal/intake/slice.go and slice_check.go",
+      "rationale": "All I/O here is a local filesystem read of a path already verified to stay inside the project root — no network call, so no timeout/CircuitBreaker/retry applies under architecture-guardrails.md #5 (which targets network calls specifically). A read failure is reported as a violation immediately, never retried or swallowed."
+    }
+  ],
+  "observabilityDesign": [],
+  "layerBoundaryChecks": [
+    {
+      "rule": "internal/intake must not import adapter or framework packages for I/O (domain/use-case layer stays pure)",
+      "verdict": "PASS",
+      "notes": "Confirmed by direct read (the loom MCP graph tools were not available in this session, so imports were read directly as the fallback the architect prompt specifies): slice.go imports path/filepath only for lexical operations (Clean, IsAbs, ToSlash) — no os, io, or net import appears anywhere in internal/intake/slice.go or slice_check.go."
+    },
+    {
+      "rule": "The adapter layer (cmd/loom/cmd) is the only place a real FileReader is constructed",
+      "verdict": "PASS",
+      "notes": "Confirmed in cmd/loom/cmd/intake.go:96-98 (os.ReadFile rooted at root). internal/intake/slice_test.go and slice_check_test.go also construct FileReaders, which is permitted test-side, not a production boundary crossing."
+    },
+    {
+      "rule": "Order/Slice domain structs carry no persistence or HTTP logic",
+      "verdict": "PASS",
+      "notes": "Slice in order.go is a pure YAML-tagged struct; every rule lives in slice.go/slice_check.go as free functions."
+    }
+  ],
+  "antiPatternChecks": [
+    {
+      "pattern": "Distributed Monolith",
+      "found": false,
+      "notes": "Single-process CLI command calling a sibling package in-process; no network call introduced."
+    },
+    {
+      "pattern": "Anemic Domain Model",
+      "found": false,
+      "notes": "Slice/Order hold data with no methods, but this matches the package's existing idiom (Check is itself a free function) and Go's preference for functions over methods on simple data holders — not a smell in this codebase's established style."
+    },
+    {
+      "pattern": "God Object",
+      "found": false,
+      "notes": "slice_check.go is ~390 lines but composed of roughly twenty small, single-purpose, independently testable functions; CheckSlices/checkSliceGroup only compose them."
+    },
+    {
+      "pattern": "Shotgun Surgery",
+      "found": false,
+      "notes": "Exit-code behavior is still decided in exactly one place (summarizeIntakeCheck); slice violations fold into the existing invalid counter rather than adding a second code path."
+    },
+    {
+      "pattern": "Leaky Abstraction",
+      "found": false,
+      "notes": "FileReader exposes exactly one capability (read bytes by project-root-relative path); no caller needs to know whether the implementation is os.ReadFile or a test double."
+    },
+    {
+      "pattern": "Premature Generalization",
+      "found": false,
+      "notes": "Cycle detection is a small local DFS sized to one spec's slice group; no plugin/strategy abstraction was introduced for what is still a single code path."
+    }
+  ],
+  "fitnessFunctions": [
+    {
+      "property": "internal/intake/slice.go and slice_check.go import neither os nor io/fs — the filesystem boundary stays behind FileReader",
+      "verification": "golangci-lint depguard rule (or `go list -deps ./internal/intake | grep -E '^(os|io/fs)$'` returning empty) wired into CI",
+      "owner": "architect"
+    },
+    {
+      "property": "CheckSlices performs zero FileReader calls when no order in the batch sets a slice block",
+      "verification": "go test ./internal/intake -run TestCheckSlicesReadsNothingWhenNoOrderSetsSlice",
+      "owner": "architect"
+    },
+    {
+      "property": "slice.spec, slice.manifest, and every manifest-listed file path are refused, not read, when they would resolve outside the project root",
+      "verification": "go test ./internal/intake -run 'TestIsWithinProjectRoot|TestReadRootedRefusesAnEscapingPathWithoutCallingRead|TestReadSpecPackageRefusesAnEscapingPath'",
+      "owner": "architect"
+    },
+    {
+      "property": "The CLI's exit-code contract is unchanged: 0 only when every per-order Check and every slice group passes",
+      "verification": "go test ./cmd/loom/cmd -run 'TestIntakeCheckVerifiesASliceSplitEndToEnd|TestIntakeCheckFailsOnASliceCoverageGap'",
+      "owner": "architect"
+    },
+    {
+      "property": "Every function in internal/intake/slice.go, slice_check.go, and cmd/loom/cmd/intake.go has cyclomatic complexity below 7",
+      "verification": "golangci-lint run with gocyclo/cyclop over the changed files",
+      "owner": "devops",
+      "judgmentOnly": true
+    },
+    {
+      "property": "No file outside an intake order's own scope.paths globs changes during its delivery, delivery-record directory excepted",
+      "verification": "git diff --name-only checked against the order's scope.paths globs",
+      "owner": "devops",
+      "judgmentOnly": true
+    }
+  ],
+  "refactoringOpportunities": [],
+  "retrieval": {
+    "domainTerms": ["Slice", "Level", "Criterion", "SpecPackage", "slice.of", "depends-on"],
+    "issueRefs": [],
+    "linkedAdrs": [],
+    "linkedKis": []
+  },
+  "developerHandoffNotes": [
+    "All five structural placements above already match the staged diff exactly as written — no code changes are required from this stage; developer's remaining work is the test-coverage and verification gaps the analyst listed, not structural rework.",
+    "Run go build ./... and go test ./internal/intake/... ./cmd/loom/cmd/... before shipping — this review, like the analyst's, was unable to execute the Go toolchain and confirmed structure by read-through only.",
+    "Close the two untested branches the analyst identified: a covers entry naming a level outside {api, ui} (slice_check.go:351) and a manifest-listed file that has been deleted rather than tampered (slice_check.go:238).",
+    "Run a complexity linter (gocyclo/cyclop) over slice.go, slice_check.go, and cmd/loom/cmd/intake.go to turn the 'below 7 by read-through' judgment into a measured PASS — none of the functions reviewed here look close to the limit, but AC10 asks for a measurement.",
+    "Do not add methods to Slice or Order, and do not introduce a graph library for cycle detection — both would be deviations from the structural decisions recorded here, not improvements."
+  ],
+  "openQuestions": [
+    "Should shared/DOMAIN_DICTIONARY.md gain the Slice and Level terms this feature's Domain Language section defines? AC10's scope lock prevents doing so inside this order — needs a human decision on whether to widen scope.paths in a follow-up order or accept the Ubiquitous-Language gap for now."
+  ]
+}

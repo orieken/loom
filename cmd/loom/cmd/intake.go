@@ -43,6 +43,11 @@ type, status, source, trust, finish and autonomy, a plan this project can run,
 priority, dates, budgets, and dependencies. An order with trust: external also
 has its spec body scanned for instruction-override text.
 
+Orders that share one slice.of are also checked together: that their covers
+lists cover every criterion level their spec declares exactly once, that
+they agree on a manifest digest which matches the manifest's own files, and
+that their depends-on edges have no cycle and no dangling reference.
+
 With no arguments, checks intake/. A directory stands for the .md files
 directly inside it, except TEMPLATE.md and README.md.
 
@@ -64,8 +69,9 @@ func runIntakeCheck(cmd *cobra.Command, args []string) error {
 	root := projectRoot()
 	context := intake.Context{Plans: runnablePlans(root), OtherSpecs: featureSpecs(root)}
 	invalid := 0
+	documents := make([]intake.Document, 0, len(files))
 	for _, file := range files {
-		violations, err := checkOrderFile(file, context)
+		violations, document, err := checkOrderFile(file, context)
 		if err != nil {
 			return fmt.Errorf("%w: %s: %v", errIntakeInvalid, file, err)
 		}
@@ -73,8 +79,42 @@ func runIntakeCheck(cmd *cobra.Command, args []string) error {
 		if len(violations) > 0 {
 			invalid++
 		}
+		documents = append(documents, document)
 	}
+	invalid += checkIntakeSlices(cmd, documents, root)
 	return summarizeIntakeCheck(cmd, invalid, len(files))
+}
+
+// checkIntakeSlices runs the cross-order slice check over every order this
+// run parsed, reading through a FileReader rooted at root — the only place
+// this feature resolves a real project-root path. It prints every violation
+// and, for each spec whose slices covered it cleanly, one summary line.
+// It returns the number of specs with at least one slice violation, folded
+// into the same invalid counter runIntakeCheck already uses so the exit
+// code contract (0 only when every order is valid) stays unchanged.
+func checkIntakeSlices(cmd *cobra.Command, documents []intake.Document, root string) int {
+	read := func(path string) ([]byte, error) {
+		return os.ReadFile(filepath.Join(root, path))
+	}
+	violations, summaries := intake.CheckSlices(documents, read)
+	for _, violation := range violations {
+		fmt.Fprintf(cmd.OutOrStdout(), "%s\n", violation)
+	}
+	for _, summary := range summaries {
+		fmt.Fprintf(cmd.OutOrStdout(), "%s: %d slice(s), %d level(s) covered\n", summary.Of, summary.Slices, summary.Levels)
+	}
+	return len(slicedSpecs(documents)) - len(summaries)
+}
+
+// slicedSpecs is the distinct slice.of values documents declares.
+func slicedSpecs(documents []intake.Document) map[string]bool {
+	specs := map[string]bool{}
+	for _, document := range documents {
+		if document.Order.Slice != nil {
+			specs[document.Order.Slice.Of] = true
+		}
+	}
+	return specs
 }
 
 func summarizeIntakeCheck(cmd *cobra.Command, invalid, total int) error {
@@ -85,13 +125,20 @@ func summarizeIntakeCheck(cmd *cobra.Command, invalid, total int) error {
 	return nil
 }
 
-func checkOrderFile(file string, context intake.Context) ([]intake.Violation, error) {
+// checkOrderFile validates one order file and returns its parsed Document
+// so the caller can group it into the cross-order slice check without
+// re-reading or re-parsing the file. A parse failure is already reported by
+// Check as a "frontmatter" violation; the zero Document returned alongside
+// it has a nil Slice, so it takes no part in that check.
+func checkOrderFile(file string, context intake.Context) ([]intake.Violation, intake.Document, error) {
 	source, err := os.ReadFile(file)
 	if err != nil {
-		return nil, err
+		return nil, intake.Document{}, err
 	}
 	context.FileStem = strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
-	return intake.Check(source, context), nil
+	violations := intake.Check(source, context)
+	document, _ := intake.Parse(source)
+	return violations, document, nil
 }
 
 // projectRoot is the repository the command runs inside, so plans and specs

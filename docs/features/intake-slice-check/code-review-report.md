@@ -1,0 +1,63 @@
+---
+feature: "intake-slice-check"
+bounded_context: ""
+domain_terms: ["Slice", "Level"]
+files_touched: ["internal/intake/slice_check.go"]
+issue_refs: ["intake-slice-check", "decision D-31"]
+linked_adrs: ["docs/adrs/ADR-008-define-tested-by-what-tests-can-catch.md", "docs/adrs/ADR-010-factory-order-state-and-policy-configuration.md"]
+linked_kis: []
+---
+
+# Code Review: intake-slice-check
+
+## Overall Status
+
+**APPROVED**
+
+## Design Narrative
+
+This diff adds CheckSlices, a cross-order fitness function that groups parsed intake Documents by slice.of and verifies digest agreement, manifest file integrity, depends-on cycles/dangling edges, and exactly-once criterion-level coverage, all behind a single FileReader seam that only cmd/loom/cmd/intake.go implements with a real os.ReadFile rooted at the project root. internal/intake stays free of os/io/fs imports, Slice is a plain YAML-tagged data struct on Order, and every cross-order rule lives as small free functions in slice_check.go matching the package's existing idiom (Check is already a free function). The CLI folds slice violations into the same invalid counter that already decides runIntakeCheck's exit code, so the 0-only-when-valid contract is extended rather than duplicated.
+
+## Design Score
+
+- **Clarity** 5/5
+- **Cohesion** 4/5
+- **Coupling** 5/5
+- **Craft** 4/5
+
+## Security Surface
+
+- slice.spec, slice.manifest, and every manifest-listed file path are checked by isWithinProjectRoot (a lexical, pre-read guard) before readRooted ever calls FileReader — an escaping path is refused, never opened. Verified by TestReadRootedRefusesAnEscapingPathWithoutCallingRead, TestReadSpecPackageRefusesAnEscapingPath, and the 'leaves the project root' cases in TestCheckSlicesReportsEachViolationKind.
+
+## Performance Surface
+
+- CheckSlices performs zero FileReader calls when no order in the batch sets a slice block (verified independently: TestCheckSlicesReadsNothingWhenNoOrderSetsSlice passes, matching the NFR 'a directory with no slice blocks reads no extra files').
+- Manifest and spec reads are cached per distinct path within a slice.of group (loadGroupManifests/loadGroupSpecPackage), so N slices sharing one manifest/spec trigger one read each, not N.
+
+## Test Design Review
+
+- TestParseLeavesSliceNilWhenAbsent / TestParseReadsAnOptionalSliceBlock: YES — assert reflect.DeepEqual against a concrete nil or populated Slice struct; a parser regression on either half changes the compared value.
+- internal/intake/slice_test.go (TestIsWithinProjectRoot, TestReadRooted*, TestReadSpecPackage*, TestReadManifest*, TestLevelsOf, TestParseCoversEntry, TestSha256DigestAndHex): YES — each table/case asserts a specific return value or a 'read called 0 times' call-count, not a vacuous presence check.
+- TestCheckSlicesAcceptsTheReagentMapSplit: YES — asserts zero violations and an exact SliceSummary{Of, Slices:2, Levels:5}; any coverage/digest/cycle regression on the happy path changes one of those values.
+- TestCheckSlicesReadsNothingWhenNoOrderSetsSlice: YES — read is a closure that increments a counter and errors if called; the test fails if CheckSlices ever calls it.
+- TestCheckSlicesEvaluatesAGroupOfOneSlice: YES — asserts specific uncovered-level substrings (AC1:api, AC3:api, AC14:api) that only checkLevelCoverage's 'not covered by any slice' path produces.
+- TestCheckSlicesReportsEachViolationKind (14 break-one-thing subtests): YES for all 14 — each mutate() breaks exactly one guard and each want substring is produced by exactly one violation call site in slice_check.go/slice.go (confirmed by reading every violation format string). I independently mutation-tested the two subtests added this stage ('covers level outside api or ui' and 'manifest-listed file deleted') by removing their guarded code and confirmed both go red with the expected failure message, then restored the file (git diff clean afterward); the remaining 12 pre-existing subtests follow the identical pattern and were not independently re-mutated here.
+- TestCheckSlicesReportsEveryBrokenSpecIndependently: YES — asserts both an unrelated-group violation and the original group's gap are both present, which fails if CheckSlices stops at the first broken group.
+- TestIntakeCheckVerifiesASliceSplitEndToEnd: YES — asserts err == nil and a specific summary line with slice/level counts; a coverage or wiring regression changes either.
+- TestIntakeCheckFailsOnASliceCoverageGap: YES — asserts errors.Is(err, errIntakeInvalid) and the uncovered level is named in output; passes only if checkIntakeSlices's return value actually feeds the invalid counter.
+
+## Verification of Developer Self-Review
+
+- Complexity claim verified independently: `gocyclo -over 6` over slice.go, slice_check.go, order.go, vocabulary.go, and cmd/loom/cmd/intake.go produced zero output, and `golangci-lint run` over both packages reported '0 issues' — matches the developer's claim exactly.
+- Build/test claim verified independently: `go build ./...` and `go vet` are clean; `go test ./internal/intake/... ./cmd/loom/cmd/...` passes in full, including every slice-specific test, run with TRACEPARENT unset as the developer noted.
+- Coverage claim verified independently: `go test ./internal/intake/... -coverprofile` reports 98.9% statement coverage, matching the stated figure.
+- Scope-lock claim verified independently: `git diff HEAD --name-only` shows only internal/intake/**, cmd/loom/cmd/intake*.go, and templates/claude-feature-team/intake/** changed, plus the untracked docs/features/intake-slice-check/** delivery record — no file outside scope.paths.
+- Test-can-fail claim verified independently for the two new cases: temporarily removing the knownLevel guard in applyCoversEntry, and making checkListedFile swallow its read error, both turned the corresponding new subtest red with a distinct message, then both edits were reverted (git diff clean) — matches the developer's stated verification exactly.
+- vocabulary_test.go claim verified independently: the file is unmodified by git diff and TestVocabularyCheckCatchesAMismatch passes, confirming no regression to pre-existing field checks.
+
+## Feedback for the Developer
+
+### 1. Extract Function (parametrize the cache-and-read shape) (non-blocking)
+- **File**: `internal/intake/slice_check.go`
+- **Smell**: Duplication: loadGroupManifests (lines 175-199) and loadGroupSpecPackage (lines 269-298) are structurally identical — cache a per-group file read by path, skip on cache hit, emit a violation naming the order and field on failure — differing only in which reader function is called and the violation field string ('slice.manifest' vs 'slice.spec'). Not a correctness defect: both are fully covered and pass every test, lint, and complexity check.
+- **Instruction**: Non-blocking. When a third cached-read site is ever added, extract a shared generic helper (e.g. `cachedRead[T any](group []Document, pathOf func(Document) string, read func(string) (T, error), field string) (map[string]T, []Violation)`) so a future fix to the caching or error-wording logic lands in one place instead of two.

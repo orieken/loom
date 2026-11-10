@@ -65,6 +65,17 @@ it exits 1 if any order breaks a rule, and names the file and field for each.
 - `depends-on` lists order ids, without itself or duplicates.
 - A `trust: external` order's body is scanned with the same rules as `loom ki scan`, and each match
   is reported with its line in the file. A clean scan means the order may be read, not that it is safe.
+- Orders that declare the same `slice.of` (a spec split by hand into several orders) are checked
+  together: every criterion level the spec at `slice.spec` declares must be covered by exactly one
+  slice's `slice.covers`, naming the level and, when two slices both cover it, both orders; a
+  `slice.covers` entry naming a criterion or level the spec does not have is named too.
+- Those slices must also agree on one `slice.digest`, which must equal the SHA-256 of `slice.manifest`'s
+  bytes, and every file `slice.manifest` lists must still match its recorded hash — each named on
+  mismatch. A `slice.spec` or `slice.manifest` path that cannot be read, or that leaves the project
+  root, is a violation naming the order; an unverified split is never reported valid.
+- `depends-on` among slices of one spec is also checked for a cycle (naming every order in it) and
+  for an entry naming no order present at all, beyond the per-order checks above.
+- A split with no violation prints one summary line per spec, naming it with its slice and level counts.
 
 ### Enforced at pickup, by `loom factory` (ADR-010)
 

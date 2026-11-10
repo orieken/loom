@@ -31,6 +31,31 @@ type Order struct {
 	DependsOn   []string `yaml:"depends-on"`
 	Budget      Budget   `yaml:"budget"`
 	Scope       Scope    `yaml:"scope"`
+	Slice       *Slice   `yaml:"slice"`
+}
+
+// Slice is the frontmatter an order sets when it delivers only part of a
+// spec package someone split by hand (roadmap L3.63/L3.64). An order with no
+// `slice` block has Slice == nil and validates exactly as it did before this
+// field existed.
+type Slice struct {
+	// Of is the spec package this order is a slice of. Every order sharing
+	// one Of is checked together by CheckSlices.
+	Of string `yaml:"of"`
+	// Spec is the project-root-relative path to the spec package's JSON:
+	// criteria[] with an id and an observableVia (api, ui or both).
+	Spec string `yaml:"spec"`
+	// Digest is "sha256:<hex>" of Manifest's bytes. Every slice of one Of
+	// must declare the same value.
+	Digest string `yaml:"digest"`
+	// Manifest is the project-root-relative path to a sha256sum-style
+	// listing — one "<hex digest>  <path>" pair per line — of the files the
+	// split's spec package depends on.
+	Manifest string `yaml:"manifest"`
+	// Covers lists the criteria this slice covers: a bare id (e.g. "AC2")
+	// covers every level that criterion has; "AC1:ui" covers only its ui
+	// level.
+	Covers []string `yaml:"covers"`
 }
 
 // Budget is the ceiling an order sets on its own delivery. Recording it is
