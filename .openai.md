@@ -1141,7 +1141,8 @@ engineering terms (for example `payload`, `idempotent`, `middleware`). Use those
 
 Run `loom docs check <path>...` to find candidates against this rule in a file or a directory. The
 command checks sentence length, plain vocabulary, modal conflicts, an estimated passive-voice
-share, and `DOMAIN_DICTIONARY.md` "Synonyms to AVOID" terms. A human or agent reviewer MUST still
+share, and `DOMAIN_DICTIONARY.md` "Synonyms to AVOID" terms. It skips a synonym that is one
+lowercase word, such as `check` or `tool`, because in prose that word is usually ordinary English. A human or agent reviewer MUST still
 check active voice as a whole, noun clusters, and one-term-one-meaning: the command does not check
 them. It also does not check a run of more than three consecutive nouns. Reliable detection needs
 part-of-speech tagging, and neither the Go standard library nor this project's dependencies carry

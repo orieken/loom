@@ -64,7 +64,7 @@ func TestCheckLoadsDomainDictionaryFromTheCurrentWorkingDirectory(t *testing.T) 
 	t.Chdir(root)
 	writeFile(t, filepath.Join(root, dictionaryFileName), fixtureDictionary)
 	docPath := filepath.Join(root, "doc.md")
-	writeFile(t, docPath, "The bot handles requests.\n")
+	writeFile(t, docPath, "The PageObject handles requests.\n")
 
 	report, err := Check([]string{docPath})
 	if err != nil {

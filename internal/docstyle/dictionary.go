@@ -17,6 +17,14 @@ var skipListedSynonyms = map[string]bool{
 	"process": true, "result": true,
 }
 
+// plainWordRe matches a synonym that is one lowercase word, such as "check" or
+// "tool". In prose these are ordinary English far more often than a misused
+// term, so reporting them buried the real findings (953 of them across one
+// repository's docs). Only synonyms that cannot be ordinary prose are kept:
+// several words, a capital letter, or punctuation ("default route", "PageObject",
+// "analysis.md").
+var plainWordRe = regexp.MustCompile(`^[a-z]+$`)
+
 var (
 	dictionaryTableRowRe = regexp.MustCompile(`^\|\s*\*\*([^*]+)\*\*\s*\|(.+)$`)
 	backtickTermRe       = regexp.MustCompile("`([^`]+)`")
@@ -55,7 +63,7 @@ func loadDictionary(path string) ([]synonymEntry, error) {
 	for _, line := range strings.Split(string(data), "\n") {
 		canonical, synonyms := parseDictionaryRow(line)
 		for _, synonym := range synonyms {
-			if skipListedSynonyms[strings.ToLower(synonym)] {
+			if skipListedSynonyms[strings.ToLower(synonym)] || plainWordRe.MatchString(synonym) {
 				continue
 			}
 			entries = append(entries, newSynonymEntry(synonym, canonical))

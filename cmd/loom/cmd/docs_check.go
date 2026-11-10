@@ -21,7 +21,8 @@ shared/rules/writing-style.md (Simplified Technical English): an over-length
 sentence or list step, a word the rule replaces (utilize, prior to, with
 regard to), a weak modal (can, might, ought to) next to an RFC 2119 keyword
 (MUST, SHOULD, MAY), an estimated passive-voice share over 10%, and a
-DOMAIN_DICTIONARY.md "Synonyms to AVOID" term.
+DOMAIN_DICTIONARY.md "Synonyms to AVOID" term, other than one lowercase
+word, which is usually ordinary English in prose.
 
 It does not check a run of more than three consecutive nouns: reliable
 detection needs part-of-speech tagging, not available in the Go standard

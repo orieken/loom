@@ -14,6 +14,8 @@ const fixtureDictionary = `# Domain Dictionary
 | **Agent** | Test | An agent. | ` + "`bot`" + ` |
 | **Order** | Test | A work order. | ` + "`ticket`" + ` |
 | **Something** | Test | A thing. | ` + "`data`" + ` |
+| **BasePage** | Test | A page. | ` + "`PageObject`" + ` |
+| **Delivery Route** | Test | A route. | ` + "`default route`" + ` |
 `
 
 func writeFixtureDictionary(t *testing.T) string {
@@ -39,8 +41,11 @@ func TestLoadDictionaryParsesTheSynonymsToAvoidColumn(t *testing.T) {
 	for _, entry := range entries {
 		synonyms = append(synonyms, entry.synonym)
 	}
-	if !contains(synonyms, "bot") || !contains(synonyms, "ticket") {
+	if !contains(synonyms, "PageObject") || !contains(synonyms, "default route") {
 		t.Fatalf("synonyms = %v", synonyms)
+	}
+	if contains(synonyms, "bot") || contains(synonyms, "ticket") {
+		t.Fatalf("a single lowercase word is ordinary English and must not become an entry: %v", synonyms)
 	}
 	if contains(synonyms, "data") {
 		t.Fatalf("a skip-listed word must never become a synonym entry: %v", synonyms)
@@ -54,7 +59,7 @@ const mixedFormatDictionary = `# Domain Dictionary
 
 | Term | Domain | Description | Synonyms to AVOID |
 |---|---|---|---|
-| **Persona** | Test | A persona. | profile, role (too generic), character |
+| **Persona** | Test | A persona. | user profile, role model (too generic), Character |
 `
 
 func TestLoadDictionaryFallsBackToCommaSplittingAndStripsAParenthetical(t *testing.T) {
@@ -68,10 +73,10 @@ func TestLoadDictionaryFallsBackToCommaSplittingAndStripsAParenthetical(t *testi
 	for _, entry := range entries {
 		synonyms = append(synonyms, entry.synonym)
 	}
-	if !contains(synonyms, "profile") || !contains(synonyms, "role") || !contains(synonyms, "character") {
+	if !contains(synonyms, "user profile") || !contains(synonyms, "role model") || !contains(synonyms, "Character") {
 		t.Fatalf("synonyms = %v", synonyms)
 	}
-	if contains(synonyms, "role (too generic)") {
+	if contains(synonyms, "role model (too generic)") {
 		t.Fatalf("a trailing parenthetical must be stripped from the synonym: %v", synonyms)
 	}
 }
@@ -88,8 +93,8 @@ func TestCheckUbiquitousLanguageReportsAListedSynonymNamingItsCanonicalTerm(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings := CheckUbiquitousLanguage(testFile, []Line{{Number: 1, Text: "The bot handles requests."}}, entries)
-	if len(findings) != 1 || !strings.Contains(findings[0].Excerpt, "Agent") {
+	findings := CheckUbiquitousLanguage(testFile, []Line{{Number: 1, Text: "The PageObject handles requests."}}, entries)
+	if len(findings) != 1 || !strings.Contains(findings[0].Excerpt, "BasePage") {
 		t.Fatalf("findings = %+v", findings)
 	}
 }
@@ -99,11 +104,11 @@ func TestCheckUbiquitousLanguageMatchesOnlyTheExactSurfaceFormNotAPlural(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	exact := CheckUbiquitousLanguage(testFile, []Line{{Number: 1, Text: "File a ticket today."}}, entries)
+	exact := CheckUbiquitousLanguage(testFile, []Line{{Number: 1, Text: "Use the default route today."}}, entries)
 	if len(exact) != 1 {
 		t.Fatalf("exact surface form must be reported: %+v", exact)
 	}
-	pluralized := CheckUbiquitousLanguage(testFile, []Line{{Number: 1, Text: "File some tickets today."}}, entries)
+	pluralized := CheckUbiquitousLanguage(testFile, []Line{{Number: 1, Text: "Use the default routes today."}}, entries)
 	if len(pluralized) != 0 {
 		t.Fatalf("a pluralized form must not match the listed synonym's exact surface form: %+v", pluralized)
 	}
@@ -117,6 +122,17 @@ func TestCheckUbiquitousLanguageSkipsASkipListedOrdinaryEnglishSynonym(t *testin
 	findings := CheckUbiquitousLanguage(testFile, []Line{{Number: 1, Text: "We need more data here."}}, entries)
 	if len(findings) != 0 {
 		t.Fatalf("a skip-listed entry must never be reported, even though it is a listed synonym: %+v", findings)
+	}
+}
+
+func TestCheckUbiquitousLanguageSkipsASingleLowercaseWordSynonym(t *testing.T) {
+	entries, err := loadDictionary(writeFixtureDictionary(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings := CheckUbiquitousLanguage(testFile, []Line{{Number: 1, Text: "The bot files a ticket."}}, entries)
+	if len(findings) != 0 {
+		t.Fatalf("a single lowercase word is ordinary English and must not be reported: %+v", findings)
 	}
 }
 
