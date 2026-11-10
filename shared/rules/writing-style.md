@@ -24,5 +24,16 @@ of the core rules: only those agents read it, so the other stages do not pay for
 Do not force the STE dictionary on established Ubiquitous Language from `DOMAIN_DICTIONARY.md` or on native software
 engineering terms (for example `payload`, `idempotent`, `middleware`). Use those terms exactly as defined, every time.
 
+## Mechanical check
+
+Run `loom docs check <path>...` to find candidates against this rule in a file or a directory. The
+command checks sentence length, plain vocabulary, modal conflicts, an estimated passive-voice
+share, and `DOMAIN_DICTIONARY.md` "Synonyms to AVOID" terms. A human or agent reviewer MUST still
+check active voice as a whole, noun clusters, and one-term-one-meaning: the command does not check
+them. It also does not check a run of more than three consecutive nouns. Reliable detection needs
+part-of-speech tagging, and neither the Go standard library nor this project's dependencies carry
+one. `loom docs check` is a report, not a gate: it names a candidate, and a person or agent still
+has to fix it.
+
 ---
 *Part of the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*

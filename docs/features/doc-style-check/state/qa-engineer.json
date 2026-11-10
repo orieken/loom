@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 2,
+  "feature": "doc-style-check",
+  "testFilesCreated": [],
+  "testFilesModified": [
+    "internal/docstyle/dictionary_test.go"
+  ],
+  "coverage": {
+    "acceptanceCriteriaCovered": 11,
+    "acceptanceCriteriaTotal": 11,
+    "newTests": 50,
+    "statements": [
+      {"unit": "internal/docstyle", "percent": 95.2},
+      {"unit": "cmd/loom/cmd (docs_check.go only, 100%; whole-package figure includes unrelated pre-existing commands)", "percent": 83.6}
+    ]
+  },
+  "testResults": {
+    "passed": 411,
+    "failed": 0,
+    "skipped": 0,
+    "skipReasons": []
+  },
+  "accessibilityCheck": [],
+  "bugsFound": [],
+  "knownGaps": [],
+  "notesForTechWriter": [
+    "`loom docs check <path>...` is a new subcommand under `loom docs`; shared/rules/writing-style.md already documents it under a new \"Mechanical check\" section (AC6) — no further doc changes needed from tech-writer unless a top-level CLI reference page enumerates `loom docs` subcommands, in which case add `check` alongside `plan`/`approve`/`apply`.",
+    "Help text (`loom docs check --help`) already states the noun-cluster omission and its reason; verified by TestDocsCheckHelpDocumentsTheNounClusterOmission."
+  ],
+  "retrieval": {
+    "domainTerms": [],
+    "issueRefs": [],
+    "linkedAdrs": [
+      "docs/adrs/ADR-008"
+    ],
+    "linkedKis": []
+  }
+}

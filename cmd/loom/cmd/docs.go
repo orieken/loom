@@ -29,6 +29,7 @@ type docsFlags struct {
 	noCodemap     bool
 	codemapOnly   bool
 	yes           bool
+	strict        bool
 }
 
 var docsArgs docsFlags
@@ -82,7 +83,8 @@ func init() {
 	docsPlanCmd.Flags().BoolVar(&docsArgs.noCodemap, "no-codemap", false, "do not regenerate CODEMAP.md")
 	docsPlanCmd.Flags().BoolVar(&docsArgs.codemapOnly, "codemap-only", false, "plan only CODEMAP.md from the graph and index; needs no documenter run")
 	docsApproveCmd.Flags().BoolVar(&docsArgs.yes, "yes", false, "approve without the interactive prompt; requires the changeset id, and is refused inside an agent session")
-	docsCmd.AddCommand(docsPlanCmd, docsApproveCmd, docsApplyCmd)
+	docsCheckCmd.Flags().BoolVar(&docsArgs.strict, "strict", false, "exit 1 when there is a finding")
+	docsCmd.AddCommand(docsPlanCmd, docsApproveCmd, docsApplyCmd, docsCheckCmd)
 	rootCmd.AddCommand(docsCmd)
 }
 

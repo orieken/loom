@@ -1,0 +1,57 @@
+---
+feature: "doc-style-check"
+bounded_context: ""
+domain_terms: ["Rule"]
+files_touched: []
+issue_refs: ["doc-style-check"]
+linked_adrs: ["docs/adrs/ADR-008-define-tested-by-what-tests-can-catch.md"]
+linked_kis: []
+---
+
+# Code Review: doc-style-check
+
+## Overall Status
+
+**APPROVED**
+
+## Design Narrative
+
+internal/docstyle is a flat, stateless utility package — one file per mechanized writing-style rule (sentence length, plain vocabulary, modal conflict, passive-voice estimate, ubiquitous-language) — orchestrated by a single Check(paths) entrypoint that strips ignored markdown regions, runs every rule, applies docstyle-ignore suppression, and returns a sorted Report. cmd/loom/cmd/docs_check.go is the only consumer, wiring it into a new `loom docs check` cobra subcommand that exits 0 by default and 1 under --strict. Behaviour change: yes.
+
+## Design Score
+
+- **Clarity** 5/5
+- **Cohesion** 5/5
+- **Coupling** 5/5
+- **Craft** 5/5
+
+## Security Surface
+
+- Reads only caller-supplied filesystem paths and a fixed-name DOMAIN_DICTIONARY.md from cwd; no network, no auth, no shell execution — confirmed via go list -deps showing no net/http, os/exec, or database import
+
+## Performance Surface
+
+- filepath.WalkDir over a directory argument is unbounded but local-filesystem-only and matches the existing docs-command convention; no N+1, no pagination concern for a CLI lint tool
+
+## Test Design Review
+
+- TestCheckSentenceLengthReportsA26WordDescriptiveSentence / DoesNotReportAShortDescriptiveSentence — YES, boundary-tested at 25/26 words, would fail if the threshold or finding emission broke
+- TestCheckSentenceLengthReportsA21WordNumberedListStep / JudgesA21WordBulletedItemByTheDescriptiveThreshold — YES, the same 21-word text is asserted to trigger under one list-marker and not under another, directly verifying the list-step-vs-descriptive branch
+- TestCheckPlainVocabularyReports*WithItsReplacement / DoesNotReportPlainWords — YES, asserts both the finding count and the exact replacement text in the excerpt
+- TestCheckModalConflictReportsAWeakModalAlongsideAnRFC2119Keyword / DoesNotReportAWeakModalAlone / DoesNotMistakeLowercaseMayForTheKeyword — YES, the lowercase-'may' case specifically proves the case-sensitivity decision rather than assuming it
+- TestCheckPassiveVoiceReportsAFileLevelEstimateOverTheThreshold / DoesNotReportAtOrBelowTheThreshold — YES, hand-counted 3/20 = 15% fixture asserts the exact rendered percentage, not just presence of a finding
+- TestLoadDictionaryParsesTheSynonymsToAvoidColumn / TestCheckUbiquitousLanguageMatchesOnlyTheExactSurfaceFormNotAPlural / SkipsASkipListedOrdinaryEnglishSynonym — YES, the plural-non-match and skip-list cases are real negative assertions, not just happy-path checks
+- TestStripFrontmatter* and TestProseIgnores*/Strips*/Drops* (markdown_test.go) — YES, each asserts both that the ignored content is absent and that surrounding prose survives, ruling out an over-broad strip
+- TestDirectivesMapsTheLineAfterTheCommentToItsNamedRule / TestSuppress* (ignore_test.go) — YES, includes the negative case where a directive names the wrong rule and the finding must still appear
+- TestCheckRecursesIntoADirectoryAndSkipsDotDirectories / TestCheckOfAMissingPathReturnsAClearError / TestCheckLoadsDomainDictionaryFromTheCurrentWorkingDirectory / TestCheckWithoutADomainDictionaryStillRunsEveryOtherRule (check_test.go) — YES, each is a real end-to-end fixture with a distinguishing assertion
+- TestDocsCheckDefaultExitsZeroAndPrintsEachFinding / StrictExitsNonZeroWhenThereIsAFinding / StrictExitsZeroWithNoFindings / OfAMissingPathReturnsAClearErrorNotAFinding (docs_check_test.go) — YES, exercises both exit-code branches and distinguishes a usage error from a zero-finding report
+- TestFindingStringRendersFileLineRuleExcerpt / TestRenderPrintsOneLinePerFindingPlusTheSkippedSummary — YES, exact-string assertions on rendered output
+- No test in this diff is vacuous, self-fulfilling, or disabled; every rule has both a trigger and non-trigger fixture and every ignored-region type has a suppression fixture, satisfying AC7
+
+## Verification of Developer Self-Review
+
+- Developer's self-review claims verified directly rather than taken on faith: go build ./... is clean, go test ./internal/docstyle/... ./cmd/loom/cmd/... -cover passes with 92.6%/83.6% coverage matching the stated figures, golangci-lint run reports 0 issues (gocyclo min-complexity:7 configured), gofmt -l is empty, go vet is clean, and git diff --stat / git diff go.mod go.sum confirm the claimed scope exactly — no discrepancy found between the checklist and the actual code
+
+## Feedback for the Developer
+
+None
