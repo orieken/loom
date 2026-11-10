@@ -44,9 +44,6 @@ func TestLoadDictionaryParsesTheSynonymsToAvoidColumn(t *testing.T) {
 	if !contains(synonyms, "PageObject") || !contains(synonyms, "default route") {
 		t.Fatalf("synonyms = %v", synonyms)
 	}
-	if contains(synonyms, "bot") || contains(synonyms, "ticket") {
-		t.Fatalf("a single lowercase word is ordinary English and must not become an entry: %v", synonyms)
-	}
 	if contains(synonyms, "data") {
 		t.Fatalf("a skip-listed word must never become a synonym entry: %v", synonyms)
 	}
@@ -122,6 +119,18 @@ func TestCheckUbiquitousLanguageSkipsASkipListedOrdinaryEnglishSynonym(t *testin
 	findings := CheckUbiquitousLanguage(testFile, []Line{{Number: 1, Text: "We need more data here."}}, entries)
 	if len(findings) != 0 {
 		t.Fatalf("a skip-listed entry must never be reported, even though it is a listed synonym: %+v", findings)
+	}
+}
+
+func TestLoadDictionaryDropsASingleLowercaseWordSynonym(t *testing.T) {
+	entries, err := loadDictionary(writeFixtureDictionary(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if entry.synonym == "bot" || entry.synonym == "ticket" {
+			t.Fatalf("a single lowercase word is ordinary English and must not become an entry: %q", entry.synonym)
+		}
 	}
 }
 
