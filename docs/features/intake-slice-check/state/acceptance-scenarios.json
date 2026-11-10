@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 2,
+  "feature": "intake-slice-check",
+  "scenarios": [
+    {
+      "criterion": "An order's frontmatter MUST accept an optional slice block (of, spec, digest, manifest, covers); an order with no slice block MUST validate exactly as it did before the field existed.",
+      "name": "An order with no slice block validates exactly as before",
+      "given": ["An intake order with no slice block in its frontmatter"],
+      "when": ["The order is checked"],
+      "then": ["The order validates exactly as it did before the slice field existed"]
+    },
+    {
+      "criterion": "An order's frontmatter MUST accept an optional slice block (of, spec, digest, manifest, covers); an order with no slice block MUST validate exactly as it did before the field existed.",
+      "name": "An order's optional slice block is accepted when present",
+      "given": ["An intake order whose frontmatter declares a slice block with of, spec, digest, manifest, and covers"],
+      "when": ["The order is checked"],
+      "then": ["The slice block is parsed and accepted rather than rejected as an unknown field"]
+    },
+    {
+      "criterion": "A spec criterion with observableVia api or ui MUST have one level to cover, and both MUST give it two (api and ui); AC1:ui covers only that level, a bare AC2 covers every level AC2 has.",
+      "name": "A bare covers entry covers every level its criterion has",
+      "given": ["A spec criterion observable via both api and ui", "A slice's covers list names that criterion with no level suffix"],
+      "when": ["The order is checked"],
+      "then": ["The slice is treated as covering both the api level and the ui level of that criterion"]
+    },
+    {
+      "criterion": "A spec criterion with observableVia api or ui MUST have one level to cover, and both MUST give it two (api and ui); AC1:ui covers only that level, a bare AC2 covers every level AC2 has.",
+      "name": "A level-suffixed covers entry covers only that level",
+      "given": ["A spec criterion observable via both api and ui", "A slice's covers list names that criterion with the :ui suffix"],
+      "when": ["The order is checked"],
+      "then": ["The slice is treated as covering only the ui level, leaving the api level for another slice to cover"]
+    },
+    {
+      "criterion": "Across every order sharing one slice.of, loom intake check MUST report a violation naming the criterion and level for an uncovered level, for a level two slices both cover (naming both orders), and for a covers entry naming a criterion or level the spec does not have.",
+      "name": "An uncovered criterion level is reported by name",
+      "given": ["Several orders sharing one slice.of", "A criterion level that no slice's covers list names"],
+      "when": ["loom intake check runs over the directory"],
+      "then": ["The check reports a violation naming the uncovered criterion and level"]
+    },
+    {
+      "criterion": "Across every order sharing one slice.of, loom intake check MUST report a violation naming the criterion and level for an uncovered level, for a level two slices both cover (naming both orders), and for a covers entry naming a criterion or level the spec does not have.",
+      "name": "A criterion level covered by two slices is reported with both orders named",
+      "given": ["Several orders sharing one slice.of", "Two of those orders both list the same criterion level in their covers"],
+      "when": ["loom intake check runs over the directory"],
+      "then": ["The check reports a violation naming the doubly covered level and both orders that cover it"]
+    },
+    {
+      "criterion": "Across every order sharing one slice.of, loom intake check MUST report a violation naming the criterion and level for an uncovered level, for a level two slices both cover (naming both orders), and for a covers entry naming a criterion or level the spec does not have.",
+      "name": "A covers entry naming an unknown criterion is reported",
+      "given": ["An order whose covers list names a criterion id the spec does not declare"],
+      "when": ["loom intake check runs over the directory"],
+      "then": ["The check reports a violation naming the unknown criterion and the spec that does not have it"]
+    },
+    {
+      "criterion": "Across every order sharing one slice.of, loom intake check MUST report a violation naming the criterion and level for an uncovered level, for a level two slices both cover (naming both orders), and for a covers entry naming a criterion or level the spec does not have.",
+      "name": "A covers entry naming a level its criterion does not have is reported",
+      "given": ["An order whose covers list names a real criterion with a level suffix that criterion does not have"],
+      "when": ["loom intake check runs over the directory"],
+      "then": ["The check reports a violation naming the criterion and the level it does not have"]
+    },
+    {
+      "criterion": "Slices of one spec MUST report a violation when their slice.digest values differ, when a digest does not match the SHA-256 of its manifest file, or when a manifest-listed file no longer matches its recorded hash, naming the file.",
+      "name": "Disagreeing slice digests are reported",
+      "given": ["Two orders sharing one slice.of", "Those orders declare different slice.digest values"],
+      "when": ["loom intake check runs over the directory"],
+      "then": ["The check reports a violation naming the disagreement"]
+    },
+    {
+      "criterion": "Slices of one spec MUST report a violation when their slice.digest values differ, when a digest does not match the SHA-256 of its manifest file, or when a manifest-listed file no longer matches its recorded hash, naming the file.",
+      "name": "A slice digest that does not match its manifest is reported",
+      "given": ["An order's slice.digest value", "That value does not equal the sha256 of the manifest file it names"],
+      "when": ["loom intake check runs over the directory"],
+      "then": ["The check reports a violation naming the mismatch between the digest and the manifest"]
+    },
+    {
+      "criterion": "Slices of one spec MUST report a violation when their slice.digest values differ, when a digest does not match the SHA-256 of its manifest file, or when a manifest-listed file no longer matches its recorded hash, naming the file.",
+      "name": "A manifest-listed file that no longer matches its recorded hash is named",
+      "given": ["A manifest listing a file and its recorded sha256 hash", "That file's current contents no longer match the recorded hash"],
+      "when": ["loom intake check runs over the directory"],
+      "then": ["The check reports a violation naming the file that no longer matches its recorded hash"]
+    },
+    {
+      "criterion": "Slices of one spec MUST report a violation for a depends-on cycle among them, naming every order in the cycle, and for a depends-on entry naming no order in the directory.",
+      "name": "A depends-on cycle among slices is reported naming every order in it",
+      "given": ["Several orders sharing one slice.of", "Their depends-on entries form a cycle among each other"],
+      "when": ["loom intake check runs over the directory"],
+      "then": ["The check reports a violation naming every order on the cycle"]
+    },
+    {
+      "criterion": "Slices of one spec MUST report a violation for a depends-on cycle among them, naming every order in the cycle, and for a depends-on entry naming no order in the directory.",
+      "name": "A dangling depends-on entry is reported",
+      "given": ["An order whose depends-on list names an id no order in the directory has"],
+      "when": ["loom intake check runs over the directory"],
+      "then": ["The check reports a violation naming the missing order id"]
+    },
+    {
+      "criterion": "A spec or manifest file that cannot be read MUST be a violation on the order naming it, and a path that leaves the project root MUST be a violation; an unverified split must never be reported valid.",
+      "name": "An unreadable spec or manifest file is reported against the order naming it",
+      "given": ["An order whose slice.spec or slice.manifest path cannot be read"],
+      "when": ["loom intake check runs over the directory"],
+      "then": ["The check reports a violation against that order naming the file it could not read, and never reports the split as valid"]
+    },
+    {
+      "criterion": "A spec or manifest file that cannot be read MUST be a violation on the order naming it, and a path that leaves the project root MUST be a violation; an unverified split must never be reported valid.",
+      "name": "A slice path that leaves the project root is rejected without being opened",
+      "given": ["An order whose slice.spec or slice.manifest path resolves outside the project root"],
+      "when": ["loom intake check runs over the directory"],
+      "then": ["The check reports a violation naming the escaping path", "The file at that path is never read"]
+    },
+    {
+      "criterion": "A passing split MUST print one line per spec with its slice and level counts, and the exit code contract MUST stay unchanged: 0 only when every order is valid.",
+      "name": "A passing slice split prints one summary line per spec",
+      "given": ["Every order sharing one slice.of together covers every criterion level with no violation"],
+      "when": ["loom intake check runs over the directory"],
+      "then": ["The check prints one line for that spec naming its slice count and level count", "The check exits 0"]
+    },
+    {
+      "criterion": "A passing split MUST print one line per spec with its slice and level counts, and the exit code contract MUST stay unchanged: 0 only when every order is valid.",
+      "name": "The existing exit-code contract is unchanged by the new check",
+      "given": ["A directory of orders where every order is valid on its own but the cross-order slice check finds a violation"],
+      "when": ["loom intake check runs over the directory"],
+      "then": ["The check exits non-zero, exactly as it already does for a single-file violation"]
+    },
+    {
+      "criterion": "templates/claude-feature-team/intake/TEMPLATE.md and README.md MUST document the slice block, and the existing template vocabulary test MUST still pass.",
+      "name": "The intake template documents the slice block",
+      "given": ["The intake TEMPLATE.md and README.md files"],
+      "when": ["A person reads the intake template documentation"],
+      "then": ["They find the slice block's fields (of, spec, digest, manifest, covers) documented", "The existing template vocabulary test still passes unmodified"]
+    },
+    {
+      "criterion": "A fixture modeled on the reagent-map split MUST pass (AC1 and AC3 covered once at each level by different slices, AC14 covered bare by one slice), and each violation above MUST have a test built by breaking that fixture in one way, which fails when the check is removed.",
+      "name": "A realistic reagent-map-style slice split passes with no violations",
+      "given": ["A fixture modeled on the reagent-map split: two slices covering AC1 and AC3 once at each level, and AC14 covered bare by one slice"],
+      "when": ["loom intake check runs over the fixture"],
+      "then": ["The check reports no violations", "The check prints the summary line for that spec"]
+    },
+    {
+      "criterion": "Every new or changed function MUST have cyclomatic complexity below 7, every changed line MUST be covered by a test that can fail, and no file outside scope.paths MUST change except this run's own delivery record under docs/features/intake-slice-check/.",
+      "name": "The delivered change stays inside its complexity, coverage, and scope bounds",
+      "given": ["The full set of files this feature changes"],
+      "when": ["A complexity tool and a coverage tool are run over the diff"],
+      "then": ["Every new or changed function measures below cyclomatic complexity 7", "Every changed line is covered by a test that can fail", "No file outside the order's declared scope.paths has changed"]
+    }
+  ]
+}

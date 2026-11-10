@@ -37,6 +37,15 @@ var (
 	knownTrust      = set(TrustInternal, TrustExternal)
 	knownFinishes   = set("pr", "branch", "none")
 	knownAutonomies = set("inherit", "strict-human")
+
+	// knownObservableVia is a slice spec criterion's closed vocabulary for
+	// where it is observable. "both" means the criterion has two levels to
+	// cover, not that it is observable somewhere else as well.
+	knownObservableVia = set("api", "ui", "both")
+
+	// knownLevel is the level vocabulary a covers entry's ":level" suffix
+	// draws from — the same two leaves "both" expands to, never "both" itself.
+	knownLevel = set("api", "ui")
 )
 
 func set(values ...string) map[string]bool {
