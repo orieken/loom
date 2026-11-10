@@ -13,5 +13,7 @@
 - **Noun clusters are capped**: no run of more than 3 consecutive nouns (for example "user status authentication token"). Quote any run you find.
 - **Domain terms are kept as defined**: terms such as `prefers-color-scheme`, `localStorage` or `idempotent` are not reworded into plain English.
 
+- **Diagrams clarify behavior when needed**: use a focused fenced Mermaid diagram when branches, interactions, or state changes are easier to explain visually, with an adjacent text explanation. Preserve canonical domain terms and unresolved questions; do not introduce implementation decisions to fill the diagram. Simple prose does not require a diagram. This is judgment-only because usefulness depends on the reader's task. Report rendering as unverified unless it was checked.
+
 ## How to Grade
 For each bullet, quote the specific line(s) of `actual-output.md` that satisfy it. If a bullet has no supporting quote, mark it FAIL and say what's missing.

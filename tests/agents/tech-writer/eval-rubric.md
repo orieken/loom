@@ -11,5 +11,7 @@
 - **Vocabulary is plain**: the text says "use", "before" and "about" instead of "utilize", "prior to" and "with regard to".
 - **Terms stay consistent**: `StorageAdapter`, `AWS_S3_BUCKET` and `AWS_REGION` appear with the same spelling and meaning in every updated document, with no alternate name for the same thing.
 
+- **Diagrams support the reader's task**: when interactions or relationships need visual explanation, include a focused fenced Mermaid diagram and an adjacent text explanation. Preserve canonical names and document implemented behavior only. Simple prose does not require a diagram. This is judgment-only because usefulness depends on the reader's task. Report rendering as unverified unless it was checked.
+
 ## How to Grade
 For each bullet, quote the specific line(s) of `actual-output.md` that satisfy it. If a bullet has no supporting quote, mark it FAIL and say what's missing.

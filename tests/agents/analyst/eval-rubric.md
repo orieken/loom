@@ -16,6 +16,8 @@
   given/when/then outcomes (e.g., "given an unregistered email... the response is identical") rather than
   describing internal mechanics like specific function names or SQL.
 
+- **Diagrams clarify domain relationships when needed**: use a focused fenced Mermaid diagram for complex context crossings, interactions, decisions, or lifecycles, with an adjacent text explanation. Preserve dictionary terms, identify context boundaries and crossings, and distinguish commands from events. Do not invent unresolved details. Simple prose does not require a diagram. This is judgment-only because usefulness depends on the reader's task. Report rendering as unverified unless it was checked.
+
 ## How to Grade
 For each bullet above, quote the specific line(s) of `actual-output.md` that satisfy it. If a bullet has no
 supporting quote, mark it FAIL and say what's missing.

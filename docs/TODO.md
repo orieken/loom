@@ -23,6 +23,12 @@ until its consumers have been checked and the proposed action has been approved.
 
 ## `docs/` Root
 
+- [ ] Audit documentation and prompts, including subdirectories, for references to deleted or moved files.
+  Update active instructions to supported paths and APIs; label historical references without rewriting their provenance.
+  Cover the deleted `shared/mcp-patterns/go/` templates and remaining legacy MCP update instructions.
+  Use [the MCP prompt review](audits/mcp-adoption-prompt-review.md) as the starting inventory.
+  Verify replacement paths and relative links, and report unresolved references and intentionally retained historical mentions.
+
 - [x] Delete or consolidate `docs/CLAUDE.md`. It is a divergent copy of root `CLAUDE.md`, has not been
   updated since 2026-03-01, and is only indexed as a reference document. Before deletion, review its
   unique legacy/refactoring guidance and merge anything still authoritative into the canonical source.

@@ -56,6 +56,42 @@ func TestParseReadsEveryOrderField(t *testing.T) {
 	}
 }
 
+// AC1: an order with no slice block decodes to a nil Slice and validates
+// exactly as it did before this field existed.
+func TestParseLeavesSliceNilWhenAbsent(t *testing.T) {
+	document, err := Parse([]byte(validFile))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if document.Order.Slice != nil {
+		t.Errorf("Slice = %+v, want nil", document.Order.Slice)
+	}
+}
+
+func TestParseReadsAnOptionalSliceBlock(t *testing.T) {
+	source := strings.Replace(validFile, "scope:\n  paths: [\"src/auth/**\"]\n", `scope:
+  paths: ["src/auth/**"]
+slice:
+  of: reagent-map-spec
+  spec: docs/specs/reagent-map-spec/acceptance-criteria.json
+  digest: sha256:18f9820d
+  manifest: docs/specs/reagent-map-spec/package.sha256
+  covers: [AC1:ui, AC2, AC14]
+`, 1)
+	document, err := Parse([]byte(source))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	want := &Slice{
+		Of: "reagent-map-spec", Spec: "docs/specs/reagent-map-spec/acceptance-criteria.json",
+		Digest: "sha256:18f9820d", Manifest: "docs/specs/reagent-map-spec/package.sha256",
+		Covers: []string{"AC1:ui", "AC2", "AC14"},
+	}
+	if !reflect.DeepEqual(document.Order.Slice, want) {
+		t.Errorf("Slice = %+v\nwant  %+v", document.Order.Slice, want)
+	}
+}
+
 func TestParseSeparatesTheBodyAndKnowsWhereItStarts(t *testing.T) {
 	document, err := Parse([]byte(validFile))
 	if err != nil {

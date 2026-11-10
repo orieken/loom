@@ -38,6 +38,17 @@ no agent, no skill, and no automatic splitting.
 
 Today `intake.Check` validates one file at a time, so this adds the first check across orders.
 
+## Starting point
+
+An earlier run got through `confirm-security`, then parked twice on an expired Claude CLI sign-in.
+Its changes are on commit `432f912` (branch `salvage/intake-slice-check`), and `go test
+./internal/intake/ ./cmd/loom/cmd/` passes with them. Apply them, then verify each criterion and
+record the evidence; do not rewrite them:
+
+```bash
+git diff --binary e235af9 432f912 | git apply --index
+```
+
 ## Acceptance Criteria
 
 - [ ] Given an order's frontmatter, then it accepts an optional `slice` block, and an order without

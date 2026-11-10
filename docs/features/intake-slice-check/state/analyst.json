@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 2,
+  "feature": "intake-slice-check",
+  "summary": "Adds a cross-order check, loom intake check, that proves a hand-split feature's slices together cover the spec they split: an order's frontmatter gains an optional slice block (of, spec, digest, manifest, covers), and when several orders in a checked directory share one slice.of, CheckSlices verifies every criterion level the spec declares is covered by exactly one slice, that all slices agree on a manifest digest matching the manifest's own file hashes, and that depends-on edges among them form no cycle and name no missing order. The implementation (salvaged from commit 432f912, already applied and staged in this worktree) is essentially complete and matches every acceptance criterion by direct read-through; this analysis verifies that claim file-by-file and identifies two untested branches plus a scope-lock conflict for the developer/QA stages to close before this ships.",
+  "acceptanceCriteria": [
+    {
+      "statement": "An order's frontmatter MUST accept an optional slice block (of, spec, digest, manifest, covers); an order with no slice block MUST validate exactly as it did before the field existed.",
+      "examples": [
+        "internal/intake/order.go: Order.Slice *Slice, yaml tag \"slice\"; nil when absent",
+        "TestParseLeavesSliceNilWhenAbsent and TestParseReadsAnOptionalSliceBlock in internal/intake/parse_test.go prove both halves"
+      ]
+    },
+    {
+      "statement": "A spec criterion with observableVia api or ui MUST have one level to cover, and both MUST give it two (api and ui); AC1:ui covers only that level, a bare AC2 covers every level AC2 has.",
+      "examples": [
+        "internal/intake/slice.go: levelsOf() and parseCoversEntry()",
+        "TestLevelsOf and TestParseCoversEntry in internal/intake/slice_test.go"
+      ]
+    },
+    {
+      "statement": "Across every order sharing one slice.of, loom intake check MUST report a violation naming the criterion and level for an uncovered level, for a level two slices both cover (naming both orders), and for a covers entry naming a criterion or level the spec does not have.",
+      "examples": [
+        "internal/intake/slice_check.go: checkCoverage, checkLevelCoverage, applyCoversEntry",
+        "TestCheckSlicesReportsEachViolationKind cases: \"uncovered level\", \"doubly covered level\", \"unknown covers criterion\", \"unknown covers level\""
+      ]
+    },
+    {
+      "statement": "Slices of one spec MUST report a violation when their slice.digest values differ, when a digest does not match the SHA-256 of its manifest file, or when a manifest-listed file no longer matches its recorded hash, naming the file.",
+      "examples": [
+        "internal/intake/slice_check.go: checkDigestAgreement, checkManifestDigests, checkManifestFiles/checkListedFile",
+        "TestCheckSlicesReportsEachViolationKind cases: \"slice.digest disagreement\", \"slice.digest does not match the manifest\", \"manifest-listed file hash mismatch\""
+      ]
+    },
+    {
+      "statement": "Slices of one spec MUST report a violation for a depends-on cycle among them, naming every order in the cycle, and for a depends-on entry naming no order in the directory.",
+      "examples": [
+        "internal/intake/slice_check.go: checkDependsOnCycle (DFS via findCycle), checkDanglingDependsOn",
+        "TestCheckSlicesReportsEachViolationKind cases: \"depends-on cycle\", \"dangling depends-on\""
+      ]
+    },
+    {
+      "statement": "A spec or manifest file that cannot be read MUST be a violation on the order naming it, and a path that leaves the project root MUST be a violation; an unverified split must never be reported valid.",
+      "examples": [
+        "internal/intake/slice.go: isWithinProjectRoot, readRooted (lexical check, never calls FileReader on an escaping path)",
+        "TestCheckSlicesReportsEachViolationKind cases: \"unreadable spec file\", \"unreadable manifest file\", \"slice.spec path leaves the project root\", \"slice.manifest path leaves the project root\""
+      ]
+    },
+    {
+      "statement": "A passing split MUST print one line per spec with its slice and level counts, and the exit code contract MUST stay unchanged: 0 only when every order is valid.",
+      "examples": [
+        "cmd/loom/cmd/intake.go: checkIntakeSlices prints \"%s: %d slice(s), %d level(s) covered\"; summarizeIntakeCheck folds slicedSpecs()-len(summaries) into the existing invalid counter",
+        "TestIntakeCheckVerifiesASliceSplitEndToEnd, TestIntakeCheckFailsOnASliceCoverageGap in cmd/loom/cmd/intake_test.go"
+      ]
+    },
+    {
+      "statement": "templates/claude-feature-team/intake/TEMPLATE.md and README.md MUST document the slice block, and the existing template vocabulary test MUST still pass.",
+      "examples": [
+        "TEMPLATE.md gains a commented slice: block plus a \"SLICE\" explanation section; README.md gains five bullet points describing the cross-order check",
+        "internal/intake/vocabulary_test.go is unmodified by the patch — checks only the pre-existing order-level fields, so it stays a regression guard, not new-behavior evidence"
+      ]
+    },
+    {
+      "statement": "A fixture modeled on the reagent-map split MUST pass (AC1 and AC3 covered once at each level by different slices, AC14 covered bare by one slice), and each violation above MUST have a test built by breaking that fixture in one way, which fails when the check is removed.",
+      "examples": [
+        "internal/intake/slice_test.go: validReagentMapFixture() + TestCheckSlicesAcceptsTheReagentMapSplit",
+        "internal/intake/slice_check_test.go: TestCheckSlicesReportsEachViolationKind (13 break-one-thing cases) and TestCheckSlicesReportsEveryBrokenSpecIndependently"
+      ]
+    },
+    {
+      "statement": "Every new or changed function MUST have cyclomatic complexity below 7, every changed line MUST be covered by a test that can fail, and no file outside scope.paths MUST change except this run's own delivery record under docs/features/intake-slice-check/.",
+      "examples": [
+        "git diff --stat confirms only internal/intake/**, cmd/loom/cmd/intake*.go, and templates/claude-feature-team/intake/** changed — all inside scope.paths",
+        "Two changed lines appear untested today: slice_check.go:351 (covers entry with a level outside {api, ui}, e.g. AC1:mobile) and slice_check.go:238 (a manifest-listed file that has been deleted rather than tampered) — see edgeCases"
+      ]
+    }
+  ],
+  "nonFunctionalRequirements": [
+    {
+      "category": "performance",
+      "requirement": "A directory with no slice blocks MUST read no extra files beyond what single-order Check already reads."
+    },
+    {
+      "category": "security",
+      "requirement": "slice.spec and slice.manifest arrive in an order's frontmatter, which may come from an external order; a path outside the project root MUST be refused without ever being passed to the file reader."
+    }
+  ],
+  "proposedFitnessFunctions": [
+    {
+      "property": "CheckSlices performs zero FileReader calls when no order in the batch sets a slice block",
+      "verification": "go test ./internal/intake -run TestCheckSlicesReadsNothingWhenNoOrderSetsSlice",
+      "owner": "architect",
+      "judgmentOnly": false
+    },
+    {
+      "property": "slice.spec, slice.manifest, and every manifest-listed file path are refused, not read, when they would resolve outside the project root",
+      "verification": "go test ./internal/intake -run 'TestIsWithinProjectRoot|TestReadRooted'",
+      "owner": "architect",
+      "judgmentOnly": false
+    },
+    {
+      "property": "Every function in internal/intake/slice.go, slice_check.go, and cmd/loom/cmd/intake.go has cyclomatic complexity below 7",
+      "verification": "golangci-lint run with a complexity linter (gocyclo or cyclop) over the changed files",
+      "owner": "architect",
+      "judgmentOnly": true
+    },
+    {
+      "property": "No file outside an intake order's own scope.paths globs changes during its delivery, delivery-record directory excepted",
+      "verification": "git diff --name-only against the order's scope.paths globs",
+      "owner": "devops",
+      "judgmentOnly": true
+    }
+  ],
+  "outOfScope": [
+    "The slice-order skill that drafts a split, the size warning, and deliver-spec emitting slices",
+    "intake: 2 and inputs; the slice block stays optional under schema version 1, and loom intake pin can replace digest later",
+    "Enforcing anything at claim time — this is loom intake check only",
+    "Adding slice blocks to saturday-monorepo's existing orders (a follow-up in that repository)"
+  ],
+  "surfaces": {
+    "ui": false,
+    "runtime": false
+  },
+  "boundedContext": {
+    "owning": "Agent Orchestration",
+    "crossings": [
+      "cmd/loom/cmd (CLI/adapter layer) calling into internal/intake (domain/use-case layer) via the FileReader seam, matching Go Clean Architecture layering"
+    ]
+  },
+  "domainEvents": {
+    "commands": [
+      "loom intake check [file|directory]..."
+    ],
+    "eventsProduced": [],
+    "owningAggregates": [
+      "intake.Document (one parsed order)",
+      "a slice.of group (the set of Documents sharing one Slice.Of, the unit CheckSlices evaluates)"
+    ],
+    "readModels": [
+      "SliceSummary (one printed line per spec whose slices covered it with no violation)"
+    ]
+  },
+  "affectedComponents": [
+    { "path": "internal/intake/slice.go", "reason": "New file: FileReader seam, project-root path guard (isWithinProjectRoot/readRooted), spec package and manifest parsing, SHA-256 digest helpers." },
+    { "path": "internal/intake/slice_check.go", "reason": "New file: CheckSlices and every rule it composes — coverage, digest agreement, manifest verification, depends-on cycle/dangling checks." },
+    { "path": "internal/intake/slice_check_test.go", "reason": "New file: the reagent-map-modeled fixture, the happy-path test, and one break-the-fixture test per violation kind (AC9)." },
+    { "path": "internal/intake/slice_test.go", "reason": "New file: unit tests for slice.go's parsing, path guard, and digest helpers, independent of the integration-level fixture." },
+    { "path": "internal/intake/order.go", "reason": "Order gains Slice *Slice; the Slice struct declares of/spec/digest/manifest/covers (AC1's schema)." },
+    { "path": "internal/intake/vocabulary.go", "reason": "Adds the closed vocabularies knownObservableVia (api/ui/both) and knownLevel (api/ui) that criterion and covers-entry validation draw from." },
+    { "path": "internal/intake/parse_test.go", "reason": "Adds TestParseLeavesSliceNilWhenAbsent and TestParseReadsAnOptionalSliceBlock, proving AC1's two halves at the parse layer." },
+    { "path": "cmd/loom/cmd/intake.go", "reason": "Collects parsed Documents, calls intake.CheckSlices per batch, prints violations and the one-line-per-spec summary, and folds slice violations into the existing invalid/exit-code counter (AC7)." },
+    { "path": "cmd/loom/cmd/intake_test.go", "reason": "End-to-end command tests over a fixture directory: a clean two-slice split exits 0 with a summary line, and a coverage gap fails the run (AC7)." },
+    { "path": "templates/claude-feature-team/intake/TEMPLATE.md", "reason": "Documents the optional slice: block and adds a \"SLICE\" explanation section (AC8)." },
+    { "path": "templates/claude-feature-team/intake/README.md", "reason": "Documents the cross-order slice check's behavior for a human reading the intake contract (AC8)." }
+  ],
+  "dataModelChanges": [
+    {
+      "description": "Order's YAML frontmatter gains an optional slice block (of, spec, digest, manifest, covers). An order with no block has Slice == nil and parses/validates exactly as before — additive and backward compatible under intake schema version 1.",
+      "phase": "expand"
+    }
+  ],
+  "apiChanges": [],
+  "newDependencies": [],
+  "architecturalFlags": [
+    "This feature's own \"Domain Language\" section defines two new business concepts, Slice and Level, which the analyst's standing instruction would normally require adding to shared/DOMAIN_DICTIONARY.md. AC10 locks file changes to scope.paths (internal/intake/**, cmd/loom/cmd/intake*.go, templates/claude-feature-team/intake/**, docs/features/intake-slice-check/**), and DOMAIN_DICTIONARY.md is outside that set — so this analysis deliberately does not touch it. Flag for a human: either widen scope.paths in a follow-up order to add the two dictionary terms, or accept the gap for now.",
+    "internal/intake/validate.go performs no per-file validation of slice field formats (non-empty Of/Spec/Manifest, a well-formed Digest prefix); correctness is enforced only cross-order, inside CheckSlices, when a slice.of group of two or more exists. This matches the spec's own framing (\"Today intake.Check validates one file at a time, so this adds the first check across orders\") and is not a defect — noting it so a future reader doesn't mistake it for an oversight.",
+    "This session's sandbox could not execute the Go toolchain (go build/go test required interactive approval unavailable to this stage) — every claim above about passing tests is from static read-through of the salvaged diff, not a live run. The developer or qa-engineer stage MUST actually run go build ./... and go test ./internal/intake/... ./cmd/loom/cmd/... before this ships."
+  ],
+  "retrieval": {
+    "domainTerms": ["Slice", "Level", "Fitness Function"],
+    "issueRefs": ["intake-slice-check", "decision D-31"],
+    "linkedAdrs": [
+      "docs/adrs/ADR-008-define-tested-by-what-tests-can-catch.md",
+      "docs/adrs/ADR-010-factory-order-state-and-policy-configuration.md"
+    ],
+    "linkedKis": []
+  },
+  "tasks": {
+    "developer": [
+      "Run go build ./... and go test ./internal/intake/... ./cmd/loom/cmd/... locally to confirm the salvaged, already-staged patch actually builds and passes (this analysis could not execute the Go toolchain in its sandbox).",
+      "Add a slice_check_test.go case where a covers entry names a level outside {api, ui} (e.g. AC1:mobile) and assert the 'is not a level (api or ui)' violation — closes the untested branch at internal/intake/slice_check.go:351.",
+      "Add a slice_check_test.go case where a manifest lists a file that has been deleted (not merely tampered) and assert the '... which could not be read' violation from checkListedFile — closes the untested branch at internal/intake/slice_check.go:238, distinct from the existing hash-mismatch case.",
+      "Run a complexity linter (gocyclo, cyclop, or golangci-lint if configured for this repo) over internal/intake/slice.go, slice_check.go, and cmd/loom/cmd/intake.go to confirm every function measures below cyclomatic complexity 7; by read-through none appear close, but AC10 requires a measured confirmation, not an inspection."
+    ],
+    "qa": [
+      "Run go test -coverprofile over internal/intake and cmd/loom/cmd and confirm every changed line in this diff is exercised by a test that can fail (ADR-008), with particular attention to the two branches named under edgeCases.",
+      "Confirm templates/claude-feature-team/intake/TEMPLATE.md and README.md's documented slice: shape matches internal/intake/order.go's Slice struct fields exactly (of, spec, digest, manifest, covers).",
+      "Confirm internal/intake/vocabulary_test.go — the pre-existing template vocabulary test AC8 calls out — still passes unmodified, proving the new slice vocabulary did not regress the old field checks.",
+      "Confirm git diff --name-only against this order's scope.paths (internal/intake/**, cmd/loom/cmd/intake*.go, templates/claude-feature-team/intake/**, docs/features/intake-slice-check/**) shows no file outside that set, per AC10."
+    ],
+    "techWriter": [],
+    "devops": []
+  },
+  "edgeCases": [
+    {
+      "case": "An order declares slice.of but shares it with no other order in the batch (a group of exactly one).",
+      "handling": "CheckSlices still evaluates it as a group of one; every level its own covers list omits is reported uncovered, so a solo slice can never silently pass as a complete split. Proven by TestCheckSlicesEvaluatesAGroupOfOneSlice."
+    },
+    {
+      "case": "A covers entry's level suffix is syntactically present but not api or ui (e.g. AC1:mobile).",
+      "handling": "applyCoversEntry rejects it before even looking up the criterion, with 'is not a level (api or ui)' (slice_check.go:351). Untested today — see developer tasks."
+    },
+    {
+      "case": "A manifest lists a file that no longer exists at all, rather than one whose content changed.",
+      "handling": "checkListedFile reports '%s lists %q, which could not be read: %v' (slice_check.go:238), distinct from the hash-mismatch message. Untested today — see developer tasks."
+    },
+    {
+      "case": "Two slice.of groups appear in one batch, and only one of them is broken.",
+      "handling": "CheckSlices evaluates each group independently and keeps collecting violations across groups rather than stopping at the first broken one. Proven by TestCheckSlicesReportsEveryBrokenSpecIndependently."
+    },
+    {
+      "case": "A spec package's criterion has no observableVia, or one outside {api, ui, both}.",
+      "handling": "levelsOf returns ok=false; checkCoverage reports a violation naming the criterion against the spec file itself — the resolved Open Question's stated assumption, implemented exactly as written."
+    },
+    {
+      "case": "A depends-on cycle spans more than two orders within one slice.of group.",
+      "handling": "findCycle's local DFS detects a cycle of any length and names every order on the cycle path, not just the two endpoints."
+    }
+  ],
+  "definitionOfDone": [
+    "go build ./... succeeds and go test ./internal/intake/... ./cmd/loom/cmd/... passes, including the two new test cases closing the coverage gaps named under edgeCases.",
+    "A complexity tool confirms every new or changed function in internal/intake and cmd/loom/cmd/intake.go is below cyclomatic complexity 7.",
+    "go test -coverprofile confirms every line this diff adds or changes is covered by a test that can fail.",
+    "templates/claude-feature-team/intake/TEMPLATE.md and README.md document the slice block, and internal/intake/vocabulary_test.go still passes unmodified.",
+    "git diff --name-only against this order's scope.paths shows no file outside internal/intake/**, cmd/loom/cmd/intake*.go, templates/claude-feature-team/intake/**, and docs/features/intake-slice-check/**.",
+    "loom intake check over the reagent-map-modeled fixture exits 0 and prints one summary line per spec with correct slice and level counts; the existing exit-code contract (0 only when every order is valid) is unchanged for both single-file and cross-order violations."
+  ],
+  "openQuestions": [
+    "The spec's own Open Question (a criterion with no observableVia) is resolved and implemented exactly as stated — no longer open.",
+    "Should shared/DOMAIN_DICTIONARY.md gain the Slice and Level terms this feature's Domain Language section defines? AC10's scope lock prevents doing so inside this order; needs a human decision on whether to widen scope.paths in a follow-up or accept the gap."
+  ]
+}

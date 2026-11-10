@@ -1,5 +1,12 @@
 # Update the Framework in an Installed Project
 
+> Compatibility notice: this prompt and its linked historical execution sequence include copy-based MCP assumptions.
+> For Pattern B, use [the current MCP adoption prompt](adopt-framework-mcp-tools.md) and inspect the existing integration first.
+> The deleted `shared/mcp-patterns/go/` directory is not an update source. Prefer the supported Go registry for Go integrations;
+> compare native ports with the compiled implementation and preserve local adaptations.
+> Inspect current CLI help and install metadata before following legacy install or generation commands below.
+> A commit-per-operation plan does not authorize commits: obtain explicit approval for each pending changeset under the project's gates.
+
 Propagate framework updates from `ai-assistant-dot-files` into a target project, detecting which
 install pattern the project uses and running the correct update sequence for that pattern.
 
