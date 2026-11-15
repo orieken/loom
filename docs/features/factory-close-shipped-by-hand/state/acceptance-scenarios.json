@@ -1,0 +1,282 @@
+{
+  "schemaVersion": 2,
+  "feature": "factory-close-shipped-by-hand",
+  "scenarios": [
+    {
+      "criterion": "Closing a parked or stopped order with `loom factory close <order> --shipped-by <url>` appends exactly one `shipped` ledger entry carrying the URL in `url` and the approver — from the same source as `loom factory approve` — in `approvedBy`.",
+      "name": "Close a parked order records a shipped ledger entry",
+      "given": [
+        "an order \"reagent-map-visual-baselines\" is parked in the ledger"
+      ],
+      "when": [
+        "the operator runs \"loom factory close reagent-map-visual-baselines --shipped-by https://github.com/orieken/saturday-monorepo/pull/23\""
+      ],
+      "then": [
+        "the ledger gains exactly one new entry with phase \"shipped\"",
+        "that entry's \"url\" field holds \"https://github.com/orieken/saturday-monorepo/pull/23\"",
+        "that entry's \"approvedBy\" field holds the same approver identity that \"loom factory approve\" records"
+      ]
+    },
+    {
+      "criterion": "Closing a parked or stopped order with `loom factory close <order> --shipped-by <url>` appends exactly one `shipped` ledger entry carrying the URL in `url` and the approver — from the same source as `loom factory approve` — in `approvedBy`.",
+      "name": "Close a stopped order records a shipped ledger entry",
+      "given": [
+        "an order \"order-x\" is stopped in the ledger"
+      ],
+      "when": [
+        "the operator runs \"loom factory close order-x --shipped-by https://github.com/example/repo/pull/1\""
+      ],
+      "then": [
+        "the ledger gains exactly one new entry with phase \"shipped\"",
+        "that entry's \"url\" field holds the given URL",
+        "that entry's \"approvedBy\" field holds the approver identity"
+      ]
+    },
+    {
+      "criterion": "After that entry, `loom factory status` shows the order as `shipped` with the URL in its detail column, and `loom factory inbox` no longer lists it.",
+      "name": "Shipped order appears in status with its URL and drops out of the inbox",
+      "given": [
+        "order \"order-x\" was just closed with \"--shipped-by https://example.com/pr/1\""
+      ],
+      "when": [
+        "the operator runs \"loom factory status\"",
+        "the operator runs \"loom factory inbox\""
+      ],
+      "then": [
+        "\"loom factory status\" lists order \"order-x\" with phase \"shipped\" and its detail column showing \"https://example.com/pr/1\"",
+        "\"loom factory inbox\" no longer lists order \"order-x\""
+      ]
+    },
+    {
+      "criterion": "An order whose `depends-on` names the closed order is claimed by the supervisor on its next pass, with no edit to either order.",
+      "name": "A dependent order is claimed once its dependency ships",
+      "given": [
+        "order \"order-y\" has \"depends-on: order-x\"",
+        "order \"order-x\" is parked"
+      ],
+      "when": [
+        "the operator runs \"loom factory close order-x --shipped-by https://example.com/pr/1\"",
+        "the supervisor runs its next pass"
+      ],
+      "then": [
+        "the supervisor claims order \"order-y\"",
+        "neither order-x's nor order-y's definitions were edited"
+      ]
+    },
+    {
+      "criterion": "Closing an order archives its run state and removes its worktree, in the same order as the supervisor's own ship: record the ledger line first, archive, then remove; if archiving fails, the worktree is kept and the command reports why.",
+      "name": "Closing archives the run state and removes the worktree in order",
+      "given": [
+        "order \"order-x\" is parked with an active worktree"
+      ],
+      "when": [
+        "the operator runs \"loom factory close order-x --shipped-by https://example.com/pr/1\""
+      ],
+      "then": [
+        "the shipped ledger entry is recorded before the run state is archived",
+        "the run state is archived before the worktree is removed",
+        "the worktree no longer exists afterward"
+      ]
+    },
+    {
+      "criterion": "Closing an order archives its run state and removes its worktree, in the same order as the supervisor's own ship: record the ledger line first, archive, then remove; if archiving fails, the worktree is kept and the command reports why.",
+      "name": "A failed archive keeps the worktree and explains why",
+      "given": [
+        "order \"order-x\" is parked",
+        "archiving the run state will fail"
+      ],
+      "when": [
+        "the operator runs \"loom factory close order-x --shipped-by https://example.com/pr/1\""
+      ],
+      "then": [
+        "the shipped ledger entry is still recorded",
+        "the worktree is kept",
+        "the command reports the reason archiving failed"
+      ]
+    },
+    {
+      "criterion": "`close` refuses an order that is running, retrying, waiting at a gate, waiting on a commit or PR approval, or already shipped, with exit code 1, the order's phase named, and an instruction to stop it first; the ledger does not change.",
+      "name": "close refuses a running order",
+      "given": [
+        "order \"order-x\" is running"
+      ],
+      "when": [
+        "the operator runs \"loom factory close order-x --shipped-by https://example.com/pr/1\""
+      ],
+      "then": [
+        "the command exits with code 1",
+        "the message names the phase \"running\"",
+        "the message instructs the operator to stop the order first",
+        "the ledger is unchanged"
+      ]
+    },
+    {
+      "criterion": "`close` refuses an order that is running, retrying, waiting at a gate, waiting on a commit or PR approval, or already shipped, with exit code 1, the order's phase named, and an instruction to stop it first; the ledger does not change.",
+      "name": "close refuses a retrying order",
+      "given": [
+        "order \"order-x\" is retrying"
+      ],
+      "when": [
+        "the operator runs \"loom factory close order-x --shipped-by https://example.com/pr/1\""
+      ],
+      "then": [
+        "the command exits with code 1",
+        "the message names the phase \"retrying\"",
+        "the message instructs the operator to stop the order first",
+        "the ledger is unchanged"
+      ]
+    },
+    {
+      "criterion": "`close` refuses an order that is running, retrying, waiting at a gate, waiting on a commit or PR approval, or already shipped, with exit code 1, the order's phase named, and an instruction to stop it first; the ledger does not change.",
+      "name": "close refuses an order waiting at a gate",
+      "given": [
+        "order \"order-x\" is waiting at a gate"
+      ],
+      "when": [
+        "the operator runs \"loom factory close order-x --shipped-by https://example.com/pr/1\""
+      ],
+      "then": [
+        "the command exits with code 1",
+        "the message names the order's waiting-at-a-gate phase",
+        "the message instructs the operator to stop the order first",
+        "the ledger is unchanged"
+      ]
+    },
+    {
+      "criterion": "`close` refuses an order that is running, retrying, waiting at a gate, waiting on a commit or PR approval, or already shipped, with exit code 1, the order's phase named, and an instruction to stop it first; the ledger does not change.",
+      "name": "close refuses an order waiting on commit or PR approval",
+      "given": [
+        "order \"order-x\" is waiting on a commit or PR approval, covering committed, pushed, and proposed phases"
+      ],
+      "when": [
+        "the operator runs \"loom factory close order-x --shipped-by https://example.com/pr/1\""
+      ],
+      "then": [
+        "the command exits with code 1",
+        "the message names the order's current phase",
+        "the message instructs the operator to stop the order first",
+        "the ledger is unchanged"
+      ]
+    },
+    {
+      "criterion": "`close` refuses an order that is running, retrying, waiting at a gate, waiting on a commit or PR approval, or already shipped, with exit code 1, the order's phase named, and an instruction to stop it first; the ledger does not change.",
+      "name": "close refuses an order that has already shipped",
+      "given": [
+        "order \"order-x\" has already shipped"
+      ],
+      "when": [
+        "the operator runs \"loom factory close order-x --shipped-by https://example.com/pr/1\""
+      ],
+      "then": [
+        "the command exits with code 1",
+        "the message names the phase \"shipped\" and notes it has already shipped",
+        "the ledger is unchanged"
+      ]
+    },
+    {
+      "criterion": "`close` refuses an order the ledger does not hold, or a `--shipped-by` value that is missing or not an `http`/`https` URL, with exit code 1 and a message naming the problem; the ledger does not change.",
+      "name": "close refuses an order the ledger does not hold",
+      "given": [
+        "no order \"ghost-order\" exists in the ledger"
+      ],
+      "when": [
+        "the operator runs \"loom factory close ghost-order --shipped-by https://example.com/pr/1\""
+      ],
+      "then": [
+        "the command exits with code 1",
+        "the message states no order \"ghost-order\" exists in the ledger",
+        "the ledger is unchanged"
+      ]
+    },
+    {
+      "criterion": "`close` refuses an order the ledger does not hold, or a `--shipped-by` value that is missing or not an `http`/`https` URL, with exit code 1 and a message naming the problem; the ledger does not change.",
+      "name": "close refuses when --shipped-by is missing",
+      "given": [
+        "order \"order-x\" is parked"
+      ],
+      "when": [
+        "the operator runs \"loom factory close order-x\" without \"--shipped-by\""
+      ],
+      "then": [
+        "the command exits with code 1 before taking any action",
+        "the message names \"--shipped-by\" as required",
+        "the ledger is unchanged"
+      ]
+    },
+    {
+      "criterion": "`close` refuses an order the ledger does not hold, or a `--shipped-by` value that is missing or not an `http`/`https` URL, with exit code 1 and a message naming the problem; the ledger does not change.",
+      "name": "close refuses a --shipped-by value that is not an http or https URL",
+      "given": [
+        "order \"order-x\" is parked"
+      ],
+      "when": [
+        "the operator runs \"loom factory close order-x --shipped-by ftp://example.com/file\""
+      ],
+      "then": [
+        "the command exits with code 1",
+        "the message names \"--shipped-by\" as the problem",
+        "the ledger is unchanged"
+      ]
+    },
+    {
+      "criterion": "`close` never calls GitHub and never checks that the named pull request merged; the human running it vouches for that, and `approvedBy` records who.",
+      "name": "Closing trusts the human-provided URL without verifying the pull request",
+      "given": [
+        "order \"order-x\" is parked",
+        "the pull request at the given URL has not actually merged"
+      ],
+      "when": [
+        "the operator runs \"loom factory close order-x --shipped-by https://github.com/example/repo/pull/99\""
+      ],
+      "then": [
+        "the command completes without making any call to GitHub",
+        "the shipped ledger entry's \"approvedBy\" field records the operator who vouched for the merge"
+      ]
+    },
+    {
+      "criterion": "`close` and the supervisor never both act on the same order: `close` reads the ledger fresh and validates the order's current phase before appending, the same TOCTOU-tolerant pattern `approve`, `stop` and `rerun` already use.",
+      "name": "close re-reads the ledger and refuses if the phase changed before it could append",
+      "given": [
+        "order \"order-x\" was parked when the close command started",
+        "the supervisor transitions order \"order-x\" to \"running\" before close appends its entry"
+      ],
+      "when": [
+        "close re-reads the ledger and validates the order's current phase immediately before appending"
+      ],
+      "then": [
+        "close refuses the close because the order is no longer parked or stopped",
+        "the ledger is unchanged by the close attempt"
+      ]
+    },
+    {
+      "criterion": "`templates/claude-feature-team/intake/README.md` documents when to use `close`: after an order parks and a person finishes the work in their own pull request, once that PR merges.",
+      "name": "The intake README documents when to use close",
+      "given": [
+        "\"templates/claude-feature-team/intake/README.md\" exists"
+      ],
+      "when": [
+        "a person reads the README looking for guidance on closing an order"
+      ],
+      "then": [
+        "it explains that \"close\" is used after an order parks and a person finishes the work in their own pull request, once that PR merges"
+      ]
+    },
+    {
+      "criterion": "Every new or changed function has cyclomatic complexity below 7, every changed line is covered by a test that can fail, `go test ./...` and the lint pass, and no file outside `scope.paths` changes except this run's own delivery record under `docs/features/factory-close-shipped-by-hand/`.",
+      "name": "The change set meets the project's quality and scope gates",
+      "given": [
+        "the completed implementation for this feature"
+      ],
+      "when": [
+        "\"go test ./...\" runs",
+        "the project's lint/complexity tool runs"
+      ],
+      "then": [
+        "every new or changed function has cyclomatic complexity below 7",
+        "every changed line is covered by a test that fails when the behavior it checks is broken",
+        "both commands pass",
+        "no file outside \"scope.paths\" changed, except this run's delivery record under \"docs/features/factory-close-shipped-by-hand/\""
+      ]
+    }
+  ]
+}

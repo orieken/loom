@@ -131,10 +131,32 @@ func TestFactoryControlsRefuseTheWrongOrder(t *testing.T) {
 	for _, args := range [][]string{
 		{"factory", "stop", "alpha"}, {"factory", "resume", "alpha"}, {"factory", "rerun", "alpha"},
 		{"factory", "approve", "alpha", "confirm-ship"}, {"factory", "stop", "nobody"},
+		{"factory", "close", "alpha", "--shipped-by", "https://example.com/pr/1"},
 	} {
 		if output, code := runLoom(t, binary, root, args...); code == 0 {
 			t.Errorf("loom %v succeeded; the order is waiting at confirm-design\n%s", args, output)
 		}
+	}
+}
+
+// close's --shipped-by flag is required by cobra, which refuses the command
+// before RunE runs — before the ledger is ever opened, let alone changed.
+func TestFactoryCloseRequiresTheShippedByFlag(t *testing.T) {
+	binary := buildLoomBinary(t)
+	root := newFactoryProject(t, "alpha")
+	factoryPass(t, binary, root)
+
+	before, _ := runLoom(t, binary, root, "factory", "status")
+	output, code := runLoom(t, binary, root, "factory", "close", "alpha")
+	if code == 0 {
+		t.Errorf("close succeeded without --shipped-by\n%s", output)
+	}
+	if !strings.Contains(output, "shipped-by") {
+		t.Errorf("output = %q, want --shipped-by named as required", output)
+	}
+	after, _ := runLoom(t, binary, root, "factory", "status")
+	if after != before {
+		t.Errorf("status changed although close was refused:\nbefore: %s\nafter: %s", before, after)
 	}
 }
 
