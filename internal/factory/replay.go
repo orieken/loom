@@ -126,6 +126,17 @@ var entryUpdates = map[Event]func(*OrderState, Entry){
 	EventProposed:        func(o *OrderState, e Entry) { o.Proposal = e.Proposal },
 	EventPROpened:        func(o *OrderState, e Entry) { o.URL, o.Approval = e.URL, nil },
 	EventFinishFailed:    func(o *OrderState, e Entry) { o.Reason = e.Reason },
+	EventShipped:         applyShipped,
+}
+
+// applyShipped carries a hand-closed order's URL onto its state, so `status`
+// shows it the same way a supervisor-opened pull request's URL already
+// does. The supervisor's own ship() appends no URL, so this is a no-op for
+// every EventShipped line it already writes.
+func applyShipped(o *OrderState, e Entry) {
+	if e.URL != "" {
+		o.URL = e.URL
+	}
 }
 
 func applyClaim(o *OrderState, entry Entry) {

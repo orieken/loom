@@ -144,6 +144,30 @@ func TestADependentWaitsUntilItsDependencyShips(t *testing.T) {
 	factory.assertPhase("follow", PhaseRunning)
 }
 
+// TestADependentIsClaimedAfterItsDependencyIsClosedByHand covers the
+// acceptance criterion that an order whose depends-on names a hand-closed
+// order is claimed by the supervisor on its next pass, with no edit to
+// either order's definition.
+func TestADependentIsClaimedAfterItsDependencyIsClosedByHand(t *testing.T) {
+	factory := newTestFactory(t, orderSpec{id: "base"}, orderSpec{id: "follow", dependsOn: []string{"base"}})
+	factory.launcher.script("base", run{code: exitBudget, state: budgetState})
+
+	factory.tick()
+	factory.tick()
+	factory.assertPhase("base", PhaseParked)
+	factory.assertPhase("follow", "")
+
+	closer := Closer{Layout: Layout{Root: factory.root}, Repository: factory.supervisor.deps.Repository}
+	request := ShippedByHand{Order: "base", URL: "https://example.com/pr/1", Approver: "oscar"}
+	if _, err := closer.Close(factory.supervisor.ledger, factory.orders(), request); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+
+	factory.tick()
+	factory.assertPhase("base", PhaseShipped)
+	factory.assertPhase("follow", PhaseRunning)
+}
+
 // The ledger replays to the same state after a supervisor dies mid-tick: a
 // claim recorded but never launched is launched exactly once by the next
 // supervisor, and a half-written line is dropped.

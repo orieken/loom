@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/orieken/loom/internal/factory"
+	"github.com/orieken/loom/internal/orchestrator"
+	"github.com/orieken/loom/internal/worktree"
 	"github.com/spf13/cobra"
 )
 
@@ -67,11 +69,12 @@ func TestFactoryControlsReportTheirRefusalsInProcess(t *testing.T) {
 	t.Chdir(root)
 	t.Setenv(actAsLoomEnv, "1")
 	useFactoryFlags(t, onceAgainstTheMock())
+	useFactoryCloseFlags(t, "https://example.com/pr/1")
 	if _, err := runFactoryCommand(t, runFactoryRun); err != nil {
 		t.Fatal(err)
 	}
 	for name, run := range map[string]func(*cobra.Command, []string) error{
-		"stop": runFactoryStop, "resume": runFactoryResume, "rerun": runFactoryRerun,
+		"stop": runFactoryStop, "resume": runFactoryResume, "rerun": runFactoryRerun, "close": runFactoryClose,
 	} {
 		if _, err := runFactoryCommand(t, run, "alpha"); err == nil {
 			t.Errorf("%s accepted an order waiting at a gate", name)
@@ -166,6 +169,100 @@ func TestFactoryRerunReclaimsAnEditedOrderInProcess(t *testing.T) {
 	expectFactoryOutput(t, runFactoryRerun, []string{"alpha"}, "Re-running alpha")
 }
 
+func useFactoryCloseFlags(t *testing.T, shippedBy string) {
+	t.Helper()
+	saved := factoryCloseFlags.shippedBy
+	factoryCloseFlags.shippedBy = shippedBy
+	t.Cleanup(func() { factoryCloseFlags.shippedBy = saved })
+}
+
+// worktreeForClose stands up a real git worktree with a run state file in
+// it, the same shape a claimed order's own worktree has, so Close's
+// archive-then-remove sequence can fully succeed in this in-process test.
+func worktreeForClose(t *testing.T, root, id string) string {
+	t.Helper()
+	layout := factory.Layout{Root: root}
+	path := layout.WorktreePath(id)
+	if err := worktree.New(root).AddWorktree(path, factory.BranchFor(id), "main"); err != nil {
+		t.Fatal(err)
+	}
+	state := orchestrator.NewRunState(orchestrator.DefaultDeliverFeaturePlanName, orchestrator.CreatedByExecutor)
+	if err := orchestrator.NewStateStore(factory.RunStatePath(path, id)).Save(state); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestFactoryCloseShipsAParkedOrderInProcess(t *testing.T) {
+	root := newFactoryProject(t, "alpha")
+	t.Chdir(root)
+	path := worktreeForClose(t, root, "alpha")
+	writeLedger(t, root, factory.Entry{Event: factory.EventClaimed, Order: "alpha",
+		Claim: &factory.Claim{OrderSHA256: "x", Worktree: path, Branch: factory.BranchFor("alpha")}},
+		factory.Entry{Event: factory.EventParked, Order: "alpha"})
+	useFactoryCloseFlags(t, "https://github.com/orieken/saturday-monorepo/pull/23")
+
+	expectFactoryOutput(t, runFactoryClose, []string{"alpha"},
+		"Closed alpha as shipped, by https://github.com/orieken/saturday-monorepo/pull/23")
+
+	status, _ := runFactoryCommand(t, runFactoryStatus)
+	if !strings.Contains(status, string(factory.PhaseShipped)) || !strings.Contains(status, "pull/23") {
+		t.Errorf("status = %q, want alpha shipped with its url", status)
+	}
+	inbox, _ := runFactoryCommand(t, runFactoryInbox)
+	if strings.Contains(inbox, "alpha") {
+		t.Errorf("inbox = %q, want a closed order gone from the inbox", inbox)
+	}
+}
+
+func TestFactoryClosePrintsAWarningWhenFinishingFailsInProcess(t *testing.T) {
+	root := newFactoryProject(t, "alpha")
+	t.Chdir(root)
+	writeLedger(t, root, claimedEntry("alpha"), factory.Entry{Event: factory.EventStopped, Order: "alpha"})
+	useFactoryCloseFlags(t, "https://example.com/pr/1")
+
+	output, err := runFactoryCommand(t, runFactoryClose, "alpha")
+	if err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	if !strings.Contains(output, "was not archived") {
+		t.Errorf("output = %q, want a warning naming the archiving failure", output)
+	}
+	status, _ := runFactoryCommand(t, runFactoryStatus)
+	if !strings.Contains(status, string(factory.PhaseShipped)) {
+		t.Errorf("status = %q, want alpha recorded shipped even though finishing warned", status)
+	}
+}
+
+func TestFactoryCloseRefusesAWrongPhaseInProcess(t *testing.T) {
+	root := newFactoryProject(t, "alpha")
+	t.Chdir(root)
+	writeLedger(t, root, claimedEntry("alpha"))
+	useFactoryCloseFlags(t, "https://example.com/pr/1")
+	if _, err := runFactoryCommand(t, runFactoryClose, "alpha"); err == nil {
+		t.Error("close accepted an order that is neither parked nor stopped")
+	}
+}
+
+func TestFactoryCloseRefusesAnInvalidURLInProcess(t *testing.T) {
+	root := newFactoryProject(t, "alpha")
+	t.Chdir(root)
+	writeLedger(t, root, claimedEntry("alpha"), factory.Entry{Event: factory.EventStopped, Order: "alpha"})
+	useFactoryCloseFlags(t, "not-a-url")
+	if _, err := runFactoryCommand(t, runFactoryClose, "alpha"); err == nil {
+		t.Error("close accepted a --shipped-by value that is not an http or https URL")
+	}
+}
+
+func TestFactoryCloseRefusesAnUnknownOrderInProcess(t *testing.T) {
+	root := newFactoryProject(t)
+	t.Chdir(root)
+	useFactoryCloseFlags(t, "https://example.com/pr/1")
+	if _, err := runFactoryCommand(t, runFactoryClose, "nobody"); err == nil {
+		t.Error("close accepted an order the ledger does not hold")
+	}
+}
+
 func TestFactoryStopInterruptsARunningOrderInProcess(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("SIGINT is POSIX-only")
@@ -186,6 +283,7 @@ func TestFactoryCommandsReportACorruptLedgerInProcess(t *testing.T) {
 	root := newFactoryProject(t)
 	t.Chdir(root)
 	useFactoryFlags(t, onceAgainstTheMock())
+	useFactoryCloseFlags(t, "https://example.com/pr/1")
 	writeTestFile(t, factory.Layout{Root: root}.LedgerPath(), "not json\n{}\n")
 	for name, call := range map[string]struct {
 		run  func(*cobra.Command, []string) error
@@ -194,6 +292,7 @@ func TestFactoryCommandsReportACorruptLedgerInProcess(t *testing.T) {
 		"status": {runFactoryStatus, nil}, "inbox": {runFactoryInbox, nil},
 		"approve": {runFactoryApprove, []string{"alpha", "commit"}}, "stop": {runFactoryStop, []string{"alpha"}},
 		"resume": {runFactoryResume, []string{"alpha"}}, "rerun": {runFactoryRerun, []string{"alpha"}},
+		"close": {runFactoryClose, []string{"alpha"}},
 	} {
 		if _, err := runFactoryCommand(t, call.run, call.args...); err == nil {
 			t.Errorf("%s accepted a corrupt ledger", name)

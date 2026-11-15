@@ -166,14 +166,27 @@ func (s *Supervisor) ship(order *OrderState) error {
 	if err := s.record(Entry{Event: EventShipped, Order: order.ID}); err != nil {
 		return err
 	}
-	if err := archiveRun(order, s.config.Layout.RunArchivePath(order.ID)); err != nil {
-		s.say("%s shipped, but its run state was not archived, so its worktree is kept: %v", order.ID, err)
-		return nil
-	}
-	if err := s.deps.Repository.RemoveWorktree(order.Claim.Worktree); err != nil {
-		s.say("%s shipped, but its worktree was not removed: %v", order.ID, err)
+	if warning := archiveAndRemove(order, s.config.Layout, s.deps.Repository); warning != "" {
+		s.say("%s", warning)
 	}
 	return nil
+}
+
+// archiveAndRemove finishes a shipped order's workspace: its state,
+// timeline and artifacts are never committed, and removing the worktree
+// would otherwise delete them, so the run is archived first and the
+// worktree removed only once that succeeds. It returns a warning naming
+// whichever step failed, or "" once both succeed. The order is that way
+// round so a crash in between leaves a shipped order with a leftover
+// worktree, never a missing worktree for an unshipped one.
+func archiveAndRemove(order *OrderState, layout Layout, repo Repository) string {
+	if err := archiveRun(order, layout.RunArchivePath(order.ID)); err != nil {
+		return fmt.Sprintf("%s shipped, but its run state was not archived, so its worktree is kept: %v", order.ID, err)
+	}
+	if err := repo.RemoveWorktree(order.Claim.Worktree); err != nil {
+		return fmt.Sprintf("%s shipped, but its worktree was not removed: %v", order.ID, err)
+	}
+	return ""
 }
 
 func commitMessage(order *OrderState) string {

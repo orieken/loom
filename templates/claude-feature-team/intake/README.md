@@ -27,6 +27,14 @@ draft ──(spec-writer READY)──► ready ──(supervisor claims)──�
 Everything after pickup — running, waiting on a gate, parked after a failure, shipped — is run
 state, and lives in the supervisor's ledger, not in this file.
 
+### An order finished by hand
+
+A parked or stopped order is sometimes finished by a person instead, in its own pull request. Once
+that pull request merges, run `loom factory close <id> --shipped-by <url>` to record it shipped,
+the same way the supervisor would have: the order leaves `loom factory inbox`, and any other order
+whose `depends-on` names it is claimed on the supervisor's next pass, with no edit to either order.
+`close` never calls GitHub — it trusts the person running it that `<url>` merged.
+
 ## Who writes what
 
 **The supervisor never writes an intake file.** Two reasons:

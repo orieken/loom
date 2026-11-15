@@ -100,10 +100,30 @@ var factoryRerunCmd = &cobra.Command{
 	Args: cobra.ExactArgs(1), RunE: runFactoryRerun,
 }
 
+var factoryCloseFlags struct {
+	shippedBy string
+}
+
+var factoryCloseCmd = &cobra.Command{
+	Use:   "close <order>",
+	Short: "Record that a parked or stopped order shipped by hand, in its own pull request",
+	Long: `Records one 'shipped' ledger entry for a parked or stopped order, as if the
+supervisor had shipped it, so its dependents start and it leaves the inbox and
+'loom factory inbox'. Use it once a person has finished the order outside the
+factory and that work merged.
+
+close never calls GitHub and never checks that --shipped-by merged: the person
+running it vouches for that, and the ledger records who.`,
+	Args: cobra.ExactArgs(1), RunE: runFactoryClose,
+}
+
 func init() {
 	rootCmd.AddCommand(factoryCmd)
 	factoryCmd.AddCommand(factoryRunCmd, factoryStatusCmd, factoryInboxCmd, factoryApproveCmd,
-		factoryStopCmd, factoryResumeCmd, factoryRerunCmd)
+		factoryStopCmd, factoryResumeCmd, factoryRerunCmd, factoryCloseCmd)
+	factoryCloseCmd.Flags().StringVar(&factoryCloseFlags.shippedBy, "shipped-by", "",
+		"URL of the pull request the order was finished in (required)")
+	_ = factoryCloseCmd.MarkFlagRequired("shipped-by")
 	flags := factoryRunCmd.Flags()
 	flags.BoolVar(&factoryArgs.once, "once", false, "do one pass, wait for the runs it started to halt, and exit (for cron)")
 	flags.IntVar(&factoryArgs.maxConcurrent, "max-concurrent", factory.DefaultMaxConcurrent, "runs in flight at once")
@@ -322,5 +342,24 @@ func runFactoryRerun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	cmd.Printf("Re-running %s from its committed version at the supervisor's next pass.\n", args[0])
+	return nil
+}
+
+func runFactoryClose(cmd *cobra.Command, args []string) error {
+	layout, ledger, orders, err := openLedger()
+	if err != nil {
+		return err
+	}
+	closer := factory.Closer{Layout: layout, Repository: worktree.New(layout.Root)}
+	request := factory.ShippedByHand{Order: args[0], URL: factoryCloseFlags.shippedBy, Approver: approverName()}
+	warning, err := closer.Close(ledger, orders, request)
+	if err != nil {
+		return err
+	}
+	if warning != "" {
+		cmd.Println(warning)
+		return nil
+	}
+	cmd.Printf("Closed %s as shipped, by %s.\n", args[0], request.URL)
 	return nil
 }
