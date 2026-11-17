@@ -45,7 +45,7 @@ All code follows clean code, clean architecture, and the design-pattern table in
 
 1. Copy this folder to `docs/test-factory/` in your project (or keep it as its own template repository).
 2. Open `BLUEPRINT.md`. It describes the target end state.
-3. Run `phases/phase-0-adopt-and-baseline.md` first. It detects whether your project is new or existing.
+3. Commit the copied pack on its own, so each phase's diff stays clean. Then run `phases/phase-0-adopt-and-baseline.md`. It detects whether your project is new or existing.
 4. Run phases 1 to 9 in order. Merge each pull request before starting the next.
 5. Add your own blueprints with the `new-blueprint` skill (phase 3 and phase 5).
 

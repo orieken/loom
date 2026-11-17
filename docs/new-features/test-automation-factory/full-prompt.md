@@ -23,8 +23,9 @@ Learn what the project is, record where it stands, and write the first decision 
    - Record overall coverage and the five least-covered files.
    - Record the ten functions with the highest cyclomatic complexity.
    - Do not fix anything. Write findings down. If you find legacy code that lacks tests, note it for a later order.
-4. **New project only:** propose a minimal layout from the `BLUEPRINT.md` directory tree. Wait for the human
-   to approve it before you create folders.
+4. **New project only:** propose a minimal layout from the `BLUEPRINT.md` directory tree. Ask the human to choose
+   the language and test runner, because later phases write scripts in that language. Do not pick one from the tools
+   installed on this machine. Wait for both answers before you create folders. Record the choice in `BASELINE.md`.
 5. **Write `DOMAIN_DICTIONARY.md`.** One entry per term in the system under test. Add a "Synonyms to avoid" line
    per term. Leave a stub when you know nothing yet.
 6. **Write `docs/adr/ADR-000-test-automation-factory.md`** from the seed in `BLUEPRINT.md`. Fill the project name.
@@ -38,7 +39,9 @@ Learn what the project is, record where it stands, and write the first decision 
 ## Verification
 - `BASELINE.md` lists every fact from step 2, each with a source (a file path or a command output).
 - The suite result in `BASELINE.md` matches a fresh run.
-- `git diff --stat` shows only the three files above.
+- `git diff --stat` shows only the three files above. Commit this pack (`docs/test-factory/`) in its own commit
+  before you start, so that the diff is clean.
+- A repository with no commits has no hash. Write `none` in `BASELINE.md` in that case.
 
 ## Budget
 `max-usd: 2`, `max-attempts: 1`, `max-hours: 1`. Park and ask a human if you cannot find the test command.
@@ -145,24 +148,32 @@ Give the factory a front door: a work-order template, a README that explains it,
 
 ## Inputs
 - `templates/INTAKE-TEMPLATE.md` in this pack.
-- The language the project uses for scripts (Node, Python, or shell). Pick one. Do not mix.
+- The language the project uses for scripts (Node, Python, or shell), chosen by a human in phase 0. Do not mix languages.
+- A YAML library, because frontmatter parsing must be strict and no language here parses YAML in its standard library
+  (Node: `yaml`; Python: `PyYAML` or `ruamel.yaml`). Add it as a dev dependency, and tell the human which one you added.
+- A test runner with a coverage report. Prefer the one built into the language (Node: `node --test --experimental-test-coverage`
+  with a glob such as `"tests/**/*.test.mjs"`, not a bare directory).
 
 ## Steps
 1. Copy `templates/INTAKE-TEMPLATE.md` to `intake/TEMPLATE.md`.
 2. Write `intake/README.md`. Cover: the lifecycle (`draft`, `ready`, `hold`), who writes which field, the trust
    field, autonomy, and the budget block. State that a runner never edits an order.
 3. Write `scripts/validate-intake.<ext>` as a small program. It MUST:
-   - parse the frontmatter strictly and reject unknown keys;
+   - parse the frontmatter strictly, reject unknown keys at the top level and inside `target`, `budget`, and `scope`,
+     and reject duplicate keys;
    - require `intake`, `id`, `type`, `test-type`, `blueprint`, `status`, `priority`, `created`, `budget`;
    - require the `id` to equal the file name without `.md`;
    - require every `budget` field except `deadline`; require `max-usd` above 0;
    - check `deadline`, when present, is ISO 8601 with an offset and lies in the future;
-   - check `blueprint` exists in `blueprints/registry.json` once that file exists (skip with a warning before phase 3);
+   - check `blueprint` exists in `blueprints/registry.json` once that file exists, and that the order's `test-type` equals the entry's
+     `testType`. The file shape is `{ "schema": 1, "entries": [ { "id": "...", "testType": "..." } ] }`. Before phase 3,
+     print a warning and skip the check;
    - check `target.environment` is `local` or `staging`;
    - check `target.auth` never holds a secret value: allow only `none`, `test-account`, or `token-env-var:NAME`;
    - for `trust: external`, scan the body for instruction-override text such as "ignore previous", "disregard your rules",
      "you are now", "bypass the gate". Report each hit with a line number. Exit non-zero;
    - skip `TEMPLATE.md` and `README.md`;
+   - keep every function under complexity 7: put the key vocabulary in a data module and write one small function per rule;
    - exit 0 when every order is valid and exit 1 otherwise.
 4. Write unit tests for the validator. Cover each rule above with one passing and one failing case. Follow the
    rules from phase 1 (complexity below 7, interface for the filesystem).
@@ -228,7 +239,7 @@ Ship three built-in blueprints, a folder where teams add their own, a registry t
      "status": "stable"
    }
    ```
-   List all three built-ins. Add a top-level `"schema": 1`.
+   List all three built-ins. The file shape is `{ "schema": 1, "entries": [ ... ] }`. The intake validator from phase 2 reads `entries`.
 6. Write `scripts/validate-blueprints.<ext>`. It MUST:
    - reject an unknown registry key;
    - check every registry `blueprint` path exists;
@@ -238,7 +249,8 @@ Ship three built-in blueprints, a folder where teams add their own, a registry t
    - check a custom blueprint lives under `blueprints/custom/`, and a built-in does not;
    - exit 1 on any failure and name the file.
 7. Write tests for the validator: one passing case and one failing case per check.
-8. Connect the intake validator: an order's `blueprint` MUST exist in the registry, and its `test-type` MUST equal the entry's `testType`.
+8. Confirm the intake validator from phase 2 now checks the registry: an order's `blueprint` MUST exist in it, and its `test-type` MUST equal the
+   entry's `testType`. If phase 2 left that check out, add it now, with tests.
 
 ## Files
 `blueprints/{ui-e2e-saturday-like,api-sunday-like,unit}.md`, `blueprints/custom/README.md`, `blueprints/registry.json`,

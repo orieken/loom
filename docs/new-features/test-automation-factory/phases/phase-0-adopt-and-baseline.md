@@ -16,8 +16,9 @@ Learn what the project is, record where it stands, and write the first decision 
    - Record overall coverage and the five least-covered files.
    - Record the ten functions with the highest cyclomatic complexity.
    - Do not fix anything. Write findings down. If you find legacy code that lacks tests, note it for a later order.
-4. **New project only:** propose a minimal layout from the `BLUEPRINT.md` directory tree. Wait for the human
-   to approve it before you create folders.
+4. **New project only:** propose a minimal layout from the `BLUEPRINT.md` directory tree. Ask the human to choose
+   the language and test runner, because later phases write scripts in that language. Do not pick one from the tools
+   installed on this machine. Wait for both answers before you create folders. Record the choice in `BASELINE.md`.
 5. **Write `DOMAIN_DICTIONARY.md`.** One entry per term in the system under test. Add a "Synonyms to avoid" line
    per term. Leave a stub when you know nothing yet.
 6. **Write `docs/adr/ADR-000-test-automation-factory.md`** from the seed in `BLUEPRINT.md`. Fill the project name.
@@ -31,7 +32,9 @@ Learn what the project is, record where it stands, and write the first decision 
 ## Verification
 - `BASELINE.md` lists every fact from step 2, each with a source (a file path or a command output).
 - The suite result in `BASELINE.md` matches a fresh run.
-- `git diff --stat` shows only the three files above.
+- `git diff --stat` shows only the three files above. Commit this pack (`docs/test-factory/`) in its own commit
+  before you start, so that the diff is clean.
+- A repository with no commits has no hash. Write `none` in `BASELINE.md` in that case.
 
 ## Budget
 `max-usd: 2`, `max-attempts: 1`, `max-hours: 1`. Park and ask a human if you cannot find the test command.

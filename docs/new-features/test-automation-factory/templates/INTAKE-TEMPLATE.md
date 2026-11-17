@@ -21,7 +21,7 @@ depends-on: []                 # order ids that must ship first
 target:
   site: ""                     # base URL or service name of the system under test
   environment: staging         # local | staging — never production
-  auth: none                   # none | test-account | token-env-var (name only, never the value)
+  auth: none                   # none | test-account | token-env-var:NAME (the variable's name, never its value)
 budget:
   max-usd: 5                   # park when recorded spend crosses this
   max-attempts: 2              # whole-run retries for transient failures

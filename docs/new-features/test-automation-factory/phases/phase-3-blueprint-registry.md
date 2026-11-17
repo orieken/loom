@@ -37,7 +37,7 @@ Ship three built-in blueprints, a folder where teams add their own, a registry t
      "status": "stable"
    }
    ```
-   List all three built-ins. Add a top-level `"schema": 1`.
+   List all three built-ins. The file shape is `{ "schema": 1, "entries": [ ... ] }`. The intake validator from phase 2 reads `entries`.
 6. Write `scripts/validate-blueprints.<ext>`. It MUST:
    - reject an unknown registry key;
    - check every registry `blueprint` path exists;
@@ -47,7 +47,8 @@ Ship three built-in blueprints, a folder where teams add their own, a registry t
    - check a custom blueprint lives under `blueprints/custom/`, and a built-in does not;
    - exit 1 on any failure and name the file.
 7. Write tests for the validator: one passing case and one failing case per check.
-8. Connect the intake validator: an order's `blueprint` MUST exist in the registry, and its `test-type` MUST equal the entry's `testType`.
+8. Confirm the intake validator from phase 2 now checks the registry: an order's `blueprint` MUST exist in it, and its `test-type` MUST equal the
+   entry's `testType`. If phase 2 left that check out, add it now, with tests.
 
 ## Files
 `blueprints/{ui-e2e-saturday-like,api-sunday-like,unit}.md`, `blueprints/custom/README.md`, `blueprints/registry.json`,
