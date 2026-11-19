@@ -22,7 +22,8 @@ This phase does not build a framework. A framework is real product work with its
    - Write each order in `intake/<id>.md` from the intake template with `status: draft`. Give each real acceptance criteria taken from the pattern, a `test-type` and `blueprint`, a budget from the blueprint defaults, and `depends-on` where one order needs another (the base layer before anything that uses it). Run the intake validator on each.
    - Add one order for each `found with gaps` row.
    - **Stop here and ask the human** to review the orders and the framework language, and to set `status: ready` on the ones to build. Orders ship through the normal path (the runbook in phase 8, with the skills from phase 5 and the checks from phase 9).
-   - Do not mark an order `ready` yourself.
+   - Do not mark an order `ready` yourself. A human does that after review.
+   - The orders are built in phase 10, after the skills (phase 5), the runbook (phase 8), and the checks (phase 9) exist. Say so in `FRAMEWORK-STATUS.md`.
 3. Write the pattern documents. The seed files in `examples/` show the shape of an example; adapt them to the framework you found. The design text does not need the framework to exist. The code examples do.
    - If every block for a pattern was `found`: write and run the example as described below.
    - If a block is missing or has gaps: leave the example section as `Pending: written when order <id> ships`, naming the order. Do not invent an example against a framework that does not exist.
@@ -49,17 +50,17 @@ This phase does not build a framework. A framework is real product work with its
    3c. Write `docs/patterns/testing-pyramid.md`: the five levels, who writes them, the speed budget for each, and which blueprint applies.
    3d. Write `docs/patterns/test-annotation.md`: every test carries an issue reference and an acceptance-criterion reference in
    the language's own mechanism (JSDoc `@issue` and `@ac`, pytest markers or docstring, JUnit `@Tag` and `@DisplayName`,
-   xUnit `[Trait]`, Go comment, Gherkin tag). Gherkin scenarios need no AC annotation, because the scenario name is the criterion.
+   xUnit `[Trait]`, Go comment, Gherkin tag). Gherkin scenarios need no AC annotation, because the scenario name is the criterion. With no Gherkin runner, a UI test's name states the criterion and the test carries `@issue` and `@ac` (`CONTRACTS.md`, section 9).
    3e. Each pattern document ends with a "What this does not establish" table. State plainly what following the pattern does not prove.
 
 ## Files
 `docs/test-factory/FRAMEWORK-STATUS.md`, `intake/<id>.md` for each framework order, `docs/patterns/{ui-e2e-site-centric,api-declarative-client,testing-pyramid,test-annotation}.md`.
 
 ## Verification
-- `FRAMEWORK-STATUS.md` has a row for every block, and every `missing` or `found with gaps` row names an order. Each order passes the intake validator and has `status: draft`.
+- `FRAMEWORK-STATUS.md` has a row for every block, and every `missing` or `found with gaps` row names an order. Each order passes the intake validator, and each is `draft` when you write it (a human may set `ready` afterward).
 - For each example that exists: it compiles or runs in the project's toolchain. Run it. Record the command and result in the pattern file.
 - For each example that does not exist: the pattern file says `Pending` and names the order.
-- Come back to this phase when a framework order ships: replace each `Pending` marker with a real, running example, and update `FRAMEWORK-STATUS.md`.
+- Replacing each `Pending` marker with a real, running example happens in phase 10, after the framework orders ship. Record each `Pending` item as `deferred to phase 10`.
 - Every class and term used in a pattern document also appears in `DOMAIN_DICTIONARY.md` or is defined in the document.
 - Search the pack for conflicting names: `BasePage` is spelled one way everywhere.
 

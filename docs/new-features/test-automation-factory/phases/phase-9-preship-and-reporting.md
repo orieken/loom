@@ -8,7 +8,7 @@ Run one command before any order ships. It proves the tests are real, fast, and 
 - The project's CI system.
 
 ## Steps
-1. **Write `scripts/pre-ship.<ext>`.** It runs these checks in order, each with a timeout, and stops at the first failure:
+1. **Write `scripts/pre-ship.<ext>`.** Run as `preship --order <id> --base <ref>`, with the behavior in `CONTRACTS.md`, section 10: without `--order` it is a dry run that skips the can-fail and budget checks and says so. It runs these checks in order, each with a timeout, and stops at the first failure:
    | Check | Pass condition | Timeout |
    |---|---|---|
    | Intake validation | every order valid | 1 min |
@@ -40,12 +40,12 @@ Run one command before any order ships. It proves the tests are real, fast, and 
 `scripts/pre-ship.<ext>`, `scripts/delivery-summary.<ext>`, `budgets.yaml` update, tests, CI proposal (not applied).
 
 ## Verification
-- On a clean branch, `pre-ship` exits 0. A clean branch with an empty diff makes the coverage, can-fail, and speed checks pass for no reason, so also run it against a base ref that makes the diff non-empty (the commit before this phase), counting untracked files as fully changed, and see it pass for real reasons.
+- On a clean branch, `pre-ship` without `--order` exits 0 and prints `skipped (no --order)` for the two order checks. With `--order` it runs all ten, and a budget `stop` fails it. A clean branch with an empty diff makes the coverage, can-fail, and speed checks pass for no reason, so also run it against a base ref that makes the diff non-empty (the commit before this phase), counting untracked files as fully changed, and see it pass for real reasons.
 - Add a new test file with no can-fail record: `pre-ship` fails at the can-fail check.
 - Add a function with complexity 8: it fails at complexity.
 - Lower coverage of changed lines under 85%: it fails at coverage.
 - Make a check exceed its timeout: it fails and reports the timeout.
-- The summary contains no secret values. Make the generator refuse to write when it holds the value of a variable named in `.env.example`, ignoring variables with an empty value, and test that.
+- The summary contains no secret values. Make the generator refuse to write when it holds the value of a variable named in `.env.example`. Ignore variables whose value is empty or shorter than four characters, and test that.
 - Changed-line coverage of the scripts is at least 85%, and each test was shown to fail once.
 
 ## Budget

@@ -46,11 +46,13 @@ All code follows clean code, clean architecture, and the design-pattern table in
 1. Copy this folder to `docs/test-factory/` in your project (or keep it as its own template repository).
 2. Open `BLUEPRINT.md`. It describes the target end state.
 3. Commit the copied pack on its own, so each phase's diff stays clean. Then run `phases/phase-0-adopt-and-baseline.md`. It detects whether your project is new or existing.
-4. Run phases 1 to 9 in order. Merge each pull request before starting the next.
+4. Run phases 1 to 10 in order (phase 10 builds the framework that phase 4 ordered, and finishes what was deferred). Merge each pull request before starting the next.
 5. Add your own blueprints with the `new-blueprint` skill (phase 3 and phase 5).
 
 For a one-shot run, `full-prompt.md` holds every phase in one file. One phase per pull request is the
 recommended path, because each phase has its own verification step.
+
+Read `CONTRACTS.md` before phase 2. It fixes the script names, validator behavior, ledger, can-fail record, exemplar marks, and the coverage rule that several phases depend on.
 
 ## Phase map
 
@@ -66,6 +68,7 @@ recommended path, because each phase has its own verification step.
 | 7 | `phase-7-budgets-and-time-boxes.md` | Budget and time-box policy, enforcement script |
 | 8 | `phase-8-runner.md` | Optional supervisor loop, with a manual mode by default |
 | 9 | `phase-9-preship-and-reporting.md` | Ten timed pre-ship checks, complexity gate, reporting, CI proposal |
+| 10 | `phase-10-build-framework.md` | Ship the framework orders from phase 4, finish the deferred examples, exemplars, and dry-runs |
 
 ## Every phase has the same headers
 
@@ -74,6 +77,7 @@ recommended path, because each phase has its own verification step.
 ask a human. Do not widen the ceiling yourself.
 
 ## Conventions every phase uses
+- **Deferred items.** Some items in phases 4, 5, and 6 need the testing framework, which phase 4 may only have ordered. Do not fake them. Record them as `deferred to phase 10` and finish them there.
 - **Commits.** Each phase ends with one commit. A commit is an approval gate (phase 1), so the human gives a **standing approval** once, in `.claude/rules/approval-gates.md`, naming the scope (for example "commits on `phase/*` and `factory/*` branches"). Without it, ask before each commit.
 - **Measuring changed-line coverage before phase 9 builds the check.** Run the coverage report, take `git diff -U0` against the base ref (the commit before the phase), count executable lines you added or changed (an untracked file counts in full), and state the percentage and how you measured it. Phase 9 replaces this by hand-count with a script.
 - **Forward references.** Early phases name things later phases build: blueprints list exemplars (phase 6), skills call the budget check (phase 7), and the pre-ship list runs checks from phases 2, 3, 5, and 6. Write the reference with "(built in phase N)" and do not fail a phase for a check that does not exist yet.

@@ -9,14 +9,14 @@ Pick real tests as models, mark them, list them in a manifest, and check the two
 - The skills from phase 5.
 
 ## Steps
-1. **Choose.** For each level (`ui-e2e`, `api`, `unit`), pick one test that already runs and is the best model.
+1. **Choose.** For each level (`ui-e2e`, `api`, `unit`), pick one test that already runs and is the best model. A level whose framework does not exist yet has no exemplar to choose: record `deferred to phase 10` and do not mark a test that only compiles.
    - Existing project: pick from the suite. Prefer a test that is small, readable, and follows the pattern.
    - New project: copy the seed from `examples/` into `tests/`, adapt it to the real types phase 4 produced (the seeds show a shape, not the exact signatures), and make it run.
    - No target application yet for `ui-e2e`: run the example against a small local fixture server (a few lines of HTTP), in a real browser. Say in the manifest that it is a fixture. Do not leave the level without an exemplar, and do not mark a test that only compiles.
    - Keep browser tests in `*.ui.spec.ts` files with their own runner config and script (`test:ui`), so the default test run needs no browser.
 2. **Qualify.** Each choice MUST pass all of these. Record the evidence.
    - It runs and is not skipped.
-   - It can fail: change the behavior it checks, see it fail, restore.
+   - It can fail: change the product code it checks (never the test or its expected values), see it fail, restore. Re-run with a literal expectation first, so the test does not read the constant you changed (`CONTRACTS.md`, section 5).
    - It carries an issue reference and an acceptance-criterion reference.
    - No function in it has cyclomatic complexity of 7 or more.
    - Its file name follows `name.type.extension`.
@@ -39,8 +39,8 @@ Pick real tests as models, mark them, list them in a manifest, and check the two
 `.claude/exemplars.yaml`, `scripts/check-exemplars.<ext>`, tests for the script, the three annotated tests, updated blueprints and the `exemplar-audit` skill.
 
 ## Verification
-- `check-exemplars` passes. Remove one annotation: it fails. Restore it.
-- Run the `test-audit` skill: the "no exemplars yet" finding is gone.
+- `check-exemplars` passes with the exemplars that exist. Remove one annotation: it fails. Restore it. Follow the scanner rules in `CONTRACTS.md`, section 6.
+- Run the `test-audit` skill: the "no exemplars yet" finding is gone for every level that has an exemplar, and the remaining levels are listed as `deferred to phase 10`.
 - Run `exemplar-audit`: no entry is disqualified.
 - Each exemplar fails when you break the behavior it checks, and passes again when you restore it. Record that in its `can-fail` field.
 - Changed-line coverage of the script is at least 85%, and each test was shown to fail once.

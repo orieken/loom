@@ -14,7 +14,7 @@ Give the factory a front door: a work-order template, a README that explains it,
 1. Copy `templates/INTAKE-TEMPLATE.md` to `intake/TEMPLATE.md`.
 2. Write `intake/README.md`. Cover: the lifecycle (`draft`, `ready`, `hold`), who writes which field, the trust
    field, autonomy, and the budget block. State that a runner never edits an order.
-3. Write `scripts/validate-intake.<ext>` as a small program. It MUST:
+3. Write `scripts/validate-intake.<ext>` as a small program that follows the validator behavior in `CONTRACTS.md` (paths, output, exit codes) and is run as `validate:intake`. It MUST:
    - parse the frontmatter strictly, reject unknown keys at the top level and inside `target`, `budget`, and `scope`,
      and reject duplicate keys;
    - require `intake`, `id`, `type`, `test-type`, `blueprint`, `status`, `priority`, `created`, `budget`;
@@ -24,6 +24,7 @@ Give the factory a front door: a work-order template, a README that explains it,
    - check `blueprint` exists in `blueprints/registry.json` once that file exists, and that the order's `test-type` equals the entry's
      `testType`. The file shape is `{ "schema": 1, "entries": [ { "id": "...", "testType": "..." } ] }`. Before phase 3,
      print a warning and skip the check;
+   - check every `depends-on` id names an existing `intake/<id>.md`;
    - check `target.environment` is `local` or `staging`;
    - check `target.auth` never holds a secret value: allow only `none`, `test-account`, or `token-env-var:NAME`;
    - for `trust: external`, scan the body for instruction-override text such as "ignore previous", "disregard your rules",
@@ -50,5 +51,5 @@ Give the factory a front door: a work-order template, a README that explains it,
 `max-usd: 4`, `max-attempts: 2`, `max-hours: 2`.
 
 ## Time-box
-Stage timeout 30 minutes. Writing the validator and its tests is the longest step. If it is not green within
-45 minutes in total, stop and report where it stands.
+Stage timeout 30 minutes. Writing the validator and its tests is the longest step. If it is not green after
+two stages (60 minutes of stage time), stop and report where it stands.

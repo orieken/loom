@@ -23,7 +23,7 @@ Do NOT use when:
 
 ## Process
 1. <Step>
-2. Write the test. Show that it can fail: break the behavior once, see the test fail, restore it.
+2. Write the test. Show that it can fail: change the product code it checks (never the test or its expected values), see the test fail, restore it, and write a `can-fail-shown` ledger line (`CONTRACTS.md`, section 5).
 3. Run the new tests and the complexity check.
 
 ## Output Format

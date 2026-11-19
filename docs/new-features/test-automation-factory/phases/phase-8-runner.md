@@ -15,7 +15,7 @@ Build manual mode first. Build supervisor mode only after manual mode has shippe
 Write `docs/test-factory/RUNBOOK.md`. A human follows it for each order:
 1. Pick the oldest `status: ready` order with the highest priority whose `depends-on` orders have shipped.
 2. Run the intake validator and `check-budget`. Stop if either fails.
-3. Create a branch `factory/<id>` from `base-branch`.
+3. Work on a branch the standing approval covers. Create `factory/<id>` from `base-branch` when the approval names it; otherwise work on the branch the approval names (for example `main`) and say so in the ledger `note`.
 4. Start the skill that matches `test-type`, with the order as input.
 5. After each stage, append a ledger line and run `check-budget`.
 6. At a gate, stop and wait for a human answer.

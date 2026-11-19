@@ -30,9 +30,8 @@ cause, including waiting. Use `deadline` when a human needs the result by a set 
 3. **Resume:** a human raises the ceiling or extends the deadline in the order, then sets `status: ready`. The runner resumes from the checkpoint.
 4. **Stage timeout:** kill the stage, record the elapsed time, and count one attempt. Two timeouts in a row park the order.
 5. **Unmeasured usage counts as unknown, not zero.** When the tool cannot report spend, the order halts at the next stage
-   boundary and asks a human to accept the unknown cost. Never assume it was free. A human accepts by appending a ledger line
-   `{"event":"approved","gate":"unknown-usage","order":"<id>","digest":"<digest of the order>"}`; `check-budget` then reports `warn: unknown-usage accepted` instead of `stop`.
-   An agent never writes that line, and any later edit to the order voids it.
+   boundary and asks a human to accept the unknown cost. Never assume it was free. Spend comes from the agent tool's report, or from a number the human enters with `note: human estimate`, in that order (`CONTRACTS.md`, section 4). With neither, a human accepts the unknown cost with an `approved` ledger line for gate `unknown-usage`; `check-budget` then reports `warn: unknown-usage accepted` instead of `stop`.
+   An agent writes that line only when the human has said so, quoting the human's words in `note`. Any later edit to the order voids it.
 6. **No agent raises its own ceiling.** Changing a budget is a human action.
 
 ### Speed budgets per test level
