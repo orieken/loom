@@ -8,7 +8,7 @@ Run one command before any order ships. It proves the tests are real, fast, and 
 - The project's CI system.
 
 ## Steps
-1. **Write `scripts/pre-ship.<ext>`.** Run as `preship --order <id> --base <ref>`, with the behavior in `CONTRACTS.md`, section 10: without `--order` it is a dry run that skips the can-fail and budget checks and says so. It runs these checks in order, each with a timeout, and stops at the first failure:
+1. **Write `scripts/pre-ship.<ext>`.** Document `preship` in `docs/test-factory/RUNBOOK.md`. Checks hand artifacts to later checks: the unit run writes the coverage and test reports that the coverage and speed checks read. Run as `preship --order <id> --base <ref>`, with the behavior in `CONTRACTS.md`, section 10: without `--order` it is a dry run that skips the can-fail and budget checks and says so. It runs these checks in order, each with a timeout, and stops at the first failure:
    | Check | Pass condition | Timeout |
    |---|---|---|
    | Intake validation | every order valid | 1 min |

@@ -40,6 +40,7 @@ Create one file per rule set. Keep each file under 120 lines. Use the content be
 | Factory | Object creation is complex or varies by type |
 | Builder | An object has many optional parameters |
 | Strategy | Behavior varies by context and you want to remove conditionals |
+| Observer | Producers and consumers must stay decoupled, for example test events feeding a reporter |
 | Adapter | You wrap a third-party or legacy dependency |
 | Decorator | You add logging, retry, or screenshots without touching the class |
 | Command | You encapsulate an operation to queue or undo it |
@@ -75,7 +76,7 @@ A short root file that lists the hard constraints from `clean-architecture.md` a
 ## Verification
 - Each rule file exists and is under 120 lines.
 - Search the files for "complexity", "85%", "interface", "timeout", and "assertion". Each appears at least once.
-- If the project has a linter, add its complexity rule capped at 6. Run it. Record the result. Wiring this into CI is
+- Confirm the linter from phase 0 enforces the complexity cap of 6. Run it. Record the result. If phase 0 recorded no linter, say so. Wiring this into CI is
   a gated action: ask a human first.
 
 ## Budget

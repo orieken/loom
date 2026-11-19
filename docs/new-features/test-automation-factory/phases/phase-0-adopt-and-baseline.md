@@ -20,12 +20,12 @@ Learn what the project is, record where it stands, and write the first decision 
    the language and test runner, because later phases write scripts in that language. Do not pick one from the tools
    installed on this machine. Wait for both answers before you create folders. Record the choice in `BASELINE.md`.
    Also ask the human, once, for each choice a later phase needs: the test runner; the browser driver; the schema-validation library for API tests; the resilience library for retries and circuit breakers; a Gherkin runner (optional); and a mutation tool (optional, unverified). Record each answer in `BASELINE.md`. Do not pick from what happens to be installed.
-5. **Bootstrap the toolchain (new project, or any tool that is missing).** Create the dependency manifest (`package.json`, `pyproject.toml`, a build file, or a project file) and install the chosen tools at versions that work together. Check each pairing before you move on: a linter must support the compiler or interpreter version you installed (for example, a newest TypeScript can outrun the TypeScript linter plugin, so pin a compatible one). Run each tool once (`--version`, or a tiny run) and record the exact versions in `BASELINE.md`. Tell the human every dependency you add.
+5. **Bootstrap the toolchain (new project, or any tool that is missing).** Create the dependency manifest (`package.json`, `pyproject.toml`, a build file, or a project file) and install the chosen tools at versions that work together. Check each pairing before you move on: a linter must support the compiler or interpreter version you installed (for example, a newest TypeScript can outrun the TypeScript linter plugin, so pin a compatible one). Run each tool once (`--version`, or a tiny run) and record the exact versions in `BASELINE.md`. Include a linter with a complexity rule capped at 6, and run it once. Phase 2 relies on it. If the language has no such linter, record that in `BASELINE.md` and check complexity by hand. Tell the human every dependency you add.
 6. **Write `DOMAIN_DICTIONARY.md`.** One entry per term in the system under test. Add a "Synonyms to avoid" line
    per term. Leave a stub when you know nothing yet. Use "work order" for intake files; if the product has its own "order", name it "customer order".
 7. **Write `docs/adr/ADR-000-test-automation-factory.md`** from the seed in `BLUEPRINT.md`. Fill the project name.
 8. **Write `.env.example`** listing every environment variable the project will read (start with `CHROMIUM_EXECUTABLE_PATH=`), with empty values. Never put a secret in it.
-9. **Write `docs/test-factory/BASELINE.md`** with the numbers from steps 2 and 3, the date, and the commit hash.
+9. **Write `docs/test-factory/BASELINE.md`** with the numbers from steps 2 and 3, the date (UTC, from `date -u +%F`), and the commit hash.
 
 ## Files
 - `DOMAIN_DICTIONARY.md`

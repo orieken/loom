@@ -11,7 +11,7 @@ Pick real tests as models, mark them, list them in a manifest, and check the two
 ## Steps
 1. **Choose.** For each level (`ui-e2e`, `api`, `unit`), pick one test that already runs and is the best model. A level whose framework does not exist yet has no exemplar to choose: record `deferred to phase 10` and do not mark a test that only compiles.
    - Existing project: pick from the suite. Prefer a test that is small, readable, and follows the pattern.
-   - New project: copy the seed from `examples/` into `tests/`, adapt it to the real types phase 4 produced (the seeds show a shape, not the exact signatures), and make it run.
+   - New project: copy the seed from `examples/` into `tests/`, adapt it to the real types phase 4 produced (the seeds show a shape, not the exact signatures), and make it run. If the seed's subject does not exist in the project, write the exemplar over the nearest real pure function instead.
    - No target application yet for `ui-e2e`: run the example against a small local fixture server (a few lines of HTTP), in a real browser. Say in the manifest that it is a fixture. Do not leave the level without an exemplar, and do not mark a test that only compiles.
    - Keep browser tests in `*.ui.spec.ts` files with their own runner config and script (`test:ui`), so the default test run needs no browser.
 2. **Qualify.** Each choice MUST pass all of these. Record the evidence.

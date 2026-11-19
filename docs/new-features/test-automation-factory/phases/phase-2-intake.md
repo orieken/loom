@@ -30,8 +30,11 @@ Give the factory a front door: a work-order template, a README that explains it,
    - for `trust: external`, scan the body for instruction-override text such as "ignore previous", "disregard your rules",
      "you are now", "bypass the gate". Report each hit with a line number. Exit non-zero;
    - skip `TEMPLATE.md` and `README.md`;
+   - resolve every path from the repository root, not from the current directory;
+   - check `created` is `YYYY-MM-DD`;
    - keep every function under complexity 7: put the key vocabulary in a data module and write one small function per rule;
    - exit 0 when every order is valid and exit 1 otherwise.
+   The file-system port MUST offer `readText`, `writeText`, `listTree` (recursive), and `listDirectories`, because phases 3, 5, and 6 reuse it. Put one shared frontmatter parser in its own module; phases 3 and 5 reuse it.
 4. Write unit tests for the validator. Cover each rule above with one passing and one failing case. Follow the
    rules from phase 1 (complexity below 7, interface for the filesystem).
 5. Write one real sample order, `intake/sample-orders-api-tests.md`, with `status: draft`. Run the validator on it.

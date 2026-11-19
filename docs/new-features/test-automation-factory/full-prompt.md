@@ -2,7 +2,6 @@
 
 All phases in one file. Run them in order. Prefer one phase per pull request; stop at each `Verification` section until it passes. Read `README.md`, `BLUEPRINT.md`, and `CONTRACTS.md` first.
 
-
 ---
 
 # Phase 0 — Adopt and Baseline
@@ -27,12 +26,12 @@ Learn what the project is, record where it stands, and write the first decision 
    the language and test runner, because later phases write scripts in that language. Do not pick one from the tools
    installed on this machine. Wait for both answers before you create folders. Record the choice in `BASELINE.md`.
    Also ask the human, once, for each choice a later phase needs: the test runner; the browser driver; the schema-validation library for API tests; the resilience library for retries and circuit breakers; a Gherkin runner (optional); and a mutation tool (optional, unverified). Record each answer in `BASELINE.md`. Do not pick from what happens to be installed.
-5. **Bootstrap the toolchain (new project, or any tool that is missing).** Create the dependency manifest (`package.json`, `pyproject.toml`, a build file, or a project file) and install the chosen tools at versions that work together. Check each pairing before you move on: a linter must support the compiler or interpreter version you installed (for example, a newest TypeScript can outrun the TypeScript linter plugin, so pin a compatible one). Run each tool once (`--version`, or a tiny run) and record the exact versions in `BASELINE.md`. Tell the human every dependency you add.
+5. **Bootstrap the toolchain (new project, or any tool that is missing).** Create the dependency manifest (`package.json`, `pyproject.toml`, a build file, or a project file) and install the chosen tools at versions that work together. Check each pairing before you move on: a linter must support the compiler or interpreter version you installed (for example, a newest TypeScript can outrun the TypeScript linter plugin, so pin a compatible one). Run each tool once (`--version`, or a tiny run) and record the exact versions in `BASELINE.md`. Include a linter with a complexity rule capped at 6, and run it once. Phase 2 relies on it. If the language has no such linter, record that in `BASELINE.md` and check complexity by hand. Tell the human every dependency you add.
 6. **Write `DOMAIN_DICTIONARY.md`.** One entry per term in the system under test. Add a "Synonyms to avoid" line
    per term. Leave a stub when you know nothing yet. Use "work order" for intake files; if the product has its own "order", name it "customer order".
 7. **Write `docs/adr/ADR-000-test-automation-factory.md`** from the seed in `BLUEPRINT.md`. Fill the project name.
 8. **Write `.env.example`** listing every environment variable the project will read (start with `CHROMIUM_EXECUTABLE_PATH=`), with empty values. Never put a secret in it.
-9. **Write `docs/test-factory/BASELINE.md`** with the numbers from steps 2 and 3, the date, and the commit hash.
+9. **Write `docs/test-factory/BASELINE.md`** with the numbers from steps 2 and 3, the date (UTC, from `date -u +%F`), and the commit hash.
 
 ## Files
 - `DOMAIN_DICTIONARY.md`
@@ -52,7 +51,6 @@ Learn what the project is, record where it stands, and write the first decision 
 ## Time-box
 Stage timeout 30 minutes. Running the full suite counts toward the time-box. If the suite takes longer than 20 minutes,
 record that fact, run a sample, and mark the baseline `partial`.
-
 
 ---
 
@@ -98,6 +96,7 @@ Create one file per rule set. Keep each file under 120 lines. Use the content be
 | Factory | Object creation is complex or varies by type |
 | Builder | An object has many optional parameters |
 | Strategy | Behavior varies by context and you want to remove conditionals |
+| Observer | Producers and consumers must stay decoupled, for example test events feeding a reporter |
 | Adapter | You wrap a third-party or legacy dependency |
 | Decorator | You add logging, retry, or screenshots without touching the class |
 | Command | You encapsulate an operation to queue or undo it |
@@ -133,7 +132,7 @@ A short root file that lists the hard constraints from `clean-architecture.md` a
 ## Verification
 - Each rule file exists and is under 120 lines.
 - Search the files for "complexity", "85%", "interface", "timeout", and "assertion". Each appears at least once.
-- If the project has a linter, add its complexity rule capped at 6. Run it. Record the result. Wiring this into CI is
+- Confirm the linter from phase 0 enforces the complexity cap of 6. Run it. Record the result. If phase 0 recorded no linter, say so. Wiring this into CI is
   a gated action: ask a human first.
 
 ## Budget
@@ -141,7 +140,6 @@ A short root file that lists the hard constraints from `clean-architecture.md` a
 
 ## Time-box
 Stage timeout 30 minutes. This phase writes documents only. If it passes 30 minutes, stop and report.
-
 
 ---
 
@@ -177,8 +175,11 @@ Give the factory a front door: a work-order template, a README that explains it,
    - for `trust: external`, scan the body for instruction-override text such as "ignore previous", "disregard your rules",
      "you are now", "bypass the gate". Report each hit with a line number. Exit non-zero;
    - skip `TEMPLATE.md` and `README.md`;
+   - resolve every path from the repository root, not from the current directory;
+   - check `created` is `YYYY-MM-DD`;
    - keep every function under complexity 7: put the key vocabulary in a data module and write one small function per rule;
    - exit 0 when every order is valid and exit 1 otherwise.
+   The file-system port MUST offer `readText`, `writeText`, `listTree` (recursive), and `listDirectories`, because phases 3, 5, and 6 reuse it. Put one shared frontmatter parser in its own module; phases 3 and 5 reuse it.
 4. Write unit tests for the validator. Cover each rule above with one passing and one failing case. Follow the
    rules from phase 1 (complexity below 7, interface for the filesystem).
 5. Write one real sample order, `intake/sample-orders-api-tests.md`, with `status: draft`. Run the validator on it.
@@ -200,7 +201,6 @@ Give the factory a front door: a work-order template, a README that explains it,
 ## Time-box
 Stage timeout 30 minutes. Writing the validator and its tests is the longest step. If it is not green after
 two stages (60 minutes of stage time), stop and report where it stands.
-
 
 ---
 
@@ -272,7 +272,6 @@ Ship three built-in blueprints, a folder where teams add their own, a registry t
 ## Time-box
 Stage timeout 30 minutes. Writing three blueprints is documentation work. Cap that step at 20 minutes; park the phase if it runs over.
 
-
 ---
 
 # Phase 4 — Pattern Documents
@@ -296,12 +295,12 @@ This phase does not build a framework. A framework is real product work with its
    - Write the result to `docs/test-factory/FRAMEWORK-STATUS.md`: one row per block with `found`, `found with gaps`, or `missing`, where it lives, and how you checked (a command or a file path). A block that exists but breaks a rule, for example a raw `any`, is `found with gaps`.
 2. **If any block is missing or has gaps, write work orders. Do not write the framework yourself.**
    - Group the blocks into orders that can each ship alone. A typical split: UI base layer (Site, Page, Element, Flow), UI adapters (browser driver, test-runner binding), API base layer (adapter interface, base client, matchers), API schema and resilience, test-data helpers (Model and Factory conventions).
-   - Write each order in `intake/<id>.md` from the intake template with `status: draft`. Give each real acceptance criteria taken from the pattern, a `test-type` and `blueprint`, a budget from the blueprint defaults, and `depends-on` where one order needs another (the base layer before anything that uses it). Run the intake validator on each.
+   - Write each order in `intake/<id>.md` from the intake template with `status: draft`. Use `type: test-tooling` for a framework order. Choose `test-type` from the nearest blueprint (`unit` for test-data helpers). Give each real acceptance criteria taken from the pattern, a `test-type` and `blueprint`, a budget from the blueprint defaults, and `depends-on` where one order needs another (the base layer before anything that uses it). Run the intake validator on each.
    - Add one order for each `found with gaps` row.
    - **Stop here and ask the human** to review the orders and the framework language, and to set `status: ready` on the ones to build. Orders ship through the normal path (the runbook in phase 8, with the skills from phase 5 and the checks from phase 9).
    - Do not mark an order `ready` yourself. A human does that after review.
    - The orders are built in phase 10, after the skills (phase 5), the runbook (phase 8), and the checks (phase 9) exist. Say so in `FRAMEWORK-STATUS.md`.
-3. Write the pattern documents. The seed files in `examples/` show the shape of an example; adapt them to the framework you found. The design text does not need the framework to exist. The code examples do.
+3. Write the pattern documents. The seed files in `examples/` show the shape of an example; adapt them to the framework you found. The seeds are illustrative: method names such as `send`, `post`, or `validateSchema` may differ in your framework, so match the real one. The design text does not need the framework to exist. The code examples do.
    - If every block for a pattern was `found`: write and run the example as described below.
    - If a block is missing or has gaps: leave the example section as `Pending: written when order <id> ships`, naming the order. Do not invent an example against a framework that does not exist.
 
@@ -339,14 +338,13 @@ This phase does not build a framework. A framework is real product work with its
 - For each example that does not exist: the pattern file says `Pending` and names the order.
 - Replacing each `Pending` marker with a real, running example happens in phase 10, after the framework orders ship. Record each `Pending` item as `deferred to phase 10`.
 - Every class and term used in a pattern document also appears in `DOMAIN_DICTIONARY.md` or is defined in the document.
-- Search the pack for conflicting names: `BasePage` is spelled one way everywhere.
+- Search `docs/test-factory/` and `docs/patterns/` for conflicting names: `BasePage` is spelled one way everywhere.
 
 ## Budget
 `max-usd: 5`, `max-attempts: 2`, `max-hours: 2`. The framework orders carry their own budgets.
 
 ## Time-box
 Stage timeout 30 minutes. Write one pattern document per stage so each stays inside the timeout.
-
 
 ---
 
@@ -404,7 +402,6 @@ Create one skill per bullet. Use `templates/SKILL-TEMPLATE.md` for structure. Ke
 ## Time-box
 Stage timeout 30 minutes. One skill per stage. A dry-run counts toward the time-box.
 
-
 ---
 
 # Phase 6 — Golden Examples (Exemplars)
@@ -420,7 +417,7 @@ Pick real tests as models, mark them, list them in a manifest, and check the two
 ## Steps
 1. **Choose.** For each level (`ui-e2e`, `api`, `unit`), pick one test that already runs and is the best model. A level whose framework does not exist yet has no exemplar to choose: record `deferred to phase 10` and do not mark a test that only compiles.
    - Existing project: pick from the suite. Prefer a test that is small, readable, and follows the pattern.
-   - New project: copy the seed from `examples/` into `tests/`, adapt it to the real types phase 4 produced (the seeds show a shape, not the exact signatures), and make it run.
+   - New project: copy the seed from `examples/` into `tests/`, adapt it to the real types phase 4 produced (the seeds show a shape, not the exact signatures), and make it run. If the seed's subject does not exist in the project, write the exemplar over the nearest real pure function instead.
    - No target application yet for `ui-e2e`: run the example against a small local fixture server (a few lines of HTTP), in a real browser. Say in the manifest that it is a fixture. Do not leave the level without an exemplar, and do not mark a test that only compiles.
    - Keep browser tests in `*.ui.spec.ts` files with their own runner config and script (`test:ui`), so the default test run needs no browser.
 2. **Qualify.** Each choice MUST pass all of these. Record the evidence.
@@ -460,7 +457,6 @@ Pick real tests as models, mark them, list them in a manifest, and check the two
 ## Time-box
 Stage timeout 30 minutes. Qualification (step 2) involves running tests; if a suite run alone takes more than 10 minutes, qualify with a targeted run and record that.
 
-
 ---
 
 # Phase 7 — Budgets and Time-Boxes
@@ -489,13 +485,13 @@ Timeouts in `budgets.yaml` use the form `30s`, `10m`, or `2h` and nothing else.
 cause, including waiting. Use `deadline` when a human needs the result by a set time.
 
 ### Behavior at the limits
-1. **80% of any ceiling:** write a warning line to the ledger and to the run summary. Keep working.
+1. **80% of any ceiling** (for `max-attempts` below 5 the value goes from `ok` straight to `stop`; that is expected): write a warning line to the ledger and to the run summary. Keep working.
 2. **Ceiling reached or deadline passed:** stop before the next stage starts. Write a checkpoint note (what is done, what is left, files touched).
    Park the order with `reason: budget-exhausted` or `reason: deadline-passed`. Add it to the inbox. Do not retry.
 3. **Resume:** a human raises the ceiling or extends the deadline in the order, then sets `status: ready`. The runner resumes from the checkpoint.
 4. **Stage timeout:** kill the stage, record the elapsed time, and count one attempt. Two timeouts in a row park the order.
 5. **Unmeasured usage counts as unknown, not zero.** When the tool cannot report spend, the order halts at the next stage
-   boundary and asks a human to accept the unknown cost. Never assume it was free. Spend comes from the agent tool's report, or from a number the human enters with `note: human estimate`, in that order (`CONTRACTS.md`, section 4). With neither, a human accepts the unknown cost with an `approved` ledger line for gate `unknown-usage`; `check-budget` then reports `warn: unknown-usage accepted` instead of `stop`.
+   boundary and asks a human to accept the unknown cost. Never assume it was free. Spend comes from the agent tool's report (for Claude Code, the session usage report: read it at the end of each stage and record `usd` with `note: claude usage report`), or from a number the human enters with `note: human estimate`, in that order (`CONTRACTS.md`, section 4). With neither, a human accepts the unknown cost with an `approved` ledger line for gate `unknown-usage`; `check-budget` then reports `warn: unknown-usage accepted` instead of `stop`.
    An agent writes that line only when the human has said so, quoting the human's words in `note`. Any later edit to the order voids it.
 6. **No agent raises its own ceiling.** Changing a budget is a human action.
 
@@ -555,7 +551,6 @@ This is not assumed to exist. Build it:
 ## Time-box
 Stage timeout 30 minutes. This phase defines the limits it must itself obey. Check its own ledger with `check-budget` before you finish.
 
-
 ---
 
 # Phase 8 — Runner (Optional)
@@ -591,7 +586,7 @@ Write `scripts/factory-run.<ext>` as a loop. It MUST:
 - call `check-budget` before every stage, and stop on `stop`;
 - park on a gate, a budget stop, or two stage timeouts, and add the order to `inbox/` with the reason;
 - never write to the order file; record all progress in `ledger.jsonl` (append-only);
-- never approve a gate. Only a human command, `factory-approve approve <id> <gate>`, records an approval. The approval stores the digest of the committed order, so any change to the order voids it and the order starts again with a new claim. Provide `factory-approve shipped <id> <url>` so a human records the pull request;
+- never approve a gate. Only a human command, `factory-approve approve <id> <gate>`, records an approval. The approval stores the digest of the committed order, so any change to the order voids it and the order starts again with a new claim. Provide `factory-approve shipped <id> <url>` so a human records the pull request. Without the supervisor, a human appends the `approved` line to the ledger by hand, following `CONTRACTS.md`, section 4;
 - use two gates: `commit` after the stages, and `design` before any stage for an order with `trust: external` or `autonomy: strict-human`;
 - support `--once` (run one pass and exit) and `--dry-run` (print what would run).
 
@@ -618,7 +613,6 @@ State plainly what you did not build: loop mode, concurrency, recovery from a cr
 ## Time-box
 Stage timeout 30 minutes. The supervisor MUST apply the same limits to itself: it stops at `max-hours` of its own loop time unless a human extends it.
 
-
 ---
 
 # Phase 9 — Pre-Ship Checks and Reporting
@@ -631,7 +625,7 @@ Run one command before any order ships. It proves the tests are real, fast, and 
 - The project's CI system.
 
 ## Steps
-1. **Write `scripts/pre-ship.<ext>`.** Run as `preship --order <id> --base <ref>`, with the behavior in `CONTRACTS.md`, section 10: without `--order` it is a dry run that skips the can-fail and budget checks and says so. It runs these checks in order, each with a timeout, and stops at the first failure:
+1. **Write `scripts/pre-ship.<ext>`.** Document `preship` in `docs/test-factory/RUNBOOK.md`. Checks hand artifacts to later checks: the unit run writes the coverage and test reports that the coverage and speed checks read. Run as `preship --order <id> --base <ref>`, with the behavior in `CONTRACTS.md`, section 10: without `--order` it is a dry run that skips the can-fail and budget checks and says so. It runs these checks in order, each with a timeout, and stops at the first failure:
    | Check | Pass condition | Timeout |
    |---|---|---|
    | Intake validation | every order valid | 1 min |
@@ -676,7 +670,6 @@ Run one command before any order ships. It proves the tests are real, fast, and 
 
 ## Time-box
 Stage timeout 30 minutes. `pre-ship` has its own per-check timeouts, listed above. Their total, 59 minutes with the browser check, MUST stay under the order's `max-hours`. Test that the sum in `budgets.yaml` stays below the default.
-
 
 ---
 

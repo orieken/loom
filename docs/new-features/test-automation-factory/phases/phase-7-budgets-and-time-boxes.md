@@ -24,13 +24,13 @@ Timeouts in `budgets.yaml` use the form `30s`, `10m`, or `2h` and nothing else.
 cause, including waiting. Use `deadline` when a human needs the result by a set time.
 
 ### Behavior at the limits
-1. **80% of any ceiling:** write a warning line to the ledger and to the run summary. Keep working.
+1. **80% of any ceiling** (for `max-attempts` below 5 the value goes from `ok` straight to `stop`; that is expected): write a warning line to the ledger and to the run summary. Keep working.
 2. **Ceiling reached or deadline passed:** stop before the next stage starts. Write a checkpoint note (what is done, what is left, files touched).
    Park the order with `reason: budget-exhausted` or `reason: deadline-passed`. Add it to the inbox. Do not retry.
 3. **Resume:** a human raises the ceiling or extends the deadline in the order, then sets `status: ready`. The runner resumes from the checkpoint.
 4. **Stage timeout:** kill the stage, record the elapsed time, and count one attempt. Two timeouts in a row park the order.
 5. **Unmeasured usage counts as unknown, not zero.** When the tool cannot report spend, the order halts at the next stage
-   boundary and asks a human to accept the unknown cost. Never assume it was free. Spend comes from the agent tool's report, or from a number the human enters with `note: human estimate`, in that order (`CONTRACTS.md`, section 4). With neither, a human accepts the unknown cost with an `approved` ledger line for gate `unknown-usage`; `check-budget` then reports `warn: unknown-usage accepted` instead of `stop`.
+   boundary and asks a human to accept the unknown cost. Never assume it was free. Spend comes from the agent tool's report (for Claude Code, the session usage report: read it at the end of each stage and record `usd` with `note: claude usage report`), or from a number the human enters with `note: human estimate`, in that order (`CONTRACTS.md`, section 4). With neither, a human accepts the unknown cost with an `approved` ledger line for gate `unknown-usage`; `check-budget` then reports `warn: unknown-usage accepted` instead of `stop`.
    An agent writes that line only when the human has said so, quoting the human's words in `note`. Any later edit to the order voids it.
 6. **No agent raises its own ceiling.** Changing a budget is a human action.
 

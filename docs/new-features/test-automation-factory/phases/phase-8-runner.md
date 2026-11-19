@@ -31,7 +31,7 @@ Write `scripts/factory-run.<ext>` as a loop. It MUST:
 - call `check-budget` before every stage, and stop on `stop`;
 - park on a gate, a budget stop, or two stage timeouts, and add the order to `inbox/` with the reason;
 - never write to the order file; record all progress in `ledger.jsonl` (append-only);
-- never approve a gate. Only a human command, `factory-approve approve <id> <gate>`, records an approval. The approval stores the digest of the committed order, so any change to the order voids it and the order starts again with a new claim. Provide `factory-approve shipped <id> <url>` so a human records the pull request;
+- never approve a gate. Only a human command, `factory-approve approve <id> <gate>`, records an approval. The approval stores the digest of the committed order, so any change to the order voids it and the order starts again with a new claim. Provide `factory-approve shipped <id> <url>` so a human records the pull request. Without the supervisor, a human appends the `approved` line to the ledger by hand, following `CONTRACTS.md`, section 4;
 - use two gates: `commit` after the stages, and `design` before any stage for an order with `trust: external` or `autonomy: strict-human`;
 - support `--once` (run one pass and exit) and `--dry-run` (print what would run).
 

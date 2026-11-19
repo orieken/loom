@@ -4,7 +4,7 @@
 # it records progress in its own ledger.
 intake: 1                      # schema version; a validator refuses a version it does not know
 id: kebab-case-slug            # MUST equal this file's name without .md
-type: test                     # test | test-repair | test-tooling | spike
+type: test                     # test | test-repair | test-tooling | spike (framework work orders use test-tooling)
 test-type: api                 # ui-e2e | api | unit | integration | acceptance | <custom blueprint id>
 blueprint: api-sunday-like     # id from blueprints/registry.json
 status: draft                  # draft | ready | hold — only `ready` is picked up
