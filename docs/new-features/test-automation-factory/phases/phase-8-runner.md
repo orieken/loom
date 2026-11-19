@@ -19,8 +19,8 @@ Write `docs/test-factory/RUNBOOK.md`. A human follows it for each order:
 4. Start the skill that matches `test-type`, with the order as input.
 5. After each stage, append a ledger line and run `check-budget`.
 6. At a gate, stop and wait for a human answer.
-7. Run the pre-ship checks (phase 9). Open a pull request.
-8. Append a `shipped` ledger line with the pull request URL.
+7. Run the pre-ship checks (built in phase 9; if it does not exist yet, run the checks that do and say so). Open a pull request, or, with no remote, stop at a local branch and record that.
+8. Append a `shipped` ledger line with the pull request URL, or with `url: local` when there is no remote.
 
 ### Supervisor mode (build second, optional)
 Write `scripts/factory-run.<ext>` as a loop. It MUST:
@@ -46,7 +46,7 @@ State plainly what you did not build: loop mode, concurrency, recovery from a cr
 
 ## Verification
 - Manual mode: a person completes the sample order from phase 2 using only `RUNBOOK.md`.
-- Supervisor mode: with fake agent and git, tests show these cases: order claimed once; dependency respected; budget stop parks the order;
+- Supervisor mode, only if you built it (it is optional; skipping it does not fail this phase): with fake agent and git, tests show these cases: order claimed once; dependency respected; budget stop parks the order;
   a gate stops the run; approval is not created by agent output; the order file is unchanged after a run.
 - Adapters: run the real ledger, git order source (reads committed content, not an uncommitted edit), worktree, inbox, and command agent (success, failure, timeout) in tests against a temporary git repository.
 - Run the supervisor once end to end in a scratch repository with a stub agent: dry run, real pass, approval, second pass, shipped.

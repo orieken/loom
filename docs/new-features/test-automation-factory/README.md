@@ -73,9 +73,15 @@ recommended path, because each phase has its own verification step.
 `Verification` section passes. If a phase runs out of budget or time, stop, write a checkpoint note, and
 ask a human. Do not widen the ceiling yourself.
 
+## Conventions every phase uses
+- **Commits.** Each phase ends with one commit. A commit is an approval gate (phase 1), so the human gives a **standing approval** once, in `.claude/rules/approval-gates.md`, naming the scope (for example "commits on `phase/*` and `factory/*` branches"). Without it, ask before each commit.
+- **Measuring changed-line coverage before phase 9 builds the check.** Run the coverage report, take `git diff -U0` against the base ref (the commit before the phase), count executable lines you added or changed (an untracked file counts in full), and state the percentage and how you measured it. Phase 9 replaces this by hand-count with a script.
+- **Forward references.** Early phases name things later phases build: blueprints list exemplars (phase 6), skills call the budget check (phase 7), and the pre-ship list runs checks from phases 2, 3, 5, and 6. Write the reference with "(built in phase N)" and do not fail a phase for a check that does not exist yet.
+- **Test runner.** Use the runner the human chose in phase 0 for every script's tests. No phase prescribes one.
+
 ## Glossary
 
-- **Order**: one intake file describing one piece of test work.
+- **Work order** (or just "order"): one intake file describing one piece of test work. If the product under test has its own "order" concept (a shop order), call that one a **customer order** everywhere, so the two never mix.
 - **Blueprint**: a document that fixes the pattern, layers, and scaffold for one test type.
 - **Skill**: a short prompt file that tells an agent how to do one job, such as write an API test.
 - **Exemplar**: a real, running test marked as the one to copy. Also called a golden example.
@@ -86,7 +92,7 @@ ask a human. Do not widen the ceiling yourself.
 *Derived from the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
 
 ## A reference build
-A build of this pack for a real project (Saturday test suites, TypeScript) exists. It matched these prompts, and its `docs/test-factory/DEVIATIONS.md` lists where it had to differ. Those differences are now folded into the phases above. Read them as "what the prompts gain when run for real", not as a second source of truth.
+A build of this pack for a real project (Saturday test suites, TypeScript) exists. It matched these prompts closely, and the places where it had to differ are now folded into the phases above. Read them as "what the prompts gain when run for real", not as a second source of truth.
 
 ## Optional: the `factory` CLI
 The same ideas exist as a Go command-line tool (Charm stack) that automates phase 0 to 2 setup and the checks from phases 2, 3, 5, 6, 7, and 9.

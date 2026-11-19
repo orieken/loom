@@ -18,6 +18,8 @@ Define how the factory limits cost, effort, and elapsed time, then enforce those
 | `stage-timeout-minutes` | Hard limit for one stage | 30 |
 | `deadline` | Optional wall-clock stop, ISO 8601 with offset | none |
 
+Timeouts in `budgets.yaml` use the form `30s`, `10m`, or `2h` and nothing else.
+
 `max-hours` counts time spent running stages. It does not count an order waiting in the inbox. `deadline` counts wall-clock time from any
 cause, including waiting. Use `deadline` when a human needs the result by a set time.
 
@@ -28,7 +30,9 @@ cause, including waiting. Use `deadline` when a human needs the result by a set 
 3. **Resume:** a human raises the ceiling or extends the deadline in the order, then sets `status: ready`. The runner resumes from the checkpoint.
 4. **Stage timeout:** kill the stage, record the elapsed time, and count one attempt. Two timeouts in a row park the order.
 5. **Unmeasured usage counts as unknown, not zero.** When the tool cannot report spend, the order halts at the next stage
-   boundary and asks a human to accept the unknown cost. Never assume it was free.
+   boundary and asks a human to accept the unknown cost. Never assume it was free. A human accepts by appending a ledger line
+   `{"event":"approved","gate":"unknown-usage","order":"<id>","digest":"<digest of the order>"}`; `check-budget` then reports `warn: unknown-usage accepted` instead of `stop`.
+   An agent never writes that line, and any later edit to the order voids it.
 6. **No agent raises its own ceiling.** Changing a budget is a human action.
 
 ### Speed budgets per test level
@@ -58,15 +62,15 @@ legacy characterization. Teams set the model names in one place.
 ### Time-boxed tasks (new mechanism, built in this phase)
 This is not assumed to exist. Build it:
 - Add `deadline` and `stage-timeout-minutes` to the intake validator (phase 2 already accepts them).
-- Write `scripts/check-budget.<ext>`. Input: an order file and a ledger file (JSON Lines). Output: `ok`, `warn`, or `stop`, with the reason.
+- Write `scripts/check-budget.<ext>`. Input: an order file and a ledger file (JSON Lines). Output: `ok`, `warn`, or `stop`, with the reason. Exit code 0 for `ok` and `warn`, 1 for `stop`, 2 for a usage or configuration problem.
   It MUST compute spend, attempts, stage hours, and deadline status, and treat missing spend data as unknown.
 - Write a `time-box` section in each skill: "Stop at the stage timeout. Write a checkpoint. Do not extend it."
 
 ## Steps
-1. Write `budgets.yaml` with the defaults above and the model-tier map.
+1. Write `budgets.yaml` with two tables: `orderDefaults` (the table above) and `byTestType` (per-type numbers that new orders copy). The `Budgets and Time-Boxes` section of each blueprint from phase 3 states the same numbers for its type; if phase 3 stated numbers first, copy them into `byTestType` now, and keep the test that compares them. Add the model-tier map.
 2. Write `docs/test-factory/BUDGETS.md` from the policy above.
 3. Write `scripts/check-budget.<ext>` and its tests: one case per behavior in "Behavior at the limits".
-4. Add a ledger format to the doc: one JSON object per line with `time`, `order`, `event`, `usd`, `stage`, `seconds`, `note`, and optionally `digest`, `gate`, `reason`, `url`, `file`.
+4. Keep **one** ledger for the project, `.factory/ledger.jsonl`, and filter it by the `order` field. Do not create one file per order. Add a ledger format to the doc: one JSON object per line with `time`, `order`, `event`, `usd`, `stage`, `seconds`, `note`, and optionally `digest`, `gate`, `reason`, `url`, `file`.
    Events: `claimed`, `attempt-start`, `stage-end`, `attempt-failed`, `warning`, `checkpoint`, `gate`, `approved`, `stages-complete`, `ready-for-pr`, `parked`, `shipped`, `can-fail-shown`. Only `stage-end` and `attempt-failed` feed the budget check.
    Write a test that reads `budgets.yaml` and each blueprint's stated defaults, and fails when they differ.
 5. Fill the `Time-Box` section of each skill from phase 5, and keep `validate-skills` requiring it.

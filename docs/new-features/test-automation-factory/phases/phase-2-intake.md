@@ -8,8 +8,7 @@ Give the factory a front door: a work-order template, a README that explains it,
 - The language the project uses for scripts (Node, Python, or shell), chosen by a human in phase 0. Do not mix languages.
 - A YAML library, because frontmatter parsing must be strict and no language here parses YAML in its standard library
   (Node: `yaml`; Python: `PyYAML` or `ruamel.yaml`). Add it as a dev dependency, and tell the human which one you added.
-- A test runner with a coverage report. Prefer the one built into the language (Node: `node --test --experimental-test-coverage`
-  with a glob such as `"tests/**/*.test.mjs"`, not a bare directory).
+- The test runner the human chose in phase 0, with a coverage report. If it needs a glob instead of a bare directory to find tests, use the glob.
 
 ## Steps
 1. Copy `templates/INTAKE-TEMPLATE.md` to `intake/TEMPLATE.md`.
@@ -34,10 +33,10 @@ Give the factory a front door: a work-order template, a README that explains it,
    - exit 0 when every order is valid and exit 1 otherwise.
 4. Write unit tests for the validator. Cover each rule above with one passing and one failing case. Follow the
    rules from phase 1 (complexity below 7, interface for the filesystem).
-5. Write one real sample order, `intake/sample-login-api-tests.md`, with `status: draft`. Run the validator on it.
+5. Write one real sample order, `intake/sample-orders-api-tests.md`, with `status: draft`. Run the validator on it.
 
 ## Files
-`intake/TEMPLATE.md`, `intake/README.md`, `intake/sample-login-api-tests.md`, `scripts/validate-intake.<ext>`,
+`intake/TEMPLATE.md`, `intake/README.md`, the helper modules the validator needs (a vocabulary of allowed keys, a file-system port), any dev dependency you added to run scripts (tell the human), `intake/sample-orders-api-tests.md`, `scripts/validate-intake.<ext>`,
 `tests/scripts/validate-intake.<test-ext>`.
 
 ## Verification

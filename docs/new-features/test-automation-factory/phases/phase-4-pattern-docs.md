@@ -23,7 +23,7 @@ This phase does not build a framework. A framework is real product work with its
    - Add one order for each `found with gaps` row.
    - **Stop here and ask the human** to review the orders and the framework language, and to set `status: ready` on the ones to build. Orders ship through the normal path (the runbook in phase 8, with the skills from phase 5 and the checks from phase 9).
    - Do not mark an order `ready` yourself.
-3. Write the pattern documents. The design text does not need the framework to exist. The code examples do.
+3. Write the pattern documents. The seed files in `examples/` show the shape of an example; adapt them to the framework you found. The design text does not need the framework to exist. The code examples do.
    - If every block for a pattern was `found`: write and run the example as described below.
    - If a block is missing or has gaps: leave the example section as `Pending: written when order <id> ships`, naming the order. Do not invent an example against a framework that does not exist.
 

@@ -12,7 +12,7 @@ Run one command before any order ships. It proves the tests are real, fast, and 
    | Check | Pass condition | Timeout |
    |---|---|---|
    | Intake validation | every order valid | 1 min |
-   | Blueprint validation | registry and blueprints valid | 1 min |
+   | Blueprint and skill validation | registry, blueprints, and skills valid | 1 min |
    | Exemplar check | manifest and annotations agree | 1 min |
    | Unit and API tests | all pass | 10 min |
    | Browser tests | all pass (needs a Chromium; see the note below) | 10 min |
@@ -40,12 +40,12 @@ Run one command before any order ships. It proves the tests are real, fast, and 
 `scripts/pre-ship.<ext>`, `scripts/delivery-summary.<ext>`, `budgets.yaml` update, tests, CI proposal (not applied).
 
 ## Verification
-- On a clean branch, `pre-ship` exits 0.
+- On a clean branch, `pre-ship` exits 0. A clean branch with an empty diff makes the coverage, can-fail, and speed checks pass for no reason, so also run it against a base ref that makes the diff non-empty (the commit before this phase), counting untracked files as fully changed, and see it pass for real reasons.
 - Add a new test file with no can-fail record: `pre-ship` fails at the can-fail check.
 - Add a function with complexity 8: it fails at complexity.
 - Lower coverage of changed lines under 85%: it fails at coverage.
 - Make a check exceed its timeout: it fails and reports the timeout.
-- The summary contains no secret values. Make the generator refuse to write when it holds the value of a variable named in `.env.example`, and test that.
+- The summary contains no secret values. Make the generator refuse to write when it holds the value of a variable named in `.env.example`, ignoring variables with an empty value, and test that.
 - Changed-line coverage of the scripts is at least 85%, and each test was shown to fail once.
 
 ## Budget

@@ -11,7 +11,7 @@ Pick real tests as models, mark them, list them in a manifest, and check the two
 ## Steps
 1. **Choose.** For each level (`ui-e2e`, `api`, `unit`), pick one test that already runs and is the best model.
    - Existing project: pick from the suite. Prefer a test that is small, readable, and follows the pattern.
-   - New project: copy the seed from `examples/` into `tests/`, adapt it to a real endpoint or page, and make it run.
+   - New project: copy the seed from `examples/` into `tests/`, adapt it to the real types phase 4 produced (the seeds show a shape, not the exact signatures), and make it run.
    - No target application yet for `ui-e2e`: run the example against a small local fixture server (a few lines of HTTP), in a real browser. Say in the manifest that it is a fixture. Do not leave the level without an exemplar, and do not mark a test that only compiles.
    - Keep browser tests in `*.ui.spec.ts` files with their own runner config and script (`test:ui`), so the default test run needs no browser.
 2. **Qualify.** Each choice MUST pass all of these. Record the evidence.
@@ -21,7 +21,7 @@ Pick real tests as models, mark them, list them in a manifest, and check the two
    - No function in it has cyclomatic complexity of 7 or more.
    - Its file name follows `name.type.extension`.
 3. **Mark twice.** Add the language-native annotation to the test. Add an entry to `.claude/exemplars.yaml`
-   with `test`, `file`, `language`, `level`, `blueprint`, `demonstrates`, and `can-fail` (one line: what you broke, that the test failed, and that you restored it). Add the mark on a comment or tag line directly above the test, so a scanner can tell a mark from text that merely mentions one.
+   with `test`, `file`, `language`, `level`, `blueprint`, `demonstrates`, and `can-fail` (one line: what you broke, that the test failed, and that you restored it). Add the mark on a comment or tag line directly above the `it`, `test`, or scenario (not above the `describe` or feature), so a scanner can tell a mark from text that merely mentions one.
 4. **Write `scripts/check-exemplars.<ext>`.** It MUST:
    - fail if an annotated test has no manifest entry, and fail if an entry has no annotated test;
    - fail if the file in an entry does not exist;
@@ -29,7 +29,7 @@ Pick real tests as models, mark them, list them in a manifest, and check the two
    - fail if the marked test lacks its issue annotation, or its criterion annotation (a Gherkin scenario needs only the issue tag, because the scenario name is the criterion);
    - count a mark only on a comment or tag line, never inside a string, and build test fixtures from joined lines so the script does not scan its own fixtures as marks;
    - fail if an entry's `blueprint` is missing from the registry;
-   - print a sha256 digest of each exemplar file;
+   - print a sha256 digest of each exemplar file, and offer a flag (for example `--update-digests`) that rewrites the manifest digests after a deliberate edit;
    - compare each digest with the one in the manifest, when present, and report a change as a warning, not a failure.
 5. **Complete the `exemplar-audit` skill.** It reads the manifest and checks each entry against the disqualifier list in `templates/EXEMPLAR-ENTRY.md`. It reports findings. It never edits.
 6. **Update the blueprints.** Each blueprint's `Exemplars` section lists the exemplar names for that type.
