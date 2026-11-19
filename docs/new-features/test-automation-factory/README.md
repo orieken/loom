@@ -60,7 +60,7 @@ recommended path, because each phase has its own verification step.
 | 1 | `phase-1-rules-and-guardrails.md` | Clean code, architecture, design-pattern, repair, and approval rules |
 | 2 | `phase-2-intake.md` | Intake template, README, validator |
 | 3 | `phase-3-blueprint-registry.md` | Built-in blueprints, custom blueprint folder, registry, validator |
-| 4 | `phase-4-pattern-docs.md` | Saturday-like and Sunday-like pattern documents |
+| 4 | `phase-4-pattern-docs.md` | Framework status, work orders for any missing framework pieces, Saturday-like and Sunday-like pattern documents |
 | 5 | `phase-5-skills.md` | Testing skills: `api-test`, `ui-e2e-test`, `unit-test`, `test-audit`, `new-blueprint`, `exemplar-audit`, and a skill validator |
 | 6 | `phase-6-golden-examples.md` | Exemplar manifest (with can-fail evidence), annotations, consistency check |
 | 7 | `phase-7-budgets-and-time-boxes.md` | Budget and time-box policy, enforcement script |
@@ -87,3 +87,8 @@ ask a human. Do not widen the ceiling yourself.
 
 ## A reference build
 A build of this pack for a real project (Saturday test suites, TypeScript) exists. It matched these prompts, and its `docs/test-factory/DEVIATIONS.md` lists where it had to differ. Those differences are now folded into the phases above. Read them as "what the prompts gain when run for real", not as a second source of truth.
+
+## Optional: the `factory` CLI
+The same ideas exist as a Go command-line tool (Charm stack) that automates phase 0 to 2 setup and the checks from phases 2, 3, 5, 6, 7, and 9.
+`factory init` asks what language the testing framework is written in, sets up the rules and templates, checks the toolchain, offers to install what is missing (it asks first), and writes framework work orders for any piece that does not exist (phase 4).
+The pack does not need it. Every phase is still a prompt a person or an agent can follow by hand.
