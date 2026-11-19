@@ -14,11 +14,11 @@ Write the two pattern documents that the blueprints and skills cite. A reader MU
    - **Why not the classic page object model**: pages grow into god objects; this pattern splits them.
    - **Site**: owns one browser context. **Page**: one route; delegates to elements. **Element**: one locator with wait and retry.
      **Partial**: a reusable fragment such as a header. **Flow**: chains pages into a business scenario; step definitions call flows.
-     **Filter**: a decorator for retry, screenshot on failure, and telemetry tags. **Site manager**: hands out sites for multi-site flows.
+     **Filter**: gates or selects by state, for example a base filter class plus a decorator that blocks an Element action until a page condition holds. **Site manager**: hands out sites for multi-site flows.
    - **Gherkin**: the scenario name is the acceptance criterion. Keep the interesting user action visible in the scenario;
      hide setup noise in flows and factories ("moist, not fully dry").
    - **Layers and imports**: which layer may import which.
-   - **Example**: one login page, one login flow, one scenario, in the project's language.
+   - **Example**: one login page, one login flow, one scenario, in the project's language. Check the real framework before you write it: a base class may read abstract members in its own constructor, so use getters there, not fields. List any class the pattern names that the framework package does not export.
 2. Write `docs/patterns/api-declarative-client.md` (the Sunday-like pattern). Sections:
    - **Mental model**: tests describe what to call and what to expect. The client owns how.
    - **Base client**: one per service, built on an `HttpAdapter` interface. Tests use a fake adapter for unit speed and a real one for contract tests.

@@ -211,8 +211,8 @@ Ship three built-in blueprints, a folder where teams add their own, a registry t
 
 ## Steps
 1. Create `blueprints/ui-e2e-saturday-like.md` from `templates/BLUEPRINT-TEMPLATE.md`. Content:
-   - Fixed pattern: `BaseSite`, `BasePage`, `BaseElement`, `BasePartial`, `BaseFlow`, a `Filter` decorator for
-     cross-cutting behavior, and a site manager for multi-site flows. No classic page object model.
+   - Fixed pattern: `BaseSite`, `BasePage`, `BaseElement`, `BasePartial`, `BaseFlow`, `Filter` for state-based
+     gating and selection, and a site manager for multi-site flows. No classic page object model.
    - Layers: Domain (abstractions), Use-Cases (concrete sites, pages, flows), Adapters (browser driver, telemetry),
      Test Runner (Gherkin steps), Reporting.
    - Soft choice: the browser driver (Playwright, Cypress, Selenium) and the language.
@@ -243,7 +243,7 @@ Ship three built-in blueprints, a folder where teams add their own, a registry t
 6. Write `scripts/validate-blueprints.<ext>`. It MUST:
    - reject an unknown registry key;
    - check every registry `blueprint` path exists;
-   - check each blueprint file has these headings: `When To Use`, `Layer Structure`, `Key Abstractions`,
+   - check each blueprint file has these headings (an optional parenthetical note such as `(do not bypass)` after the heading is allowed): `When To Use`, `Layer Structure`, `Key Abstractions`,
      `Testing Pyramid Coverage`, `Exemplars`, `Budgets and Time-Boxes`, `Guardrails`;
    - check each blueprint file has an `**Registry id**` line that matches its registry entry;
    - check a custom blueprint lives under `blueprints/custom/`, and a built-in does not;
@@ -287,11 +287,11 @@ Write the two pattern documents that the blueprints and skills cite. A reader MU
    - **Why not the classic page object model**: pages grow into god objects; this pattern splits them.
    - **Site**: owns one browser context. **Page**: one route; delegates to elements. **Element**: one locator with wait and retry.
      **Partial**: a reusable fragment such as a header. **Flow**: chains pages into a business scenario; step definitions call flows.
-     **Filter**: a decorator for retry, screenshot on failure, and telemetry tags. **Site manager**: hands out sites for multi-site flows.
+     **Filter**: gates or selects by state, for example a base filter class plus a decorator that blocks an Element action until a page condition holds. **Site manager**: hands out sites for multi-site flows.
    - **Gherkin**: the scenario name is the acceptance criterion. Keep the interesting user action visible in the scenario;
      hide setup noise in flows and factories ("moist, not fully dry").
    - **Layers and imports**: which layer may import which.
-   - **Example**: one login page, one login flow, one scenario, in the project's language.
+   - **Example**: one login page, one login flow, one scenario, in the project's language. Check the real framework before you write it: a base class may read abstract members in its own constructor, so use getters there, not fields. List any class the pattern names that the framework package does not export.
 2. Write `docs/patterns/api-declarative-client.md` (the Sunday-like pattern). Sections:
    - **Mental model**: tests describe what to call and what to expect. The client owns how.
    - **Base client**: one per service, built on an `HttpAdapter` interface. Tests use a fake adapter for unit speed and a real one for contract tests.
@@ -363,11 +363,12 @@ Create one skill per bullet. Use `templates/SKILL-TEMPLATE.md` for structure. Ke
 6. **`exemplar-audit`** — checks golden examples (see phase 6). Read-only: it never edits a test or the manifest.
 
 ## Files
-`.claude/skills/{api-test,ui-e2e-test,unit-test,test-audit,new-blueprint,exemplar-audit}/SKILL.md`.
+`.claude/skills/{api-test,ui-e2e-test,unit-test,test-audit,new-blueprint,exemplar-audit}/SKILL.md`, `scripts/validate-skills.<ext>`, and its tests.
 
 ## Verification
 - Each skill's frontmatter `name` equals its folder name, and `standalone: true` is present.
-- Each skill has the sections: When To Use, Context To Load First, Process, Output Format, Guardrails.
+- Each skill has the sections: When To Use, Context To Load First, Process, Output Format, Guardrails, Time-Box. Write a `validate-skills` script that checks the frontmatter, these headings, and the 150-line limit, and run it. Phase 7 fills in each Time-Box section.
+- Quote a `description` that contains a colon followed by a space; an unquoted one is invalid YAML and the skill will not load.
 - Dry-run `api-test` against the sample order from phase 2 on a small endpoint. The run writes a test, shows it failing once, then passing.
 - Dry-run `test-audit`. It returns at least a "no exemplars yet" finding, which phase 6 resolves.
 
@@ -394,6 +395,8 @@ Pick real tests as models, mark them, list them in a manifest, and check the two
 1. **Choose.** For each level (`ui-e2e`, `api`, `unit`), pick one test that already runs and is the best model.
    - Existing project: pick from the suite. Prefer a test that is small, readable, and follows the pattern.
    - New project: copy the seed from `examples/` into `tests/`, adapt it to a real endpoint or page, and make it run.
+   - No target application yet for `ui-e2e`: run the example against a small local fixture server (a few lines of HTTP), in a real browser. Say in the manifest that it is a fixture. Do not leave the level without an exemplar, and do not mark a test that only compiles.
+   - Keep browser tests in `*.ui.spec.ts` files with their own runner config and script (`test:ui`), so the default test run needs no browser.
 2. **Qualify.** Each choice MUST pass all of these. Record the evidence.
    - It runs and is not skipped.
    - It can fail: change the behavior it checks, see it fail, restore.
@@ -401,11 +404,13 @@ Pick real tests as models, mark them, list them in a manifest, and check the two
    - No function in it has cyclomatic complexity of 7 or more.
    - Its file name follows `name.type.extension`.
 3. **Mark twice.** Add the language-native annotation to the test. Add an entry to `.claude/exemplars.yaml`
-   with `test`, `file`, `language`, `level`, `blueprint`, and `demonstrates`.
+   with `test`, `file`, `language`, `level`, `blueprint`, `demonstrates`, and `can-fail` (one line: what you broke, that the test failed, and that you restored it). Add the mark on a comment or tag line directly above the test, so a scanner can tell a mark from text that merely mentions one.
 4. **Write `scripts/check-exemplars.<ext>`.** It MUST:
    - fail if an annotated test has no manifest entry, and fail if an entry has no annotated test;
    - fail if the file in an entry does not exist;
-   - fail if a manifest entry lacks any required field;
+   - fail if a manifest entry lacks any required field, including `can-fail`;
+   - fail if the marked test lacks its issue annotation, or its criterion annotation (a Gherkin scenario needs only the issue tag, because the scenario name is the criterion);
+   - count a mark only on a comment or tag line, never inside a string, and build test fixtures from joined lines so the script does not scan its own fixtures as marks;
    - fail if an entry's `blueprint` is missing from the registry;
    - print a sha256 digest of each exemplar file;
    - compare each digest with the one in the manifest, when present, and report a change as a warning, not a failure.
@@ -420,6 +425,7 @@ Pick real tests as models, mark them, list them in a manifest, and check the two
 - `check-exemplars` passes. Remove one annotation: it fails. Restore it.
 - Run the `test-audit` skill: the "no exemplars yet" finding is gone.
 - Run `exemplar-audit`: no entry is disqualified.
+- Each exemplar fails when you break the behavior it checks, and passes again when you restore it. Record that in its `can-fail` field.
 - Changed-line coverage of the script is at least 85%, and each test was shown to fail once.
 
 ## Budget
@@ -446,7 +452,7 @@ Define how the factory limits cost, effort, and elapsed time, then enforce those
 | Field | Meaning | Default |
 |---|---|---|
 | `max-usd` | Park the order when recorded spend crosses this value | 5 |
-| `max-attempts` | Whole-run retries for transient failures before the order is parked | 2 |
+| `max-attempts` | Failed attempts (counted from `attempt-failed` ledger events) allowed before the order is parked | 2 |
 | `max-hours` | Ceiling on total stage run time across all attempts | 2 |
 | `stage-timeout-minutes` | Hard limit for one stage | 30 |
 | `deadline` | Optional wall-clock stop, ISO 8601 with offset | none |
@@ -473,7 +479,12 @@ cause, including waiting. Use `deadline` when a human needs the result by a set 
 | Acceptance scenario | under 60 s |
 | E2E suite total | a few minutes |
 
+Give each test file its level from a path rule in `budgets.yaml` (`speedLevelByPath`, first match wins). Tests that start a real process, use git, or touch the real filesystem are integration tests: keep them in their own folder (for example `tests/integration/`) and map it to the integration level.
+
 A new test that breaks its speed budget fails the pre-ship check. Widening a budget needs a measured p95 and a stated reason.
+
+### Thresholds
+Put the quality gates in `budgets.yaml` under `thresholds` (`complexityMax: 6`, `changedLineCoverageMin: 85`). A human changes them. An agent never does, to make a failure pass.
 
 ### Context budget
 Each task declares a context tier before work starts: `light` (one file), `default` (a feature area), or `heavy` (cross-cutting).
@@ -494,8 +505,11 @@ This is not assumed to exist. Build it:
 1. Write `budgets.yaml` with the defaults above and the model-tier map.
 2. Write `docs/test-factory/BUDGETS.md` from the policy above.
 3. Write `scripts/check-budget.<ext>` and its tests: one case per behavior in "Behavior at the limits".
-4. Add a ledger format to the doc: one JSON object per line with `time`, `order`, `event`, `usd`, `stage`, `seconds`, `note`.
-5. Add the `time-box` section to each skill from phase 5.
+4. Add a ledger format to the doc: one JSON object per line with `time`, `order`, `event`, `usd`, `stage`, `seconds`, `note`, and optionally `digest`, `gate`, `reason`, `url`, `file`.
+   Events: `claimed`, `attempt-start`, `stage-end`, `attempt-failed`, `warning`, `checkpoint`, `gate`, `approved`, `stages-complete`, `ready-for-pr`, `parked`, `shipped`, `can-fail-shown`. Only `stage-end` and `attempt-failed` feed the budget check.
+   Write a test that reads `budgets.yaml` and each blueprint's stated defaults, and fails when they differ.
+5. Fill the `Time-Box` section of each skill from phase 5, and keep `validate-skills` requiring it.
+6. Keep a ledger of this phase's own stages and run `check-budget` on it before you finish.
 
 ## Files
 `budgets.yaml`, `docs/test-factory/BUDGETS.md`, `scripts/check-budget.<ext>`, tests, ledger format, skill updates.
@@ -544,14 +558,19 @@ Write `scripts/factory-run.<ext>` as a loop. It MUST:
 - read orders from the committed `base-branch`, not from a working copy, and take only `status: ready` orders;
 - skip orders whose `depends-on` is unmet, and order the rest by priority, then `created`, then `id`;
 - claim an order by writing a `claimed` ledger line and a copy of the order as the run's spec;
-- run each order in its own git worktree on `factory/<id>`; limit concurrent orders with `--max-concurrent` (default 1);
+- run each order in its own git worktree on `factory/<id>`; make one sequential pass and cap the orders in it with `--max-orders` (default 1). True concurrency is not part of this phase;
 - call `check-budget` before every stage, and stop on `stop`;
 - park on a gate, a budget stop, or two stage timeouts, and add the order to `inbox/` with the reason;
 - never write to the order file; record all progress in `ledger.jsonl` (append-only);
-- never approve a gate. Only a human command, `factory-approve <id> <gate>`, records an approval, and any change to the pending artifact voids it;
+- never approve a gate. Only a human command, `factory-approve approve <id> <gate>`, records an approval. The approval stores the digest of the committed order, so any change to the order voids it and the order starts again with a new claim. Provide `factory-approve shipped <id> <url>` so a human records the pull request;
+- use two gates: `commit` after the stages, and `design` before any stage for an order with `trust: external` or `autonomy: strict-human`;
 - support `--once` (run one pass and exit) and `--dry-run` (print what would run).
 
-Define small interfaces for the clock, the filesystem, git, and the agent call, so tests use fakes.
+Define small interfaces for the clock, the ledger, the order source (read only), the workspace, the inbox, and the agent call, so tests use fakes. The agent call returns only `ok`, `usd` (or unknown), `seconds`, and `timedOut`, so agent output has no field that could carry an approval.
+
+The real agent is a command you configure (for example `FACTORY_AGENT_COMMAND`). It receives `ORDER_ID`, `STAGE`, `WORKSPACE`, and `ORDER_FILE` in its environment and prints one JSON line. Report spend as unknown when the line has none.
+
+State plainly what you did not build: loop mode, concurrency, recovery from a crash mid-order, opening pull requests, and a bundled agent command.
 
 ## Files
 `docs/test-factory/RUNBOOK.md`; optional `scripts/factory-run.<ext>`, `scripts/factory-approve.<ext>`, `inbox/`, tests.
@@ -560,6 +579,8 @@ Define small interfaces for the clock, the filesystem, git, and the agent call, 
 - Manual mode: a person completes the sample order from phase 2 using only `RUNBOOK.md`.
 - Supervisor mode: with fake agent and git, tests show these cases: order claimed once; dependency respected; budget stop parks the order;
   a gate stops the run; approval is not created by agent output; the order file is unchanged after a run.
+- Adapters: run the real ledger, git order source (reads committed content, not an uncommitted edit), worktree, inbox, and command agent (success, failure, timeout) in tests against a temporary git repository.
+- Run the supervisor once end to end in a scratch repository with a stub agent: dry run, real pass, approval, second pass, shipped.
 - Changed-line coverage is at least 85%, and each test was shown to fail once.
 
 ## Budget
@@ -587,14 +608,19 @@ Run one command before any order ships. It proves the tests are real, fast, and 
    | Intake validation | every order valid | 1 min |
    | Blueprint validation | registry and blueprints valid | 1 min |
    | Exemplar check | manifest and annotations agree | 1 min |
-   | Unit and integration tests | all pass | 10 min |
+   | Unit and API tests | all pass | 10 min |
+   | Browser tests | all pass (needs a Chromium; see the note below) | 10 min |
    | Complexity | no function at 7 or above | 5 min |
    | Changed-line coverage | at least 85% of added or modified lines | 10 min |
-   | Can-fail check | mutation tool, or a manual break-and-restore record, shows each new test fails when its behavior breaks | 15 min |
+   | Can-fail check | each added or changed test file has a `can-fail-shown` ledger record, or a mutation tool kills the mutants on its changed lines | 15 min |
    | Speed budgets | no new test breaks its level's budget | 5 min |
    | Budget check | the order's ledger is `ok` or `warn` | 1 min |
+   A ledger record proves someone wrote the claim down, not that it is true; say so in the script's comment and in the backlog. Prefer a mutation tool once you have verified it on one sample.
    Pick the mutation tool for the language and verify it on one sample before you trust its score. A mutant that did not compile or that timed
    out MUST NOT count as killed.
+   **Complexity gate.** Wire the linter's complexity rule (capped at 6) over the factory's own scripts first and run it. Expect violations in code the earlier phases wrote; refactor them (extract functions, lookup tables) and keep the tests green before you go on.
+   **Changed-line coverage.** Compute it from the diff against the base plus the runner's JSON coverage report: count only executable statements on changed lines, and ignore files absent from the report.
+   **Browser tests.** Installing a Chromium is a download. Ask a human before you add it to CI. Locally, allow an environment variable that points at an existing Chromium.
 2. **Record the pre-ship list in `budgets.yaml`** as `preShipChecks` entries with `name`, `command`, and `timeout`.
 3. **Reporting.** Write test results as Cucumber-compatible JSON, or add a converter to it, so every language feeds one format.
    Add a short `delivery-summary.md` generator: order id, tests added, changed-line coverage, speed results, budget used, parked or shipped.
@@ -602,22 +628,22 @@ Run one command before any order ships. It proves the tests are real, fast, and 
    Only a human answer ("ship") continues. Any edit to the summary voids the answer.
 5. **Telemetry rule.** Reports record properties, not payloads: counts, durations, ids, statuses. Never record secret values, tokens, or user
    personal data.
-6. **Wire into CI** — gated. Ask a human before you change any pipeline. Show the proposed diff first.
+6. **Propose CI, do not apply it.** Write `docs/test-factory/CI-PROPOSAL.md` with the workflow, least-privilege permissions, and the decisions for a human (browser download, how a pull request names its order, where the ledger lives). Use placeholders for action commit SHAs; never guess one.
 
 ## Files
 `scripts/pre-ship.<ext>`, `scripts/delivery-summary.<ext>`, `budgets.yaml` update, tests, CI proposal (not applied).
 
 ## Verification
 - On a clean branch, `pre-ship` exits 0.
-- Add a test with no assertion: `pre-ship` fails at the can-fail check.
+- Add a new test file with no can-fail record: `pre-ship` fails at the can-fail check.
 - Add a function with complexity 8: it fails at complexity.
 - Lower coverage of changed lines under 85%: it fails at coverage.
 - Make a check exceed its timeout: it fails and reports the timeout.
-- The summary contains no secret values (search it for the names in `.env.example`).
+- The summary contains no secret values. Make the generator refuse to write when it holds the value of a variable named in `.env.example`, and test that.
 - Changed-line coverage of the scripts is at least 85%, and each test was shown to fail once.
 
 ## Budget
 `max-usd: 6`, `max-attempts: 2`, `max-hours: 3`.
 
 ## Time-box
-Stage timeout 30 minutes. `pre-ship` has its own per-check timeouts, listed above. Their total, 49 minutes at most, MUST stay under the order's `max-hours`.
+Stage timeout 30 minutes. `pre-ship` has its own per-check timeouts, listed above. Their total, 59 minutes with the browser check, MUST stay under the order's `max-hours`. Test that the sum in `budgets.yaml` stays below the default.

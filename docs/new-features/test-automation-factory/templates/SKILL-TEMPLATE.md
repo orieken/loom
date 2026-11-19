@@ -1,6 +1,6 @@
 ---
 name: kebab-case-name            # MUST equal the directory name
-description: One sentence. Routing uses it, so say when to use the skill.
+description: One sentence. Routing uses it, so say when to use the skill. Quote it if it contains a colon.
 triggers:
   keywords: ["write api test"]
   intentPatterns: ["*api test*"]
@@ -33,3 +33,6 @@ Do NOT use when:
 - Do not copy an exemplar's content. Copy its shape.
 - Do not weaken an assertion to make a test pass.
 - Stop and park the order when a budget or time-box is reached.
+
+## Time-Box
+Stop at the stage timeout (`stage-timeout-minutes` in the order). Before each stage, run the budget check; on `stop`, write a checkpoint (done, left, files touched) and park. Do not extend a limit yourself.

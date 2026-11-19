@@ -37,11 +37,12 @@ Create one skill per bullet. Use `templates/SKILL-TEMPLATE.md` for structure. Ke
 6. **`exemplar-audit`** — checks golden examples (see phase 6). Read-only: it never edits a test or the manifest.
 
 ## Files
-`.claude/skills/{api-test,ui-e2e-test,unit-test,test-audit,new-blueprint,exemplar-audit}/SKILL.md`.
+`.claude/skills/{api-test,ui-e2e-test,unit-test,test-audit,new-blueprint,exemplar-audit}/SKILL.md`, `scripts/validate-skills.<ext>`, and its tests.
 
 ## Verification
 - Each skill's frontmatter `name` equals its folder name, and `standalone: true` is present.
-- Each skill has the sections: When To Use, Context To Load First, Process, Output Format, Guardrails.
+- Each skill has the sections: When To Use, Context To Load First, Process, Output Format, Guardrails, Time-Box. Write a `validate-skills` script that checks the frontmatter, these headings, and the 150-line limit, and run it. Phase 7 fills in each Time-Box section.
+- Quote a `description` that contains a colon followed by a space; an unquoted one is invalid YAML and the skill will not load.
 - Dry-run `api-test` against the sample order from phase 2 on a small endpoint. The run writes a test, shows it failing once, then passing.
 - Dry-run `test-audit`. It returns at least a "no exemplars yet" finding, which phase 6 resolves.
 

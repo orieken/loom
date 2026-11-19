@@ -13,7 +13,7 @@ Define how the factory limits cost, effort, and elapsed time, then enforce those
 | Field | Meaning | Default |
 |---|---|---|
 | `max-usd` | Park the order when recorded spend crosses this value | 5 |
-| `max-attempts` | Whole-run retries for transient failures before the order is parked | 2 |
+| `max-attempts` | Failed attempts (counted from `attempt-failed` ledger events) allowed before the order is parked | 2 |
 | `max-hours` | Ceiling on total stage run time across all attempts | 2 |
 | `stage-timeout-minutes` | Hard limit for one stage | 30 |
 | `deadline` | Optional wall-clock stop, ISO 8601 with offset | none |
@@ -40,7 +40,12 @@ cause, including waiting. Use `deadline` when a human needs the result by a set 
 | Acceptance scenario | under 60 s |
 | E2E suite total | a few minutes |
 
+Give each test file its level from a path rule in `budgets.yaml` (`speedLevelByPath`, first match wins). Tests that start a real process, use git, or touch the real filesystem are integration tests: keep them in their own folder (for example `tests/integration/`) and map it to the integration level.
+
 A new test that breaks its speed budget fails the pre-ship check. Widening a budget needs a measured p95 and a stated reason.
+
+### Thresholds
+Put the quality gates in `budgets.yaml` under `thresholds` (`complexityMax: 6`, `changedLineCoverageMin: 85`). A human changes them. An agent never does, to make a failure pass.
 
 ### Context budget
 Each task declares a context tier before work starts: `light` (one file), `default` (a feature area), or `heavy` (cross-cutting).
@@ -61,8 +66,11 @@ This is not assumed to exist. Build it:
 1. Write `budgets.yaml` with the defaults above and the model-tier map.
 2. Write `docs/test-factory/BUDGETS.md` from the policy above.
 3. Write `scripts/check-budget.<ext>` and its tests: one case per behavior in "Behavior at the limits".
-4. Add a ledger format to the doc: one JSON object per line with `time`, `order`, `event`, `usd`, `stage`, `seconds`, `note`.
-5. Add the `time-box` section to each skill from phase 5.
+4. Add a ledger format to the doc: one JSON object per line with `time`, `order`, `event`, `usd`, `stage`, `seconds`, `note`, and optionally `digest`, `gate`, `reason`, `url`, `file`.
+   Events: `claimed`, `attempt-start`, `stage-end`, `attempt-failed`, `warning`, `checkpoint`, `gate`, `approved`, `stages-complete`, `ready-for-pr`, `parked`, `shipped`, `can-fail-shown`. Only `stage-end` and `attempt-failed` feed the budget check.
+   Write a test that reads `budgets.yaml` and each blueprint's stated defaults, and fails when they differ.
+5. Fill the `Time-Box` section of each skill from phase 5, and keep `validate-skills` requiring it.
+6. Keep a ledger of this phase's own stages and run `check-budget` on it before you finish.
 
 ## Files
 `budgets.yaml`, `docs/test-factory/BUDGETS.md`, `scripts/check-budget.<ext>`, tests, ledger format, skill updates.

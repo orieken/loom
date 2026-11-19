@@ -9,8 +9,8 @@ Ship three built-in blueprints, a folder where teams add their own, a registry t
 
 ## Steps
 1. Create `blueprints/ui-e2e-saturday-like.md` from `templates/BLUEPRINT-TEMPLATE.md`. Content:
-   - Fixed pattern: `BaseSite`, `BasePage`, `BaseElement`, `BasePartial`, `BaseFlow`, a `Filter` decorator for
-     cross-cutting behavior, and a site manager for multi-site flows. No classic page object model.
+   - Fixed pattern: `BaseSite`, `BasePage`, `BaseElement`, `BasePartial`, `BaseFlow`, `Filter` for state-based
+     gating and selection, and a site manager for multi-site flows. No classic page object model.
    - Layers: Domain (abstractions), Use-Cases (concrete sites, pages, flows), Adapters (browser driver, telemetry),
      Test Runner (Gherkin steps), Reporting.
    - Soft choice: the browser driver (Playwright, Cypress, Selenium) and the language.
@@ -41,7 +41,7 @@ Ship three built-in blueprints, a folder where teams add their own, a registry t
 6. Write `scripts/validate-blueprints.<ext>`. It MUST:
    - reject an unknown registry key;
    - check every registry `blueprint` path exists;
-   - check each blueprint file has these headings: `When To Use`, `Layer Structure`, `Key Abstractions`,
+   - check each blueprint file has these headings (an optional parenthetical note such as `(do not bypass)` after the heading is allowed): `When To Use`, `Layer Structure`, `Key Abstractions`,
      `Testing Pyramid Coverage`, `Exemplars`, `Budgets and Time-Boxes`, `Guardrails`;
    - check each blueprint file has an `**Registry id**` line that matches its registry entry;
    - check a custom blueprint lives under `blueprints/custom/`, and a built-in does not;

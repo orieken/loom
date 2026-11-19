@@ -12,7 +12,7 @@ An exemplar is a real test that runs in your suite and that agents copy as a mod
 | C# | `[Trait("Exemplar", "<level>")]` |
 | Go | `// exemplar:` comment above the test |
 
-The test also carries its issue reference and acceptance-criterion reference.
+The mark sits on a comment or tag line directly above the test. The test also carries its issue reference and acceptance-criterion reference (Gherkin needs only the issue tag).
 
 ## 2. List it in `.claude/exemplars.yaml`
 
@@ -24,6 +24,8 @@ exemplars:
     level: api
     blueprint: api-sunday-like
     demonstrates: "Declarative client call, status matcher, schema validation, timeout set"
+    can-fail: "2026-11-17: changed the schema literal in order.model.ts; this test failed; restored"
+    digest: "sha256:<optional; a changed file then raises a warning>"
 ```
 
 ## Disqualifiers

@@ -61,11 +61,11 @@ recommended path, because each phase has its own verification step.
 | 2 | `phase-2-intake.md` | Intake template, README, validator |
 | 3 | `phase-3-blueprint-registry.md` | Built-in blueprints, custom blueprint folder, registry, validator |
 | 4 | `phase-4-pattern-docs.md` | Saturday-like and Sunday-like pattern documents |
-| 5 | `phase-5-skills.md` | Testing skills: `api-test`, `ui-e2e-test`, `unit-test`, `test-audit`, `new-blueprint`, `exemplar-audit` |
-| 6 | `phase-6-golden-examples.md` | Exemplar manifest, annotations, consistency check |
+| 5 | `phase-5-skills.md` | Testing skills: `api-test`, `ui-e2e-test`, `unit-test`, `test-audit`, `new-blueprint`, `exemplar-audit`, and a skill validator |
+| 6 | `phase-6-golden-examples.md` | Exemplar manifest (with can-fail evidence), annotations, consistency check |
 | 7 | `phase-7-budgets-and-time-boxes.md` | Budget and time-box policy, enforcement script |
 | 8 | `phase-8-runner.md` | Optional supervisor loop, with a manual mode by default |
-| 9 | `phase-9-preship-and-reporting.md` | Pre-ship checks, reporting, approval gate |
+| 9 | `phase-9-preship-and-reporting.md` | Ten timed pre-ship checks, complexity gate, reporting, CI proposal |
 
 ## Every phase has the same headers
 
@@ -84,3 +84,6 @@ ask a human. Do not widen the ceiling yourself.
 
 ---
 *Derived from the [ai-assistant-dot-files](https://github.com/orieken/loom) Context Engineering Framework by Oscar Rieken — licensed under [CC BY 4.0](https://github.com/orieken/loom/blob/main/LICENSE-CONTENT.md). If you copy or adapt this file, please keep this attribution.*
+
+## A reference build
+A build of this pack for a real project (Saturday test suites, TypeScript) exists. It matched these prompts, and its `docs/test-factory/DEVIATIONS.md` lists where it had to differ. Those differences are now folded into the phases above. Read them as "what the prompts gain when run for real", not as a second source of truth.
