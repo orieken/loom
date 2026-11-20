@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 2,
+  "feature": "factory-close-waiting-orders",
+  "scenarios": [
+    {
+      "criterion": "Given an order waiting at a run gate (waiting), waiting for its commit to be approved (completed), or waiting for its pull request to be approved (proposed), closing it with `loom factory close <order> --shipped-by <url>` records it shipped exactly as a parked order today: one shipped ledger entry with the URL and approvedBy, then the run archived and the worktree removed.",
+      "name": "Closing an order waiting at a run gate records it shipped and archives its run",
+      "given": ["An order is waiting at a run gate"],
+      "when": ["An operator closes the order with loom factory close <order> --shipped-by <url>"],
+      "then": [
+        "Exactly one shipped ledger entry is recorded carrying the URL and the approver",
+        "The order's run is archived",
+        "The order's worktree is removed"
+      ]
+    },
+    {
+      "criterion": "Given an order waiting at a run gate (waiting), waiting for its commit to be approved (completed), or waiting for its pull request to be approved (proposed), closing it with `loom factory close <order> --shipped-by <url>` records it shipped exactly as a parked order today: one shipped ledger entry with the URL and approvedBy, then the run archived and the worktree removed.",
+      "name": "Closing an order waiting for commit approval records it shipped and archives its run",
+      "given": ["An order is waiting for its commit to be approved"],
+      "when": ["An operator closes the order with loom factory close <order> --shipped-by <url>"],
+      "then": [
+        "Exactly one shipped ledger entry is recorded carrying the URL and the approver",
+        "The order's run is archived",
+        "The order's worktree is removed"
+      ]
+    },
+    {
+      "criterion": "Given an order waiting at a run gate (waiting), waiting for its commit to be approved (completed), or waiting for its pull request to be approved (proposed), closing it with `loom factory close <order> --shipped-by <url>` records it shipped exactly as a parked order today: one shipped ledger entry with the URL and approvedBy, then the run archived and the worktree removed.",
+      "name": "Closing an order waiting for pull request approval records it shipped and archives its run",
+      "given": ["An order is waiting for its pull request to be approved"],
+      "when": ["An operator closes the order with loom factory close <order> --shipped-by <url>"],
+      "then": [
+        "Exactly one shipped ledger entry is recorded carrying the URL and the approver",
+        "The order's run is archived",
+        "The order's worktree is removed"
+      ]
+    },
+    {
+      "criterion": "After closing a waiting, completed, or proposed order, `loom factory inbox` no longer lists it, nothing is committed or pushed for it, and no pull request is opened for it — even if an approval for it was already in the ledger and not yet acted on.",
+      "name": "Closing a waiting, completed, or proposed order removes it from the inbox and takes no further action, even with a stale unacted-on approval",
+      "given": [
+        "An order is waiting, waiting for commit approval, or waiting for pull request approval",
+        "The order may already carry an approval in the ledger that has not yet been acted on"
+      ],
+      "when": ["The order is closed with loom factory close <order> --shipped-by <url>"],
+      "then": [
+        "loom factory inbox no longer lists the order",
+        "Nothing is committed or pushed for the order",
+        "No pull request is opened for the order"
+      ]
+    },
+    {
+      "criterion": "An order whose run process is alive (running), one between a commit and its pull request (committed, pushed), or one scheduled to retry (retrying) still refuses close with exit code 1 and the phase named; the ledger does not change. An already-shipped order is refused as today.",
+      "name": "Closing an order whose run is still active, mid-flight, or scheduled to retry is refused",
+      "given": [
+        "An order's run process is alive, or the order is between a commit and its pull request, or the order is scheduled to retry"
+      ],
+      "when": ["An operator attempts to close the order with loom factory close <order> --shipped-by <url>"],
+      "then": [
+        "The close command exits with code 1",
+        "The refusal message names the order's current phase",
+        "The ledger does not change"
+      ]
+    },
+    {
+      "criterion": "An order whose run process is alive (running), one between a commit and its pull request (committed, pushed), or one scheduled to retry (retrying) still refuses close with exit code 1 and the phase named; the ledger does not change. An already-shipped order is refused as today.",
+      "name": "Closing an already-shipped order is refused",
+      "given": ["An order has already shipped"],
+      "when": ["An operator attempts to close the order with loom factory close <order> --shipped-by <url>"],
+      "then": [
+        "The close command exits with code 1",
+        "The refusal message states the order has already shipped",
+        "The ledger does not change"
+      ]
+    },
+    {
+      "criterion": "With the supervisor ticking, closing a waiting order and then running one more supervisor tick never relaunches, commits, or proposes that order again.",
+      "name": "A supervisor tick after closing a waiting order takes no further action on it",
+      "given": [
+        "An order was waiting and has been closed with --shipped-by",
+        "The supervisor is running its regular tick loop"
+      ],
+      "when": ["The supervisor runs one more tick"],
+      "then": [
+        "The order is not relaunched",
+        "No commit is made for the order",
+        "No pull request is opened for the order",
+        "No new ledger entry is appended for the order"
+      ]
+    },
+    {
+      "criterion": "templates/claude-feature-team/intake/README.md's close section names every phase close now accepts (parked, stopped, waiting, completed, proposed).",
+      "name": "The intake README's close section lists every phase close accepts",
+      "given": ["The intake README at templates/claude-feature-team/intake/README.md documents loom factory close"],
+      "when": ["A reader reviews the close section's list of acceptable phases"],
+      "then": ["The list names parked, stopped, waiting, completed, and proposed"]
+    },
+    {
+      "criterion": "Every new or changed function has cyclomatic complexity below 7, every changed line is covered by a test that can fail, go test ./... and the lint pass, and no file outside scope.paths changes except this run's own delivery record under docs/features/factory-close-waiting-orders/.",
+      "name": "The implementation meets the project's complexity, coverage, and lint requirements",
+      "given": ["The feature's implementation changes are complete"],
+      "when": ["go test ./... and the project's lint and complexity checks run"],
+      "then": [
+        "Every new or changed function has cyclomatic complexity below 7",
+        "Every changed line is covered by a test that fails when the behavior it checks is broken",
+        "go test ./... passes",
+        "The lint check passes",
+        "No file outside scope.paths changes except this run's own delivery record under docs/features/factory-close-waiting-orders/"
+      ]
+    }
+  ]
+}

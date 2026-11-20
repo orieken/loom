@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 2,
+  "feature": "factory-close-waiting-orders",
+  "testFilesCreated": [],
+  "testFilesModified": [
+    "internal/factory/control_test.go",
+    "cmd/loom/cmd/factory_inprocess_test.go",
+    "cmd/loom/cmd/factory_test.go"
+  ],
+  "coverage": {
+    "acceptanceCriteriaCovered": 6,
+    "acceptanceCriteriaTotal": 6,
+    "newTests": 11,
+    "statements": [
+      {"unit": "internal/factory", "percent": 95.5},
+      {"unit": "cmd/loom/cmd", "percent": 83.8}
+    ]
+  },
+  "testResults": {
+    "passed": 493,
+    "failed": 0,
+    "skipped": 0,
+    "skipReasons": []
+  },
+  "accessibilityCheck": [],
+  "bugsFound": [],
+  "knownGaps": [
+    {
+      "criterion": "Every changed line is covered by a test that can fail (AC6, changed-line coverage)",
+      "reason": "cmd/loom/cmd's whole-package statement coverage is 83.8%, below the 85% floor, but that figure spans the entire pre-existing package, most of which this feature never touched. Verified with go tool cover -func that every changed function in cmd/loom/cmd/factory.go (runFactoryClose and its Long/Short doc strings, the only lines this feature's diff touches there) is at 100%; the package-wide shortfall sits in pre-existing, unrelated code (e.g. approverName at 66.7%, newFactorySupervisor at 80.0%) that this feature did not modify. internal/factory, which carries the real logic change, is at 95.5%, and every changed line in control.go (closeable, waitingOnHuman) is at 100%."
+    }
+  ],
+  "notesForTechWriter": [
+    "templates/claude-feature-team/intake/README.md's 'An order finished by hand' section already lists every phase close now accepts (parked, stopped, waiting at a run gate, completed and awaiting its commit approval, proposed and awaiting its pull-request approval) and the refusal phases (claimed, running, retrying, committed, pushed) — AC5 is satisfied, no further doc change needed for this feature.",
+    "cmd/loom/cmd/factory.go's close command Short/Long help text was updated by the developer to describe the newly accepted phases; verified it matches the implemented behavior.",
+    "Pre-existing, unrelated test failure: internal/provider/claude's TestInvokeSetsNoTraceParentWhenUntraced fails in this shell because a TRACEPARENT environment variable is already set in the ambient shell environment (confirmed via `env | grep -i traceparent`); this package is untouched by this feature and the failure is an environment artifact, not a regression."
+  ],
+  "retrieval": {
+    "domainTerms": ["parked", "stopped", "waiting", "completed", "proposed", "claimed", "running", "retrying", "committed", "pushed", "shipped", "closeable"],
+    "issueRefs": [],
+    "linkedAdrs": ["ADR-010"],
+    "linkedKis": []
+  }
+}
