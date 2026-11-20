@@ -1,0 +1,57 @@
+---
+feature: "factory-close-waiting-orders"
+bounded_context: ""
+domain_terms: ["waiting", "completed", "proposed", "parked", "stopped", "shipped", "running", "committed", "pushed", "retrying", "claimed", "closeable", "Closer", "ShippedByHand", "OrderState", "Ledger"]
+files_touched: []
+issue_refs: []
+linked_adrs: ["docs/adrs/ADR-010-factory-order-state-and-policy-configuration.md"]
+linked_kis: []
+---
+
+# Code Review: factory-close-waiting-orders
+
+## Overall Status
+
+**APPROVED**
+
+## Design Narrative
+
+closeable() in internal/factory/control.go now delegates its phase check to a new private predicate, waitingOnHuman(Phase) bool, which names the five phases an order can be in with no process of its own running (parked, stopped, waiting, completed, proposed) rather than inlining a two-phase disjunction. closeable()'s signature, error wording, and every caller are unchanged, and no other file's logic changes — inbox.go, finish.go, start.go, and replay.go already no-op on PhaseShipped by construction, so widening the allow-list alone makes AC1–AC4 true, proven by new golden-path and supervisor-tick regression tests rather than defensive code. Behaviour change: yes.
+
+## Design Score
+
+- **Clarity** 5/5
+- **Cohesion** 5/5
+- **Coupling** 5/5
+- **Craft** 5/5
+
+## Security Surface
+
+None
+
+## Performance Surface
+
+None
+
+## Test Design Review
+
+- TestCloseableAcceptsPhasesWaitingOnAHuman — YES: asserts closeable returns no error and the correct order for all 5 accepted phases; flipping any phase out of waitingOnHuman's case list fails it.
+- TestCloseableRefusesEveryOtherPhase / TestCloseableRefusalNamesThePhaseAndInstructsStoppingFirst — YES: asserts ErrNotApplicable and the literal refusal substring for claimed/running/retrying/committed/pushed/shipped; adding any of these to waitingOnHuman fails it.
+- TestCloseRefusesARunningOrder (rewritten from TestCloseRefusesAnOrderThatIsNotParkedOrStopped) — YES: drives a real running order through the launcher/tick harness and asserts Close refuses it with an unchanged ledger; this is the evidenced test-repair-contract correction since PhaseWaiting moved from refused to accepted.
+- TestCloseShipsAWaitingOrderAndUnblocksItsDependent / TestCloseShipsACompletedOrderAwaitingCommitApproval / TestCloseShipsAProposedOrderAwaitingPullRequestApproval — YES: each asserts exactly one new shipped ledger entry with the request's URL, the worktree removed, and (for waiting) a dependent's depends-on satisfied; a regression in Close or in closeable's new branches fails these.
+- TestSupervisorTickAfterCloseDoesNotRelaunch — YES: asserts ledger length and launch count are unchanged after one more tick post-close; this is the load-bearing AC4 test architecture-notes.md calls the exemplar — it fails if a PhaseShipped case were ever added to start.go's continuationKind with an acting branch.
+- TestSupervisorTickAfterCloseIgnoresAStaleCommitApproval / TestSupervisorTickAfterCloseIgnoresAStaleOpenPRApproval — YES: closes an order with a pending Approval already in the ledger, ticks once, and asserts no EventCommitted / no opened pull request; covers AC2's stale-approval clause specifically.
+- cmd/loom/cmd/factory_test.go TestFactoryCloseAcceptsAnOrderWaitingAtAGate — YES: real-binary end-to-end, asserts exit 0, status shows shipped with the URL substring, and inbox no longer lists the order.
+- cmd/loom/cmd/factory_inprocess_test.go TestFactoryCloseAcceptsPhasesWaitingOnAHumanInProcess / TestFactoryCloseRefusesPhasesWithAProcessInProcess — YES: table-driven in-process coverage for all 5 accepted and 4 still-refused phases via direct ledger construction, each asserting the command's success/failure and (for acceptance) status/inbox side effects.
+
+## Verification of Developer Self-Review
+
+- Checklist claim 'Cyclomatic complexity < 7 ... gocyclo -over 6 reports nothing' — verified: gocyclo -over 6 on control.go and factory.go reports no output in this session.
+- Checklist claim 'go test ./... passes; the one failure is a pre-existing TRACEPARENT leak unrelated to this change' — verified for the touched packages: go test ./internal/factory/... and ./cmd/loom/cmd/... both pass with no failures.
+- Notes-for-QA coverage numbers (95.5% internal/factory, closeable and waitingOnHuman at 100%) — verified via go test -coverprofile and go tool cover -func.
+- Claim that inbox.go/finish.go/start.go/replay.go need no code change — verified by reading itemsFor, finishStep, continuationKind, and applyShipped: none has a PhaseShipped case or an acting default branch.
+- No discrepancy found between the developer's self-review and the actual diff.
+
+## Feedback for the Developer
+
+None

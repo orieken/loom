@@ -46,8 +46,13 @@ func TestCloseableRefusesAnInvalidURL(t *testing.T) {
 	}
 }
 
-func TestCloseableAcceptsParkedAndStopped(t *testing.T) {
-	for _, phase := range []Phase{PhaseParked, PhaseStopped} {
+// TestCloseableAcceptsPhasesWaitingOnAHuman covers every phase closeable
+// accepts: parked, stopped, waiting at a run gate, completed and awaiting
+// its commit approval, and proposed and awaiting its pull-request approval
+// — the phases where an order is waiting on a human with no process of its
+// own running.
+func TestCloseableAcceptsPhasesWaitingOnAHuman(t *testing.T) {
+	for _, phase := range []Phase{PhaseParked, PhaseStopped, PhaseWaiting, PhaseCompleted, PhaseProposed} {
 		orders := map[string]*OrderState{"alpha": {ID: "alpha", Phase: phase}}
 		order, err := closeable(orders, "alpha", "https://example.com/pr/1")
 		if err != nil || order.ID != "alpha" {
@@ -58,8 +63,7 @@ func TestCloseableAcceptsParkedAndStopped(t *testing.T) {
 
 func TestCloseableRefusesEveryOtherPhase(t *testing.T) {
 	for _, phase := range []Phase{
-		PhaseClaimed, PhaseRunning, PhaseWaiting, PhaseRetrying,
-		PhaseCompleted, PhaseCommitted, PhasePushed, PhaseProposed, PhaseShipped,
+		PhaseClaimed, PhaseRunning, PhaseRetrying, PhaseCommitted, PhasePushed, PhaseShipped,
 	} {
 		orders := map[string]*OrderState{"alpha": {ID: "alpha", Phase: phase}}
 		if _, err := closeable(orders, "alpha", "https://example.com/pr/1"); !errors.Is(err, ErrNotApplicable) {
@@ -74,8 +78,7 @@ func TestCloseableRefusesEveryOtherPhase(t *testing.T) {
 // shipped, say so instead of the stop instruction).
 func TestCloseableRefusalNamesThePhaseAndInstructsStoppingFirst(t *testing.T) {
 	for _, phase := range []Phase{
-		PhaseClaimed, PhaseRunning, PhaseWaiting, PhaseRetrying,
-		PhaseCompleted, PhaseCommitted, PhasePushed, PhaseProposed,
+		PhaseClaimed, PhaseRunning, PhaseRetrying, PhaseCommitted, PhasePushed,
 	} {
 		orders := map[string]*OrderState{"alpha": {ID: "alpha", Phase: phase}}
 		_, err := closeable(orders, "alpha", "https://example.com/pr/1")
@@ -188,12 +191,13 @@ func TestCloseShipsAHandFinishedStoppedOrder(t *testing.T) {
 	assertExactlyOneNewShippedEntry(t, factory.supervisor.ledger, entriesBefore, request)
 }
 
-func TestCloseRefusesAnOrderThatIsNotParkedOrStopped(t *testing.T) {
+// TestCloseRefusesARunningOrder covers AC3: an order whose run process is
+// still alive is refused, and the ledger is unchanged.
+func TestCloseRefusesARunningOrder(t *testing.T) {
 	factory := newTestFactory(t, orderSpec{id: "alpha"})
-	factory.launcher.script("alpha", run{code: exitWaitingApproval, state: waitingState})
+	factory.launcher.script("alpha", run{code: exitCompleted, state: completedState, hold: true})
 	factory.tick()
-	factory.tick()
-	factory.assertPhase("alpha", PhaseWaiting)
+	factory.assertPhase("alpha", PhaseRunning)
 
 	closer := Closer{Layout: Layout{Root: factory.root}, Repository: factory.supervisor.deps.Repository}
 	before, err := factory.supervisor.ledger.Entries()
@@ -203,7 +207,7 @@ func TestCloseRefusesAnOrderThatIsNotParkedOrStopped(t *testing.T) {
 	_, err = closer.Close(factory.supervisor.ledger, factory.orders(),
 		ShippedByHand{Order: "alpha", URL: "https://example.com/pr/1", Approver: "oscar"})
 	if !errors.Is(err, ErrNotApplicable) {
-		t.Errorf("err = %v, want ErrNotApplicable for a waiting order", err)
+		t.Errorf("err = %v, want ErrNotApplicable for a running order", err)
 	}
 	after, err := factory.supervisor.ledger.Entries()
 	if err != nil {
@@ -211,6 +215,171 @@ func TestCloseRefusesAnOrderThatIsNotParkedOrStopped(t *testing.T) {
 	}
 	if len(after) != len(before) {
 		t.Error("the ledger changed although close was refused")
+	}
+}
+
+// TestCloseShipsAWaitingOrderAndUnblocksItsDependent covers AC1 for an order
+// waiting at a run gate: closing it ships it exactly as a parked order does.
+func TestCloseShipsAWaitingOrderAndUnblocksItsDependent(t *testing.T) {
+	factory := newTestFactory(t, orderSpec{id: "alpha"})
+	factory.launcher.script("alpha", run{code: exitWaitingApproval, state: waitingState})
+	factory.tick()
+	factory.tick()
+	factory.assertPhase("alpha", PhaseWaiting)
+	worktree := factory.orders()["alpha"].Claim.Worktree
+	entriesBefore := len(mustEntries(t, factory.supervisor.ledger))
+
+	closer := Closer{Layout: Layout{Root: factory.root}, Repository: factory.supervisor.deps.Repository}
+	request := ShippedByHand{Order: "alpha", URL: "https://example.com/pr/2", Approver: "oscar"}
+	warning, err := closer.Close(factory.supervisor.ledger, factory.orders(), request)
+	if err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	if warning != "" {
+		t.Fatalf("close warning = %q, want full success", warning)
+	}
+
+	orders := factory.orders()
+	assertShippedWithURL(t, orders["alpha"], request.URL)
+	if _, err := os.Stat(worktree); !os.IsNotExist(err) {
+		t.Error("the worktree was not removed")
+	}
+	if !dependenciesShipped(intake.Order{DependsOn: []string{"alpha"}}, orders) {
+		t.Error("a dependent order's depends-on was not satisfied by the closed order")
+	}
+	assertExactlyOneNewShippedEntry(t, factory.supervisor.ledger, entriesBefore, request)
+}
+
+// TestCloseShipsACompletedOrderAwaitingCommitApproval covers AC1 for an order
+// completed and waiting for its commit to be approved.
+func TestCloseShipsACompletedOrderAwaitingCommitApproval(t *testing.T) {
+	factory := newFinishingFactory(t, "pr", "src/**")
+	factory.assertPhase("alpha", PhaseCompleted)
+	worktree := factory.orders()["alpha"].Claim.Worktree
+	entriesBefore := len(mustEntries(t, factory.supervisor.ledger))
+
+	closer := Closer{Layout: Layout{Root: factory.root}, Repository: factory.supervisor.deps.Repository}
+	request := ShippedByHand{Order: "alpha", URL: "https://example.com/pr/3", Approver: "oscar"}
+	warning, err := closer.Close(factory.supervisor.ledger, factory.orders(), request)
+	if err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	if warning != "" {
+		t.Fatalf("close warning = %q, want full success", warning)
+	}
+
+	orders := factory.orders()
+	assertShippedWithURL(t, orders["alpha"], request.URL)
+	if _, err := os.Stat(worktree); !os.IsNotExist(err) {
+		t.Error("the worktree was not removed")
+	}
+	assertExactlyOneNewShippedEntry(t, factory.supervisor.ledger, entriesBefore, request)
+}
+
+// TestCloseShipsAProposedOrderAwaitingPullRequestApproval covers AC1 for an
+// order proposed and waiting for its pull request to be approved. close
+// never opens the pull request itself.
+func TestCloseShipsAProposedOrderAwaitingPullRequestApproval(t *testing.T) {
+	factory := newFinishingFactory(t, "pr")
+	factory.approve("alpha", GateCommit)
+	factory.tick()
+	factory.assertPhase("alpha", PhaseProposed)
+	worktree := factory.orders()["alpha"].Claim.Worktree
+	entriesBefore := len(mustEntries(t, factory.supervisor.ledger))
+
+	closer := Closer{Layout: Layout{Root: factory.root}, Repository: factory.supervisor.deps.Repository}
+	request := ShippedByHand{Order: "alpha", URL: "https://example.com/pr/4", Approver: "oscar"}
+	warning, err := closer.Close(factory.supervisor.ledger, factory.orders(), request)
+	if err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	if warning != "" {
+		t.Fatalf("close warning = %q, want full success", warning)
+	}
+	if len(factory.pulls.opened) != 0 {
+		t.Error("close opened a pull request itself")
+	}
+
+	orders := factory.orders()
+	assertShippedWithURL(t, orders["alpha"], request.URL)
+	if _, err := os.Stat(worktree); !os.IsNotExist(err) {
+		t.Error("the worktree was not removed")
+	}
+	assertExactlyOneNewShippedEntry(t, factory.supervisor.ledger, entriesBefore, request)
+}
+
+// TestSupervisorTickAfterCloseDoesNotRelaunch covers AC4: closing a waiting
+// order and running one more supervisor tick never relaunches, commits,
+// pushes, or proposes it again.
+func TestSupervisorTickAfterCloseDoesNotRelaunch(t *testing.T) {
+	factory := newTestFactory(t, orderSpec{id: "alpha"})
+	factory.launcher.script("alpha", run{code: exitWaitingApproval, state: waitingState})
+	factory.tick()
+	factory.tick()
+	factory.assertPhase("alpha", PhaseWaiting)
+
+	closer := Closer{Layout: Layout{Root: factory.root}, Repository: factory.supervisor.deps.Repository}
+	if _, err := closer.Close(factory.supervisor.ledger, factory.orders(),
+		ShippedByHand{Order: "alpha", URL: "https://example.com/pr/5", Approver: "oscar"}); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	entriesAfterClose := len(mustEntries(t, factory.supervisor.ledger))
+	launchesAfterClose := len(factory.launcher.launchesOf("alpha"))
+
+	factory.tick()
+
+	factory.assertPhase("alpha", PhaseShipped)
+	if got := len(mustEntries(t, factory.supervisor.ledger)); got != entriesAfterClose {
+		t.Errorf("ledger entries after one more tick = %d, want %d (no new entry)", got, entriesAfterClose)
+	}
+	if got := len(factory.launcher.launchesOf("alpha")); got != launchesAfterClose {
+		t.Errorf("launches after one more tick = %d, want %d (no relaunch)", got, launchesAfterClose)
+	}
+}
+
+// TestSupervisorTickAfterCloseIgnoresAStaleCommitApproval covers AC2: an
+// order closed while a commit-gate approval is already in the ledger and
+// not yet acted on is never committed on a later tick.
+func TestSupervisorTickAfterCloseIgnoresAStaleCommitApproval(t *testing.T) {
+	factory := newFinishingFactory(t, "pr", "src/**")
+	factory.approve("alpha", GateCommit)
+	factory.assertPhase("alpha", PhaseCompleted)
+
+	closer := Closer{Layout: Layout{Root: factory.root}, Repository: factory.supervisor.deps.Repository}
+	if _, err := closer.Close(factory.supervisor.ledger, factory.orders(),
+		ShippedByHand{Order: "alpha", URL: "https://example.com/pr/6", Approver: "oscar"}); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+
+	factory.tick()
+
+	factory.assertPhase("alpha", PhaseShipped)
+	if hasEvent(factory, "alpha", EventCommitted) {
+		t.Error("the supervisor committed a closed order's stale approval")
+	}
+}
+
+// TestSupervisorTickAfterCloseIgnoresAStaleOpenPRApproval covers AC2: an
+// order closed while an open-pr approval is already in the ledger and not
+// yet acted on never has a pull request opened for it on a later tick.
+func TestSupervisorTickAfterCloseIgnoresAStaleOpenPRApproval(t *testing.T) {
+	factory := newFinishingFactory(t, "pr")
+	factory.approve("alpha", GateCommit)
+	factory.tick()
+	factory.approve("alpha", GateOpenPR)
+	factory.assertPhase("alpha", PhaseProposed)
+
+	closer := Closer{Layout: Layout{Root: factory.root}, Repository: factory.supervisor.deps.Repository}
+	if _, err := closer.Close(factory.supervisor.ledger, factory.orders(),
+		ShippedByHand{Order: "alpha", URL: "https://example.com/pr/7", Approver: "oscar"}); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+
+	factory.tick()
+
+	factory.assertPhase("alpha", PhaseShipped)
+	if len(factory.pulls.opened) != 0 {
+		t.Error("the supervisor opened a pull request for a closed order's stale approval")
 	}
 }
 

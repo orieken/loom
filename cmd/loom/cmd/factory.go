@@ -106,11 +106,13 @@ var factoryCloseFlags struct {
 
 var factoryCloseCmd = &cobra.Command{
 	Use:   "close <order>",
-	Short: "Record that a parked or stopped order shipped by hand, in its own pull request",
-	Long: `Records one 'shipped' ledger entry for a parked or stopped order, as if the
-supervisor had shipped it, so its dependents start and it leaves the inbox and
-'loom factory inbox'. Use it once a person has finished the order outside the
-factory and that work merged.
+	Short: "Record that an order waiting on a human shipped by hand, in its own pull request",
+	Long: `Records one 'shipped' ledger entry for an order waiting on a human with no
+process of its own running — parked, stopped, waiting at a run gate, completed
+and awaiting its commit approval, or proposed and awaiting its pull-request
+approval — as if the supervisor had shipped it, so its dependents start and it
+leaves the inbox and 'loom factory inbox'. Use it once a person has finished
+the order outside the factory and that work merged.
 
 close never calls GitHub and never checks that --shipped-by merged: the person
 running it vouches for that, and the ledger records who.`,
