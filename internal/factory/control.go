@@ -99,10 +99,12 @@ func (c Closer) Close(ledger *Ledger, orders map[string]*OrderState, request Shi
 }
 
 // closeable refuses unless id names a ledger order, rawURL is an http(s)
-// URL, and the order is parked or stopped — the only phases a person
-// finishes by hand. Every other phase, including one already shipped, is
-// refused with RequestRerun's own wording, so a closeable order and a
-// rerun-able one are refused identically.
+// URL, and the order is waiting on a human with no process of its own
+// running: parked, stopped, waiting at a run gate, completed and awaiting
+// its commit approval, or proposed and awaiting its pull-request approval.
+// Every other phase, including one already shipped, is refused with
+// RequestRerun's own wording, so a closeable order and a rerun-able one are
+// refused identically.
 func closeable(orders map[string]*OrderState, id, rawURL string) (*OrderState, error) {
 	order, err := orderIn(orders, id)
 	if err != nil {
@@ -111,10 +113,20 @@ func closeable(orders map[string]*OrderState, id, rawURL string) (*OrderState, e
 	if !isHTTPURL(rawURL) {
 		return nil, fmt.Errorf("%w: --shipped-by %q is not an http or https URL", ErrNotApplicable, rawURL)
 	}
-	if order.Phase != PhaseParked && order.Phase != PhaseStopped {
+	if !waitingOnHuman(order.Phase) {
 		return nil, fmt.Errorf("%w: %s is %s; stop it first, or it has already shipped", ErrNotApplicable, id, order.Phase)
 	}
 	return order, nil
+}
+
+// waitingOnHuman reports whether phase has no process of its own running —
+// the only phases a person finishes by hand.
+func waitingOnHuman(phase Phase) bool {
+	switch phase {
+	case PhaseParked, PhaseStopped, PhaseWaiting, PhaseCompleted, PhaseProposed:
+		return true
+	}
+	return false
 }
 
 // isHTTPURL reports whether raw is an http or https URL. It never makes a

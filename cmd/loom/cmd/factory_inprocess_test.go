@@ -69,12 +69,11 @@ func TestFactoryControlsReportTheirRefusalsInProcess(t *testing.T) {
 	t.Chdir(root)
 	t.Setenv(actAsLoomEnv, "1")
 	useFactoryFlags(t, onceAgainstTheMock())
-	useFactoryCloseFlags(t, "https://example.com/pr/1")
 	if _, err := runFactoryCommand(t, runFactoryRun); err != nil {
 		t.Fatal(err)
 	}
 	for name, run := range map[string]func(*cobra.Command, []string) error{
-		"stop": runFactoryStop, "resume": runFactoryResume, "rerun": runFactoryRerun, "close": runFactoryClose,
+		"stop": runFactoryStop, "resume": runFactoryResume, "rerun": runFactoryRerun,
 	} {
 		if _, err := runFactoryCommand(t, run, "alpha"); err == nil {
 			t.Errorf("%s accepted an order waiting at a gate", name)
@@ -241,6 +240,67 @@ func TestFactoryCloseRefusesAWrongPhaseInProcess(t *testing.T) {
 	useFactoryCloseFlags(t, "https://example.com/pr/1")
 	if _, err := runFactoryCommand(t, runFactoryClose, "alpha"); err == nil {
 		t.Error("close accepted an order that is neither parked nor stopped")
+	}
+}
+
+// TestFactoryCloseAcceptsPhasesWaitingOnAHumanInProcess covers AC1
+// end-to-end: a waiting, completed, or proposed order is closed exactly as
+// a parked one is — status shows it shipped with the url, and it leaves
+// the inbox.
+func TestFactoryCloseAcceptsPhasesWaitingOnAHumanInProcess(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		entry factory.Entry
+	}{
+		{"waiting", factory.Entry{Event: factory.EventWaiting, Order: "alpha", Gate: "confirm-design"}},
+		{"completed", factory.Entry{Event: factory.EventCompleted, Order: "alpha"}},
+		{"proposed", factory.Entry{Event: factory.EventProposed, Order: "alpha",
+			Proposal: &factory.Proposal{Title: "t", Base: "main", Head: factory.BranchFor("alpha")}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := newFactoryProject(t, "alpha")
+			t.Chdir(root)
+			path := worktreeForClose(t, root, "alpha")
+			writeLedger(t, root, factory.Entry{Event: factory.EventClaimed, Order: "alpha",
+				Claim: &factory.Claim{OrderSHA256: "x", Worktree: path, Branch: factory.BranchFor("alpha")}}, tc.entry)
+			useFactoryCloseFlags(t, "https://example.com/pr/1")
+
+			expectFactoryOutput(t, runFactoryClose, []string{"alpha"}, "Closed alpha as shipped")
+
+			status, _ := runFactoryCommand(t, runFactoryStatus)
+			if !strings.Contains(status, string(factory.PhaseShipped)) {
+				t.Errorf("status = %q, want alpha shipped", status)
+			}
+			inbox, _ := runFactoryCommand(t, runFactoryInbox)
+			if strings.Contains(inbox, "alpha") {
+				t.Errorf("inbox = %q, want a closed order gone from the inbox", inbox)
+			}
+		})
+	}
+}
+
+// TestFactoryCloseRefusesPhasesWithAProcessInProcess covers AC3: an order
+// whose own process is running, between a commit and its pull request, or
+// scheduled to retry still refuses close.
+func TestFactoryCloseRefusesPhasesWithAProcessInProcess(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		entry factory.Entry
+	}{
+		{"running", factory.Entry{Event: factory.EventLaunched, Order: "alpha", PID: 123, Attempt: 1}},
+		{"committed", factory.Entry{Event: factory.EventCommitted, Order: "alpha", Commit: "abc123"}},
+		{"pushed", factory.Entry{Event: factory.EventPushed, Order: "alpha"}},
+		{"retrying", factory.Entry{Event: factory.EventRetryScheduled, Order: "alpha"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := newFactoryProject(t, "alpha")
+			t.Chdir(root)
+			writeLedger(t, root, claimedEntry("alpha"), tc.entry)
+			useFactoryCloseFlags(t, "https://example.com/pr/1")
+			if _, err := runFactoryCommand(t, runFactoryClose, "alpha"); err == nil {
+				t.Errorf("close accepted an order that is %s", tc.name)
+			}
+		})
 	}
 }
 

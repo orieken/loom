@@ -29,11 +29,14 @@ state, and lives in the supervisor's ledger, not in this file.
 
 ### An order finished by hand
 
-A parked or stopped order is sometimes finished by a person instead, in its own pull request. Once
-that pull request merges, run `loom factory close <id> --shipped-by <url>` to record it shipped,
-the same way the supervisor would have: the order leaves `loom factory inbox`, and any other order
-whose `depends-on` names it is claimed on the supervisor's next pass, with no edit to either order.
-`close` never calls GitHub — it trusts the person running it that `<url>` merged.
+An order waiting on a human with no process of its own running — parked, stopped, waiting at a run
+gate, completed and awaiting its commit approval, or proposed and awaiting its pull-request approval
+— is sometimes finished by a person instead, in its own pull request. Once that pull request merges,
+run `loom factory close <id> --shipped-by <url>` to record it shipped, the same way the supervisor
+would have: the order leaves `loom factory inbox`, and any other order whose `depends-on` names it is
+claimed on the supervisor's next pass, with no edit to either order. An order whose own process is
+still running or scheduled to run — claimed, running, retrying, committed, or pushed — is refused;
+stop it first. `close` never calls GitHub — it trusts the person running it that `<url>` merged.
 
 ## Who writes what
 

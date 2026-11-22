@@ -131,11 +131,30 @@ func TestFactoryControlsRefuseTheWrongOrder(t *testing.T) {
 	for _, args := range [][]string{
 		{"factory", "stop", "alpha"}, {"factory", "resume", "alpha"}, {"factory", "rerun", "alpha"},
 		{"factory", "approve", "alpha", "confirm-ship"}, {"factory", "stop", "nobody"},
-		{"factory", "close", "alpha", "--shipped-by", "https://example.com/pr/1"},
 	} {
 		if output, code := runLoom(t, binary, root, args...); code == 0 {
 			t.Errorf("loom %v succeeded; the order is waiting at confirm-design\n%s", args, output)
 		}
+	}
+}
+
+// close accepts an order waiting at a run gate, through the real binary —
+// the end-to-end counterpart of control_test.go's unit coverage for AC1.
+func TestFactoryCloseAcceptsAnOrderWaitingAtAGate(t *testing.T) {
+	binary := buildLoomBinary(t)
+	root := newFactoryProject(t, "alpha")
+	factoryPass(t, binary, root)
+
+	output, code := runLoom(t, binary, root, "factory", "close", "alpha", "--shipped-by", "https://example.com/pr/1")
+	if code != 0 {
+		t.Fatalf("close exit %d\n%s", code, output)
+	}
+
+	status, _ := runLoom(t, binary, root, "factory", "status")
+	assertOutputContains(t, status, "alpha", string(factory.PhaseShipped), "pr/1")
+	inbox, _ := runLoom(t, binary, root, "factory", "inbox")
+	if strings.Contains(inbox, "alpha") {
+		t.Errorf("inbox = %q, want a closed order gone from the inbox", inbox)
 	}
 }
 

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 2,
+  "feature": "factory-close-waiting-orders",
+  "threatModelSummary": "Pure widening of an existing allow-list predicate (closeable -> waitingOnHuman) that already shipped without issue for parked/stopped orders. No new I/O, no new trust boundary, no new external call, no new authZ surface. isHTTPURL remains syntax-only parsing (net/url.Parse), never dials out, matching the spec's explicit statement that the URL is stored and printed, never fetched. The switch in waitingOnHuman is an explicit allow-list of exactly the five phases named in the spec (parked, stopped, waiting, completed, proposed); running, committed, pushed, and retrying fall through to the default refusal, matching AC3. closeable()'s signature, the Close/ledger-append/archive-and-remove sequence, and the CLI's lock/openLedger path used by every other factory control (stop/resume/rerun) are all unchanged, so the same concurrency guarantees that protected close before this change still protect it after. No auth, user-controlled rendering, secrets, or sensitive data is newly introduced.",
+  "dependencyAudit": [
+    "No new dependencies introduced by this change (stdlib errors, fmt, net/url only)."
+  ],
+  "stride": [
+    {"category": "SPOOFING", "assessed": "request.Approver is populated by approverName() (cmd/loom/cmd/factory.go:356), the same local-operator identity source every other factory control command already uses (approve, stop, resume, rerun). No new identity input is accepted by this change."},
+    {"category": "TAMPERING", "assessed": "closeable() validates both the order's phase (via waitingOnHuman's explicit allow-list) and the URL's syntax (isHTTPURL) before any ledger mutation. The widened phase set is exactly the five phases the spec names; no additional phase, including shipped, running, committed, pushed, or retrying, can reach the ledger append."},
+    {"category": "REPUDIATION", "assessed": "Close still writes exactly one EventShipped ledger entry carrying URL and ApprovedBy, unchanged from the pre-existing parked/stopped path. The audit trail for a hand-closed order is identical regardless of which of the five phases it was closed from."},
+    {"category": "INFORMATION_DISCLOSURE", "assessed": "The --shipped-by URL is stored in the ledger and echoed in status/CLI output, same as before this change for parked/stopped orders; widening to three more phases does not change what is stored or where it is exposed. isHTTPURL performs no network request, so no SSRF or outbound leak is possible through URL validation itself."},
+    {"category": "DENIAL_OF_SERVICE", "assessed": "No loops over user-controlled collections, no new network calls, no new unbounded resource use. The change is a single switch statement over a bounded, compile-time-fixed set of five phase constants."},
+    {"category": "ELEVATION_OF_PRIVILEGE", "assessed": "No privilege or permission model changes. close is a local CLI command with the same operator trust level as stop/resume/rerun/approve; widening which phases it accepts does not grant the operator any capability (e.g. merging a PR, triggering CI) they didn't already have by running close on a parked/stopped order."}
+  ],
+  "findings": [],
+  "filesModified": [],
+  "securityChecklist": [
+    {"item": "No hardcoded secrets, tokens, or credentials introduced", "checked": true},
+    {"item": "URL input is validated syntactically only and never fetched (no SSRF)", "checked": true},
+    {"item": "Phase allow-list matches spec exactly; no over-broad or under-broad acceptance", "checked": true},
+    {"item": "No new external API/network calls introduced", "checked": true},
+    {"item": "Audit trail (ledger EventShipped entry: URL + ApprovedBy) unchanged and complete", "checked": true},
+    {"item": "Dependency audit run for new packages", "checked": true, "note": "No new dependencies were added; nothing to scan with go mod verify/pnpm audit equivalents."}
+  ],
+  "notesForQa": [
+    "No security-driven test additions were needed; the developer's existing AC-mapped tests (control_test.go: TestCloseableAcceptsPhasesWaitingOnAHuman, TestCloseShipsA*Order*, TestSupervisorTickAfterCloseDoesNotRelaunch, TestSupervisorTickAfterCloseIgnoresAStale*Approval) already cover the security-relevant boundary: that close cannot be triggered from running/committed/pushed/retrying, and that a stale approval already in the ledger for a closed order is never acted on by a later supervisor tick.",
+    "Confirmed go build ./... is clean on this branch; no compile-time regressions from this review."
+  ],
+  "notesForTechWriter": [],
+  "retrieval": {
+    "domainTerms": ["parked", "stopped", "waiting", "completed", "proposed", "running", "committed", "pushed", "retrying", "shipped"],
+    "issueRefs": [],
+    "linkedAdrs": ["ADR-010"],
+    "linkedKis": []
+  }
+}
