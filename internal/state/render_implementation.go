@@ -12,6 +12,7 @@ func renderImplementation(implementation ImplementationState) string {
 	doc.title("Implementation Notes: " + implementation.Feature)
 	doc.section("## Files Created", bullets(implementation.FilesCreated))
 	doc.section("## Files Modified", bullets(implementation.FilesModified))
+	doc.section("## Files Deleted", bullets(implementation.FilesDeleted))
 	doc.section("## Interface Design", bullets(implementation.InterfaceDesign))
 	doc.section("## Named Refactoring Log", refactoringEntryLines(implementation.RefactoringLog))
 	doc.section("## Self-Review Checklist", checklistLines(implementation.SelfReview))
@@ -87,6 +88,7 @@ func versionSuffix(version string) string {
 
 func (i ImplementationState) frontmatter() frontmatter {
 	touched := append(append([]string{}, i.FilesCreated...), i.FilesModified...)
+	touched = append(touched, i.FilesDeleted...)
 	return newFrontmatter(i.Feature, "", i.Retrieval, touched)
 }
 

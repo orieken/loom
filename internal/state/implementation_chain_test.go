@@ -175,6 +175,58 @@ func TestImplementationMustNameAFile(t *testing.T) {
 	assertValidationNames(t, implementation.Validate(), "filesCreated")
 }
 
+// TestADeletionOnlyImplementationTouchedSomething is the spec's own case: an
+// order that only renames or deletes files must not park on its own correct
+// work for naming nothing in filesCreated/filesModified.
+func TestADeletionOnlyImplementationTouchedSomething(t *testing.T) {
+	implementation := validImplementation()
+	implementation.FilesCreated = nil
+	implementation.FilesModified = nil
+	implementation.FilesDeleted = []string{"internal/identity/old-session.go"}
+
+	if err := implementation.Validate(); err != nil {
+		t.Errorf("a deletion-only implementation was rejected: %v", err)
+	}
+}
+
+// TestRenameArrowIsRejectedOnEveryImplementationField pins the AC: "old ->
+// new" in a single entry fails validation before claim-checking runs, with
+// a message describing the two-field encoding.
+func TestRenameArrowIsRejectedOnEveryImplementationField(t *testing.T) {
+	cases := map[string]func(*state.ImplementationState){
+		"filesCreated":  func(i *state.ImplementationState) { i.FilesCreated = []string{"old.go -> new.go"} },
+		"filesModified": func(i *state.ImplementationState) { i.FilesModified = []string{"old.go -> new.go"} },
+		"filesDeleted":  func(i *state.ImplementationState) { i.FilesDeleted = []string{"old.go -> new.go"} },
+	}
+	for field, breakField := range cases {
+		t.Run(field, func(t *testing.T) {
+			implementation := validImplementation()
+			breakField(&implementation)
+
+			err := implementation.Validate()
+
+			assertValidationNames(t, err, field)
+			if !strings.Contains(err.Error(), "filesCreated") || !strings.Contains(err.Error(), "filesDeleted") {
+				t.Errorf("error %q does not describe the two-field rename encoding", err)
+			}
+		})
+	}
+}
+
+// TestRenameArrowIsRejectedOnSecurityFilesModified extends the same rule to
+// SecurityState, which shares requireNoRenameArrows via its own PathClaims().
+func TestRenameArrowIsRejectedOnSecurityFilesModified(t *testing.T) {
+	security := validSecurity()
+	security.FilesModified = []string{"old.go -> new.go"}
+
+	err := security.Validate()
+
+	assertValidationNames(t, err, "filesModified")
+	if !strings.Contains(err.Error(), "filesDeleted") {
+		t.Errorf("error %q does not describe the two-field rename encoding", err)
+	}
+}
+
 func TestImplementationChainRoundTrips(t *testing.T) {
 	cases := map[state.Kind]any{
 		state.KindImplementation: validImplementation(),
@@ -202,7 +254,7 @@ func TestImplementationChainRenderersEmitContractHeadings(t *testing.T) {
 		headings []string
 	}{
 		{state.KindImplementation, validImplementation(), "implementation-notes.md", []string{
-			"## Files Created", "## Files Modified", "## Interface Design", "## Named Refactoring Log",
+			"## Files Created", "## Files Modified", "## Files Deleted", "## Interface Design", "## Named Refactoring Log",
 			"## Self-Review Checklist", "## Simple Design Verification", "## Key Decisions",
 			"## Deviations from Analysis", "## Dependencies Added", "## Notes for QA", "## Notes for DevOps",
 		}},
@@ -213,7 +265,7 @@ func TestImplementationChainRenderersEmitContractHeadings(t *testing.T) {
 			"## Notes for QA", "## Notes for Tech Writer",
 		}},
 		{state.KindQA, validQA(), "qa-report.md", []string{
-			"## Test Files Created", "## Test Files Modified", "## Coverage Summary", "## Test Results",
+			"## Test Files Created", "## Test Files Modified", "## Test Files Deleted", "## Coverage Summary", "## Test Results",
 			"## Accessibility Check", "## Bugs Found", "## Known Gaps", "## Notes for Tech Writer",
 		}},
 	}
@@ -277,5 +329,22 @@ func TestImplementationChainCarriesRetrievalFrontmatter(t *testing.T) {
 	}
 	if !strings.Contains(body, `files_touched: ["internal/identity/session.go", "internal/identity/user.go"]`) {
 		t.Errorf("files_touched was not derived from the files the implementation names:\n%s", body[:400])
+	}
+}
+
+// TestFilesDeletedIsVisibleInTheRenderedView is the spec's own motivation: a
+// deletion-only implementation must be visible in implementation-notes.md,
+// not only in the typed JSON.
+func TestFilesDeletedIsVisibleInTheRenderedView(t *testing.T) {
+	implementation := validImplementation()
+	implementation.FilesDeleted = []string{"internal/identity/old-session.go"}
+
+	_, body := renderOf(t, state.KindImplementation, implementation)
+
+	if !strings.Contains(body, "- internal/identity/old-session.go") {
+		t.Errorf("rendered implementation notes do not list the deleted file:\n%s", body)
+	}
+	if !strings.Contains(body, `files_touched: ["internal/identity/session.go", "internal/identity/user.go", "internal/identity/old-session.go"]`) {
+		t.Errorf("files_touched does not include the deleted file:\n%s", body[:400])
 	}
 }

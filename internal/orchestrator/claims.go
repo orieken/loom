@@ -61,15 +61,45 @@ func (e *Executor) verifyPathClaims(stage Stage, decoded state.Validatable, inpu
 }
 
 func (e *Executor) verifyOneClaim(stage Stage, claim state.PathClaim, root string, changed map[string]bool) error {
-	if !claim.MustExist {
+	switch {
+	case claim.MustExist:
+		return e.verifyExistenceClaim(stage, claim, root, changed)
+	case claim.MustNotExist:
+		return verifyDeletionClaim(stage, claim, root, changed)
+	default:
 		return nil
 	}
+}
+
+func (e *Executor) verifyExistenceClaim(stage Stage, claim state.PathClaim, root string, changed map[string]bool) error {
 	missing := missingPaths(root, claim.Paths)
 	if len(missing) > 0 {
 		return &ClaimError{Stage: stage.ID, Field: claim.Field, Paths: missing,
 			Problem: "no such file — the stage reported work it did not do"}
 	}
 	return e.warnUntouched(stage, claim, changed)
+}
+
+// verifyDeletionClaim checks a claim that a path is gone now and existed
+// when the stage started. "Still exists" is a plain filesystem stat and
+// always runs. "No such file was there to delete" needs git history, and
+// runs only when changed is non-nil — a nil map means posture checking is
+// off (no WorkTree configured, or the tree could not be read), and a
+// non-nil map, even empty, means the tree was observed and the claimed path
+// was not among what changed.
+func verifyDeletionClaim(stage Stage, claim state.PathClaim, root string, changed map[string]bool) error {
+	if present := existingPaths(root, claim.Paths); len(present) > 0 {
+		return &ClaimError{Stage: stage.ID, Field: claim.Field, Paths: present,
+			Problem: "the file still exists — the stage reported a deletion it did not do"}
+	}
+	if changed == nil {
+		return nil
+	}
+	if unseen := unseenDeletions(claim.Paths, changed); len(unseen) > 0 {
+		return &ClaimError{Stage: stage.ID, Field: claim.Field, Paths: unseen,
+			Problem: "no such file was there to delete"}
+	}
+	return nil
 }
 
 // warnUntouched reports a file that exists but did not change while the
@@ -108,6 +138,39 @@ func missingPaths(root string, paths []string) []string {
 	}
 	sort.Strings(missing)
 	return missing
+}
+
+// existingPaths reports which claimed paths are still on disk. A path that
+// escapes the project root resolves to an error, which is treated the same
+// as "not found on disk" — consistent with missingPaths above — and left
+// for unseenDeletions to judge against the changed set.
+func existingPaths(root string, paths []string) []string {
+	var present []string
+	for _, path := range paths {
+		resolved, err := resolveWithinRoot(root, path)
+		if err != nil {
+			continue
+		}
+		if fileExists(resolved) {
+			present = append(present, path)
+		}
+	}
+	sort.Strings(present)
+	return present
+}
+
+// unseenDeletions reports which claimed paths the posture check never saw
+// change. Callers must only call this with a non-nil changed set — nil
+// means "not observed", which carries no evidence either way.
+func unseenDeletions(paths []string, changed map[string]bool) []string {
+	var unseen []string
+	for _, path := range paths {
+		if !changed[filepath.ToSlash(path)] {
+			unseen = append(unseen, path)
+		}
+	}
+	sort.Strings(unseen)
+	return unseen
 }
 
 // OnClaimWarning reports a claim that is suspicious rather than false.

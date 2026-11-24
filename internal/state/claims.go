@@ -1,5 +1,10 @@
 package state
 
+import (
+	"fmt"
+	"strings"
+)
+
 // Path claims: which fields of a state document name files, so the executor
 // can check whether the files are there (roadmap L2.24).
 //
@@ -27,10 +32,12 @@ type PathClaim struct {
 	Field string
 	Paths []string
 	// MustExist is false for a field that may legitimately name something
-	// absent — a deleted file, for instance. Nothing uses that yet, and the
-	// flag exists so a future field can opt out explicitly rather than by
-	// being forgotten.
+	// absent — a deleted file, for instance. The flag exists so a field can
+	// opt out explicitly rather than by being forgotten.
 	MustExist bool
+	// MustNotExist marks a claim that a path is gone now but existed when
+	// the stage started — a deletion or the old half of a rename.
+	MustNotExist bool
 }
 
 // PathClaims reports the files an implementation says it wrote.
@@ -38,6 +45,7 @@ func (i ImplementationState) PathClaims() []PathClaim {
 	return []PathClaim{
 		{Field: "filesCreated", Paths: i.FilesCreated, MustExist: true},
 		{Field: "filesModified", Paths: i.FilesModified, MustExist: true},
+		{Field: "filesDeleted", Paths: i.FilesDeleted, MustNotExist: true},
 	}
 }
 
@@ -47,7 +55,26 @@ func (q QAState) PathClaims() []PathClaim {
 	return []PathClaim{
 		{Field: "testFilesCreated", Paths: q.TestFilesCreated, MustExist: true},
 		{Field: "testFilesModified", Paths: q.TestFilesModified, MustExist: true},
+		{Field: "testFilesDeleted", Paths: q.TestFilesDeleted, MustNotExist: true},
 	}
+}
+
+// requireNoRenameArrows rejects "old -> new" written into a single
+// path-naming field. A rename is two claims, not one string: the new path
+// belongs in filesCreated/testFilesCreated, and the old path in
+// filesDeleted/testFilesDeleted.
+func requireNoRenameArrows(claims []PathClaim) error {
+	for _, claim := range claims {
+		for _, path := range claim.Paths {
+			if strings.Contains(path, " -> ") {
+				return &ValidationError{Field: claim.Field,
+					Reason: fmt.Sprintf(
+						`names %q — list a rename as the new path in filesCreated/testFilesCreated and the old path in filesDeleted/testFilesDeleted, not an "old -> new" entry in one field`,
+						path)}
+			}
+		}
+	}
+	return nil
 }
 
 // PathClaims reports the files a security review says it touched.
