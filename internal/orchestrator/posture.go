@@ -104,9 +104,14 @@ func (s *RunState) PostureViolations() []string {
 	return stages
 }
 
-// changedPaths lists what has changed in the tree, as a set. An empty set
-// means "not observed" — posture checking off, or the tree unreadable —
-// never "nothing changed", so callers must not read absence as evidence.
+// changedPaths lists what has changed in the tree, as a set. nil means "not
+// observed" — no WorkTree configured, or the tree could not be read — and
+// carries no evidence either way. A non-nil map, even one of length zero,
+// means the tree was actually read: it is real evidence that nothing it
+// covers changed, and a caller may treat an absence in it as meaningful. A
+// caller that wants only a soft signal (warnUntouched) is choosing leniency
+// at the call site — nil-ness is not ambiguous here, only what each caller
+// does with "observed and empty" differs.
 func (e *Executor) changedPaths() map[string]bool {
 	if e.workTree == nil {
 		return nil

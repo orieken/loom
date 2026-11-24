@@ -90,6 +90,9 @@ type QAState struct {
 
 	TestFilesCreated  []string `json:"testFilesCreated,omitempty"`
 	TestFilesModified []string `json:"testFilesModified,omitempty"`
+	// TestFilesDeleted names a test file this change removed. A rename is
+	// the new path in TestFilesCreated and the old path here.
+	TestFilesDeleted []string `json:"testFilesDeleted,omitempty" jsonschema:"description=A test file this change removed. A rename is the new path in testFilesCreated and the old path here. Never write 'old -> new' as a single entry in either field."`
 
 	Coverage    CoverageSummary `json:"coverage" jsonschema:"required"`
 	TestResults TestResults     `json:"testResults" jsonschema:"required"`
@@ -114,6 +117,7 @@ func (q QAState) Validate() error {
 		requireText("feature", q.Feature),
 		requireGreenSuite(q.TestResults),
 		requireCoherentCoverage(q.Coverage),
+		requireNoRenameArrows(q.PathClaims()),
 	)
 }
 
