@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 2,
+  "feature": "factory-fetch-each-pass",
+  "scenarios": [
+    {
+      "criterion": "Given a pass, when it starts, the supervisor MUST run `git fetch <remote> <branch>` exactly once and read intake/ at `<remote>/<branch>`. `--remote` defaults to `origin`.",
+      "name": "A pass fetches the configured remote once before reading orders",
+      "given": [
+        "no --remote flag is given, so the remote defaults to origin",
+        "the branch under management is main"
+      ],
+      "when": [
+        "a supervisor pass starts"
+      ],
+      "then": [
+        "the supervisor fetches origin main exactly once during the pass",
+        "intake is read from the remote-tracking ref origin/main, not the bare local branch"
+      ]
+    },
+    {
+      "criterion": "Given an order promoted to `ready` on the remote only, the next pass MUST claim it with no pull by a person, and the claim's `sourceCommit` MUST equal the fetched commit.",
+      "name": "An order promoted on the remote only is claimed without a local pull",
+      "given": [
+        "an order is promoted to ready and pushed to the remote",
+        "no person has pulled that promotion into the local checkout"
+      ],
+      "when": [
+        "the next supervisor pass runs"
+      ],
+      "then": [
+        "the order is claimed",
+        "the claim's sourceCommit equals the commit the pass fetched"
+      ]
+    },
+    {
+      "criterion": "Given a claim, its worktree's branch MUST start from `<remote>/<branch>` at that commit when the order sets no `base-branch` of its own.",
+      "name": "A claimed order with no base-branch starts its worktree from the fetched remote branch",
+      "given": [
+        "an order sets no base-branch of its own"
+      ],
+      "when": [
+        "the order is claimed"
+      ],
+      "then": [
+        "the order's worktree branch starts from <remote>/<branch> at the commit the pass fetched"
+      ]
+    },
+    {
+      "criterion": "Given the person's checkout, a pass MUST NOT change its branch, index, or working tree, including uncommitted changes and local unpushed commits.",
+      "name": "A pass never disturbs the person's own checkout",
+      "given": [
+        "the person's checkout has uncommitted changes",
+        "the person's checkout has local commits not yet pushed"
+      ],
+      "when": [
+        "a supervisor pass runs, including fetching the remote"
+      ],
+      "then": [
+        "the checkout's current branch, index, and working tree remain exactly as they were before the pass",
+        "the uncommitted changes and unpushed commits are untouched"
+      ]
+    },
+    {
+      "criterion": "Given a fetch that fails (no network, no remote by that name, bad credentials), the pass MUST go on from the last fetched `<remote>/<branch>` and print exactly one line saying the fetch failed and why. It MUST NOT park or fail any order.",
+      "name": "A failed fetch does not stop the pass or any order",
+      "given": [
+        "the configured remote cannot be reached, such as no network, no remote by that name, or bad credentials"
+      ],
+      "when": [
+        "a supervisor pass runs"
+      ],
+      "then": [
+        "the pass continues using the last successfully fetched <remote>/<branch>",
+        "exactly one line is printed stating the fetch failed and why",
+        "no order is parked or failed because the fetch failed"
+      ]
+    },
+    {
+      "criterion": "Given a repository with no remote by the configured name, or `--no-fetch`, the supervisor MUST read the local `<branch>` exactly as today, with no fetch attempted and no new output. Every existing test MUST keep passing with no change to what it asserts.",
+      "name": "No remote by the configured name reads the local branch unchanged",
+      "given": [
+        "the repository has no remote by the configured name"
+      ],
+      "when": [
+        "a supervisor pass runs"
+      ],
+      "then": [
+        "no fetch is attempted",
+        "intake is read from the local branch exactly as before this change",
+        "no new output is produced"
+      ]
+    },
+    {
+      "criterion": "Given a repository with no remote by the configured name, or `--no-fetch`, the supervisor MUST read the local `<branch>` exactly as today, with no fetch attempted and no new output. Every existing test MUST keep passing with no change to what it asserts.",
+      "name": "Passing --no-fetch reads the local branch unchanged even when a remote exists",
+      "given": [
+        "a remote by the configured name exists and is reachable",
+        "the pass is run with --no-fetch"
+      ],
+      "when": [
+        "a supervisor pass runs"
+      ],
+      "then": [
+        "no fetch is attempted",
+        "intake is read from the local branch exactly as before this change",
+        "no new output is produced"
+      ]
+    },
+    {
+      "criterion": "Given a running or waiting order, a fetch that moves `<remote>/<branch>` MUST NOT change it. The order MUST keep its claimed `sourceCommit`; only `loom factory rerun` takes a newer version.",
+      "name": "A later fetch does not move a running or waiting order's claimed commit",
+      "given": [
+        "an order is already running or waiting, claimed at a particular sourceCommit"
+      ],
+      "when": [
+        "a later supervisor pass fetches a remote branch that has moved forward"
+      ],
+      "then": [
+        "the order's claimed sourceCommit remains unchanged",
+        "only an explicit loom factory rerun picks up the newer commit"
+      ]
+    },
+    {
+      "criterion": "Given `templates/claude-feature-team/intake/README.md`, it MUST say orders are read from the remote after a fetch, that a promotion must be pushed, and how `--no-fetch` restores the old behavior.",
+      "name": "The intake README explains the fetch-before-read behavior",
+      "given": [
+        "a person is reading templates/claude-feature-team/intake/README.md to understand how orders are picked up"
+      ],
+      "when": [
+        "they read the section describing how loom factory enforces pickup"
+      ],
+      "then": [
+        "the README states orders are read from the remote after a fetch",
+        "the README states a promotion must be pushed, not just committed locally, to be seen",
+        "the README states how --no-fetch restores the previous local-branch-only behavior"
+      ]
+    },
+    {
+      "criterion": "Given the change is complete, every new or changed function MUST have cyclomatic complexity below 7, every changed line MUST be covered by a test that can fail, `go test ./...` and the lint MUST pass, and no file outside `scope.paths` MUST change, excepting this run's own delivery record under `docs/features/factory-fetch-each-pass/`.",
+      "name": "The delivered change meets the project's quality bar",
+      "given": [
+        "the fetch-before-each-pass change is complete"
+      ],
+      "when": [
+        "the project's test suite and lint are run against the change"
+      ],
+      "then": [
+        "every new or changed function has cyclomatic complexity below 7",
+        "every changed line is covered by a test that can fail",
+        "go test ./... passes and the lint step passes",
+        "no file outside scope.paths changes, except this run's own delivery record under docs/features/factory-fetch-each-pass/"
+      ]
+    }
+  ],
+  "retrieval": {
+    "linkedAdrs": [
+      "docs/adrs/ADR-010-factory-order-state-and-policy-configuration.md"
+    ]
+  }
+}

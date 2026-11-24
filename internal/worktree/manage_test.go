@@ -257,3 +257,54 @@ func TestPushWithoutAnOriginFails(t *testing.T) {
 		t.Error("a push with no origin succeeded")
 	}
 }
+
+func TestFetchUpdatesTheRemoteTrackingRef(t *testing.T) {
+	upstream := baseRepo(t)
+	clone := t.TempDir()
+	git(t, clone, "clone", "-q", upstream, ".")
+
+	writeFile(t, filepath.Join(upstream, "second.md"), "second\n")
+	commitAll(t, upstream)
+	moved, err := worktree.New(upstream).ResolveCommit("main")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	repo := worktree.New(clone)
+	if err := repo.Fetch("origin", "main"); err != nil {
+		t.Fatalf("fetch: %v", err)
+	}
+	if got, err := repo.ResolveCommit("origin/main"); err != nil || got != moved {
+		t.Errorf("ResolveCommit(origin/main) after fetch = %q, %v; want %q", got, err, moved)
+	}
+}
+
+// A failing fetch carries git's own explanation, not just an exit status.
+func TestFetchFailsWithGitsOwnStderr(t *testing.T) {
+	err := worktree.New(baseRepo(t)).Fetch("origin", "main")
+	if err == nil {
+		t.Fatal("a fetch with no remote named origin succeeded")
+	}
+	if !strings.Contains(err.Error(), "origin") {
+		t.Errorf("error %q lacks git's own message naming the remote", err)
+	}
+}
+
+func TestRemotesReportsAGitFailure(t *testing.T) {
+	if _, err := worktree.New(t.TempDir()).Remotes(); err == nil {
+		t.Error("Remotes() outside any git repository succeeded")
+	}
+}
+
+func TestRemotesListsConfiguredNamesAndIsEmptyOnABareLocalRepo(t *testing.T) {
+	root := baseRepo(t)
+	repo := worktree.New(root)
+	if remotes, err := repo.Remotes(); err != nil || len(remotes) != 0 {
+		t.Errorf("Remotes() on a fresh repository = %v, %v; want none", remotes, err)
+	}
+
+	git(t, root, "remote", "add", "origin", "https://example.invalid/repo.git")
+	if remotes, err := repo.Remotes(); err != nil || strings.Join(remotes, ",") != "origin" {
+		t.Errorf("Remotes() = %v, %v; want [origin]", remotes, err)
+	}
+}

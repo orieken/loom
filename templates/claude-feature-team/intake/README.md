@@ -90,8 +90,11 @@ it exits 1 if any order breaks a rule, and names the file and field for each.
 
 ### Enforced at pickup, by `loom factory` (ADR-010)
 
-- The supervisor reads orders **committed on `base-branch`**, never your working tree. Flipping an order
-  to `ready` is a commit, so an order reaches the factory reviewed, the way code reaches `main`.
+- The supervisor **fetches `--remote` (default `origin`) once at the start of every pass**, then reads
+  orders **committed there**, never your working tree. Flipping an order to `ready` must be **pushed**,
+  not just committed locally, for the next pass to see it — the way code reaches `main` reviewed.
+  `--no-fetch` restores reading the local branch only, with no fetch, exactly as before this behavior
+  existed.
 - A claim runs from a **snapshot** of the order taken at that commit. Editing the intake file afterwards
   never changes a running order; the approval inbox shows "changed since claim" and you choose whether to
   re-run.

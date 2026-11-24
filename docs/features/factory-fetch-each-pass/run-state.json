@@ -1,0 +1,585 @@
+{
+  "schemaVersion": 10,
+  "planName": "deliver-feature",
+  "createdBy": "executor",
+  "featureName": "factory-fetch-each-pass",
+  "specPath": ".claude/factory/claims/factory-fetch-each-pass.md",
+  "specSha256": "6357e25fed4ec056bbd50d3246c186a142ca4f64037037200ce5047979744e5d",
+  "provider": "claude",
+  "startedAt": "2026-11-23T19:46:35.914662Z",
+  "startCommit": "e45813eab690266501594d45002d6cc6baae9f00",
+  "diffLines": {
+    "confirm-design": 2839,
+    "confirm-security": 2839,
+    "confirm-ship": 2839
+  },
+  "reviewedDigest": "16c11f25f234c91265de59c7b57fd6f9f9a8a4ecc3653841ee368e71c9f80437",
+  "stages": {
+    "acceptance-scenarios": {
+      "status": "COMPLETED",
+      "startedAt": "2026-11-23T22:04:59.55883Z",
+      "finishedAt": "2026-11-23T22:06:26.83797Z",
+      "artifactPath": ".claude/feature-workspace/factory-fetch-each-pass/state/acceptance-scenarios.json",
+      "artifactSha256": "eb0ca18861c148ee8eec0eb0ba274704aa97657f68e2d260b869f82afd902f3f",
+      "sequence": 9,
+      "iteration": 1,
+      "stateKind": "scenarios",
+      "agent": "qa-engineer",
+      "viewPath": ".claude/feature-workspace/factory-fetch-each-pass/acceptance-scenarios.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 14,
+        "outputTokens": 8317,
+        "cacheReadTokens": 524938,
+        "cacheCreationTokens": 67984,
+        "costUsd": 0.4601216
+      }
+    },
+    "accessibility-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-11-23T22:02:04.759015Z",
+      "sequence": 5,
+      "skipReason": "the analysis declares no UI surface",
+      "iteration": 1
+    },
+    "analyst": {
+      "status": "COMPLETED",
+      "startedAt": "2026-11-23T21:54:28.605835Z",
+      "finishedAt": "2026-11-23T22:02:04.707325Z",
+      "artifactPath": ".claude/feature-workspace/factory-fetch-each-pass/state/analyst.json",
+      "artifactSha256": "96e2e2f9bbad090fc3e82fcafd99b3b1e40bfbf8ec958ea33ed7869d6d9b0210",
+      "sequence": 2,
+      "iteration": 1,
+      "stateKind": "analysis",
+      "agent": "analyst",
+      "viewPath": ".claude/feature-workspace/factory-fetch-each-pass/analysis.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 36,
+        "outputTokens": 42859,
+        "cacheReadTokens": 2090305,
+        "cacheCreationTokens": 147567,
+        "costUsd": 1.4369910000000004
+      }
+    },
+    "architect": {
+      "status": "COMPLETED",
+      "startedAt": "2026-11-23T22:02:04.759447Z",
+      "finishedAt": "2026-11-23T22:03:44.314798Z",
+      "artifactPath": ".claude/feature-workspace/factory-fetch-each-pass/state/architect.json",
+      "artifactSha256": "aaa3754e66c6f2038929c6ded9c6409a4e1a7a1a902ccc39517ad0d7ccb1befd",
+      "sequence": 7,
+      "iteration": 1,
+      "stateKind": "architecture",
+      "agent": "architect",
+      "viewPath": ".claude/feature-workspace/factory-fetch-each-pass/architecture-notes.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 12,
+        "outputTokens": 8656,
+        "cacheReadTokens": 480965,
+        "cacheCreationTokens": 74289,
+        "costUsd": 0.47993300000000005
+      }
+    },
+    "code-reviewer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-11-24T03:20:47.648493Z",
+      "finishedAt": "2026-11-24T03:23:30.450703Z",
+      "artifactPath": ".claude/feature-workspace/factory-fetch-each-pass/state/code-reviewer.json",
+      "artifactSha256": "5fe132721aec55a29bbe2da1f15a9719e2b841e60b58da3628b8a7ee8ff456c0",
+      "sequence": 11,
+      "iteration": 2,
+      "stateKind": "review",
+      "agent": "code-reviewer",
+      "viewPath": ".claude/feature-workspace/factory-fetch-each-pass/code-review-report.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 100,
+        "outputTokens": 22245,
+        "cacheReadTokens": 5181332,
+        "cacheCreationTokens": 222038,
+        "costUsd": 2.1470683999999993
+      },
+      "iterationArtifacts": [
+        {
+          "iteration": 1,
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.iterations/code-reviewer.1.json",
+          "sha256": "4fddbaaed6cde524fb6888ea22eda5793346ca7c06b22fa0670700696e939700",
+          "at": "2026-11-24T03:19:23.175941Z"
+        }
+      ]
+    },
+    "context-engineer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-11-23T21:52:46.29843Z",
+      "finishedAt": "2026-11-23T21:54:28.605505Z",
+      "artifactPath": ".claude/feature-workspace/factory-fetch-each-pass/state/context-engineer.json",
+      "artifactSha256": "ca479ef64e5b20c32ae19be00219119f2088688f47b1bc5f283770fd5ff96ae2",
+      "sequence": 1,
+      "iteration": 1,
+      "stateKind": "context",
+      "agent": "context-engineer",
+      "viewPath": ".claude/feature-workspace/factory-fetch-each-pass/context-manifest.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 64,
+        "outputTokens": 23398,
+        "cacheReadTokens": 3116541,
+        "cacheCreationTokens": 212260,
+        "costUsd": 1.7064562
+      }
+    },
+    "data-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-11-23T22:02:04.758808Z",
+      "sequence": 4,
+      "skipReason": "no data-model change to sequence",
+      "iteration": 1
+    },
+    "developer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-11-24T03:19:23.203223Z",
+      "finishedAt": "2026-11-24T03:20:47.64769Z",
+      "artifactPath": ".claude/feature-workspace/factory-fetch-each-pass/state/developer.json",
+      "artifactSha256": "7c659b190b48b45de37eddd0b82e10c2d401980c1c5c548ea7fa5e64d2a16c0f",
+      "gate": "confirm-design",
+      "sequence": 10,
+      "editedAfterReview": true,
+      "iteration": 2,
+      "stateKind": "implementation",
+      "agent": "developer",
+      "viewPath": ".claude/feature-workspace/factory-fetch-each-pass/implementation-notes.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 216,
+        "outputTokens": 72407,
+        "cacheReadTokens": 19026053,
+        "cacheCreationTokens": 288646,
+        "costUsd": 5.6842966
+      },
+      "iterationArtifacts": [
+        {
+          "iteration": 1,
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.iterations/developer.1.json",
+          "sha256": "1b29d018ed349fbd2fd4c0796d5bf069d5a7e7e8a201b0cb048cf9e2ce948c26",
+          "at": "2026-11-24T03:19:23.175636Z"
+        }
+      ]
+    },
+    "devops-engineer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-11-24T21:11:49.740007Z",
+      "finishedAt": "2026-11-24T21:12:32.911666Z",
+      "artifactPath": ".claude/feature-workspace/factory-fetch-each-pass/devops-engineer.md",
+      "artifactSha256": "802edbcff47776bee257ef9135f4896cca0d896c40dd18f89f29debaa3fa71b9",
+      "gate": "confirm-ship",
+      "sequence": 17,
+      "iteration": 1,
+      "agent": "devops-engineer",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 12,
+        "outputTokens": 3201,
+        "cacheReadTokens": 441854,
+        "cacheCreationTokens": 74789,
+        "costUsd": 0.41956080000000007
+      }
+    },
+    "performance-engineer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-11-23T22:03:44.31532Z",
+      "finishedAt": "2026-11-23T22:04:59.558132Z",
+      "artifactPath": ".claude/feature-workspace/factory-fetch-each-pass/performance-engineer.md",
+      "artifactSha256": "3b7f7337a52546c6ba9184c1824c188ea749d9223b9a5452e266495cbaa8da3e",
+      "sequence": 8,
+      "iteration": 1,
+      "agent": "performance-engineer",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 6,
+        "outputTokens": 6470,
+        "cacheReadTokens": 172899,
+        "cacheCreationTokens": 71282,
+        "costUsd": 0.3844198
+      }
+    },
+    "pre-ship-checks": {
+      "status": "COMPLETED",
+      "startedAt": "2026-11-24T21:05:12.386671Z",
+      "finishedAt": "2026-11-24T21:06:42.894889Z",
+      "artifactPath": ".claude/feature-workspace/factory-fetch-each-pass/pre-ship-checks.md",
+      "artifactSha256": "d070f21ff857e3ebf66be3c388b9a886daf90dca4b1c1018c9d0eeb7d4dfce6f",
+      "sequence": 16,
+      "iteration": 1,
+      "agent": "pre-ship-checks"
+    },
+    "qa-engineer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-11-24T20:46:38.42488Z",
+      "finishedAt": "2026-11-24T21:00:44.534193Z",
+      "artifactPath": ".claude/feature-workspace/factory-fetch-each-pass/state/qa-engineer.json",
+      "artifactSha256": "f49ecf4f14756affdf279a3de50fc25ea5cedfd3501075eabe4570014f7f4bea",
+      "gate": "confirm-security",
+      "sequence": 13,
+      "iteration": 1,
+      "stateKind": "qa",
+      "agent": "qa-engineer",
+      "viewPath": ".claude/feature-workspace/factory-fetch-each-pass/qa-report.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 104,
+        "outputTokens": 19062,
+        "cacheReadTokens": 6804595,
+        "cacheCreationTokens": 140470,
+        "costUsd": 2.113627
+      }
+    },
+    "router": {
+      "status": "COMPLETED",
+      "startedAt": "2026-11-23T22:02:04.708081Z",
+      "finishedAt": "2026-11-23T22:02:04.758497Z",
+      "artifactPath": ".claude/feature-workspace/factory-fetch-each-pass/state/router.json",
+      "artifactSha256": "f9e7ecfb93c3a9c4040b0542720e140a9c584bc36fff26d550efb7b6dfc3f07f",
+      "sequence": 3,
+      "iteration": 1,
+      "stateKind": "route",
+      "agent": "router",
+      "viewPath": ".claude/feature-workspace/factory-fetch-each-pass/route.md"
+    },
+    "security-reviewer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-11-24T03:23:30.451497Z",
+      "finishedAt": "2026-11-24T03:25:22.531011Z",
+      "artifactPath": ".claude/feature-workspace/factory-fetch-each-pass/state/security-reviewer.json",
+      "artifactSha256": "761f7cf252e6c5e6208115f663180d3df8bcdeb7379c2932014acf581fe658da",
+      "sequence": 12,
+      "iteration": 1,
+      "stateKind": "security",
+      "agent": "security-reviewer",
+      "viewPath": ".claude/feature-workspace/factory-fetch-each-pass/security-report.md",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 26,
+        "outputTokens": 8812,
+        "cacheReadTokens": 1123393,
+        "cacheCreationTokens": 82378,
+        "costUsd": 0.6423626
+      }
+    },
+    "sre-engineer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-11-24T21:00:44.53497Z",
+      "finishedAt": "2026-11-24T21:03:35.695159Z",
+      "artifactPath": ".claude/feature-workspace/factory-fetch-each-pass/sre-engineer.md",
+      "artifactSha256": "a1b03a746775a56492ee567cf89133734bfbca381895cacd36ace17a39c1f92d",
+      "sequence": 14,
+      "iteration": 1,
+      "agent": "sre-engineer",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 36,
+        "outputTokens": 13192,
+        "cacheReadTokens": 1744851,
+        "cacheCreationTokens": 93396,
+        "costUsd": 0.8545462
+      }
+    },
+    "tech-writer": {
+      "status": "COMPLETED",
+      "startedAt": "2026-11-24T21:03:35.69602Z",
+      "finishedAt": "2026-11-24T21:05:12.385766Z",
+      "artifactPath": ".claude/feature-workspace/factory-fetch-each-pass/tech-writer.md",
+      "artifactSha256": "f6eccb2d1a058c4c28768bc82d23ac2352e057e919ea2b4f8bd941e9e735cdf4",
+      "sequence": 15,
+      "iteration": 1,
+      "agent": "tech-writer",
+      "usage": {
+        "model": "claude-sonnet-5",
+        "inputTokens": 16,
+        "outputTokens": 9267,
+        "cacheReadTokens": 687433,
+        "cacheCreationTokens": 94068,
+        "costUsd": 0.6064605999999999
+      }
+    },
+    "visual-qa-engineer": {
+      "status": "SKIPPED",
+      "startedAt": "0001-01-01T00:00:00Z",
+      "finishedAt": "2026-11-23T22:02:04.759202Z",
+      "sequence": 6,
+      "skipReason": "the analysis declares no UI surface, so there is nothing to look at",
+      "iteration": 1
+    }
+  },
+  "approvals": {
+    "confirm-design": {
+      "approvedAt": "2026-11-23T22:22:47.156787Z",
+      "method": "flag",
+      "approver": "oscarrieken",
+      "artifactDigests": {
+        "acceptance-scenarios": "eb0ca18861c148ee8eec0eb0ba274704aa97657f68e2d260b869f82afd902f3f",
+        "analyst": "96e2e2f9bbad090fc3e82fcafd99b3b1e40bfbf8ec958ea33ed7869d6d9b0210",
+        "architect": "aaa3754e66c6f2038929c6ded9c6409a4e1a7a1a902ccc39517ad0d7ccb1befd",
+        "context-engineer": "ca479ef64e5b20c32ae19be00219119f2088688f47b1bc5f283770fd5ff96ae2",
+        "performance-engineer": "3b7f7337a52546c6ba9184c1824c188ea749d9223b9a5452e266495cbaa8da3e",
+        "router": "f9e7ecfb93c3a9c4040b0542720e140a9c584bc36fff26d550efb7b6dfc3f07f"
+      }
+    },
+    "confirm-security": {
+      "approvedAt": "2026-11-24T20:46:38.348901Z",
+      "method": "flag",
+      "approver": "oscarrieken",
+      "artifactDigests": {
+        "acceptance-scenarios": "eb0ca18861c148ee8eec0eb0ba274704aa97657f68e2d260b869f82afd902f3f",
+        "analyst": "96e2e2f9bbad090fc3e82fcafd99b3b1e40bfbf8ec958ea33ed7869d6d9b0210",
+        "architect": "aaa3754e66c6f2038929c6ded9c6409a4e1a7a1a902ccc39517ad0d7ccb1befd",
+        "code-reviewer": "5fe132721aec55a29bbe2da1f15a9719e2b841e60b58da3628b8a7ee8ff456c0",
+        "context-engineer": "ca479ef64e5b20c32ae19be00219119f2088688f47b1bc5f283770fd5ff96ae2",
+        "developer": "7c659b190b48b45de37eddd0b82e10c2d401980c1c5c548ea7fa5e64d2a16c0f",
+        "performance-engineer": "3b7f7337a52546c6ba9184c1824c188ea749d9223b9a5452e266495cbaa8da3e",
+        "router": "f9e7ecfb93c3a9c4040b0542720e140a9c584bc36fff26d550efb7b6dfc3f07f",
+        "security-reviewer": "761f7cf252e6c5e6208115f663180d3df8bcdeb7379c2932014acf581fe658da"
+      }
+    },
+    "confirm-ship": {
+      "approvedAt": "2026-11-24T21:11:49.614959Z",
+      "method": "flag",
+      "approver": "oscarrieken",
+      "artifactDigests": {
+        "acceptance-scenarios": "eb0ca18861c148ee8eec0eb0ba274704aa97657f68e2d260b869f82afd902f3f",
+        "analyst": "96e2e2f9bbad090fc3e82fcafd99b3b1e40bfbf8ec958ea33ed7869d6d9b0210",
+        "architect": "aaa3754e66c6f2038929c6ded9c6409a4e1a7a1a902ccc39517ad0d7ccb1befd",
+        "code-reviewer": "5fe132721aec55a29bbe2da1f15a9719e2b841e60b58da3628b8a7ee8ff456c0",
+        "context-engineer": "ca479ef64e5b20c32ae19be00219119f2088688f47b1bc5f283770fd5ff96ae2",
+        "developer": "7c659b190b48b45de37eddd0b82e10c2d401980c1c5c548ea7fa5e64d2a16c0f",
+        "performance-engineer": "3b7f7337a52546c6ba9184c1824c188ea749d9223b9a5452e266495cbaa8da3e",
+        "pre-ship-checks": "d070f21ff857e3ebf66be3c388b9a886daf90dca4b1c1018c9d0eeb7d4dfce6f",
+        "qa-engineer": "f49ecf4f14756affdf279a3de50fc25ea5cedfd3501075eabe4570014f7f4bea",
+        "router": "f9e7ecfb93c3a9c4040b0542720e140a9c584bc36fff26d550efb7b6dfc3f07f",
+        "security-reviewer": "761f7cf252e6c5e6208115f663180d3df8bcdeb7379c2932014acf581fe658da",
+        "sre-engineer": "a1b03a746775a56492ee567cf89133734bfbca381895cacd36ace17a39c1f92d",
+        "tech-writer": "f6eccb2d1a058c4c28768bc82d23ac2352e057e919ea2b4f8bd941e9e735cdf4"
+      }
+    }
+  },
+  "baselines": {
+    "confirm-design": {
+      "at": "2026-11-23T22:22:47.156794Z",
+      "reason": "APPROVED",
+      "artifacts": {
+        "acceptance-scenarios": {
+          "stage": "acceptance-scenarios",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-design/acceptance-scenarios.md",
+          "sha256": "32df1c433c308b2c3c5368878b50b0277f5ff55dcea9585cf71d818ce0bc6073",
+          "at": "2026-11-23T22:22:47.157952Z"
+        },
+        "analyst": {
+          "stage": "analyst",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-design/analyst.md",
+          "sha256": "1e3fed5208c102711e2c7222d72ade9a3e2063029204c6e73164136825c74ff9",
+          "at": "2026-11-23T22:22:47.15781Z"
+        },
+        "architect": {
+          "stage": "architect",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-design/architect.md",
+          "sha256": "d378003295dd27b1eaf03cdb45ff424ad8c4baa0dd18bd7760651850298a344f",
+          "at": "2026-11-23T22:22:47.157171Z"
+        },
+        "context-engineer": {
+          "stage": "context-engineer",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-design/context-engineer.md",
+          "sha256": "0e89f780a9bc9400ce361e1ac8d74e49a68fa2c52dc7f70eb410e9894eaecb9d",
+          "at": "2026-11-23T22:22:47.1582Z"
+        },
+        "performance-engineer": {
+          "stage": "performance-engineer",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-design/performance-engineer.md",
+          "sha256": "3b7f7337a52546c6ba9184c1824c188ea749d9223b9a5452e266495cbaa8da3e",
+          "at": "2026-11-23T22:22:47.158088Z"
+        },
+        "router": {
+          "stage": "router",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-design/router.md",
+          "sha256": "307ae5042686ebf9b59066154a1ee78a1b8220a26f2a938dfd4ad7ceace5c05e",
+          "at": "2026-11-23T22:22:47.157009Z"
+        }
+      }
+    },
+    "confirm-security": {
+      "at": "2026-11-24T20:46:38.348911Z",
+      "reason": "APPROVED",
+      "artifacts": {
+        "acceptance-scenarios": {
+          "stage": "acceptance-scenarios",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-security/acceptance-scenarios.md",
+          "sha256": "32df1c433c308b2c3c5368878b50b0277f5ff55dcea9585cf71d818ce0bc6073",
+          "at": "2026-11-24T20:46:38.351387Z"
+        },
+        "analyst": {
+          "stage": "analyst",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-security/analyst.md",
+          "sha256": "1e3fed5208c102711e2c7222d72ade9a3e2063029204c6e73164136825c74ff9",
+          "at": "2026-11-24T20:46:38.351768Z"
+        },
+        "architect": {
+          "stage": "architect",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-security/architect.md",
+          "sha256": "d378003295dd27b1eaf03cdb45ff424ad8c4baa0dd18bd7760651850298a344f",
+          "at": "2026-11-24T20:46:38.351502Z"
+        },
+        "code-reviewer": {
+          "stage": "code-reviewer",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-security/code-reviewer.md",
+          "sha256": "d32b5580c910c6a636f0ec851c56859294130fa17ddea9ed046acb81a92a8fbd",
+          "at": "2026-11-24T20:46:38.351593Z"
+        },
+        "context-engineer": {
+          "stage": "context-engineer",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-security/context-engineer.md",
+          "sha256": "0e89f780a9bc9400ce361e1ac8d74e49a68fa2c52dc7f70eb410e9894eaecb9d",
+          "at": "2026-11-24T20:46:38.352132Z"
+        },
+        "developer": {
+          "stage": "developer",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-security/developer.md",
+          "sha256": "9ff81fdbf0337f9b18fcb8441e656a12b35c4fcb86be60eca7216d453aed6ca7",
+          "at": "2026-11-24T20:46:38.351685Z"
+        },
+        "performance-engineer": {
+          "stage": "performance-engineer",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-security/performance-engineer.md",
+          "sha256": "3b7f7337a52546c6ba9184c1824c188ea749d9223b9a5452e266495cbaa8da3e",
+          "at": "2026-11-24T20:46:38.351885Z"
+        },
+        "router": {
+          "stage": "router",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-security/router.md",
+          "sha256": "307ae5042686ebf9b59066154a1ee78a1b8220a26f2a938dfd4ad7ceace5c05e",
+          "at": "2026-11-24T20:46:38.349278Z"
+        },
+        "security-reviewer": {
+          "stage": "security-reviewer",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-security/security-reviewer.md",
+          "sha256": "d8eafbe96fa0347caf1268493dada27c4a1e8edf2a93f27a907f1c81a2a6c4d0",
+          "at": "2026-11-24T20:46:38.352003Z"
+        }
+      }
+    },
+    "confirm-ship": {
+      "at": "2026-11-24T21:11:49.614975Z",
+      "reason": "APPROVED",
+      "artifacts": {
+        "acceptance-scenarios": {
+          "stage": "acceptance-scenarios",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-ship/acceptance-scenarios.md",
+          "sha256": "32df1c433c308b2c3c5368878b50b0277f5ff55dcea9585cf71d818ce0bc6073",
+          "at": "2026-11-24T21:11:49.615327Z"
+        },
+        "analyst": {
+          "stage": "analyst",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-ship/analyst.md",
+          "sha256": "1e3fed5208c102711e2c7222d72ade9a3e2063029204c6e73164136825c74ff9",
+          "at": "2026-11-24T21:11:49.61653Z"
+        },
+        "architect": {
+          "stage": "architect",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-ship/architect.md",
+          "sha256": "d378003295dd27b1eaf03cdb45ff424ad8c4baa0dd18bd7760651850298a344f",
+          "at": "2026-11-24T21:11:49.616642Z"
+        },
+        "code-reviewer": {
+          "stage": "code-reviewer",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-ship/code-reviewer.md",
+          "sha256": "d32b5580c910c6a636f0ec851c56859294130fa17ddea9ed046acb81a92a8fbd",
+          "at": "2026-11-24T21:11:49.616268Z"
+        },
+        "context-engineer": {
+          "stage": "context-engineer",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-ship/context-engineer.md",
+          "sha256": "0e89f780a9bc9400ce361e1ac8d74e49a68fa2c52dc7f70eb410e9894eaecb9d",
+          "at": "2026-11-24T21:11:49.615955Z"
+        },
+        "developer": {
+          "stage": "developer",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-ship/developer.md",
+          "sha256": "9ff81fdbf0337f9b18fcb8441e656a12b35c4fcb86be60eca7216d453aed6ca7",
+          "at": "2026-11-24T21:11:49.616091Z"
+        },
+        "performance-engineer": {
+          "stage": "performance-engineer",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-ship/performance-engineer.md",
+          "sha256": "3b7f7337a52546c6ba9184c1824c188ea749d9223b9a5452e266495cbaa8da3e",
+          "at": "2026-11-24T21:11:49.616734Z"
+        },
+        "pre-ship-checks": {
+          "stage": "pre-ship-checks",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-ship/pre-ship-checks.md",
+          "sha256": "d070f21ff857e3ebf66be3c388b9a886daf90dca4b1c1018c9d0eeb7d4dfce6f",
+          "at": "2026-11-24T21:11:49.615183Z"
+        },
+        "qa-engineer": {
+          "stage": "qa-engineer",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-ship/qa-engineer.md",
+          "sha256": "eb546c6fbeb341392162ed7b32b67832a731689fde82862031c4257752fdbc9d",
+          "at": "2026-11-24T21:11:49.617005Z"
+        },
+        "router": {
+          "stage": "router",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-ship/router.md",
+          "sha256": "307ae5042686ebf9b59066154a1ee78a1b8220a26f2a938dfd4ad7ceace5c05e",
+          "at": "2026-11-24T21:11:49.616815Z"
+        },
+        "security-reviewer": {
+          "stage": "security-reviewer",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-ship/security-reviewer.md",
+          "sha256": "d8eafbe96fa0347caf1268493dada27c4a1e8edf2a93f27a907f1c81a2a6c4d0",
+          "at": "2026-11-24T21:11:49.616179Z"
+        },
+        "sre-engineer": {
+          "stage": "sre-engineer",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-ship/sre-engineer.md",
+          "sha256": "a1b03a746775a56492ee567cf89133734bfbca381895cacd36ace17a39c1f92d",
+          "at": "2026-11-24T21:11:49.616902Z"
+        },
+        "tech-writer": {
+          "stage": "tech-writer",
+          "path": ".claude/feature-workspace/factory-fetch-each-pass/.approved/confirm-ship/tech-writer.md",
+          "sha256": "f6eccb2d1a058c4c28768bc82d23ac2352e057e919ea2b4f8bd941e9e735cdf4",
+          "at": "2026-11-24T21:11:49.615836Z"
+        }
+      }
+    }
+  },
+  "policyDecisions": [
+    {
+      "gate": "confirm-ship",
+      "at": "2026-11-24T21:06:42.924618Z",
+      "effect": "auto-approve",
+      "honoured": false,
+      "policies": [
+        {
+          "name": "evidence-clean-ship",
+          "action": "auto-approve",
+          "outcome": "TRUE",
+          "source": ".claude/policies/evidence-clean-ship.policy.yaml"
+        }
+      ]
+    }
+  ],
+  "spend": {
+    "model": "claude-sonnet-5",
+    "inputTokens": 642,
+    "outputTokens": 237886,
+    "cacheReadTokens": 41395159,
+    "cacheCreationTokens": 1569167,
+    "costUsd": 16.9358438
+  },
+  "budget": {
+    "maxUsd": 20,
+    "maxHours": 3
+  },
+  "updatedAt": "2026-11-24T21:12:32.911737Z"
+}

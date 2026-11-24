@@ -1,0 +1,90 @@
+{"at":"2026-11-23T19:46:35.921271Z","kind":"run.started"}
+{"at":"2026-11-23T19:46:35.921661Z","kind":"stage.started","stage":"context-engineer","sequence":1}
+{"at":"2026-11-23T19:50:02.632356Z","kind":"stage.failed","stage":"context-engineer","sequence":1,"error":"stage \"context-engineer\" returned invalid state: payload does not conform to the stage schema: json: unknown field \"notes\" — the rejected payload is at .claude/feature-workspace/factory-fetch-each-pass/state/context-engineer.rejected.json"}
+{"at":"2026-11-23T19:51:57.339026Z","kind":"run.resumed"}
+{"at":"2026-11-23T19:51:57.339464Z","kind":"stage.started","stage":"context-engineer","sequence":1}
+{"at":"2026-11-23T19:51:58.865268Z","kind":"stage.failed","stage":"context-engineer","sequence":1,"error":"stage \"context-engineer\": provider unavailable: You've hit your session limit · resets 4:40pm (America/New_York)"}
+{"at":"2026-11-23T20:22:08.599386Z","kind":"run.resumed"}
+{"at":"2026-11-23T20:22:08.599929Z","kind":"stage.started","stage":"context-engineer","sequence":1}
+{"at":"2026-11-23T20:22:10.108903Z","kind":"stage.failed","stage":"context-engineer","sequence":1,"error":"stage \"context-engineer\": provider unavailable: You've hit your session limit · resets 4:40pm (America/New_York)"}
+{"at":"2026-11-23T20:52:21.090577Z","kind":"run.resumed"}
+{"at":"2026-11-23T20:52:21.090906Z","kind":"stage.started","stage":"context-engineer","sequence":1}
+{"at":"2026-11-23T20:52:22.564506Z","kind":"stage.failed","stage":"context-engineer","sequence":1,"error":"stage \"context-engineer\": provider unavailable: You've hit your session limit · resets 4:40pm (America/New_York)"}
+{"at":"2026-11-23T21:22:33.560712Z","kind":"run.resumed"}
+{"at":"2026-11-23T21:22:33.561397Z","kind":"stage.started","stage":"context-engineer","sequence":1}
+{"at":"2026-11-23T21:22:35.150862Z","kind":"stage.failed","stage":"context-engineer","sequence":1,"error":"stage \"context-engineer\": provider unavailable: You've hit your session limit · resets 4:40pm (America/New_York)"}
+{"at":"2026-11-23T21:52:46.298287Z","kind":"run.resumed"}
+{"at":"2026-11-23T21:52:46.298675Z","kind":"stage.started","stage":"context-engineer","sequence":1}
+{"at":"2026-11-23T21:54:28.605749Z","kind":"stage.completed","stage":"context-engineer","sequence":1}
+{"at":"2026-11-23T21:54:28.605989Z","kind":"stage.started","stage":"analyst","sequence":2}
+{"at":"2026-11-23T22:02:04.70765Z","kind":"stage.completed","stage":"analyst","sequence":2}
+{"at":"2026-11-23T22:02:04.708258Z","kind":"stage.started","stage":"router","sequence":3}
+{"at":"2026-11-23T22:02:04.758749Z","kind":"stage.completed","stage":"router","sequence":3}
+{"at":"2026-11-23T22:02:04.758986Z","kind":"stage.skipped","stage":"data-engineer","sequence":4,"reason":"no data-model change to sequence"}
+{"at":"2026-11-23T22:02:04.75918Z","kind":"stage.skipped","stage":"accessibility-engineer","sequence":5,"reason":"the analysis declares no UI surface"}
+{"at":"2026-11-23T22:02:04.75938Z","kind":"stage.skipped","stage":"visual-qa-engineer","sequence":6,"reason":"the analysis declares no UI surface, so there is nothing to look at"}
+{"at":"2026-11-23T22:02:04.759628Z","kind":"stage.started","stage":"architect","sequence":7}
+{"at":"2026-11-23T22:03:44.315211Z","kind":"stage.completed","stage":"architect","sequence":7}
+{"at":"2026-11-23T22:03:44.315516Z","kind":"stage.started","stage":"performance-engineer","sequence":8}
+{"at":"2026-11-23T22:04:59.558715Z","kind":"stage.completed","stage":"performance-engineer","sequence":8}
+{"at":"2026-11-23T22:04:59.559054Z","kind":"stage.started","stage":"acceptance-scenarios","sequence":9}
+{"at":"2026-11-23T22:06:26.838323Z","kind":"stage.completed","stage":"acceptance-scenarios","sequence":9}
+{"at":"2026-11-23T22:06:26.865175Z","kind":"gate.waiting","stage":"developer","gate":"confirm-design"}
+{"at":"2026-11-23T22:22:47.158593Z","kind":"gate.approved","gate":"confirm-design","approvalMethod":"flag"}
+{"at":"2026-11-23T22:22:47.159217Z","kind":"run.resumed"}
+{"at":"2026-11-23T22:22:47.215262Z","kind":"stage.started","stage":"developer","sequence":10}
+{"at":"2026-11-23T22:42:19.01753Z","kind":"stage.completed","stage":"developer","sequence":10}
+{"at":"2026-11-23T22:42:19.018181Z","kind":"stage.started","stage":"code-reviewer","sequence":11}
+{"at":"2026-11-23T22:42:25.38276Z","kind":"stage.failed","stage":"code-reviewer","sequence":11,"error":"stage \"code-reviewer\": provider unavailable: You've hit your session limit · resets 9:50pm (America/New_York)"}
+{"at":"2026-11-23T23:12:35.000254Z","kind":"run.resumed"}
+{"at":"2026-11-23T23:12:35.029083Z","kind":"stage.started","stage":"code-reviewer","sequence":11}
+{"at":"2026-11-23T23:12:36.560541Z","kind":"stage.failed","stage":"code-reviewer","sequence":11,"error":"stage \"code-reviewer\": provider unavailable: You've hit your session limit · resets 9:50pm (America/New_York)"}
+{"at":"2026-11-23T23:42:46.81839Z","kind":"run.resumed"}
+{"at":"2026-11-23T23:42:46.871343Z","kind":"stage.started","stage":"code-reviewer","sequence":11}
+{"at":"2026-11-23T23:42:48.38002Z","kind":"stage.failed","stage":"code-reviewer","sequence":11,"error":"stage \"code-reviewer\": provider unavailable: You've hit your session limit · resets 9:50pm (America/New_York)"}
+{"at":"2026-11-24T00:12:58.414934Z","kind":"run.resumed"}
+{"at":"2026-11-24T00:12:58.450379Z","kind":"stage.started","stage":"code-reviewer","sequence":11}
+{"at":"2026-11-24T00:12:59.959594Z","kind":"stage.failed","stage":"code-reviewer","sequence":11,"error":"stage \"code-reviewer\": provider unavailable: You've hit your session limit · resets 9:50pm (America/New_York)"}
+{"at":"2026-11-24T00:43:09.667627Z","kind":"run.resumed"}
+{"at":"2026-11-24T00:43:09.721908Z","kind":"stage.started","stage":"code-reviewer","sequence":11}
+{"at":"2026-11-24T00:43:12.842594Z","kind":"stage.failed","stage":"code-reviewer","sequence":11,"error":"stage \"code-reviewer\": provider unavailable: You've hit your session limit · resets 9:50pm (America/New_York)"}
+{"at":"2026-11-24T01:13:22.456697Z","kind":"run.resumed"}
+{"at":"2026-11-24T01:13:22.510292Z","kind":"stage.started","stage":"code-reviewer","sequence":11}
+{"at":"2026-11-24T01:13:24.508987Z","kind":"stage.failed","stage":"code-reviewer","sequence":11,"error":"stage \"code-reviewer\": provider unavailable: You've hit your session limit · resets 9:50pm (America/New_York)"}
+{"at":"2026-11-24T01:43:34.131486Z","kind":"run.resumed"}
+{"at":"2026-11-24T01:43:34.186111Z","kind":"stage.started","stage":"code-reviewer","sequence":11}
+{"at":"2026-11-24T01:43:35.709221Z","kind":"stage.failed","stage":"code-reviewer","sequence":11,"error":"stage \"code-reviewer\": provider unavailable: You've hit your session limit · resets 9:50pm (America/New_York)"}
+{"at":"2026-11-24T02:13:46.867863Z","kind":"run.resumed"}
+{"at":"2026-11-24T02:13:46.921552Z","kind":"stage.started","stage":"code-reviewer","sequence":11}
+{"at":"2026-11-24T02:13:48.406579Z","kind":"stage.failed","stage":"code-reviewer","sequence":11,"error":"stage \"code-reviewer\": provider unavailable: You've hit your session limit · resets 9:50pm (America/New_York)"}
+{"at":"2026-11-24T02:43:58.197426Z","kind":"run.resumed"}
+{"at":"2026-11-24T02:43:58.240559Z","kind":"stage.started","stage":"code-reviewer","sequence":11}
+{"at":"2026-11-24T02:43:59.782222Z","kind":"stage.failed","stage":"code-reviewer","sequence":11,"error":"stage \"code-reviewer\": provider unavailable: You've hit your session limit · resets 9:50pm (America/New_York)"}
+{"at":"2026-11-24T03:14:09.915017Z","kind":"run.resumed"}
+{"at":"2026-11-24T03:14:09.969678Z","kind":"stage.started","stage":"code-reviewer","sequence":11}
+{"at":"2026-11-24T03:19:23.175013Z","kind":"stage.completed","stage":"code-reviewer","sequence":11}
+{"at":"2026-11-24T03:19:23.176143Z","kind":"loop.iterated","stage":"developer","loop":"review","iteration":2}
+{"at":"2026-11-24T03:19:23.203558Z","kind":"stage.started","stage":"developer","sequence":10}
+{"at":"2026-11-24T03:20:47.648201Z","kind":"stage.completed","stage":"developer","sequence":10}
+{"at":"2026-11-24T03:20:47.6487Z","kind":"stage.started","stage":"code-reviewer","sequence":11}
+{"at":"2026-11-24T03:23:30.45111Z","kind":"stage.completed","stage":"code-reviewer","sequence":11}
+{"at":"2026-11-24T03:23:30.451737Z","kind":"stage.started","stage":"security-reviewer","sequence":12}
+{"at":"2026-11-24T03:25:22.531386Z","kind":"stage.completed","stage":"security-reviewer","sequence":12}
+{"at":"2026-11-24T03:25:22.560258Z","kind":"gate.waiting","stage":"qa-engineer","gate":"confirm-security"}
+{"at":"2026-11-24T20:46:38.35244Z","kind":"gate.approved","gate":"confirm-security","approvalMethod":"flag"}
+{"at":"2026-11-24T20:46:38.353246Z","kind":"run.resumed"}
+{"at":"2026-11-24T20:46:38.425303Z","kind":"stage.started","stage":"qa-engineer","sequence":13}
+{"at":"2026-11-24T21:00:44.53458Z","kind":"stage.completed","stage":"qa-engineer","sequence":13}
+{"at":"2026-11-24T21:00:44.535164Z","kind":"stage.started","stage":"sre-engineer","sequence":14}
+{"at":"2026-11-24T21:03:35.695709Z","kind":"stage.completed","stage":"sre-engineer","sequence":14}
+{"at":"2026-11-24T21:03:35.696255Z","kind":"stage.started","stage":"tech-writer","sequence":15}
+{"at":"2026-11-24T21:05:12.386249Z","kind":"stage.completed","stage":"tech-writer","sequence":15}
+{"at":"2026-11-24T21:05:12.386913Z","kind":"stage.started","stage":"pre-ship-checks","sequence":16}
+{"at":"2026-11-24T21:06:42.895472Z","kind":"stage.completed","stage":"pre-ship-checks","sequence":16}
+{"at":"2026-11-24T21:06:42.924659Z","kind":"policy.evaluated","gate":"confirm-ship","reason":"auto-approve → would auto-approve; this build still stops for a human (matched: evidence-clean-ship)"}
+{"at":"2026-11-24T21:06:42.927773Z","kind":"gate.waiting","stage":"devops-engineer","gate":"confirm-ship"}
+{"at":"2026-11-24T21:11:49.617517Z","kind":"gate.approved","gate":"confirm-ship","approvalMethod":"flag"}
+{"at":"2026-11-24T21:11:49.618667Z","kind":"run.resumed"}
+{"at":"2026-11-24T21:11:49.740527Z","kind":"stage.started","stage":"devops-engineer","sequence":17}
+{"at":"2026-11-24T21:12:32.912169Z","kind":"stage.completed","stage":"devops-engineer","sequence":17}
+{"at":"2026-11-24T21:12:32.912479Z","kind":"run.completed"}

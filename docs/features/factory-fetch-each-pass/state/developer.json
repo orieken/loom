@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 2,
+  "feature": "factory-fetch-each-pass",
+  "filesModified": [
+    "internal/factory/supervisor.go"
+  ],
+  "interfaceDesign": [
+    "func (s *Supervisor) readIntake() (Intake, error) — new private helper combining fetchIntakeRef() + ReadIntake(), called once from Tick"
+  ],
+  "refactoringLog": [
+    {
+      "operation": "Extract Function",
+      "target": "internal/factory/supervisor.go — Supervisor.Tick",
+      "reason": "Tick measured at cyclomatic complexity 7 (the project's hard ceiling, not under it) after the fetch-before-read change added fetchIntakeRef()+ReadIntake() with two error branches. Extracted both calls into a new Supervisor.readIntake() helper so Tick drops one branch and returns to 6, matching the naming style already used for fetchIntakeRef."
+    }
+  ],
+  "selfReview": [
+    { "item": "Every public method has an intention-revealing name", "checked": true },
+    { "item": "No function exceeds 30 LOC", "checked": true },
+    { "item": "Cyclomatic complexity < 7 on all new/changed functions", "checked": true, "note": "Verified with gocyclo: Tick=6 (was 7, fixed this pass by extracting readIntake), fetchIntakeRef=6, hasRemote=3, withDefaults=6, readIntake=2. All now confirmed under 7, including Tick which the prior self-review omitted." },
+    { "item": "No primitive obsession", "checked": true },
+    { "item": "No feature envy", "checked": true },
+    { "item": "No magic numbers or strings", "checked": true },
+    { "item": "Dependency direction verified", "checked": true }
+  ],
+  "simpleDesign": [
+    { "item": "Passes all tests", "checked": true, "note": "go test ./internal/factory/... passes; go build ./... clean" },
+    { "item": "Reveals intention", "checked": true, "note": "readIntake() names the fetch-then-read sequence as a single step, matching fetchIntakeRef's naming style" },
+    { "item": "No duplication", "checked": true },
+    { "item": "Fewest elements", "checked": true, "note": "One small helper added, no other elements introduced" }
+  ],
+  "deviations": [
+    {
+      "task": "Updating implementation-notes.md's Self-Review Checklist to name Tick explicitly",
+      "reason": "This session's output contract disallows writing any file under .claude/ (implementation-notes.md lives there). The corrected, complete complexity claim is recorded instead in this stage's selfReview field above for the pipeline/human record."
+    }
+  ],
+  "notesForQa": [
+    "No behavior change from the prior implementation — this pass only extracts Supervisor.readIntake() to bring Tick's cyclomatic complexity back under 7. Existing fetch-before-read test coverage (fetch_test.go, supervisor_test.go) still applies unchanged."
+  ]
+}

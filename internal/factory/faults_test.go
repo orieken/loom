@@ -49,6 +49,13 @@ func (r faultyRepository) RemoveWorktree(path string) error {
 	return r.Git.RemoveWorktree(path)
 }
 
+func (r faultyRepository) Remotes() ([]string, error) {
+	if r.failing["remotes"] {
+		return nil, errInjected
+	}
+	return r.Git.Remotes()
+}
+
 func failing(factory *testFactory, operations ...string) {
 	set := map[string]bool{}
 	for _, operation := range operations {
@@ -66,6 +73,16 @@ func TestReadIntakeReportsEachGitFailure(t *testing.T) {
 				t.Errorf("tick err = %v, want the injected failure", err)
 			}
 		})
+	}
+}
+
+// A pass that cannot even ask git which remotes are configured fails the
+// tick, rather than guessing whether a fetch should have been attempted.
+func TestATickReportsAFailureListingRemotes(t *testing.T) {
+	factory := newTestFactory(t, orderSpec{id: "alpha"})
+	failing(factory, "remotes")
+	if err := factory.supervisor.Tick(); !errors.Is(err, errInjected) {
+		t.Errorf("tick err = %v, want the injected failure", err)
 	}
 }
 

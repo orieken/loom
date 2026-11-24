@@ -68,6 +68,23 @@ func (g *Git) hasBranch(branch string) bool {
 	return err == nil
 }
 
+// Remotes lists the repository's configured remote names. It makes no
+// network call, so a caller can tell "no remote by that name" apart from
+// "fetch failed reaching one that exists" before attempting Fetch.
+func (g *Git) Remotes() ([]string, error) {
+	output, err := g.run("remote")
+	if err != nil {
+		return nil, err
+	}
+	var remotes []string
+	for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
+		if line != "" {
+			remotes = append(remotes, line)
+		}
+	}
+	return remotes, nil
+}
+
 // ShowFile reads path as committed at commit.
 func (g *Git) ShowFile(commit, path string) ([]byte, error) {
 	return g.run("show", commit+":"+path)
@@ -108,6 +125,9 @@ func (g *Git) ChangedBetween(from, to string) ([]string, error) {
 // pushTimeout bounds a push: a network call with no deadline is how an
 // unattended supervisor hangs forever on a credential prompt.
 const pushTimeout = 5 * time.Minute
+
+// fetchTimeout bounds a fetch, for the same reason as pushTimeout.
+const fetchTimeout = 5 * time.Minute
 
 // committerFallback is the identity a commit uses when the repository has
 // none configured, so an unattended commit cannot fail on a missing name.
@@ -156,6 +176,19 @@ func (g *Git) Push(branch string) error {
 	command.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
 	if output, err := command.CombinedOutput(); err != nil {
 		return fmt.Errorf("git push %s: %w: %s", branch, err, strings.TrimSpace(string(output)))
+	}
+	return nil
+}
+
+// Fetch updates remote's copy of branch, never prompting for credentials.
+func (g *Git) Fetch(remote, branch string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), fetchTimeout)
+	defer cancel()
+	command := exec.CommandContext(ctx, "git", "fetch", remote, branch)
+	command.Dir = g.root
+	command.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
+	if output, err := command.CombinedOutput(); err != nil {
+		return fmt.Errorf("git fetch %s %s: %w: %s", remote, branch, err, strings.TrimSpace(string(output)))
 	}
 	return nil
 }

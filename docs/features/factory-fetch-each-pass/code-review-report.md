@@ -1,0 +1,61 @@
+---
+feature: "factory-fetch-each-pass"
+bounded_context: ""
+domain_terms: ["Intake", "Candidate", "Claim", "Repository", "Order", "base-branch", "remote-tracking ref"]
+files_touched: []
+issue_refs: []
+linked_adrs: ["docs/adrs/ADR-010-factory-order-state-and-policy-configuration.md"]
+linked_kis: []
+---
+
+# Code Review: factory-fetch-each-pass
+
+## Overall Status
+
+**APPROVED**
+
+## Design Narrative
+
+Supervisor.Tick now calls a new readIntake() helper that composes fetchIntakeRef() (resolving --no-fetch / no-remote / fetch-then-resolve into one ref, logging and falling back on a failed fetch) with the existing ReadIntake(), so Tick regains a single decision point instead of inlining both error checks. Repository gains two narrowly-scoped methods, Remotes (local-only) and Fetch (timeout-bound), that mirror the existing hasBranch/Push patterns exactly, and Intake.Ref threads through claimWork/claim/claimFor so a claim's BaseBranch defaults to the ref the pass actually read from. Behaviour change: yes.
+
+## Design Score
+
+- **Clarity** 4/5
+- **Cohesion** 5/5
+- **Coupling** 4/5
+- **Craft** 4/5
+
+## Security Surface
+
+None
+
+## Performance Surface
+
+None
+
+## Test Design Review
+
+- TestAPassFetchesTheRemoteOnceAndClaimsOrdersPromotedThere: YES — asserts exact Fetch call count and that claimed sourceCommit equals the fetched commit.
+- TestAClaimWithNoBaseBranchStartsFromTheFetchedRemoteRef: YES — asserts BaseBranch literal 'origin/main' and that the worktree branch resolves to the same commit as the claim.
+- TestAPassNeverDisturbsThePersonsOwnCheckout: YES — compares exact HEAD, branch name, and `git status --porcelain` output before/after a fetching tick with uncommitted and staged changes present.
+- TestAFailedFetchContinuesThePassAndLogsOneLine: YES — asserts exactly one 'fetch' line is printed and the claim falls back to the bare local branch.
+- TestNoRemoteByTheConfiguredNameReadsTheLocalBranchUnchanged: YES — asserts zero Fetch calls and zero fetch-related output with no matching remote configured.
+- TestNoFetchReadsTheLocalBranchEvenWhenARemoteExists: YES — asserts zero Fetch calls and the local-branch BaseBranch default even though a remote exists.
+- TestALaterFetchDoesNotMoveARunningOrdersClaimedCommit: YES — asserts a running order's SourceCommit is unchanged after the upstream advances and a second tick fetches.
+- TestATickReportsAFailureListingRemotes (faults_test.go): YES — asserts Tick's error wraps the injected Remotes() failure via errors.Is.
+- TestFetchUpdatesTheRemoteTrackingRef (manage_test.go): YES — asserts origin/main resolves to the commit pushed to the real upstream only after Fetch runs.
+- TestFetchFailsWithGitsOwnStderr (manage_test.go): YES — asserts a non-nil error whose message contains git's own remote name.
+- TestRemotesReportsAGitFailure (manage_test.go): YES — asserts Remotes() errors outside any git repository.
+- TestRemotesListsConfiguredNamesAndIsEmptyOnABareLocalRepo (manage_test.go): YES — asserts an empty list before a remote is added and exactly ['origin'] after.
+- TestASupervisorKilledBetweenClaimAndLaunchIsRecovered (supervisor_test.go): YES — pre-existing test; only its claimFor call site was mechanically updated for the new Intake-parameter signature, assertions unchanged.
+
+## Verification of Developer Self-Review
+
+- Prior pass's blocking finding (Tick at complexity 7) is now fixed: independently re-measured with gocyclo, Tick=6 and fetchIntakeRef=6, matching the developer's updated claim exactly.
+- readIntake() is a correctly named, minimal extraction (complexity 2) that composes fetchIntakeRef()+ReadIntake() with no behavior change, matching the Named Refactoring Log entry.
+- go build ./... and go test on internal/factory, internal/worktree, and cmd/loom all pass; golangci-lint's one remaining finding (units_test.go:163 errcheck) predates this diff and is outside files_touched, so it is not a regression from this change.
+- No skipped, pending, or weakened assertions found in the new or modified test files.
+
+## Feedback for the Developer
+
+None
