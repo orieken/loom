@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 2,
+  "feature": "state-files-deleted",
+  "testFilesModified": ["internal/orchestrator/claims_test.go"],
+  "coverage": {
+    "acceptanceCriteriaCovered": 8,
+    "acceptanceCriteriaTotal": 8,
+    "newTests": 19,
+    "statements": [
+      {"unit": "internal/state", "percent": 91.4},
+      {"unit": "internal/orchestrator", "percent": 89.2}
+    ]
+  },
+  "testResults": {
+    "passed": 482,
+    "failed": 0,
+    "skipped": 0
+  },
+  "accessibilityCheck": [],
+  "bugsFound": [],
+  "knownGaps": [],
+  "notesForTechWriter": [
+    "shared/schemas/pipeline/implementation.schema.json and qa.schema.json each gained an optional filesDeleted/testFilesDeleted array, generated from the Go structs and verified green by TestCommittedSchemasMatchTheStructs; worth a line in any pipeline-contract docs covering the implementation-notes.md / qa-report.md field lists.",
+    "A rename is always two fields now: the new path in filesCreated/testFilesCreated, the old path in filesDeleted/testFilesDeleted. An 'old -> new' entry in any single path-naming field (including security's filesModified) fails validation before any claim is checked."
+  ],
+  "retrieval": {
+    "domainTerms": ["ClaimError", "PathClaim", "posture check"],
+    "linkedAdrs": ["ADR-008", "ADR-009"],
+    "linkedKis": []
+  }
+}

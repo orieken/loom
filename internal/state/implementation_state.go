@@ -55,6 +55,10 @@ type ImplementationState struct {
 
 	FilesCreated  []string `json:"filesCreated,omitempty"`
 	FilesModified []string `json:"filesModified,omitempty"`
+	// FilesDeleted names a path this change removed. A rename is the new
+	// path in FilesCreated and the old path here, never "old -> new" in one
+	// entry.
+	FilesDeleted []string `json:"filesDeleted,omitempty" jsonschema:"description=A path this change removed. A rename is the new path in filesCreated and the old path here. Never write 'old -> new' as a single entry in either field."`
 
 	InterfaceDesign []string           `json:"interfaceDesign,omitempty" jsonschema:"description=Public surface introduced or changed"`
 	RefactoringLog  []RefactoringEntry `json:"refactoringLog,omitempty"`
@@ -83,6 +87,7 @@ func (i ImplementationState) Validate() error {
 		requireAnsweredChecklist("selfReview", i.SelfReview),
 		requireAnsweredChecklist("simpleDesign", i.SimpleDesign),
 		requireTouchedFiles(i),
+		requireNoRenameArrows(i.PathClaims()),
 	)
 }
 
@@ -103,11 +108,13 @@ func requireAnsweredChecklist(field string, items []ChecklistItem) error {
 }
 
 // requireTouchedFiles catches an implementation that claims to have changed
-// nothing. Every downstream reviewer needs somewhere to look.
+// nothing. Every downstream reviewer needs somewhere to look. A deletion
+// counts: removing a file is work too.
 func requireTouchedFiles(implementation ImplementationState) error {
-	if len(implementation.FilesCreated)+len(implementation.FilesModified) > 0 {
+	touched := len(implementation.FilesCreated) + len(implementation.FilesModified) + len(implementation.FilesDeleted)
+	if touched > 0 {
 		return nil
 	}
-	return &ValidationError{Field: "filesCreated/filesModified",
+	return &ValidationError{Field: "filesCreated/filesModified/filesDeleted",
 		Reason: "must name at least one file — an implementation that touched nothing gives its reviewers nowhere to look"}
 }

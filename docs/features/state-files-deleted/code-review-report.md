@@ -1,0 +1,63 @@
+---
+feature: "state-files-deleted"
+bounded_context: ""
+domain_terms: ["PathClaim", "WorkTree", "ClaimError", "posture check"]
+files_touched: ["internal/state/claims.go"]
+issue_refs: []
+linked_adrs: []
+linked_kis: []
+---
+
+# Code Review: state-files-deleted
+
+## Overall Status
+
+**APPROVED**
+
+## Design Narrative
+
+This change adds a second claim direction, MustNotExist, alongside the existing MustExist on PathClaim, so a stage can claim a deletion and have it checked both ways: the path must be gone from disk, and it must have been seen as changed by the posture check's git-status snapshot since the run started. filesDeleted/testFilesDeleted propagate through the exact seam every other path-naming field already uses (struct field -> PathClaims() entry -> orchestrator verifier -> render section -> generated schema -> tests), and a new requireNoRenameArrows validation rule rejects the "old -> new" single-field encoding that originally caused loom to mistake a correct rename for undone work. This iteration's only change is a one-line fix to changedPaths()'s doc comment on internal/orchestrator/posture.go, which now states the nil-vs-non-nil-empty invariant that verifyDeletionClaim and warnUntouched both rely on, resolving the prior CHANGES_REQUESTED finding without touching any logic. Behaviour change: no.
+
+## Design Score
+
+- **Clarity** 5/5
+- **Cohesion** 4/5
+- **Coupling** 3/5
+- **Craft** 4/5
+
+## Security Surface
+
+None
+
+## Performance Surface
+
+None
+
+## Test Design Review
+
+- internal/orchestrator/claims_test.go TestATrueDeletionClaimIsAccepted — YES, asserts err == nil only when the fake WorkTree's ChangedPaths() actually reports the claimed path; reverting verifyDeletionClaim's success path would fail it
+- internal/orchestrator/claims_test.go TestAFalseDeletionClaimIsRejected — YES, asserts both that err is non-nil and that the message contains "the file still exists" and the field name "filesDeleted"
+- internal/orchestrator/claims_test.go TestANeverExistedDeletionClaimIsRejected — YES, asserts err contains "no such file was there to delete"; only passes because unseenDeletions runs against a non-nil changed set
+- internal/orchestrator/claims_test.go TestACorrectlyEncodedRenamePasses — YES, asserts err == nil for the two-field rename encoding, exercising both verifyExistenceClaim and verifyDeletionClaim together
+- internal/orchestrator/claims_test.go TestARenameArrowInOneFieldFailsBeforeClaimChecking — YES, asserts err non-nil with a nil WorkTree, which only passes if validation (not claim-checking) is what rejects it; also asserts the message names filesModified/filesCreated/filesDeleted
+- internal/state/implementation_chain_test.go TestADeletionOnlyImplementationTouchedSomething — YES, asserts Validate() succeeds only when requireTouchedFiles correctly counts FilesDeleted
+- internal/state/implementation_chain_test.go TestRenameArrowIsRejectedOnEveryImplementationField — YES, table-driven over filesCreated/filesModified/filesDeleted, asserts the ValidationError names the broken field and the message describes the two-field encoding
+- internal/state/implementation_chain_test.go TestRenameArrowIsRejectedOnSecurityFilesModified — YES, same pattern applied to SecurityState's shared PathClaims() path
+- internal/state/implementation_chain_test.go TestFilesDeletedIsVisibleInTheRenderedView — YES, asserts both the rendered bullet line and the files_touched frontmatter array contain the deleted path; a missing section() call or a missing frontmatter() append would fail it
+- internal/state/qa_state_test.go TestRenameArrowIsRejectedOnEveryQAField — YES, table-driven over testFilesCreated/testFilesModified/testFilesDeleted with the same field-name and message assertions
+- internal/state/qa_state_test.go TestADeletionOnlyQAReportIsAccepted — YES, asserts Validate() succeeds for a report naming only testFilesDeleted
+- internal/state/qa_state_test.go TestTestFilesDeletedIsVisibleInTheRenderedView — YES, asserts the rendered qa-report body contains the deleted test file's bullet line
+- No test was added or modified in this iteration's own change — the only edit was a doc comment on internal/orchestrator/posture.go
+
+## Verification of Developer Self-Review
+
+- "Comment-only change; no logic touched" — confirmed: git diff on posture.go shows only the doc comment block changed, no code
+- "Passes all tests" — confirmed: go build ./... succeeds and go test ./internal/state/... ./internal/orchestrator/... -cover reproduces 91.4% and 89.2% exactly as claimed, with golangci-lint (gocyclo min-complexity 7) reporting 0 issues
+- "Reveals intention" — confirmed: the new comment states the nil-vs-non-nil-empty invariant that verifyDeletionClaim and warnUntouched depend on, replacing the contradictory sentence the prior review flagged
+
+## Feedback for the Developer
+
+### 1. Clarify misleading message (non-blocking, carried over from iteration 1) (non-blocking)
+- **File**: `internal/state/claims.go`
+- **Smell**: requireNoRenameArrows's error message always says "list a rename as the new path in filesCreated/testFilesCreated and the old path in filesDeleted/testFilesDeleted", but when triggered from SecurityState.Validate(), SecurityState has neither a filesCreated nor a filesDeleted field, only filesModified.
+- **Instruction**: This is spec-mandated (analysis.md AC #5 requires identical wording across all three claim types), so it remains non-blocking. Leave as-is; note it for a follow-up next time this area is touched, e.g. a short SecurityState-specific clause in the message.

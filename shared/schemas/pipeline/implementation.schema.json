@@ -22,6 +22,13 @@
       },
       "type": "array"
     },
+    "filesDeleted": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "description": "A path this change removed. A rename is the new path in filesCreated and the old path here. Never write 'old -\u003e new' as a single entry in either field."
+    },
     "interfaceDesign": {
       "items": {
         "type": "string"

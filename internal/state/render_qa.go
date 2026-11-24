@@ -11,6 +11,7 @@ func renderQA(qa QAState) string {
 	doc.title("QA Report: " + qa.Feature)
 	doc.section("## Test Files Created", bullets(qa.TestFilesCreated))
 	doc.section("## Test Files Modified", bullets(qa.TestFilesModified))
+	doc.section("## Test Files Deleted", bullets(qa.TestFilesDeleted))
 	doc.section("## Coverage Summary", coverageLines(qa.Coverage))
 	doc.section("## Test Results", testResultLines(qa.TestResults))
 	doc.section("## Accessibility Check", bullets(qa.AccessibilityCheck))
@@ -76,6 +77,7 @@ func gapLines(gaps []KnownGap) []string {
 
 func (q QAState) frontmatter() frontmatter {
 	touched := append(append([]string{}, q.TestFilesCreated...), q.TestFilesModified...)
+	touched = append(touched, q.TestFilesDeleted...)
 	return newFrontmatter(q.Feature, "", q.Retrieval, touched)
 }
 

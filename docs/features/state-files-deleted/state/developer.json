@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 2,
+  "feature": "state-files-deleted",
+  "filesModified": [
+    "internal/orchestrator/posture.go"
+  ],
+  "interfaceDesign": [],
+  "refactoringLog": [
+    {
+      "operation": "Reconcile Contradictory Comment",
+      "target": "internal/orchestrator/posture.go:changedPaths() doc comment",
+      "reason": "code-reviewer CHANGES_REQUESTED: the function's own contract comment said an empty set means 'not observed', but verifyDeletionClaim in internal/orchestrator/claims.go (and warnUntouched) now rely on nil vs. non-nil-but-empty carrying different evidentiary weight. Rewrote the comment to state the real invariant at its source (nil = not observed; non-nil, even length zero, = observed and is real evidence) per architecture-guardrails.md #7 (PRECONDITION named where the condition lives)."
+    }
+  ],
+  "selfReview": [
+    {"item": "Every public method has an intention-revealing name", "checked": true},
+    {"item": "No function exceeds 30 LOC", "checked": true},
+    {"item": "Cyclomatic complexity < 7 on all new/changed functions", "checked": true, "note": "Comment-only change; no logic touched"},
+    {"item": "No primitive obsession", "checked": true},
+    {"item": "No feature envy", "checked": true},
+    {"item": "No magic numbers or strings", "checked": true},
+    {"item": "Dependency direction verified", "checked": true}
+  ],
+  "simpleDesign": [
+    {"item": "Passes all tests", "checked": true, "note": "go build ./... and go test ./internal/orchestrator/... ./internal/state/... both green"},
+    {"item": "Reveals intention", "checked": true, "note": "changedPaths()'s doc comment now states the nil-vs-empty invariant that verifyDeletionClaim and warnUntouched both depend on, instead of contradicting one of them"},
+    {"item": "No duplication", "checked": true},
+    {"item": "Fewest elements", "checked": true, "note": "No code change, only the doc comment the reviewer flagged"}
+  ],
+  "keyDecisions": [
+    {
+      "decision": "Updated only the doc comment on changedPaths(), made no behavioral change",
+      "reasoning": "code-reviewer confirmed the existing runtime behavior (nil vs. non-nil-empty) is already correct for the Git-backed WorkTree implementation and is what verifyDeletionClaim/warnUntouched already rely on; the defect was purely that the canonical comment at the source of truth said the opposite. Fixing the comment in place, rather than adding an abstraction, satisfies architecture-guardrails.md #7 without expanding scope."
+    }
+  ],
+  "deviations": [
+    {
+      "task": "Non-blocking finding: requireNoRenameArrows error message references filesCreated/filesDeleted, which SecurityState (internal/state/security_state.go) does not have",
+      "reason": "code-reviewer marked this explicitly non-blocking — the shared wording is spec-mandated (analysis.md AC #5 requires identical wording across all three claim types) — and recommended only a follow-up note next time this area is touched. Left unchanged to avoid deviating from the analysis's explicit requirement without a separate approved spec change."
+    }
+  ],
+  "notesForQa": [
+    "Only internal/orchestrator/posture.go changed in this pass (one doc-comment edit) to resolve the code-reviewer's blocking finding; no behavior changed, so no new test scenarios are needed beyond what already covers claims.go/verifyDeletionClaim."
+  ],
+  "notesForDevops": [],
+  "retrieval": {
+    "domainTerms": [],
+    "issueRefs": [],
+    "linkedAdrs": [],
+    "linkedKis": []
+  }
+}

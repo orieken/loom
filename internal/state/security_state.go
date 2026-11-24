@@ -111,6 +111,7 @@ func (s SecurityState) Validate() error {
 		requireText("threatModelSummary", s.ThreatModelSummary),
 		requireEveryStrideCategory(s.Stride),
 		validateSecurityFindings(s.Findings),
+		requireNoRenameArrows(s.PathClaims()),
 	)
 }
 

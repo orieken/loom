@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 2,
+  "feature": "state-files-deleted",
+  "scenarios": [
+    {
+      "criterion": "implementation.schema.json and qa.schema.json each gain an optional filesDeleted or testFilesDeleted array of paths, generated from the Go structs (never hand-edited), with a description stating that a rename is the new path in filesCreated and the old path in filesDeleted.",
+      "name": "Generated schemas document the new deletion fields and the rename convention",
+      "given": [
+        "the ImplementationState and QAState Go structs declare filesDeleted and testFilesDeleted fields"
+      ],
+      "when": [
+        "the schema generator runs"
+      ],
+      "then": [
+        "implementation.schema.json contains an optional filesDeleted array of paths",
+        "qa.schema.json contains an optional testFilesDeleted array of paths",
+        "each field's description states that a rename is encoded as the new path in filesCreated and the old path in filesDeleted"
+      ]
+    },
+    {
+      "criterion": "A stage that lists a path in filesDeleted passes the claim when the path is absent now and existed when the stage started, observed as the path appearing in the posture check's changed-paths set (which reports status against the run's base commit).",
+      "name": "A deletion claim passes when the path is gone now and was present at stage start",
+      "given": [
+        "a stage lists a path in filesDeleted",
+        "the path existed when the stage started and is absent from disk now",
+        "the posture check's changed-paths set, measured against the run's base commit, includes that path"
+      ],
+      "when": [
+        "the filesDeleted claim is checked for that stage"
+      ],
+      "then": [
+        "the claim passes"
+      ]
+    },
+    {
+      "criterion": "A path in filesDeleted that still exists on disk fails the stage with a ClaimError naming the field and the path: \"the file still exists — the stage reported a deletion it did not do\".",
+      "name": "A deletion claim fails when the file still exists on disk",
+      "given": [
+        "a stage lists a path in filesDeleted",
+        "the path still exists on disk"
+      ],
+      "when": [
+        "the filesDeleted claim is checked for that stage"
+      ],
+      "then": [
+        "the stage fails with a ClaimError naming the field and the path",
+        "the error message reads \"the file still exists — the stage reported a deletion it did not do\""
+      ]
+    },
+    {
+      "criterion": "A path in filesDeleted that never existed (absent now and absent from the posture check's changed-paths set) fails the stage with a ClaimError: \"no such file was there to delete\".",
+      "name": "A deletion claim fails when the path never existed",
+      "given": [
+        "a stage lists a path in filesDeleted",
+        "the path is absent from disk now",
+        "the path is absent from the posture check's changed-paths set"
+      ],
+      "when": [
+        "the filesDeleted claim is checked for that stage"
+      ],
+      "then": [
+        "the stage fails with a ClaimError reading \"no such file was there to delete\""
+      ]
+    },
+    {
+      "criterion": "An entry containing \" -> \" in any path-naming field (filesCreated, filesModified, filesDeleted, testFilesCreated, testFilesModified, testFilesDeleted, or security's filesModified) fails validation with a message instructing the caller to list the new path in filesCreated and the old path in filesDeleted.",
+      "name": "A rename encoded as an arrow in a path field is rejected before claim-checking",
+      "given": [
+        "a stage's state document lists an entry containing \" -> \" in a path-naming field"
+      ],
+      "when": [
+        "the state document is validated"
+      ],
+      "then": [
+        "validation fails before any claim is checked",
+        "the error message instructs the caller to list the new path in filesCreated and the old path in filesDeleted"
+      ]
+    },
+    {
+      "criterion": "requireTouchedFiles counts an implementation that only deletes files as having touched something; it no longer requires filesCreated or filesModified to be non-empty when filesDeleted names at least one path.",
+      "name": "A deletion-only implementation satisfies the touched-files requirement",
+      "given": [
+        "an implementation state document with empty filesCreated and empty filesModified",
+        "the same document names at least one path in filesDeleted"
+      ],
+      "when": [
+        "requireTouchedFiles evaluates the document"
+      ],
+      "then": [
+        "the document is accepted as having touched something",
+        "requireTouchedFiles does not demand a non-empty filesCreated or filesModified"
+      ]
+    },
+    {
+      "criterion": "An existing state document with no filesDeleted or testFilesDeleted field (the omitempty default) validates exactly as it did before this change — no new required field, no changed behavior for filesCreated/filesModified/testFilesCreated/testFilesModified claims.",
+      "name": "A state document without a deleted-files field validates unchanged",
+      "given": [
+        "a state document with no filesDeleted field and no testFilesDeleted field"
+      ],
+      "when": [
+        "the document is validated and its claims are checked"
+      ],
+      "then": [
+        "validation succeeds with no new required field",
+        "the existing filesCreated, filesModified, testFilesCreated, and testFilesModified claims behave exactly as before this change"
+      ]
+    },
+    {
+      "criterion": "Every new or changed function has cyclomatic complexity below 7 (enforced by golangci-lint's gocyclo, already configured at min-complexity 7 in .golangci.yml), every changed line is covered by a test proven able to fail, go test ./... and the lint pass, and no file outside scope.paths (internal/state/**, internal/orchestrator/**, shared/schemas/pipeline/**, docs/features/state-files-deleted/**) changes.",
+      "name": "The implementation meets the project's complexity, coverage, and scope bars",
+      "given": [
+        "the filesDeleted feature has been implemented"
+      ],
+      "when": [
+        "golangci-lint runs with gocyclo min-complexity 7",
+        "go test ./... runs",
+        "the set of changed files is compared against scope.paths"
+      ],
+      "then": [
+        "every new or changed function has cyclomatic complexity below 7",
+        "every changed line is covered by a test that fails when that line is reverted",
+        "go test ./... and the lint pass both succeed",
+        "no changed file falls outside internal/state/**, internal/orchestrator/**, shared/schemas/pipeline/**, or docs/features/state-files-deleted/**"
+      ]
+    }
+  ]
+}
