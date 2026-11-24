@@ -25,6 +25,8 @@ type factoryFlags struct {
 	maxConcurrent   int
 	interval        time.Duration
 	branch          string
+	remote          string
+	noFetch         bool
 	provider        string
 	retryBase       time.Duration
 	retryMax        time.Duration
@@ -43,9 +45,18 @@ var factoryCmd = &cobra.Command{
 var factoryRunCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Supervise: claim ready orders, run them, record every outcome",
-	Long: `Reads intake/*.md as committed on --branch (never your working tree), and
-claims every valid order with status: ready whose depends-on have shipped, by
+	Long: `Fetches --remote --branch once each pass (default origin; skip with
+--no-fetch), then reads intake/*.md as committed at <remote>/<branch> — never
+your working tree, and never your local branch unless --no-fetch or the
+repository has no remote by that name. Flipping an order to ready must be
+pushed, not just committed locally, for the next pass to see it. Claims
+every valid order with status: ready whose depends-on have shipped, by
 priority, then created, then id — up to --max-concurrent at a time.
+
+A fetch that fails (no network, no such remote, bad credentials) is logged
+on one line; the pass goes on from the last successfully fetched ref and
+never parks or fails an order over it. Your own checkout — its branch,
+index, and working tree — is never touched: no pull, no checkout, no reset.
 
 Each claim gets a git worktree on branch factory/<id> under .claude/factory/,
 and a snapshot of the order the run reads as its spec, so editing the intake
@@ -131,6 +142,8 @@ func init() {
 	flags.IntVar(&factoryArgs.maxConcurrent, "max-concurrent", factory.DefaultMaxConcurrent, "runs in flight at once")
 	flags.DurationVar(&factoryArgs.interval, "interval", factory.DefaultInterval, "time between passes")
 	flags.StringVar(&factoryArgs.branch, "branch", "main", "branch whose committed intake/ is read")
+	flags.StringVar(&factoryArgs.remote, "remote", factory.DefaultRemote, "remote the base branch is fetched from before each pass")
+	flags.BoolVar(&factoryArgs.noFetch, "no-fetch", false, "read intake/ from the local branch only; never fetch")
 	flags.StringVar(&factoryArgs.provider, "provider", factory.DefaultProvider, "stage provider for every run: claude or mock")
 	flags.DurationVar(&factoryArgs.retryBase, "retry-base", factory.DefaultRetryBase, "delay before the first retry; doubles each time")
 	flags.DurationVar(&factoryArgs.retryMax, "retry-max", factory.DefaultRetryMax, "longest delay between retries")
@@ -184,6 +197,7 @@ func newFactorySupervisor(cmd *cobra.Command, layout factory.Layout) (*factory.S
 		Layout: layout, IntakeBranch: factoryArgs.branch, MaxConcurrent: factoryArgs.maxConcurrent,
 		Provider: factoryArgs.provider, RunArgs: factoryArgs.runArgs, Plans: runnablePlans(layout.Root),
 		RetryBase: factoryArgs.retryBase, RetryMax: factoryArgs.retryMax, UnavailableWait: factoryArgs.unavailableWait,
+		Remote: factoryArgs.remote, NoFetch: factoryArgs.noFetch,
 	}
 	return factory.New(config, factory.Dependencies{
 		Repository: worktree.New(layout.Root), Launcher: factory.ExecLauncher{Executable: executable},

@@ -17,6 +17,9 @@ const (
 	// cannot take calls — a usage or session limit — before trying again.
 	DefaultUnavailableWait = 30 * time.Minute
 	DefaultProvider        = "claude"
+	// DefaultRemote is the remote a pass fetches before reading intake/,
+	// when Config.Remote names none of its own.
+	DefaultRemote = "origin"
 )
 
 // Config is how one supervisor runs.
@@ -35,6 +38,13 @@ type Config struct {
 	// UnavailableWait is the wait after a provider reported it cannot take
 	// calls. It spends none of the order's attempts.
 	UnavailableWait time.Duration
+	// Remote is fetched once at the start of every pass, before intake/ is
+	// read (`loom factory run`'s fetch-before-read). Empty defaults to
+	// DefaultRemote.
+	Remote string
+	// NoFetch reads IntakeBranch from the local checkout only, with no
+	// fetch — the behavior every pass had before fetch-before-read.
+	NoFetch bool
 }
 
 // Dependencies are everything the supervisor reaches outside itself.
@@ -64,22 +74,31 @@ type Supervisor struct {
 	lastReported tickState
 }
 
-// New returns a supervisor. Zero config values take their defaults.
-func New(config Config, deps Dependencies) *Supervisor {
+// withDefaults fills in config's zero values with their defaults.
+func (config Config) withDefaults() Config {
 	if config.MaxConcurrent <= 0 {
 		config.MaxConcurrent = DefaultMaxConcurrent
 	}
 	if config.Provider == "" {
 		config.Provider = DefaultProvider
 	}
-	if deps.Now == nil {
-		deps.Now = func() time.Time { return time.Now().UTC() }
+	if config.Remote == "" {
+		config.Remote = DefaultRemote
 	}
 	if config.UnavailableWait <= 0 {
 		config.UnavailableWait = DefaultUnavailableWait
 	}
 	if config.RetryMax < config.RetryBase {
 		config.RetryMax = config.RetryBase
+	}
+	return config
+}
+
+// New returns a supervisor. Zero config values take their defaults.
+func New(config Config, deps Dependencies) *Supervisor {
+	config = config.withDefaults()
+	if deps.Now == nil {
+		deps.Now = func() time.Time { return time.Now().UTC() }
 	}
 	if deps.Output == nil {
 		deps.Output = io.Discard
@@ -102,7 +121,7 @@ func (s *Supervisor) Tick() error {
 	if err := s.advanceFinishLine(); err != nil {
 		return err
 	}
-	committed, err := ReadIntake(s.deps.Repository, s.config.IntakeBranch, s.config.Plans)
+	committed, err := s.readIntake()
 	if err != nil {
 		return err
 	}
@@ -110,6 +129,54 @@ func (s *Supervisor) Tick() error {
 		return err
 	}
 	return s.reportTickState()
+}
+
+// readIntake fetches the ref this pass reads intake/ at, then reads the
+// committed orders there. It names the fetch-then-read sequence Tick needs
+// as one step.
+func (s *Supervisor) readIntake() (Intake, error) {
+	ref, err := s.fetchIntakeRef()
+	if err != nil {
+		return Intake{}, err
+	}
+	return ReadIntake(s.deps.Repository, ref, s.config.Plans)
+}
+
+// fetchIntakeRef decides which ref this pass reads intake/ at. With
+// --no-fetch, or no remote configured by Config.Remote's name, it is the
+// bare local branch, exactly as every pass read before fetch-before-read —
+// no fetch is attempted and nothing is printed. Otherwise it fetches the
+// remote once and returns its remote-tracking ref. A fetch that fails (no
+// network, bad credentials) is logged on one line; the pass goes on from
+// whatever that ref last resolved to.
+func (s *Supervisor) fetchIntakeRef() (string, error) {
+	if s.config.NoFetch {
+		return s.config.IntakeBranch, nil
+	}
+	remotes, err := s.deps.Repository.Remotes()
+	if err != nil {
+		return "", err
+	}
+	if !hasRemote(remotes, s.config.Remote) {
+		return s.config.IntakeBranch, nil
+	}
+	if err := s.deps.Repository.Fetch(s.config.Remote, s.config.IntakeBranch); err != nil {
+		s.say("fetch %s %s failed, continuing from the last fetch: %v", s.config.Remote, s.config.IntakeBranch, err)
+	}
+	ref := s.config.Remote + "/" + s.config.IntakeBranch
+	if _, err := s.deps.Repository.ResolveCommit(ref); err != nil {
+		return s.config.IntakeBranch, nil
+	}
+	return ref, nil
+}
+
+func hasRemote(remotes []string, name string) bool {
+	for _, remote := range remotes {
+		if remote == name {
+			return true
+		}
+	}
+	return false
 }
 
 // Run ticks every interval, and as soon as a run it started ends, until ctx

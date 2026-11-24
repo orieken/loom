@@ -61,7 +61,7 @@ func (s *Supervisor) pendingWork(orders map[string]*OrderState, committed Intake
 	}
 	for _, candidate := range committed.Orders {
 		if s.isClaimable(candidate, orders) {
-			pending = append(pending, s.claimWork(candidate, committed.Commit))
+			pending = append(pending, s.claimWork(candidate, committed))
 		}
 	}
 	sort.Slice(pending, func(i, j int) bool { return before(pending[i], pending[j]) })
@@ -145,31 +145,35 @@ func (s *Supervisor) continuationKind(order *OrderState) (string, bool) {
 	return "", false
 }
 
-func (s *Supervisor) claimWork(candidate Candidate, commit string) work {
+func (s *Supervisor) claimWork(candidate Candidate, committed Intake) work {
 	order := candidate.Document.Order
 	return work{id: candidate.ID, priority: order.Priority, created: order.Created,
-		start: func() error { return s.claim(candidate, commit) }}
+		start: func() error { return s.claim(candidate, committed) }}
 }
 
 // claim records the claim, then prepares the worktree and snapshot, then
 // launches. A crash between any two leaves the order claimed, and the next
 // tick repeats the preparation — every step of it is idempotent.
-func (s *Supervisor) claim(candidate Candidate, commit string) error {
-	claim := s.claimFor(candidate, commit)
+func (s *Supervisor) claim(candidate Candidate, committed Intake) error {
+	claim := s.claimFor(candidate, committed)
 	if err := s.record(Entry{Event: EventClaimed, Order: candidate.ID, Claim: &claim}); err != nil {
 		return err
 	}
 	return s.launch(&OrderState{ID: candidate.ID, Phase: PhaseClaimed, Claim: claim}, 1, "")
 }
 
-func (s *Supervisor) claimFor(candidate Candidate, commit string) Claim {
+// claimFor defaults an order's base-branch to the ref this pass actually
+// read intake/ at — a fetched remote-tracking ref such as origin/main once
+// a pass has fetched, or the bare local branch otherwise — so a worktree
+// starts from what the claim was actually read from.
+func (s *Supervisor) claimFor(candidate Candidate, committed Intake) Claim {
 	order := candidate.Document.Order
 	base := order.BaseBranch
 	if base == "" {
-		base = s.config.IntakeBranch
+		base = committed.Ref
 	}
 	return Claim{
-		SourceCommit: commit, OrderPath: candidate.Path, OrderSHA256: candidate.SHA256,
+		SourceCommit: committed.Commit, OrderPath: candidate.Path, OrderSHA256: candidate.SHA256,
 		Plan: order.Plan, Type: order.Type, Title: Title(candidate.Document.Body),
 		Priority: order.Priority, Created: order.Created, BaseBranch: base, Finish: order.Finish,
 		Budget: order.Budget, ScopePaths: order.Scope.Paths,

@@ -18,6 +18,12 @@ type Repository interface {
 	ShowFile(commit, path string) ([]byte, error)
 	AddWorktree(path, branch, base string) error
 	RemoveWorktree(path string) error
+	// Remotes lists configured remote names, with no network call, so a
+	// caller can tell "no remote by that name" apart from "fetch failed
+	// reaching one that exists."
+	Remotes() ([]string, error)
+	// Fetch updates remote's copy of branch.
+	Fetch(remote, branch string) error
 }
 
 // notOrders are the files in intake/ that describe orders rather than being one.
@@ -44,15 +50,19 @@ func (c Candidate) IsClaimable() bool {
 	return c.IsReady() && len(c.Violations) == 0
 }
 
-// Intake is every order committed on a branch, at one commit.
+// Intake is every order committed on a ref, at one commit.
 type Intake struct {
 	Commit string
+	// Ref is the ref intake/ was actually read at — the bare branch, or a
+	// remote-tracking ref such as origin/main once a pass has fetched.
+	Ref    string
 	Orders map[string]Candidate
 }
 
 // ReadIntake reads intake/ as committed at the head of branch (ADR-010, 2B):
 // a working-tree edit is invisible until it is committed, so an order
-// reaches the factory reviewed, the way code reaches main.
+// reaches the factory reviewed, the way code reaches main. branch may be a
+// bare local branch or a remote-tracking ref such as origin/main.
 func ReadIntake(repo Repository, branch string, plans []string) (Intake, error) {
 	commit, err := repo.ResolveCommit(branch)
 	if err != nil {
@@ -74,7 +84,7 @@ func ReadIntake(repo Repository, branch string, plans []string) (Intake, error) 
 		}
 		orders[candidate.ID] = candidate
 	}
-	return Intake{Commit: commit, Orders: orders}, nil
+	return Intake{Commit: commit, Ref: branch, Orders: orders}, nil
 }
 
 func orderFiles(repo Repository, commit string) ([]string, error) {

@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 2,
+  "feature": "factory-fetch-each-pass",
+  "testFilesCreated": [],
+  "testFilesModified": [],
+  "coverage": {
+    "acceptanceCriteriaCovered": 9,
+    "acceptanceCriteriaTotal": 9,
+    "newTests": 12,
+    "statements": [
+      {"unit": "internal/factory", "percent": 95.7},
+      {"unit": "internal/worktree", "percent": 90.2},
+      {"unit": "cmd/loom/cmd", "percent": 83.9}
+    ]
+  },
+  "testResults": {
+    "passed": 629,
+    "failed": 0,
+    "skipped": 0,
+    "skipReasons": []
+  },
+  "accessibilityCheck": [],
+  "bugsFound": [],
+  "knownGaps": [],
+  "notesForTechWriter": [
+    "This QA pass found the implementation and its full test suite already complete and passing on entry, written across an earlier developer/qa iteration of this same pipeline run; the only developer change this round was extracting Supervisor.readIntake() out of Tick to bring Tick's cyclomatic complexity back under 7 (no behavior change). My own session made zero file edits (testFilesCreated/testFilesModified are both empty) — this report is a verification pass: I reran the full suite, lint, complexity check, and the project's changed-line-coverage tool, and confirm every acceptance criterion holds.",
+    "internal/factory/fetch_test.go (7 tests, new file) covers AC1/AC2 (TestAPassFetchesTheRemoteOnceAndClaimsOrdersPromotedThere), AC3 (TestAClaimWithNoBaseBranchStartsFromTheFetchedRemoteRef), AC4 (TestAPassNeverDisturbsThePersonsOwnCheckout), AC5 (TestAFailedFetchContinuesThePassAndLogsOneLine), AC6 (TestNoRemoteByTheConfiguredNameReadsTheLocalBranchUnchanged, TestNoFetchReadsTheLocalBranchEvenWhenARemoteExists), and AC7 (TestALaterFetchDoesNotMoveARunningOrdersClaimedCommit). internal/worktree/manage_test.go adds 4 tests for Git.Fetch/Remotes directly. internal/factory/faults_test.go adds 1 test for a Remotes() git failure during Tick.",
+    "`go test ./...` passes clean project-wide (629/629 in the three touched packages; full repo also green) except for one unrelated pre-existing environment flake in internal/provider/claude (TestInvokeSetsNoTraceParentWhenUntraced), caused by this shell inheriting a stray TRACEPARENT env var from an outer OTel context — confirmed by `env -u TRACEPARENT go test ./internal/provider/claude/...` passing. That file is untouched by this feature and outside scope.paths; nothing to action here beyond noting it for whoever next runs this suite from an instrumented shell.",
+    "golangci-lint (gocyclo min-complexity 7 + revive) is clean across the whole repo except one pre-existing errcheck finding in internal/factory/units_test.go:163 (`<-done` unchecked), also untouched by this diff and outside scope.paths.",
+    "Changed-line coverage, measured with the repo's own cmd/diff-coverage against the merge-base e45813e (`go run ./cmd/diff-coverage --base e45813e... --profile coverage.out --threshold 85`), is 100% (63 of 63 executable changed lines) — this is the metric ADR-008 actually binds, not whole-package percentage. The whole-package number for cmd/loom/cmd (83.9%) is below 85% but that reflects pre-existing untested surface in that large package, not anything this feature left uncovered; every line this feature added or changed in cmd/loom/cmd/factory.go is covered.",
+    "AC8 (the intake README) was verified by direct reading rather than an automated test, since it's prose: templates/claude-feature-team/intake/README.md's 'Enforced at pickup' section now states the pass fetches --remote (default origin) once, that a promotion must be pushed (not just committed locally) to be seen, and that --no-fetch restores the previous local-branch-only behavior.",
+    "gocyclo over the whole feature's changed/added functions: fetchIntakeRef=6, readIntake=1 (trivial), hasRemote=3, Tick=6, Git.Fetch=1, Git.Remotes=4, claimFor=2 — all comfortably under 7. (*Supervisor).relaunch in start.go measures at 7 but was not touched by this diff; it's a pre-existing condition at the project's own stated threshold, out of scope for this feature's acceptance criteria."
+  ],
+  "retrieval": {
+    "domainTerms": ["intake", "ready", "claim", "worktree", "base-branch", "sourceCommit", "remote-tracking ref", "fetch-before-read"],
+    "issueRefs": ["roadmap L3.66", "roadmap L3.68", "roadmap L3.70"],
+    "linkedAdrs": [
+      "docs/adrs/ADR-010-factory-order-state-and-policy-configuration.md",
+      "docs/adrs/ADR-008-define-tested-by-what-tests-can-catch.md"
+    ],
+    "linkedKis": []
+  }
+}

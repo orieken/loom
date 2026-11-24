@@ -177,7 +177,7 @@ func TestASupervisorKilledBetweenClaimAndLaunchIsRecovered(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	claim := factory.supervisor.claimFor(committed.Orders["alpha"], committed.Commit)
+	claim := factory.supervisor.claimFor(committed.Orders["alpha"], committed)
 	if err := factory.supervisor.ledger.Append(Entry{Event: EventClaimed, Order: "alpha", Claim: &claim}); err != nil {
 		t.Fatal(err)
 	}

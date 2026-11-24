@@ -21,6 +21,10 @@ type orderSpec struct {
 	priority, attempts          int
 	dependsOn                   []string
 	scope                       []string
+	// omitBaseBranch leaves base-branch out of the order entirely, so
+	// claimFor's default applies. Needs finish: none (the zero value),
+	// since a base branch is otherwise required to ship.
+	omitBaseBranch bool
 }
 
 func (o orderSpec) text() string {
@@ -31,6 +35,10 @@ func (o orderSpec) text() string {
 	}
 	if len(o.scope) > 0 {
 		fmt.Fprintf(&extra, "scope:\n  paths: [%s]\n", strings.Join(o.scope, ", "))
+	}
+	baseBranch := "base-branch: main\n"
+	if o.omitBaseBranch {
+		baseBranch = ""
 	}
 	return fmt.Sprintf(`---
 intake: 1
@@ -43,8 +51,7 @@ created: %s
 requested-by: oscar
 source: manual
 trust: internal
-base-branch: main
-finish: %s
+%sfinish: %s
 autonomy: inherit
 %sbudget:
   max-attempts: %d
@@ -52,7 +59,7 @@ autonomy: inherit
   max-hours: 4
 ---
 # Deliver %s
-`, o.id, o.status, o.priority, o.created, o.finish, extra.String(), o.attempts, o.id)
+`, o.id, o.status, o.priority, o.created, baseBranch, o.finish, extra.String(), o.attempts, o.id)
 }
 
 func (o orderSpec) withDefaults() orderSpec {
@@ -118,6 +125,83 @@ func (f *testFactory) newSupervisor() *Supervisor {
 	})
 }
 
+// remoteTestFactory is a testFactory whose repository tracks a bare
+// upstream as origin, for fetch-before-read tests: an order pushed to the
+// upstream only is invisible to this factory's own checkout until a pass
+// fetches it.
+type remoteTestFactory struct {
+	*testFactory
+	upstream string
+}
+
+// newRemoteTestFactory seeds both the factory's checkout and its upstream
+// with orders, then wires a supervisor configured to fetch origin main each
+// pass (or not, with noFetch).
+func newRemoteTestFactory(t *testing.T, noFetch bool, orders ...orderSpec) *remoteTestFactory {
+	t.Helper()
+	root := t.TempDir()
+	runGit(t, root, "init", "-q", "-b", "main")
+	runGit(t, root, "config", "user.email", "test@example.com")
+	runGit(t, root, "config", "user.name", "test")
+	writeTestFile(t, filepath.Join(root, "README.md"), "fixture\n")
+	for _, order := range orders {
+		writeTestFile(t, filepath.Join(root, IntakeDir, order.id+".md"), order.text())
+	}
+	runGit(t, root, "add", "-A")
+	runGit(t, root, "commit", "-qm", "orders")
+
+	upstream := t.TempDir()
+	runGit(t, root, "clone", "-q", "--bare", ".", upstream)
+	runGit(t, root, "remote", "add", "origin", upstream)
+
+	factory := &testFactory{t: t, root: root, launcher: newFakeLauncher(t), pulls: &fakePulls{},
+		now: time.Date(2026, 10, 24, 9, 0, 0, 0, time.UTC), output: &bytes.Buffer{}}
+	factory.supervisor = New(Config{
+		Layout: Layout{Root: root}, IntakeBranch: "main", MaxConcurrent: 2, Provider: "mock",
+		Plans: []string{"deliver-feature"}, Remote: "origin", NoFetch: noFetch,
+	}, Dependencies{
+		Repository: worktree.New(root), Launcher: factory.launcher, Pulls: factory.pulls,
+		Trees:  func(dir string) Tree { return worktree.New(dir) },
+		Now:    func() time.Time { return factory.now },
+		Output: factory.output,
+	})
+	return &remoteTestFactory{testFactory: factory, upstream: upstream}
+}
+
+// pushOnly commits orders directly to the upstream remote from a fresh
+// clone of it, as a person promoting and pushing them from their own
+// checkout would. f's own checkout never sees them until a pass fetches.
+// It returns the pushed commit.
+func (f *remoteTestFactory) pushOnly(orders ...orderSpec) string {
+	f.t.Helper()
+	pusher := f.t.TempDir()
+	runGit(f.t, pusher, "clone", "-q", f.upstream, ".")
+	runGit(f.t, pusher, "config", "user.email", "test@example.com")
+	runGit(f.t, pusher, "config", "user.name", "test")
+	for _, order := range orders {
+		writeTestFile(f.t, filepath.Join(pusher, IntakeDir, order.id+".md"), order.text())
+	}
+	runGit(f.t, pusher, "add", "-A")
+	runGit(f.t, pusher, "commit", "-qm", "promote orders")
+	runGit(f.t, pusher, "push", "-q", "origin", "main")
+	return runGit(f.t, pusher, "rev-parse", "HEAD")
+}
+
+// advanceUpstream moves the upstream's main forward by one commit, as a
+// merge on GitHub would, with no local pull. It returns the new commit.
+func (f *remoteTestFactory) advanceUpstream() string {
+	f.t.Helper()
+	pusher := f.t.TempDir()
+	runGit(f.t, pusher, "clone", "-q", f.upstream, ".")
+	runGit(f.t, pusher, "config", "user.email", "test@example.com")
+	runGit(f.t, pusher, "config", "user.name", "test")
+	writeTestFile(f.t, filepath.Join(pusher, "NOTE.md"), "advanced\n")
+	runGit(f.t, pusher, "add", "-A")
+	runGit(f.t, pusher, "commit", "-qm", "advance")
+	runGit(f.t, pusher, "push", "-q", "origin", "main")
+	return runGit(f.t, pusher, "rev-parse", "HEAD")
+}
+
 // outputLines is every non-empty line this factory's supervisor has printed
 // so far. Call f.output.Reset() first to isolate one tick's output.
 func (f *testFactory) outputLines() []string {
@@ -179,6 +263,17 @@ func (f *testFactory) assertPhase(id string, want Phase) {
 	if got := f.phase(id); got != want {
 		f.t.Errorf("order %s phase = %q, want %q", id, got, want)
 	}
+}
+
+// claimOf is id's claim. It fails the test at once if id was never claimed,
+// so a caller can read fields off the result without a nil check of its own.
+func (f *testFactory) claimOf(id string) Claim {
+	f.t.Helper()
+	order, ok := f.orders()[id]
+	if !ok {
+		f.t.Fatalf("order %s was never claimed", id)
+	}
+	return order.Claim
 }
 
 func (f *testFactory) inbox() []InboxItem {
